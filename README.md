@@ -55,7 +55,7 @@ To start replicating this feed to other peers we need pipe a peer stream to them
 ``` js
 // create a peer stream to start replicating feeds to other peers
 var stream = core.createPeerStream()
-stream.pipe(anotherDrive.createPeerStream()).pipe(stream)
+stream.pipe(anotherCore.createPeerStream()).pipe(stream)
 ```
 
 To find other hypercore peers on the internet sharing feeds we could use a peer discovery module such as [discovery-channel](https://github.com/maxogden/discovery-channel) which uses the BitTorrent dht and multicast-dns to find peers.
@@ -95,7 +95,7 @@ function announce () {
 
 #### `var core = hypercore(db)`
 
-Create a new hyperdrive instance. db should be a [levelup](https://github.com/level/levelup) instance.
+Create a new hypercore instance. db should be a [levelup](https://github.com/level/levelup) instance.
 
 #### `var stream = core.createWriteStream()`
 
@@ -131,7 +131,7 @@ This is emitted when a feed is no longer being used.
 
 ## Feeds
 
-Everytime you write a stream of data to hyperdrive it gets added to an underlying binary feed. Feeds give you more low-level access to the data stored through the following api.
+Everytime you write a stream of data to hypercore it gets added to an underlying binary feed. Feeds give you more low-level access to the data stored through the following api.
 
 #### `var feed = core.add()`
 
