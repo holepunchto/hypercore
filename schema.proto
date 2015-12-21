@@ -4,22 +4,6 @@ message Feed {
   required uint64 blocks = 2;
 }
 
-message File {
-  required string name = 1;
-  required uint32 mode = 2;
-  optional uint64 size = 3;
-  optional uint32 uid = 4;
-  optional uint32 gid = 5;
-  optional uint64 mtime = 6;
-  optional uint64 ctime = 7;
-}
-
-message Entry {
-  optional string type = 1;
-  required bytes value = 2;
-  optional Feed link = 3;
-}
-
 message Handshake {
   required string protocol = 1;
   optional uint64 version = 2;
@@ -28,7 +12,7 @@ message Handshake {
 
 message Join {
   required uint64 channel = 1;
-  required bytes link = 2;
+  required bytes id = 2;
 }
 
 message Leave {
