@@ -35,13 +35,12 @@ message Leave {
   required uint64 channel = 1;
 }
 
-message Choke {
+message Pause {
   required uint64 channel = 1;
 }
 
-message Unchoke {
+message Unpause {
   required uint64 channel = 1;
-  optional bytes bitfield = 2;
 }
 
 message Request {
