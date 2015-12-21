@@ -65,3 +65,8 @@ message Have {
   repeated uint64 blocks = 2;
   optional bytes bitfield = 3;
 }
+
+message Cancel {
+  required uint64 channel = 1;
+  required uint64 block = 2;
+}
