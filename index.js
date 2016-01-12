@@ -62,6 +62,11 @@ Hypercore.prototype.add = function (opts) {
   return feed(this, null, opts)
 }
 
+Hypercore.prototype.use = function (ext, cb) {
+  // WIP
+  return this.swarm._use(ext, cb)
+}
+
 Hypercore.prototype._close = function (link) {
   var id = link.toString('hex')
   delete this._opened[id]

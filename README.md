@@ -129,6 +129,10 @@ When a feed is being used hypercore will emit `interested` with the correspondin
 
 This is emitted when a feed is no longer being used.
 
+#### `core.use(extension, cb)`
+
+When we receive extended handshake cb will be called with (id, peer). See [he-chat](https://github.com/piedshag/he-chat)
+
 ## Feeds
 
 Everytime you write a stream of data to hypercore it gets added to an underlying binary feed. Feeds give you more low-level access to the data stored through the following api.
