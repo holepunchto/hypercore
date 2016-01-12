@@ -129,6 +129,10 @@ When a feed is being used hypercore will emit `interested` with the correspondin
 
 This is emitted when a feed is no longer being used.
 
+#### `core.use(extension)`
+
+Use an extension to the protocol. See section below.
+
 ## Feeds
 
 Everytime you write a stream of data to hypercore it gets added to an underlying binary feed. Feeds give you more low-level access to the data stored through the following api.
