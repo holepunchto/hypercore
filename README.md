@@ -166,6 +166,10 @@ Property containing the number of blocks this feed has. This is only known after
 
 Boolean indicating wheather or not a block has been downloaded. Note that since this method is synchronous you have to wait for the feed to open before calling it.
 
+### TODO
+
+- [ ] implement extension api
+
 ## License
 
 MIT
