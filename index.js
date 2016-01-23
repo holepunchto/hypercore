@@ -62,9 +62,8 @@ Hypercore.prototype.add = function (opts) {
   return feed(this, null, opts)
 }
 
-Hypercore.prototype.use = function (ext) {
-  // WIP
-  return this.swarm._use(ext)
+Hypercore.prototype.use = function (extension) {
+  this.swarm.use(extension)
 }
 
 Hypercore.prototype._close = function (link) {

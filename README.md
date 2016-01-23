@@ -117,10 +117,6 @@ Create a readable stream that reads from a the feed specified by `id`. Optionall
 
 Returns a readable stream that will emit the `id` of all feeds stored in the core.
 
-#### `var stream = core.createPeerStream()`
-
-Create a new peer replication duplex stream. This stream should be piped together with a remote peer's stream to the start replicating feeds.
-
 #### `core.on('interested', id)`
 
 When a feed is being used hypercore will emit `interested` with the corresponding feed id. You can use this to query for peers that shares this feed using an external peer discovery mechanism.
@@ -129,9 +125,10 @@ When a feed is being used hypercore will emit `interested` with the correspondin
 
 This is emitted when a feed is no longer being used.
 
-#### `core.use(extension)`
+#### `var stream = core.createPeerStream()`
 
-Use an extension to the protocol. See section below.
+Create a new peer replication duplex stream. This stream should be piped together with a remote peer's stream to the start replicating feeds.
+When the stream receives a handshake from the remote peer a `handshake` event is emitted.
 
 ## Feeds
 
@@ -169,6 +166,46 @@ Property containing the number of blocks this feed has. This is only known after
 #### `var bool = feed.has(index)`
 
 Boolean indicating wheather or not a block has been downloaded. Note that since this method is synchronous you have to wait for the feed to open before calling it.
+
+## Extension API
+
+Hypercore supports sending and receiving custom messages using an extension api.
+You can use this to implement various additions to the protocol.
+
+#### `core.use(extension)`
+
+Use an extension to the protocol. `extension` should be a string containing the name of your extension.
+
+#### `var bool = stream.remoteSupports(extension)`
+
+Check if the remote stream supports an extension. Should be called after handshake has been emitted
+
+#### `stream.send(extension, buffer)`
+
+Send an extension message
+
+#### `stream.on(extension, onmessage)`
+
+Set a handler for an extension message. `onmessage` should be a function and is called with `(messageAsBuffer)` when a message for the extension is received.
+
+An example extension would be a simple ping / pong messaging scheme
+
+``` js
+core.use('ping') // we call the extension ping
+
+var stream = core.createPeerStream()
+
+// connect the stream to someone else
+
+stream.on('handshake', function () {
+  if (!stream.remoteSupports('ping')) return
+  stream.on('ping', function (message) {
+    if (message[0] === 0) return stream.send('ping', new Buffer([1])) // send pong
+    if (message[1] === 1) console.log('got pong!')
+  })
+  stream.send('ping', new Buffer([0])) // send ping
+})
+```
 
 ## License
 
