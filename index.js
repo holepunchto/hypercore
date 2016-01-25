@@ -56,6 +56,7 @@ Hypercore.prototype.get = function (link, opts) {
   var fd = this._opened[id]
   if (fd) return fd
   fd = this._opened[id] = feed(this, link, opts)
+  if (this.swarm.joined[id]) this.swarm.joined[id].open(fd)
   this.emit('interested', fd.id)
   return fd
 }
