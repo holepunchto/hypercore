@@ -6,6 +6,7 @@ var writeStream = require('./lib/write-stream')
 var readStream = require('./lib/read-stream')
 var events = require('events')
 var util = require('util')
+var crypto = require('crypto')
 
 module.exports = Hypercore
 
@@ -16,6 +17,7 @@ function Hypercore (db, opts) {
   events.EventEmitter.call(this)
 
   this.db = db
+  this.id = opts.id || crypto.randomBytes(32)
   this._hashes = subleveldown(db, 'hashes', {valueEncoding: 'binary'})
   this._blocks = subleveldown(db, 'blocks', {valueEncoding: 'binary'})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
