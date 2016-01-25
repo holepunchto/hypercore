@@ -16,11 +16,11 @@ function Hypercore (db, opts) {
   events.EventEmitter.call(this)
 
   this.db = db
-  this.cache = subleveldown(db, 'cache', {valueEncoding: 'binary'})
   this._hashes = subleveldown(db, 'hashes', {valueEncoding: 'binary'})
   this._blocks = subleveldown(db, 'blocks', {valueEncoding: 'binary'})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
+  this._cache = subleveldown(db, 'data', {valueEncoding: 'binary'})
   this._storage = opts.storage || null
   this._opened = {}
 
