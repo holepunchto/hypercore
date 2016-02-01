@@ -15,7 +15,6 @@
     "last-one-wins": "^1.0.4",
     "length-prefixed-stream": "^1.4.0",
     "merkle-tree-stream": "^2.0.0",
-    "mutexify": "^1.1.0",
     "numeric-id-map": "^1.1.0",
     "protocol-buffers": "^3.1.4",
     "sublevel-prefixer": "^1.0.0",
