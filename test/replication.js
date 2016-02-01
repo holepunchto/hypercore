@@ -19,6 +19,18 @@ tape('replicates', function (t) {
   })
 })
 
+tape('emits peer', function (t) {
+  var core = create()
+  var remote = create()
+
+  core.once('peer', function (peer) {
+    t.ok(peer.remoteId)
+    t.end()
+  })
+
+  replicate(core, remote)
+})
+
 tape('replicate and get block', function (t) {
   var core = create()
   var feed = core.add()

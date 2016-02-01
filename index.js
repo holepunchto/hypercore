@@ -27,6 +27,7 @@ function Hypercore (db, opts) {
   this._opened = {}
 
   this.swarm = swarm(this, opts)
+  this.peers = []
 }
 
 util.inherits(Hypercore, events.EventEmitter)
