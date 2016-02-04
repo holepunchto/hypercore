@@ -25,6 +25,7 @@ function Hypercore (db, opts) {
   this._cache = subleveldown(db, 'data', {valueEncoding: 'binary'})
   this._storage = opts.storage || null
   this._opened = {}
+  this._openStorages = []
 
   this.swarm = swarm(this, opts)
   this.peers = []
