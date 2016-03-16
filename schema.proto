@@ -1,57 +1,13 @@
 message Feed {
-  optional bytes pointer = 4;
-  required bytes id = 1;
-  required uint64 blocks = 2;
+  optional bytes prefix = 1;
+  required bytes publicId = 2;
+  required bytes key = 3;
+  optional bytes secretKey = 4;
+  optional bool live = 5;
 }
 
-message Handshake {
-  required string protocol = 1;
-  optional uint64 version = 2;
-  required bytes id = 3;
-  repeated string extensions = 4;
-}
-
-message Join {
-  required uint64 channel = 1;
-  required bytes id = 2;
-}
-
-message Leave {
-  required uint64 channel = 1;
-}
-
-message Pause {
-  required uint64 channel = 1;
-}
-
-message Unpause {
-  required uint64 channel = 1;
-}
-
-message Request {
-  required uint64 channel = 1;
-  required uint64 block = 2;
-}
-
-message Response {
-  message Node {
-    required uint64 index = 1;
-    required bytes hash = 2;
-  }
-
-  required uint64 channel = 1;
-  required uint64 block = 2;
-  required bytes data = 3;
-  repeated Node proof = 4;
-}
-
-message Have {
-  required uint64 channel = 1;
-  repeated uint64 blocks = 2;
-  optional bytes bitfield = 3;
-}
-
-message Cancel {
-  required uint64 channel = 1;
-  required uint64 block = 2;
+message Node {
+  required uint64 index = 1;
+  required bytes hash = 2;
+  required uint64 size = 3;
 }

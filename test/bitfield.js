@@ -1,0 +1,45 @@
+var tape = require('tape')
+var bitfield = require('../lib/bitfield')
+
+tape('set and get', function (t) {
+  var bits = bitfield()
+  t.same(bits.get(0), false, '0 is not set')
+  t.same(bits.get(1), false, '1 is not set')
+  bits.set(0, true)
+  t.same(bits.get(0), true, '0 is set')
+  t.same(bits.get(1), false, '1 is not set')
+  t.end()
+})
+
+tape('set with 0 initial length', function (t) {
+  var bits = bitfield(Buffer(0))
+  t.same(bits.get(0), false, '0 is not set')
+  t.same(bits.get(1), false, '1 is not set')
+  bits.set(0, true)
+  t.same(bits.get(0), true, '0 is set')
+  t.same(bits.get(1), false, '1 is not set')
+  t.end()
+})
+
+tape('grows when set > length', function (t) {
+  var bits = bitfield(1)
+  bits.set(32, true)
+  t.same(bits.get(32), true, '32 is set')
+  t.same(bits.get(31), false, '31 is not set')
+  t.same(bits.get(33), false, '33 is not set')
+  t.ok(bits.length > 32, 'length > 32')
+  t.end()
+})
+
+tape('unset', function (t) {
+  var bits = bitfield(1)
+  bits.set(32, true)
+  t.same(bits.get(32), true, '32 is set')
+  t.same(bits.get(31), false, '31 is not set')
+  t.same(bits.get(33), false, '33 is not set')
+  bits.set(32, false)
+  t.same(bits.get(32), false, '32 is not set')
+  t.same(bits.get(31), false, '31 is not set')
+  t.same(bits.get(33), false, '33 is not set')
+  t.end()
+})

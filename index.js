@@ -1,80 +1,82 @@
 var subleveldown = require('subleveldown')
+var bulk = require('bulk-write-stream')
+var collect = require('stream-collector')
+var from = require('from2')
 var feed = require('./lib/feed')
-var swarm = require('./lib/swarm')
 var messages = require('./lib/messages')
-var writeStream = require('./lib/write-stream')
-var readStream = require('./lib/read-stream')
-var events = require('events')
-var util = require('util')
-var crypto = require('crypto')
+var hash = require('./lib/hash')
 
 module.exports = Hypercore
 
-function Hypercore (db, opts) {
-  if (!(this instanceof Hypercore)) return new Hypercore(db, opts)
-  if (!opts) opts = {}
+function Hypercore (db) {
+  if (!(this instanceof Hypercore)) return new Hypercore(db)
 
-  events.EventEmitter.call(this)
-
-  this.db = db
-  this.id = opts.id || crypto.randomBytes(32)
-  this._hashes = subleveldown(db, 'hashes', {valueEncoding: 'binary'})
-  this._blocks = subleveldown(db, 'blocks', {valueEncoding: 'binary'})
-  this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
+  this._db = db // TODO: needs levelup-defaults to force binary?
+  this._nodes = subleveldown(db, 'nodes', {valueEncoding: messages.Node})
+  this._data = subleveldown(db, 'data', {valueEncoding: 'binary'})
+  this._signatures = subleveldown(db, 'signatures', {valueEncoding: 'binary'})
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
-  this._cache = subleveldown(db, 'data', {valueEncoding: 'binary'})
-  this._storage = opts.storage || null
-  this._opened = {}
-  this._openStorages = []
-
-  this.swarm = swarm(this, opts)
-  this.peers = []
+  this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
 }
 
-util.inherits(Hypercore, events.EventEmitter)
+Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
+  return hash.publicId(key)
+}
 
-Hypercore.prototype.createPeerStream = function () {
-  return this.swarm.createStream()
+Hypercore.prototype.createFeed = function (key, opts) {
+  if (typeof key === 'string') key = Buffer(key, 'hex')
+  if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
+  if (!opts) opts = {}
+  opts.key = key
+  opts.live = opts.live !== false // default to live feeds
+  return feed(this, opts)
+}
+
+Hypercore.prototype.list = function (cb) {
+  var stream = this._feeds.createValueStream({
+    valueEncoding: {
+      asBuffer: true,
+      decode: function (key) {
+        return messages.Feed.decode(key).key
+      }
+    }
+  })
+
+  return collect(stream, cb)
 }
 
 Hypercore.prototype.createWriteStream = function (opts) {
-  return writeStream(this, opts)
-}
+  var feed = this.add(opts)
+  var stream = bulk.obj(write, flush)
+  return patch(stream, feed)
 
-Hypercore.prototype.createReadStream = function (id, opts) {
-  return readStream(this, id, opts)
-}
-
-Hypercore.prototype.list = function () {
-  return this._feeds.createKeyStream()
-}
-
-Hypercore.prototype.get = function (link, opts) {
-  if (typeof link === 'string') link = new Buffer(link, 'hex')
-  if (link.id) {
-    if (!opts) opts = link
-    link = link.id
+  function write (buffers, cb) {
+    feed.append(buffers, cb)
   }
 
-  var id = link.toString('hex')
-  var fd = this._opened[id]
-  if (fd) return fd
-  fd = this._opened[id] = feed(this, link, opts)
-  if (this.swarm.joined[id]) this.swarm.joined[id].open(fd)
-  this.emit('interested', fd.id)
-  return fd
+  function flush (cb) {
+    feed.finalize(function (err) {
+      if (err) return cb(err)
+      patch(stream, feed)
+      cb()
+    })
+  }
 }
 
-Hypercore.prototype.add = function (opts) {
-  return feed(this, null, opts)
+Hypercore.prototype.createReadStream = function (key, opts) {
+  var offset = 0
+  var feed = this.get(key, opts)
+  var stream = from.obj(read)
+  return patch(stream, feed)
+
+  function read (size, cb) {
+    feed.get(offset++, cb)
+  }
 }
 
-Hypercore.prototype.use = function (extension) {
-  this.swarm.use(extension)
-}
-
-Hypercore.prototype._close = function (link) {
-  var id = link.toString('hex')
-  delete this._opened[id]
-  this.emit('uninterested', link)
+function patch (stream, feed) {
+  stream.key = feed.key
+  stream.publicId = feed.publicId
+  stream.live = feed.live
+  return stream
 }
