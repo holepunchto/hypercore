@@ -8,6 +8,40 @@ message Feed {
 
 message Node {
   required uint64 index = 1;
-  required bytes hash = 2;
-  required uint64 size = 3;
+  required uint64 size = 2;
+  required bytes hash = 3;
+}
+
+// TODO: merge changes to wire protocol into hypercore-protocol again
+
+message Open {
+  required bytes nonce = 1;
+  required bytes publicId = 2;
+}
+
+message Handshake {
+  optional bytes peerId = 1;
+  repeated string extensions = 2;
+}
+
+message Request {
+  required uint64 block = 1;
+  optional uint64 digest = 2;
+}
+
+message Response {
+  required uint64 block = 1;
+  required bytes data = 2;
+  repeated Node nodes = 3;
+  optional bytes signature = 4;
+}
+
+message Have {
+  repeated uint64 blocks = 1 [packed = true];
+  optional bytes bitfield = 2;
+  repeated uint64 range = 3 [packed = true];
+}
+
+message Cancel {
+  required uint64 block = 1;
 }
