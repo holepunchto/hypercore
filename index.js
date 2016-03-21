@@ -28,6 +28,11 @@ Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
   return hash.publicId(key)
 }
 
+Hypercore.prototype.replicate =
+Hypercore.prototype.createReplicationStream = function (opts) {
+  throw new Error('Global replication stream not yet implemented')
+}
+
 Hypercore.prototype.createFeed = function (key, opts) {
   if (typeof key === 'string') key = Buffer(key, 'hex')
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
