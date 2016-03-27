@@ -21,8 +21,6 @@ function Hypercore (db, opts) {
   this._signatures = subleveldown(db, 'signatures', {valueEncoding: 'binary'})
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
-
-  this._open = {}
 }
 
 Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
@@ -56,12 +54,12 @@ Hypercore.prototype.createFeed = function (key, opts) {
   return feed(this, opts)
 }
 
-Hypercore.prototype.lookup = function (key, cb) {
+Hypercore.prototype.stat = function (key, cb) {
   var self = this
   this._feeds.get(hash.publicId(key).toString('hex'), function (_, feed) {
-    if (feed) return cb(null, feed.key)
+    if (feed) return cb(null, feed)
     self._feeds.get(key.toString('hex'), function (_, feed) {
-      if (feed) return cb(null, feed.key)
+      if (feed) return cb(null, feed)
       cb(new Error('Feed not found'))
     })
   })
