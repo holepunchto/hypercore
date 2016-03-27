@@ -6,6 +6,7 @@ var from = require('from2')
 var feed = require('./lib/feed')
 var messages = require('./lib/messages')
 var hash = require('./lib/hash')
+var protocol = require('./lib/protocol')
 
 module.exports = Hypercore
 
@@ -30,7 +31,20 @@ Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
 
 Hypercore.prototype.replicate =
 Hypercore.prototype.createReplicationStream = function (opts) {
-  throw new Error('Global replication stream not yet implemented')
+  if (!opts) opts = {}
+
+  var stream = protocol({
+    id: opts.id || this.id
+  })
+
+  stream.setTimeout(opts.timeout || 5000, stream.destroy)
+  stream.on('channel', onchannel)
+
+  return stream
+}
+
+function onchannel (channel) {
+  channel.feed.swarm.add(channel)
 }
 
 Hypercore.prototype.createFeed = function (key, opts) {
@@ -39,26 +53,18 @@ Hypercore.prototype.createFeed = function (key, opts) {
   if (!opts) opts = {}
   if (!opts.key) opts.key = key
   opts.live = opts.live !== false // default to live feeds
-
   return feed(this, opts)
+}
 
-  // strictly speaking we do not need to track fully downloaded
-  // feeds across the instance
-
-  // var keyHex = opts.key && opts.key.toString('hex')
-  // if (keyHex && this._open[keyHex]) return this._open[keyHex]
-
-  // var f = feed(this, opts)
-  // if (f.key) {
-  //   var self = this
-  //   keyHex = f.key.toString('hex')
-  //   this._open[keyHex] = f
-  //   f.on('close', function () { // TODO: move this into lib/feed?
-  //     if (self._open[keyHex] === f) delete self._open[keyHex]
-  //   })
-  // }
-
-  // return f
+Hypercore.prototype.lookup = function (key, cb) {
+  var self = this
+  this._feeds.get(hash.publicId(key).toString('hex'), function (_, feed) {
+    if (feed) return cb(null, feed.key)
+    self._feeds.get(key.toString('hex'), function (_, feed) {
+      if (feed) return cb(null, feed.key)
+      cb(new Error('Feed not found'))
+    })
+  })
 }
 
 Hypercore.prototype.list = function (cb) {
