@@ -6,12 +6,6 @@ message Feed {
   optional bool live = 5;
 }
 
-message Node {
-  required uint64 index = 1;
-  required uint64 size = 2;
-  required bytes hash = 3;
-}
-
 // TODO: merge changes to wire protocol into hypercore-protocol again
 
 message Open {
@@ -29,6 +23,12 @@ message Request {
   optional uint64 digest = 2;
 }
 
+message Node {
+  required uint64 index = 1;
+  required uint64 size = 2;
+  required bytes hash = 3;
+}
+
 message Response {
   required uint64 block = 1;
   required bytes data = 2;
@@ -37,9 +37,9 @@ message Response {
 }
 
 message Have {
-  repeated uint64 blocks = 1 [packed = true];
+  repeated uint64 indexes = 1 [packed = true];
   optional bytes bitfield = 2;
-  repeated uint64 range = 3 [packed = true];
+  optional bool compressed = 3;
 }
 
 message Cancel {
