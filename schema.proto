@@ -6,8 +6,6 @@ message Feed {
   optional bool live = 5;
 }
 
-// TODO: merge changes to wire protocol into hypercore-protocol again
-
 message Open {
   required bytes nonce = 1;
   required bytes publicId = 2;
@@ -19,7 +17,7 @@ message Handshake {
 }
 
 message Request {
-  required uint64 block = 1;
+  required uint64 index = 1;
   optional uint64 digest = 2;
 }
 
@@ -30,18 +28,21 @@ message Node {
 }
 
 message Response {
-  required uint64 block = 1;
+  required uint64 index = 1;
   required bytes data = 2;
   repeated Node nodes = 3;
   optional bytes signature = 4;
 }
 
+message Bitfield {
+  required bytes buffer = 1;
+  optional bool compressed = 2;
+}
+
 message Have {
-  repeated uint64 indexes = 1 [packed = true];
-  optional bytes bitfield = 2;
-  optional bool compressed = 3;
+  repeated uint64 indexes = 1;
 }
 
 message Cancel {
-  required uint64 block = 1;
+  required uint64 index = 1;
 }
