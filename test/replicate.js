@@ -147,6 +147,40 @@ tape('replicate live with append + early get', function (t) {
   }
 })
 
+tape('same peer-id across streams', function (t) {
+  var core = create()
+
+  var stream1 = core.replicate()
+  var stream2 = core.replicate()
+  var feed = core.createFeed()
+  var stream3 = feed.replicate()
+
+  t.same(core.id, stream1.id, 'peer-id exposed on the core')
+  t.same(stream1.id, stream2.id, 'same peer-id')
+  t.same(stream2.id, stream3.id, 'same peer-id')
+  t.same(stream1.id, stream3.id, 'same peer-id')
+  t.end()
+})
+
+tape('same remote peer-id across streams', function (t) {
+  t.plan(2)
+
+  var core = create()
+  var feed = core.createFeed()
+  var stream1 = feed.replicate()
+  var stream2 = feed.replicate()
+
+  stream1.on('handshake', function () {
+    t.same(stream1.id, stream1.remoteId, 'connected to self')
+  })
+
+  stream2.on('handshake', function () {
+    t.same(stream2.id, stream2.remoteId, 'connected to self')
+  })
+
+  stream1.pipe(stream2).pipe(stream1)
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
