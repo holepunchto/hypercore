@@ -18,7 +18,36 @@ tape('replicate non live', function (t) {
 
     clone.on('download', function (block) {
       t.same(clone.blocks, 2, 'should be 2 blocks')
-      if (block > 2) t.fail('unknown block')
+      if (block >= 2) t.fail('unknown block')
+      missing--
+    })
+
+    clone.on('synchronized', function () {
+      t.same(missing, 0, 'no missing blocks')
+      t.end()
+    })
+  })
+})
+
+tape('replicate non live, bigger', function (t) {
+  var core1 = create()
+  var core2 = create()
+
+  var feed = core1.createFeed({live: false})
+
+  for (var i = 0; i < 1000; i++) {
+    feed.append('#' + i)
+  }
+
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key)
+    var missing = 1000
+
+    replicate(clone, feed)
+
+    clone.on('download', function (block) {
+      if (missing === 1000) t.same(clone.blocks, 1000, 'should be 1000 blocks')
+      if (block >= 1000) t.fail('unknown block')
       missing--
     })
 
@@ -45,7 +74,7 @@ tape('replicate live', function (t) {
 
     clone.on('download', function (block) {
       t.same(clone.blocks, 2, 'should be 2 blocks')
-      if (block > 2) t.fail('unknown block')
+      if (block >= 2) t.fail('unknown block')
       missing--
     })
 
