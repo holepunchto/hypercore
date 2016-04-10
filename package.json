@@ -4,6 +4,7 @@
   "description": "Hypercore is a protocol and network for distributing and replicating feeds of binary data.",
   "main": "index.js",
   "dependencies": {
+    "bitfield-rle": "^1.1.0",
     "brfs": "^1.4.3",
     "buffer-equals": "^1.0.3",
     "bulk-write-stream": "^1.1.1",
@@ -25,6 +26,7 @@
     "thunky": "^0.1.0",
     "to-buffer": "^1.0.1",
     "uint64be": "^1.0.1",
+    "unordered-set": "^1.1.0",
     "varint": "^4.0.0"
   },
   "devDependencies": {

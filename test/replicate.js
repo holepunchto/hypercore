@@ -19,12 +19,7 @@ tape('replicate non live', function (t) {
     clone.on('download', function (block) {
       t.same(clone.blocks, 2, 'should be 2 blocks')
       if (block >= 2) t.fail('unknown block')
-      missing--
-    })
-
-    clone.on('synchronized', function () {
-      t.same(missing, 0, 'no missing blocks')
-      t.end()
+      if (!--missing) t.end()
     })
   })
 })
@@ -48,12 +43,7 @@ tape('replicate non live, bigger', function (t) {
     clone.on('download', function (block) {
       if (missing === 1000) t.same(clone.blocks, 1000, 'should be 1000 blocks')
       if (block >= 1000) t.fail('unknown block')
-      missing--
-    })
-
-    clone.on('synchronized', function () {
-      t.same(missing, 0, 'no missing blocks')
-      t.end()
+      if (!--missing) t.end()
     })
   })
 })
@@ -75,12 +65,7 @@ tape('replicate live', function (t) {
     clone.on('download', function (block) {
       t.same(clone.blocks, 2, 'should be 2 blocks')
       if (block >= 2) t.fail('unknown block')
-      missing--
-    })
-
-    clone.on('synchronized', function () {
-      t.same(missing, 0, 'no missing blocks')
-      t.end()
+      if (!--missing) t.end()
     })
   })
 })

@@ -6,7 +6,7 @@ var from = require('from2')
 var feed = require('./lib/feed')
 var messages = require('./lib/messages')
 var hash = require('./lib/hash')
-var protocol = require('./lib/protocol')
+var replicate = require('./lib/replicate')
 
 module.exports = Hypercore
 
@@ -29,20 +29,7 @@ Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
 
 Hypercore.prototype.replicate =
 Hypercore.prototype.createReplicationStream = function (opts) {
-  if (!opts) opts = {}
-
-  var stream = protocol({
-    id: opts.id || this.id
-  })
-
-  stream.setTimeout(opts.timeout || 5000, stream.destroy)
-  stream.on('channel', onchannel)
-
-  return stream
-}
-
-function onchannel (channel) {
-  channel.feed.swarm.add(channel)
+  return replicate(this, opts)
 }
 
 Hypercore.prototype.createFeed = function (key, opts) {
