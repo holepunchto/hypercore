@@ -130,7 +130,7 @@ You do not need to join a replication stream that you created using `feed.replic
 
 Leave a replication stream.
 
-#### `stream.on('feed', publicId)
+#### `stream.on('feed', publicId)`
 
 Emitted when a remote feed joins the replication stream. You can use this as a signal to join the stream yourself if you want to.
 
