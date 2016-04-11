@@ -1,6 +1,6 @@
 # hypercore
 
-Hypercore is a protocol and p2p network for distributing and replicating static feeds of binary data. It is the low level component that [Hyperdrive](https://github.com/mafintosh/hyperdrive) is built on top off. For a detailed technical explanation on how the feed replication works see the [Hyperdrive Specification](https://github.com/mafintosh/hyperdrive/blob/master/SPECIFICATION.md)
+Hypercore is a protocol and p2p network for distributing and replicating feeds of binary data. It is the low level component that [Hyperdrive](https://github.com/mafintosh/hyperdrive) is built on top off.
 
 ```
 npm install hypercore
@@ -12,202 +12,135 @@ It runs both in the node and in the browser using [browserify](https://github.co
 
 ## Usage
 
-First lets add a stream of data to hypercore
-
 ``` js
-var level = require('level')
 var hypercore = require('hypercore')
-
-var db = level('hypercore.db')
-var core = hypercore(db) // db can be any levelup instance
-
-var ws = core.createWriteStream() // lets add some data
-
-ws.write('hello')
-ws.write('world')
-ws.end(function () {
-  // will print e1a31bb8716f0a0487377e22dbc7f0491fb47a712ac21519792a4e32cf56fb6f
-  console.log('data was stored as', ws.id.toString('hex'))
-})
-```
-
-Now to access it create a read stream with the same id
-
-``` js
-var rs = core.createReadStream('e1a31bb8716f0a0487377e22dbc7f0491fb47a712ac21519792a4e32cf56fb6f')
-
-rs.on('data', function (data) {
-  console.log(data.toString()) // prints 'hello' and 'world'
-})
-```
-
-If we were only interested in the second block of data we can access the low-level feed instead of a read stream
-
-``` js
-var feed = core.get('e1a31bb8716f0a0487377e22dbc7f0491fb47a712ac21519792a4e32cf56fb6f')
-
-// feeds give us easy random access
-feed.get(1, function (err, block) {
-  console.log(block.toString()) // prints 'world'
-})
-```
-
-To start replicating this feed to other peers we need pipe a peer stream to them.
-
-``` js
-// create a peer stream to start replicating feeds to other peers
-var stream = core.createPeerStream()
-stream.pipe(anotherCore.createPeerStream()).pipe(stream)
-```
-
-To find other hypercore peers on the internet sharing feeds we could use a peer discovery module such as [discovery-channel](https://github.com/maxogden/discovery-channel) which uses the BitTorrent dht and multicast-dns to find peers.
-
-``` js
-// lets find some hypercore peers on the internet sharing or interested in our feed
-
-var disc = require('discovery-channel')() // npm install discovery-channel
 var net = require('net')
 
-var id = new Buffer('e1a31bb8716f0a0487377e22dbc7f0491fb47a712ac21519792a4e32cf56fb6f', 'hex')
-var server = net.createServer(onsocket)
+var core = hypercore(db) // db is a leveldb instance
+var feed = core.createFeed()
 
-server.listen(0, function () {
-  announce()
-  setInterval(announce, 10000)
-
-  var lookup = disc.lookup(id.slice(0, 20))
-
-  lookup.on('peer', function (ip, port) {
-    onsocket(net.connect(port, ip))
-  })
+feed.append(['hello', 'world'], function () {
+  console.log('appended two blocks')
+  console.log('key is', feed.key.toString('hex'))
 })
 
-function onsocket (socket) {
-  // connect the peers
-  socket.pipe(core.createPeerStream()).pipe(socket)
-}
+feed.on('upload', function (block, data) {
+  console.log('uploaded block', block, data)
+})
 
-function announce () {
-  // discovery-channel currently only works with 20 bytes hashes
-  disc.announce(id.slice(0, 20), server.address().port)
-}
+var server = net.createServer(function (socket) {
+  socket.pipe(feed.replicate()).pipe(socket)
+})
+
+server.listen(10000)
+```
+
+In another process
+
+``` js
+var core = hypercore(anotherDb)
+var feed = core.createFeed(<key-printed-out-above>)
+var socket = net.connect(10000)
+
+socket.pipe(feed.replicate()).pipe(socket)
+
+feed.on('download', function (block, data) {
+  console.log('downloaded block', block, data)
+})
 ```
 
 ## API
 
 #### `var core = hypercore(db)`
 
-Create a new hypercore instance. db should be a [levelup](https://github.com/level/levelup) instance.
+Create a new hypercore instance. `db` should be a leveldb instance.
 
-#### `var stream = core.createWriteStream()`
+#### `var feed = core.createFeed([key], [options])`
 
-Create a new writable stream that adds a new feed and appends blocks to it.
-After the stream has been ended (`finish` has been emitted) you can access `stream.id` and `stream.blocks` to get the feed metadata.
+Create a new feed. A feed stores a list of append-only data (buffers). A feed has a `.key` property that you can pass in to `createFeed` if you want to retrieve an old feed. Per default all feeds are appendable (live).
+If you want to create a static feed, one you cannot reappend data to, pass the `{live: false}` option.
 
-#### `var stream = core.createReadStream(id, [options])`
+#### `var stream = core.replicate()`
 
-Create a readable stream that reads from a the feed specified by `id`. Optionally you can specify the following options:
+Create a generic replication stream. Use the `feed.join(stream)` API described below to replicate specific feeds of data.
 
-``` js
-{
-  start: 0, // which block index to start reading from
-  limit: Infinity // how many blocks to read
-}
-```
+#### `var stream = core.list([callback])`
 
-#### `var stream = core.list()`
+List all feed keys in the database. Optionally you can pass a callback to buffer them into an array.
 
-Returns a readable stream that will emit the `id` of all feeds stored in the core.
+#### `var stream = core.createWriteStream([key], [options])`
 
-#### `core.on('interested', id)`
+Returns a feed as a writable stream.
 
-When a feed is being used hypercore will emit `interested` with the corresponding feed id. You can use this to query for peers that shares this feed using an external peer discovery mechanism.
+#### `var stream = core.createReadStream(key, [options])`
 
-#### `core.on('uninterested', id)`
+Returns a feed as a readable stream.
 
-This is emitted when a feed is no longer being used.
+## `Feed API`
 
-#### `var stream = core.createPeerStream()`
+As mentioned above a feed stores a list of data for you that you can replicate to other peers. It has the following API
 
-Create a new peer replication duplex stream. This stream should be piped together with a remote peer's stream to the start replicating feeds.
-When the stream receives a handshake from the remote peer a `handshake` event is emitted.
+#### `feed.key`
 
-## Feeds
+The key of this feed. A 32 byte buffer. Other peers need this key to start replicating the feed.
 
-Everytime you write a stream of data to hypercore it gets added to an underlying binary feed. Feeds give you more low-level access to the data stored through the following api.
+#### `feed.publicId`
 
-#### `var feed = core.add()`
+A 32 byte buffer containing a public id of the feed. The public id is sha-256 hmac of the string `hypercore` using the feed key as the password.
+You can use the public id to find other peers sharing this feed without disclosing your feed key to a third party.
 
-Create a new feed. Call `feed.append` to add blocks and `feed.finalize` when you're done and ready to share this feed.
+#### `feed.blocks`
 
-#### `var feed = core.get(id)`
+The total number of known data blocks in the feed.
 
-Access a finalized feed by its id. By getting a feed you'll start replicating this from other peers you are connected too as well.
+#### `feed.open(cb)`
+
+Call this method to ensure that a feed is opened. You do not need to call this but the `.blocks` property will not be populated until the feed has been opened.
+
+#### `feed.append(data, callback)`
+
+Append a piece of data to the feed. If you want to append more than once piece you can pass in an array.
+
+#### `feed.flush(callback)`
+
+Flushes all pending appends and calls the callback.
 
 #### `feed.get(index, callback)`
 
-Get a block from the the feed. If you `.get` a block index that hasn't been downloaded yet this method will wait for that block be downloaded before calling the callback.
+Retrieve a piece of data from the feed.
 
-#### `feed.append(block, [callback])`
+#### `feed.finalize(callback)`
 
-Append a block of data to a new feed. You can only append to a feed that hasn't been finalized. Optionally you can pass in an array of blocks instead of single one to add multiple blocks at the same time.
+If you are not using a live feed you need to call this method to finalize the feed once you are ready to share it.
+Finalizing will set the `.key` property and allow other peers to get your data.
 
-#### `feed.finalize([callback])`
+#### `var stream = feed.replicate([options])`
 
-Finalize a feed. Will set `feed.id` when done. This is the `id` that identifies this feed.
+Get a replication stream for this feed. Pipe this to another peer to start replicating this feed with another peer.
+If you create multiple replication streams to multiple peers you'll upload/download data to all of them (meaning the load will spread out).
 
-#### `feed.ready([callback])`
+Per default the replication stream encrypts all messages sent using the feed key and an incrementing nonce. This helps ensures that the remote peer also the feed key and makes it harder for a man-in-the-middle to sniff the data you are sending.
 
-Call this method to wait for the feed to have enough metadata to populate its internal state.
-After the callback has been called `feed.blocks` is guaranteed to be populated. You *do not* have to call `feed.ready` before trying to `.get` a block. This method is just available for convenience.
+#### `feed.join(stream)`
 
-#### `var blocks = feed.blocks`
+Join another replication stream. Hypercore uses a simple multiplexed protocol that allows one replication stream to be used for multiple feeds at once.
+You do not need to join a replication stream that you created using `feed.replicate()` - you implicitly join that one.
 
-Property containing the number of blocks this feed has. This is only known after at least one block has been fetched.
+#### `feed.leave(stream)`
 
-#### `var bool = feed.has(index)`
+Leave a replication stream.
 
-Boolean indicating wheather or not a block has been downloaded. Note that since this method is synchronous you have to wait for the feed to open before calling it.
+#### `stream.on('feed', publicId)
 
-## Extension API
+Emitted when a remote feed joins the replication stream. You can use this as a signal to join the stream yourself if you want to.
 
-Hypercore supports sending and receiving custom messages using an extension api.
-You can use this to implement various additions to the protocol.
+#### `feed.on('download', block, data)`
 
-#### `core.use(extension)`
+Emitted when a data block has been downloaded
 
-Use an extension to the protocol. `extension` should be a string containing the name of your extension.
+#### `feed.on('upload', block, data)`
 
-#### `var bool = stream.remoteSupports(extension)`
-
-Check if the remote stream supports an extension. Should be called after handshake has been emitted
-
-#### `stream.send(extension, buffer)`
-
-Send an extension message
-
-#### `stream.on(extension, onmessage)`
-
-Set a handler for an extension message. `onmessage` should be a function and is called with `(messageAsBuffer)` when a message for the extension is received.
-
-An example extension would be a simple ping / pong messaging scheme
-
-``` js
-core.use('ping') // we call the extension ping
-
-var stream = core.createPeerStream()
-
-// connect the stream to someone else
-
-stream.on('handshake', function () {
-  if (!stream.remoteSupports('ping')) return
-  stream.on('ping', function (message) {
-    if (message[0] === 0) return stream.send('ping', new Buffer([1])) // send pong
-    if (message[1] === 1) console.log('got pong!')
-  })
-  stream.send('ping', new Buffer([0])) // send ping
-})
-```
+Emitted when a data block has been uploaded
 
 ## License
 

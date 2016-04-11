@@ -12,15 +12,16 @@ message Node {
   required bytes hash = 3;
 }
 
-message Open {
-  required bytes nonce = 1;
-  required bytes publicId = 2;
-}
-
-message Handshake {
+message ProtocolHandshake {
   optional uint64 version = 1;
   required bytes peerId = 2;
   repeated string extensions = 3;
+}
+
+message Handshake {
+  required bytes publicId = 1;
+  required bytes nonce = 2;
+  optional bytes protocol = 3;
 }
 
 message Have {

@@ -20,7 +20,7 @@ tape('send message', function (t) {
     t.pass('channel opened')
     return {
       onmessage: function (type, message) {
-        t.same(type, 1, 'a have message')
+        t.same(type, 0, 'a have message')
         t.same(message.start, 1, 'start is 1')
         t.same(message.end, 5, 'end is 5')
         t.end()
@@ -29,7 +29,7 @@ tape('send message', function (t) {
   })
 
   var channel = p1.open(key)
-  p1.send(channel, 1, {start: 1, end: 5}) // send have
+  p1.send(channel, 0, {start: 1, end: 5}) // send have
 
   p1.pipe(p1)
 })
@@ -40,7 +40,7 @@ tape('send message and close', function (t) {
     t.pass('channel opened')
     return {
       onmessage: function (type, message) {
-        t.same(type, 1, 'a have message')
+        t.same(type, 0, 'a have message')
         t.same(message.start, 1, 'start is 1')
         t.same(message.end, 5, 'end is 5')
       },
@@ -52,7 +52,7 @@ tape('send message and close', function (t) {
   })
 
   var channel = p1.open(key)
-  p1.send(channel, 1, {start: 1, end: 5}) // send have
+  p1.send(channel, 0, {start: 1, end: 5}) // send have
   p1.close(channel)
 
   p1.pipe(p2).pipe(p1)
@@ -65,12 +65,12 @@ tape('send two messages', function (t) {
     t.pass('channel opened')
     return {
       onmessage: function (type, message) {
-        if (type === 1) {
-          t.same(type, 1, 'a have message')
+        if (type === 0) {
+          t.same(type, 0, 'a have message')
           t.same(message.start, 1, 'start is 1')
           t.same(message.end, 5, 'end is 5')
         } else {
-          t.same(type, 2, 'a want message')
+          t.same(type, 1, 'a want message')
           t.same(message.start, 4, 'start is 4')
           t.same(message.end, 10, 'end is 10')
         }
@@ -79,8 +79,8 @@ tape('send two messages', function (t) {
   })
 
   var channel = p1.open(key)
-  p1.send(channel, 1, {start: 1, end: 5}) // have message
-  p1.send(channel, 2, {start: 4, end: 10}) // want message
+  p1.send(channel, 0, {start: 1, end: 5}) // have message
+  p1.send(channel, 1, {start: 4, end: 10}) // want message
 
   p1.pipe(p1)
 })
@@ -105,6 +105,9 @@ tape('send extension message', function (t) {
   })
 
   var channel = p1.open(key)
+  p1.on('handshake', function (handshake) {
+    console.log(handshake)
+  })
   p1.sendExtension(channel, 0, Buffer('hello'))
   p1.sendExtension(channel, 1, Buffer('world'))
 

@@ -19,7 +19,6 @@
     "protocol-buffers": "^3.1.6",
     "readable-stream": "^2.0.6",
     "sodium-encryption": "^1.0.1",
-    "sodium-prebuilt": "^1.0.22",
     "sodium-signatures": "^1.2.2",
     "stream-collector": "^1.0.1",
     "subleveldown": "^2.1.0",
