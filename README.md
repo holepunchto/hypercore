@@ -58,7 +58,20 @@ Create a new hypercore instance. `db` should be a leveldb instance.
 #### `var feed = core.createFeed([key], [options])`
 
 Create a new feed. A feed stores a list of append-only data (buffers). A feed has a `.key` property that you can pass in to `createFeed` if you want to retrieve an old feed. Per default all feeds are appendable (live).
+
+Options include:
+
+``` js
+{
+  live: true,
+  storage: externalStorage
+}
+```
+
 If you want to create a static feed, one you cannot reappend data to, pass the `{live: false}` option.
+The storage option allows you to store data outside of leveldb. This is very useful if you use hypercore to distribute files.
+
+See the [Storage API](#storage-api) section for more info
 
 #### `var stream = core.replicate()`
 
@@ -101,10 +114,6 @@ Call this method to ensure that a feed is opened. You do not need to call this b
 
 Append a piece of data to the feed. If you want to append more than once piece you can pass in an array.
 
-#### `feed.flush(callback)`
-
-Flushes all pending appends and calls the callback.
-
 #### `feed.get(index, callback)`
 
 Retrieve a piece of data from the feed.
@@ -143,6 +152,31 @@ Emitted when a data block has been downloaded
 #### `feed.on('upload', block, data)`
 
 Emitted when a data block has been uploaded
+
+## Storage API
+
+If you want to use external storage to store the hypercore data (metadata will still be stored in the leveldb) you need to implement the following api and provide that as the `storage` option when creating a feed.
+
+Some node modules that implement this interface are
+
+* [random-access-file](https://github.com/mafintosh/random-access-file) Writes data to a file.
+* [random-access-memory](https://github.com/mafintosh/random-access-memory) Writes data to memory.
+
+#### `storage.open(cb)`
+
+This API is *optional*. If you provide this hypercore will call `.open` and wait for the callback to be called before calling any other methods.
+
+#### `storage.read(offset, length, cb)`
+
+This API is *required*. Hypercore calls this when it wants to read data. You should return a buffer with length `length` that way read at the corresponding offset. If you cannot read this buffer call the callback with an error.
+
+#### `storage.write(offset, buffer, cb)`
+
+This API is *required*. Hypercore calls this when it wants to write data. You should write the buffer at the corresponding offset and call the callback afterwards. If there was an error writing you should call the callback with that error.
+
+#### `storage.close(cb)`
+
+This API is *optional*. Hypercore will call this method when the feed is closing.
 
 ## License
 
