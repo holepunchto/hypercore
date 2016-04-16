@@ -1,5 +1,6 @@
 var tape = require('tape')
 var memdb = require('memdb')
+var ram = require('random-access-memory')
 var hypercore = require('../')
 
 tape('replicate non live', function (t) {
@@ -36,6 +37,30 @@ tape('replicate non live, bigger', function (t) {
 
   feed.finalize(function () {
     var clone = core2.createFeed(feed.key)
+    var missing = 1000
+
+    replicate(clone, feed)
+
+    clone.on('download', function (block) {
+      if (missing === 1000) t.same(clone.blocks, 1000, 'should be 1000 blocks')
+      if (block >= 1000) t.fail('unknown block')
+      if (!--missing) t.end()
+    })
+  })
+})
+
+tape('replicate non live, bigger with external storage', function (t) {
+  var core1 = create()
+  var core2 = create()
+
+  var feed = core1.createFeed({live: false, storage: ram()})
+
+  for (var i = 0; i < 1000; i++) {
+    feed.append('#' + i)
+  }
+
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key, {storage: ram()})
     var missing = 1000
 
     replicate(clone, feed)

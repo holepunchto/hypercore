@@ -12,8 +12,9 @@ module.exports = Hypercore
 
 function Hypercore (db, opts) {
   if (!(this instanceof Hypercore)) return new Hypercore(db, opts)
+  if (!opts) opts = {}
 
-  this.id = opts && opts.id || crypto.randomBytes(32)
+  this.id = opts.id || crypto.randomBytes(32)
 
   this._db = db // TODO: needs levelup-defaults to force binary?
   this._nodes = subleveldown(db, 'nodes', {valueEncoding: messages.Node})
@@ -21,6 +22,7 @@ function Hypercore (db, opts) {
   this._signatures = subleveldown(db, 'signatures', {valueEncoding: 'binary'})
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
+  this._storage = opts.storage || null
 }
 
 Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
