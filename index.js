@@ -65,8 +65,8 @@ Hypercore.prototype.list = function (cb) {
   return collect(stream, cb)
 }
 
-Hypercore.prototype.createWriteStream = function (opts) {
-  var feed = this.add(opts)
+Hypercore.prototype.createWriteStream = function (key, opts) {
+  var feed = this.createFeed(key, opts)
   var stream = bulk.obj(write, flush)
   return patch(stream, feed)
 
@@ -88,7 +88,7 @@ Hypercore.prototype.createWriteStream = function (opts) {
 
 Hypercore.prototype.createReadStream = function (key, opts) {
   var offset = 0
-  var feed = this.get(key, opts)
+  var feed = this.createFeed(key, opts)
   var stream = from.obj(read)
   return patch(stream, feed)
 
