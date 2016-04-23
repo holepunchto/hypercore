@@ -39,7 +39,7 @@ Hypercore.prototype.createFeed = function (key, opts) {
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
   if (!opts) opts = {}
   if (!opts.key) opts.key = key
-  opts.live = opts.live !== false // default to live feeds
+  opts.live = key ? !!opts.live : opts.live !== false // default to live feeds
   return feed(this, opts)
 }
 
