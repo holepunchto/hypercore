@@ -89,12 +89,15 @@ Hypercore.prototype.createWriteStream = function (key, opts) {
 }
 
 Hypercore.prototype.createReadStream = function (key, opts) {
+  if (!opts) opts = {}
   var offset = 0
   var feed = this.createFeed(key, opts)
+  var live = !!opts.live
   var stream = from.obj(read)
   return patch(stream, feed)
 
   function read (size, cb) {
+    if (!live && feed.blocks && offset === feed.blocks) return cb(null, null)
     feed.get(offset++, cb)
   }
 }
