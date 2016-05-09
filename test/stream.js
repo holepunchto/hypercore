@@ -1,7 +1,5 @@
 var tape = require('tape')
 var memdb = require('memdb')
-var ram = require('random-access-memory')
-var concat = require('concat-stream')
 var hypercore = require('../')
 
 tape('createWriteStream to createReadStream', function (t) {
@@ -12,10 +10,10 @@ tape('createWriteStream to createReadStream', function (t) {
   var w = core1.createWriteStream()
   w.end('hello')
 
-  var r = core2.createReadStream(w.publicId)
-  r.pipe(concat(function (body) {
+  var r = core2.createReadStream(w.key)
+  r.once('data', function (body) {
     t.deepEqual(body.toString(), 'hello')
-  }))
+  })
   replicate(w.feed, r.feed)
 })
 
