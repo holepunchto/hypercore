@@ -75,6 +75,28 @@ tape('createReadStream with end, no start', function (t) {
   })
 })
 
+tape('createReadStream from feed', function (t) {
+  t.plan(2)
+  var core1 = create()
+  var core2 = create()
+
+  var w = core1.createWriteStream()
+  w.write('hello')
+  w.write('multiple')
+  w.write('worlds')
+  w.end(function () {
+    var f = core2.createFeed(w.key)
+    f.get(0, function () {
+      t.deepEqual(f.blocks, 3)
+      var r = core2.createReadStream(f)
+      r.pipe(concat(function (body) {
+        t.deepEqual(body.toString(), 'hellomultipleworlds')
+      }))
+    })
+    replicate(w.feed, f)
+  })
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)

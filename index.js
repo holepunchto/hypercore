@@ -68,7 +68,7 @@ Hypercore.prototype.list = function (cb) {
 }
 
 Hypercore.prototype.createWriteStream = function (key, opts) {
-  var feed = this.createFeed(key, opts)
+  var feed = isFeed(key) ? key : this.createFeed(key, opts)
   var stream = bulk.obj(write, flush)
   return patch(stream, feed)
 
@@ -93,7 +93,7 @@ Hypercore.prototype.createReadStream = function (key, opts) {
 
   var offset = opts.start || 0
   var end = opts.end || -1
-  var feed = this.createFeed(key, opts)
+  var feed = isFeed(key) ? key : this.createFeed(key, opts)
   var live = !!opts.live
   var stream = from.obj(read)
 
@@ -112,4 +112,8 @@ function patch (stream, feed) {
   stream.publicId = feed.publicId
   stream.live = feed.live
   return stream
+}
+
+function isFeed (feed) {
+  return feed && Buffer.isBuffer(feed.key) && feed.key.length === 32 && typeof feed.open === 'function'
 }
