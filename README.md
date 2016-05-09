@@ -87,7 +87,15 @@ Returns a feed as a writable stream.
 
 #### `var stream = core.createReadStream(key, [options])`
 
-Returns a feed as a readable stream.
+Returns a feed as a readable stream. Options include:
+
+``` js
+{
+  start: startIndex, // read from this index
+  end: endIndex, // read until this index
+  live: false // set this to keep the read stream open
+}
+```
 
 ## `Feed API`
 
