@@ -138,7 +138,7 @@ If you create multiple replication streams to multiple peers you'll upload/downl
 
 Per default the replication stream encrypts all messages sent using the feed key and an incrementing nonce. This helps ensures that the remote peer also the feed key and makes it harder for a man-in-the-middle to sniff the data you are sending.
 
-Set `{encrypted: false}` to disable this.
+Set `{private: false}` to disable this.
 
 Hypercore uses a simple multiplexed protocol that allows one replication stream to be used for multiple feeds at once.
 If you want to join another replication stream simply pass it as the stream option
