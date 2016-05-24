@@ -81,22 +81,6 @@ Create a generic replication stream. Use the `feed.replicate(stream)` API descri
 
 List all feed keys in the database. Optionally you can pass a callback to buffer them into an array.
 
-#### `var stream = core.createWriteStream([key], [options])`
-
-Returns a feed as a writable stream.
-
-#### `var stream = core.createReadStream(key, [options])`
-
-Returns a feed as a readable stream. Options include:
-
-``` js
-{
-  start: startIndex, // read from this index
-  end: endIndex, // read until this index
-  live: false // set this to keep the read stream open
-}
-```
-
 ## `Feed API`
 
 As mentioned above a feed stores a list of data for you that you can replicate to other peers. It has the following API
@@ -130,6 +114,22 @@ Retrieve a piece of data from the feed.
 
 If you are not using a live feed you need to call this method to finalize the feed once you are ready to share it.
 Finalizing will set the `.key` property and allow other peers to get your data.
+
+#### `var stream = feed.createWriteStream([options])`
+
+Create a writable stream that appends to the feed. If the feed is a static feed, it will be finalized when you end the stream.
+
+#### `var stream = feed.createReadStream([options])`
+
+Create a readable stream that reads from the feed. Options include:
+
+``` js
+{
+  start: startIndex, // read from this index
+  end: endIndex, // read until this index
+  live: false // set this to keep the read stream open
+}
+```
 
 #### `var stream = feed.replicate([options])`
 
