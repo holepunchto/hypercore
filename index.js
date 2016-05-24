@@ -29,9 +29,8 @@ Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
   return hash.publicId(key)
 }
 
-Hypercore.prototype.replicate =
-Hypercore.prototype.createReplicationStream = function (opts) {
-  return replicate(this, opts)
+Hypercore.prototype.replicate = function (opts) {
+  return replicate(this, null, opts)
 }
 
 Hypercore.prototype.createFeed = function (key, opts) {
