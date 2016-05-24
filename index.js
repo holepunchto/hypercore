@@ -25,8 +25,8 @@ function Hypercore (db, opts) {
   this._storage = opts.storage || null
 }
 
-Hypercore.publicId = Hypercore.prototype.publicId = function (key) {
-  return hash.publicId(key)
+Hypercore.discoveryKey = Hypercore.prototype.discoveryKey = function (key) {
+  return hash.discoveryKey(key)
 }
 
 Hypercore.prototype.replicate = function (opts) {
@@ -44,7 +44,7 @@ Hypercore.prototype.createFeed = function (key, opts) {
 
 Hypercore.prototype.stat = function (key, cb) {
   var self = this
-  this._feeds.get(hash.publicId(key).toString('hex'), function (_, feed) {
+  this._feeds.get(hash.discoveryKey(key).toString('hex'), function (_, feed) {
     if (feed) return cb(null, feed)
     self._feeds.get(key.toString('hex'), function (_, feed) {
       if (feed) return cb(null, feed)
@@ -108,7 +108,7 @@ Hypercore.prototype.createReadStream = function (key, opts) {
 function patch (stream, feed) {
   stream.feed = feed
   stream.key = feed.key
-  stream.publicId = feed.publicId
+  stream.discoveryKey = feed.discoveryKey
   stream.live = feed.live
   return stream
 }

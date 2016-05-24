@@ -1,6 +1,6 @@
 message Feed {
   optional bytes prefix = 1;
-  required bytes publicId = 2;
+  required bytes discoveryKey = 2;
   required bytes key = 3;
   optional bytes secretKey = 4;
   optional bool live = 5;

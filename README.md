@@ -75,7 +75,7 @@ See the [Storage API](#storage-api) section for more info
 
 #### `var stream = core.replicate()`
 
-Create a generic replication stream. Use the `feed.join(stream)` API described below to replicate specific feeds of data.
+Create a generic replication stream. Use the `feed.replicate(stream)` API described below to replicate specific feeds of data.
 
 #### `var stream = core.list([callback])`
 
@@ -105,10 +105,10 @@ As mentioned above a feed stores a list of data for you that you can replicate t
 
 The key of this feed. A 32 byte buffer. Other peers need this key to start replicating the feed.
 
-#### `feed.publicId`
+#### `feed.discoveryKey`
 
-A 32 byte buffer containing a public id of the feed. The public id is sha-256 hmac of the string `hypercore` using the feed key as the password.
-You can use the public id to find other peers sharing this feed without disclosing your feed key to a third party.
+A 32 byte buffer containing a discovery key of the feed. The discovery key is sha-256 hmac of the string `hypercore` using the feed key as the password.
+You can use the discovery key to find other peers sharing this feed without disclosing your feed key to a third party.
 
 #### `feed.blocks`
 
@@ -140,18 +140,18 @@ Per default the replication stream encrypts all messages sent using the feed key
 
 Set `{encrypted: false}` to disable this.
 
-#### `feed.join(stream)`
+Hypercore uses a simple multiplexed protocol that allows one replication stream to be used for multiple feeds at once.
+If you want to join another replication stream simply pass it as the stream option
 
-Join another replication stream. Hypercore uses a simple multiplexed protocol that allows one replication stream to be used for multiple feeds at once.
-You do not need to join a replication stream that you created using `feed.replicate()` - you implicitly join that one.
+``` js
+feed.replicate({stream: anotherReplicationStream})
+```
 
-#### `feed.leave(stream)`
+As a shorthand you can also do `feed.replicate(stream)`.
 
-Leave a replication stream.
+#### `stream.on('open', discoveryKey)`
 
-#### `stream.on('feed', publicId)`
-
-Emitted when a remote feed joins the replication stream. You can use this as a signal to join the stream yourself if you want to.
+Emitted when a remote feed joins the replication stream and you haven't. You can use this as a signal to join the stream yourself if you want to.
 
 #### `feed.on('download', block, data)`
 
