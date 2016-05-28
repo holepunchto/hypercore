@@ -1,11 +1,10 @@
 var tape = require('tape')
-var memdb = require('memdb')
 var ram = require('random-access-memory')
-var hypercore = require('../')
+var hypercore = require('./helpers/create')
 
 tape('replicate non live', function (t) {
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed({live: false})
 
@@ -26,8 +25,8 @@ tape('replicate non live', function (t) {
 })
 
 tape('replicate non live, bigger', function (t) {
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed({live: false})
 
@@ -50,8 +49,8 @@ tape('replicate non live, bigger', function (t) {
 })
 
 tape('replicate non live, bigger with external storage', function (t) {
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed({live: false, storage: ram()})
 
@@ -74,8 +73,8 @@ tape('replicate non live, bigger with external storage', function (t) {
 })
 
 tape('replicate live', function (t) {
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed()
 
@@ -96,8 +95,8 @@ tape('replicate live', function (t) {
 })
 
 tape('replicate live with append', function (t) {
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed()
 
@@ -142,8 +141,8 @@ tape('replicate live with append', function (t) {
 tape('replicate live with append + early get', function (t) {
   t.plan(8)
 
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var feed = core1.createFeed()
 
@@ -187,7 +186,7 @@ tape('replicate live with append + early get', function (t) {
 })
 
 tape('same peer-id across streams', function (t) {
-  var core = create()
+  var core = hypercore()
 
   var stream1 = core.replicate()
   var stream2 = core.replicate()
@@ -204,7 +203,7 @@ tape('same peer-id across streams', function (t) {
 tape('same remote peer-id across streams', function (t) {
   t.plan(2)
 
-  var core = create()
+  var core = hypercore()
   var feed = core.createFeed()
   var stream1 = feed.replicate()
   var stream2 = feed.replicate()
@@ -223,8 +222,4 @@ tape('same remote peer-id across streams', function (t) {
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
-}
-
-function create () {
-  return hypercore(memdb())
 }

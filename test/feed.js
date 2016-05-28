@@ -1,9 +1,9 @@
 var tape = require('tape')
-var hypercore = require('../')
-var memdb = require('memdb')
+var hypercore = require('./helpers/create')
+var copy = require('./helpers/copy')
 
 tape('append one', function (t) {
-  var feed = createFeed()
+  var feed = hypercore().createFeed()
 
   feed.append('hello', function () {
     t.same(feed.has(0), true, 'has first')
@@ -16,7 +16,7 @@ tape('append one', function (t) {
 })
 
 tape('append, close, resume', function (t) {
-  var core = hypercore(memdb())
+  var core = hypercore()
   var feed = core.createFeed()
 
   feed.append('hello')
@@ -40,7 +40,7 @@ tape('append, close, resume', function (t) {
 })
 
 tape('non-live append and finalize', function (t) {
-  var feed = createFeed({live: false})
+  var feed = hypercore().createFeed({live: false})
   feed.append('hello')
   feed.finalize(function () {
     t.same(feed.key, Buffer('3ae3cbe25fbd381ae3137f5286ac7eb8fcec7255e8eef864e0aa0e605220a429', 'hex'))
@@ -49,7 +49,7 @@ tape('non-live append and finalize', function (t) {
 })
 
 tape('non-live finalize empty', function (t) {
-  var feed = createFeed({live: false})
+  var feed = hypercore().createFeed({live: false})
   feed.finalize(function () {
     t.same(feed.key, null)
     t.end()
@@ -57,10 +57,10 @@ tape('non-live finalize empty', function (t) {
 })
 
 tape('non-live replicate without digest', function (t) {
-  var feed = createFeed({live: false})
+  var feed = hypercore().createFeed({live: false})
   feed.append(['a', 'b', 'c'])
   feed.finalize(function () {
-    var clone = createFeed(feed.key)
+    var clone = hypercore().createFeed(feed.key)
     var missing = [0, 1, 2]
 
     loop()
@@ -84,10 +84,10 @@ tape('non-live replicate without digest', function (t) {
 })
 
 tape('non-live replicate with digest', function (t) {
-  var feed = createFeed({live: false})
+  var feed = hypercore().createFeed({live: false})
   feed.append(['a', 'b', 'c'])
   feed.finalize(function () {
-    var clone = createFeed(feed.key)
+    var clone = hypercore().createFeed(feed.key)
     var missing = [0, 1, 2]
 
     loop()
@@ -114,11 +114,11 @@ tape('non-live replicate with digest', function (t) {
 tape('invalid non-live replicate with digest', function (t) {
   t.plan(3)
 
-  var feed = createFeed({live: false})
+  var feed = hypercore().createFeed({live: false})
   feed.append(['a', 'b', 'c'])
   feed.finalize(function () {
     var key = Buffer('00000000000000000000000000000000')
-    var clone = createFeed(key)
+    var clone = hypercore().createFeed(key)
 
     copy(0, feed, clone, function (err) {
       t.ok(err, 'should error')
@@ -133,8 +133,8 @@ tape('invalid non-live replicate with digest', function (t) {
 })
 
 tape('replicate without digest', function (t) {
-  var feed = createFeed()
-  var clone = createFeed(feed.key)
+  var feed = hypercore().createFeed()
+  var clone = hypercore().createFeed(feed.key)
   feed.append(['a', 'b', 'c'], function () {
     var missing = [0, 1, 2]
 
@@ -160,8 +160,8 @@ tape('replicate without digest', function (t) {
 })
 
 tape('replicate with digest', function (t) {
-  var feed = createFeed()
-  var clone = createFeed(feed.key)
+  var feed = hypercore().createFeed()
+  var clone = hypercore().createFeed(feed.key)
   feed.append(['a', 'b', 'c'], function () {
     var missing = [0, 1, 2]
 
@@ -190,11 +190,11 @@ tape('replicate with digest', function (t) {
 tape('invalid replicate with digest', function (t) {
   t.plan(3)
 
-  var feed = createFeed()
+  var feed = hypercore().createFeed()
   feed.append(['a', 'b', 'c'])
   feed.finalize(function () {
     var key = Buffer('00000000000000000000000000000000')
-    var clone = createFeed(key)
+    var clone = hypercore().createFeed(key)
 
     copy(0, feed, clone, function (err) {
       t.ok(err, 'should error')
@@ -209,9 +209,9 @@ tape('invalid replicate with digest', function (t) {
 })
 
 tape('replicate, append, replicate', function (t) {
-  var feed = createFeed()
-  var clone1 = createFeed(feed.key)
-  var clone2 = createFeed(feed.key)
+  var feed = hypercore().createFeed()
+  var clone1 = hypercore().createFeed(feed.key)
+  var clone2 = hypercore().createFeed(feed.key)
 
   feed.append(['a', 'b', 'c'], function () {
     copy(1, feed, clone1, function (err) {
@@ -232,6 +232,19 @@ tape('replicate, append, replicate', function (t) {
           })
         })
       })
+    })
+  })
+})
+
+tape.skip('append and get empty value', function (t) {
+  var feed = hypercore().createFeed()
+
+  feed.append(Buffer(0), function (err) {
+    t.error(err, 'no append error')
+    feed.get(0, function (err, value) {
+      t.error(err, 'no get error')
+      t.same(value, Buffer(0), 'empty buffer')
+      t.end()
     })
   })
 })
@@ -302,9 +315,9 @@ tape('chaos monkey generated #3', function (t) {
 })
 
 tape('chaos monkey randomized', function (t) {
-  var feed = createFeed()
-  var clone1 = createFeed(feed.key)
-  var clone2 = createFeed(feed.key)
+  var feed = hypercore().createFeed()
+  var clone1 = hypercore().createFeed(feed.key)
+  var clone2 = hypercore().createFeed(feed.key)
   var names = ['feed', 'clone1', 'clone2']
   var runs = 500
 
@@ -351,9 +364,9 @@ tape('chaos monkey randomized', function (t) {
 })
 
 function runOps (t, ops) {
-  var feed = createFeed()
-  var clone1 = createFeed(feed.key)
-  var clone2 = createFeed(feed.key)
+  var feed = hypercore().createFeed()
+  var clone1 = hypercore().createFeed(feed.key)
+  var clone2 = hypercore().createFeed(feed.key)
 
   loop()
 
@@ -386,18 +399,4 @@ function runOps (t, ops) {
       return
     }
   }
-}
-
-function copy (blk, from, to, cb) {
-  from.proof(blk, {digest: to.digest(blk)}, function (err, proof) {
-    if (err) return cb(err)
-    from.get(blk, function (err, data) {
-      if (err) return cb(err)
-      to.put(blk, data, proof, cb)
-    })
-  })
-}
-
-function createFeed (k, opts) {
-  return hypercore(memdb()).createFeed(k, opts)
 }

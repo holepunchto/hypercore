@@ -1,12 +1,11 @@
 var tape = require('tape')
-var memdb = require('memdb')
 var concat = require('concat-stream')
-var hypercore = require('../')
+var hypercore = require('./helpers/create')
 
 tape('createWriteStream to createReadStream', function (t) {
   t.plan(1)
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var w = core1.createWriteStream()
   w.end('hello')
@@ -20,8 +19,8 @@ tape('createWriteStream to createReadStream', function (t) {
 
 tape('createReadStream with start, end', function (t) {
   t.plan(1)
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var w = core1.createWriteStream()
   w.write('hello')
@@ -39,8 +38,8 @@ tape('createReadStream with start, end', function (t) {
 
 tape('createReadStream with start, no end', function (t) {
   t.plan(1)
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var w = core1.createWriteStream()
   w.write('hello')
@@ -58,8 +57,8 @@ tape('createReadStream with start, no end', function (t) {
 
 tape('createReadStream with end, no start', function (t) {
   t.plan(1)
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var w = core1.createWriteStream()
   w.write('hello')
@@ -77,8 +76,8 @@ tape('createReadStream with end, no start', function (t) {
 
 tape('createReadStream from feed', function (t) {
   t.plan(2)
-  var core1 = create()
-  var core2 = create()
+  var core1 = hypercore()
+  var core2 = hypercore()
 
   var w = core1.createWriteStream()
   w.write('hello')
@@ -100,8 +99,4 @@ tape('createReadStream from feed', function (t) {
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
-}
-
-function create () {
-  return hypercore(memdb())
 }
