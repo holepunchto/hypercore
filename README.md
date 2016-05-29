@@ -104,11 +104,15 @@ Call this method to ensure that a feed is opened. You do not need to call this b
 
 #### `feed.append(data, callback)`
 
-Append a piece of data to the feed. If you want to append more than once piece you can pass in an array.
+Append a block of data to the feed. If you want to append more than one block you can pass in an array.
 
 #### `feed.get(index, callback)`
 
-Retrieve a piece of data from the feed.
+Retrieve a block of data from the feed.
+
+#### `feed.seek(byteOffset, callback)`
+
+Find the block of data containing the byte offset. Calls the callback with `(err, index, offset)` where `index` is the block index and `offset` is the the relative byte offset in the block returned by `.get(index)`.
 
 #### `feed.finalize(callback)`
 
