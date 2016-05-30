@@ -236,7 +236,7 @@ tape('replicate, append, replicate', function (t) {
   })
 })
 
-tape.skip('append and get empty value', function (t) {
+tape('append and get empty value', function (t) {
   var feed = hypercore().createFeed()
 
   feed.append(Buffer(0), function (err) {
