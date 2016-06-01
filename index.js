@@ -1,4 +1,5 @@
 var crypto = require('crypto')
+var defaults = require('levelup-defaults')
 var subleveldown = require('subleveldown')
 var bulk = require('bulk-write-stream')
 var collect = require('stream-collector')
@@ -16,7 +17,7 @@ function Hypercore (db, opts) {
 
   this.id = opts.id || crypto.randomBytes(32)
 
-  this._db = db // TODO: needs levelup-defaults to force binary?
+  this._db = defaults(db, {keyEncoding: 'utf8'})
   this._nodes = subleveldown(db, 'nodes', {valueEncoding: messages.Node})
   this._data = subleveldown(db, 'data', {valueEncoding: 'binary'})
   this._signatures = subleveldown(db, 'signatures', {valueEncoding: 'binary'})
