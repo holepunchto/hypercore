@@ -13,6 +13,7 @@
     "hypercore-protocol": "^4.2.0",
     "inherits": "^2.0.1",
     "last-one-wins": "^1.0.4",
+    "levelup-defaults": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
     "protocol-buffers": "^3.1.6",
     "sodium-signatures": "^1.2.2",
