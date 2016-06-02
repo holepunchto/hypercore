@@ -43,7 +43,7 @@ tape('non-live append and finalize', function (t) {
   var feed = hypercore().createFeed({live: false})
   feed.append('hello')
   feed.finalize(function () {
-    t.same(feed.key, Buffer('3ae3cbe25fbd381ae3137f5286ac7eb8fcec7255e8eef864e0aa0e605220a429', 'hex'))
+    t.same(feed.key, Buffer('bbd2540413d287b1f842b75849a4d15f0512e6e4bb7a4921a246fa216817206d', 'hex'))
     t.end()
   })
 })
@@ -231,6 +231,23 @@ tape('replicate, append, replicate', function (t) {
             })
           })
         })
+      })
+    })
+  })
+})
+
+tape('fake size', function (t) {
+  var feed = hypercore().createFeed()
+  var clone = hypercore().createFeed(feed.key)
+
+  feed.append(['hello', 'world', 'verden'], function (err) {
+    t.error(err, 'no error')
+    feed.proof(0, function (err, proof) {
+      t.error(err, 'no error')
+      proof.nodes[1].size = 1
+      clone.put(0, Buffer('hello'), proof, function (err) {
+        t.ok(!!err, 'validation should fail')
+        t.end()
       })
     })
   })
