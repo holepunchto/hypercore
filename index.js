@@ -17,6 +17,7 @@ function Hypercore (db, opts) {
 
   this.id = opts.id || crypto.randomBytes(32)
 
+  this._open = {}
   this._db = defaults(db, {keyEncoding: 'utf8'})
   this._nodes = subleveldown(db, 'nodes', {valueEncoding: messages.Node})
   this._data = subleveldown(db, 'data', {valueEncoding: 'binary'})
@@ -40,7 +41,19 @@ Hypercore.prototype.createFeed = function (key, opts) {
   if (!opts) opts = {}
   if (!opts.key) opts.key = key
   opts.live = key ? !!opts.live : opts.live !== false // default to live feeds
-  return feed(this, opts)
+
+  // TODO: do not return the same feed but just have a small pool of shared state
+  // Or! do not have any shared state in general.
+
+  var old = opts.key && (this._open[opts.key.toString('hex')] || this._open[hash.discoveryKey(opts.key).toString('hex')])
+  if (old) return old
+
+  var f = feed(this, opts)
+  if (f.discoveryKey) {
+    this._open[f.discoveryKey.toString('hex')] = f
+    f.on('close', onclose)
+  }
+  return f
 }
 
 Hypercore.prototype.stat = function (key, cb) {
@@ -116,4 +129,11 @@ function patch (stream, feed) {
 
 function isFeed (feed) {
   return feed && Buffer.isBuffer(feed.key) && feed.key.length === 32 && typeof feed.open === 'function'
+}
+
+function onclose () {
+  var core = this._core
+  if (this.discoveryKey && core._open[this.discoveryKey.toString('hex')] === this) {
+    delete this._open[this.discoveryKey.toString('hex')]
+  }
 }
