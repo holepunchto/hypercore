@@ -8,7 +8,7 @@ npm install hypercore
 
 [![build status](http://img.shields.io/travis/mafintosh/hypercore.svg?style=flat)](http://travis-ci.org/mafintosh/hypercore)
 
-It runs both in the node and in the browser using [browserify](https://github.com/substack/browserify).
+It runs both in the node and in the browser using [browserify](https://github.com/substack/node-browserify).
 
 ## Usage
 
