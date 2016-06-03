@@ -98,6 +98,10 @@ You can use the discovery key to find other peers sharing this feed without disc
 
 The total number of known data blocks in the feed.
 
+#### `feed.bytes`
+
+The total byte size of known data blocks in the feed.
+
 #### `feed.open(cb)`
 
 Call this method to ensure that a feed is opened. You do not need to call this but the `.blocks` property will not be populated until the feed has been opened.

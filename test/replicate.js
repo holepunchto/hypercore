@@ -18,6 +18,7 @@ tape('replicate non live', function (t) {
 
     clone.on('download', function (block) {
       t.same(clone.blocks, 2, 'should be 2 blocks')
+      t.same(clone.bytes, 10, 'should be 10 bytes')
       if (block >= 2) t.fail('unknown block')
       if (!--missing) t.end()
     })
@@ -29,9 +30,12 @@ tape('replicate non live, bigger', function (t) {
   var core2 = hypercore()
 
   var feed = core1.createFeed({live: false})
+  var expectedBytes = 0
 
   for (var i = 0; i < 1000; i++) {
-    feed.append('#' + i)
+    var msg = Buffer('#' + i)
+    expectedBytes += msg.length
+    feed.append(msg)
   }
 
   feed.finalize(function () {
@@ -41,7 +45,10 @@ tape('replicate non live, bigger', function (t) {
     replicate(clone, feed)
 
     clone.on('download', function (block) {
-      if (missing === 1000) t.same(clone.blocks, 1000, 'should be 1000 blocks')
+      if (missing === 1000) {
+        t.same(clone.blocks, 1000, 'should be 1000 blocks')
+        t.same(clone.bytes, expectedBytes, 'should be ' + expectedBytes + ' bytes')
+      }
       if (block >= 1000) t.fail('unknown block')
       if (!--missing) t.end()
     })
@@ -130,6 +137,7 @@ tape('replicate live with append', function (t) {
           t.same(data, Buffer('hej'))
           clone.get(3, function (_, data) {
             t.same(data, Buffer('verden'))
+            t.same(clone.bytes, 19, '19 bytes')
             t.end()
           })
         })
