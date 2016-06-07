@@ -193,6 +193,31 @@ tape('replicate live with append + early get', function (t) {
   }
 })
 
+tape('replicate + reload live feed', function (t) {
+  var feed = hypercore().createFeed()
+  var clone = hypercore()
+  var clonedFeed = clone.createFeed(feed.key)
+
+  replicate(feed, clonedFeed)
+
+  feed.append('hello', function () {
+    clonedFeed.get(0, function () {
+      t.same(clonedFeed.blocks, 1)
+      t.ok(clonedFeed.live)
+
+      clonedFeed.close(function () {
+        var restoredFeed = clone.createFeed(feed.key)
+
+        restoredFeed.open(function () {
+          t.same(restoredFeed.blocks, 1)
+          t.ok(restoredFeed.live)
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 tape('same peer-id across streams', function (t) {
   var core = hypercore()
 
