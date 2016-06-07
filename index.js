@@ -134,6 +134,6 @@ function isFeed (feed) {
 function onclose () {
   var core = this._core
   if (this.discoveryKey && core._open[this.discoveryKey.toString('hex')] === this) {
-    delete this._open[this.discoveryKey.toString('hex')]
+    delete core._open[this.discoveryKey.toString('hex')]
   }
 }
