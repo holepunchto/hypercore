@@ -1,4 +1,4 @@
-var crypto = require('crypto')
+var randomBytes = require('randombytes')
 var defaults = require('levelup-defaults')
 var subleveldown = require('subleveldown')
 var bulk = require('bulk-write-stream')
@@ -15,7 +15,7 @@ function Hypercore (db, opts) {
   if (!(this instanceof Hypercore)) return new Hypercore(db, opts)
   if (!opts) opts = {}
 
-  this.id = opts.id || crypto.randomBytes(32)
+  this.id = opts.id || randomBytes(32)
 
   this._open = {}
   this._db = defaults(db, {keyEncoding: 'utf8'})
