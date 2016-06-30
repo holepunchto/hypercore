@@ -25,7 +25,7 @@
     "thunky": "^0.1.0",
     "to-buffer": "^1.0.1",
     "uint64be": "^1.0.1",
-    "unordered-set": "^1.1.0",
+    "unordered-set": "^2.0.0",
     "varint": "^4.0.0"
   },
   "devDependencies": {
