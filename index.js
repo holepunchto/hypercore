@@ -109,8 +109,16 @@ Hypercore.prototype.createReadStream = function (key, opts) {
   var feed = opts.feed || (isFeed(key) ? key : this.createFeed(key, opts))
   var live = !!opts.live
   var stream = from.obj(read)
+  var range = feed.prioritize({start: offset, end: end, linear: true})
+
+  stream.on('close', cleanup)
+  stream.on('end', cleanup)
 
   return patch(stream, feed)
+
+  function cleanup () {
+    feed.unprioritize(range)
+  }
 
   function read (size, cb) {
     if (offset === end) return cb(null, null)
