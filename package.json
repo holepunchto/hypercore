@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "4.2.7",
+  "version": "4.4.0",
   "description": "Hypercore is a protocol and network for distributing and replicating feeds of binary data.",
   "main": "index.js",
   "dependencies": {
@@ -25,7 +25,7 @@
     "thunky": "^0.1.0",
     "to-buffer": "^1.0.1",
     "uint64be": "^1.0.1",
-    "unordered-set": "^1.1.0",
+    "unordered-set": "^2.0.0",
     "varint": "^4.0.0"
   },
   "devDependencies": {
