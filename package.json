@@ -12,7 +12,7 @@
     "create-hmac": "^1.1.4",
     "flat-tree": "^1.4.0",
     "from2": "^2.1.1",
-    "hypercore-protocol": "^4.3.1",
+    "hypercore-protocol": "^4.3.2",
     "inherits": "^2.0.1",
     "last-one-wins": "^1.0.4",
     "levelup-defaults": "^2.0.0",
