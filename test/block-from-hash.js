@@ -1,10 +1,9 @@
 var tape = require('tape')
-var concat = require('concat-stream')
 var hypercore = require('./helpers/create')
 var memdb = require('memdb')
 
 tape('get block from hash', function (t) {
-  t.plan(4)
+  t.plan(6)
   var core = hypercore(memdb())
 
   var w1 = core.createWriteStream()
@@ -21,6 +20,7 @@ tape('get block from hash', function (t) {
 
   function onhead (n, feed, cb) {
     return function (err, hash, block) {
+      t.error(err)
       feed.getBlockFromHash(hash, function (err, b) {
         t.error(err)
         t.equal(block, b, 'block match #' + n)
