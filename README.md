@@ -186,6 +186,11 @@ Emitted when a remote feed joins the replication stream and you haven't. You can
 
 Emitted when a data block has been downloaded
 
+#### `feed.on('download-finished')`
+
+Emitted when all available data has been downloaded.
+Will re-fire when a live feed is updated and you download all the new blocks.
+
 #### `feed.on('upload', block, data)`
 
 Emitted when a data block has been uploaded

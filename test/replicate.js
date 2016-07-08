@@ -193,6 +193,30 @@ tape('replicate live with append + early get', function (t) {
   }
 })
 
+tape('emits download finished', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  feed.append('hello')
+  feed.append('world')
+  feed.flush(function () {
+    var clone = core2.createFeed(feed.key)
+
+    clone.once('download-finished', function () {
+      t.pass('download finished')
+      clone.on('download-finished', function () {
+        t.pass('download finished again')
+        t.end()
+      })
+      feed.append('update')
+    })
+
+    replicate(clone, feed)
+  })
+})
+
 tape('replicate + reload live feed', function (t) {
   var feed = hypercore().createFeed()
   var clone = hypercore()
