@@ -64,9 +64,12 @@ Options include:
 ``` js
 {
   live: true,
-  storage: externalStorage
+  storage: externalStorage,
+  sparse: false
 }
 ```
+
+Set `sparse` to `true` if you only want to download the pieces of the feed you are requesting / prioritizing. Otherwise the entire feed will be downloaded if nothing else is prioritized.
 
 If you want to create a static feed, one you cannot reappend data to, pass the `{live: false}` option.
 The storage option allows you to store data outside of leveldb. This is very useful if you use hypercore to distribute files.
@@ -113,6 +116,24 @@ Append a block of data to the feed. If you want to append more than one block yo
 #### `feed.get(index, callback)`
 
 Retrieve a block of data from the feed.
+
+#### `feed.prioritize(range, [callback])`
+
+Prioritize a range of blocks to download. Will call the callback when done.
+Range should look like this
+
+``` js
+{
+  start: startBlock,
+  end: optionalEndBlock,
+  priority: 2 // a priority level spanning [0-5]
+  linear: false // download the range linearly
+}
+```
+
+#### `feed.unprioritize(range)`
+
+Unprioritize a range.
 
 #### `feed.seek(byteOffset, callback)`
 
@@ -174,6 +195,11 @@ Emitted when a remote feed joins the replication stream and you haven't. You can
 #### `feed.on('download', block, data)`
 
 Emitted when a data block has been downloaded
+
+#### `feed.on('download-finished')`
+
+Emitted when all available data has been downloaded.
+Will re-fire when a live feed is updated and you download all the new blocks.
 
 #### `feed.on('upload', block, data)`
 
