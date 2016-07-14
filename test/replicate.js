@@ -287,14 +287,14 @@ tape('getBlockFromHash after replicate live', function (t) {
   feed.finalize(function () {
     var clone = core2.createFeed(feed.key)
     var missing = 2
-    var hash = feed.head(function (err, hash, topBlock) {
+    feed.head(function (err, topHash, topBlock) {
       t.error(err)
       replicate(clone, feed)
       clone.on('download', function (block) {
         t.same(clone.blocks, 2, 'should be 2 blocks')
         if (block >= 2) t.fail('unknown block')
         if (!--missing) {
-          clone.getBlockFromHash(hash, function (err, block) {
+          clone.getBlockFromHash(topHash, function (err, block) {
             t.error(err)
             t.equal(block, topBlock, 'getBlockFromHash')
             t.end()
