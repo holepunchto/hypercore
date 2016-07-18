@@ -178,6 +178,16 @@ feed.replicate({stream: anotherReplicationStream})
 
 As a shorthand you can also do `feed.replicate(stream)`.
 
+#### `feed.head(block, cb)`
+
+Calculate the rolling hash at `block` as `cb(err, hash)`.
+
+If `block` isn't given, calculate the hash for the most recent block.
+
+#### `feed.getBlockFromHash(hash, cb)`
+
+Look up the block from the head `hash` as `cb(err, block)`.
+
 #### `stream.on('open', discoveryKey)`
 
 Emitted when a remote feed joins the replication stream and you haven't. You can use this as a signal to join the stream yourself if you want to.

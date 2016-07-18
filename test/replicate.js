@@ -276,6 +276,35 @@ tape('same remote peer-id across streams', function (t) {
   stream1.pipe(stream2).pipe(stream1)
 })
 
+tape('getBlockFromHash after replicate live', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  feed.append('hello')
+  feed.append('world')
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key)
+    var missing = 2
+    feed.head(function (err, topHash, topBlock) {
+      t.error(err)
+      replicate(clone, feed)
+      clone.on('download', function (block) {
+        t.same(clone.blocks, 2, 'should be 2 blocks')
+        if (block >= 2) t.fail('unknown block')
+        if (!--missing) {
+          clone.getBlockFromHash(topHash, function (err, block) {
+            t.error(err)
+            t.equal(block, topBlock, 'getBlockFromHash')
+            t.end()
+          })
+        }
+      })
+    })
+  })
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
