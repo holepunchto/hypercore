@@ -80,9 +80,15 @@ See the [Storage API](#storage-api) section for more info
 
 Create a generic replication stream. Use the `feed.replicate(stream)` API described below to replicate specific feeds of data.
 
-#### `var stream = core.list([callback])`
+#### `var stream = core.list([options], [callback])`
 
-List all feed keys in the database. Optionally you can pass a callback to buffer them into an array.
+List all feed keys in the database. Optionally you can pass a callback to buffer them into an array. Options include:
+
+``` js
+{
+  values: false // set this to get feed attributes, not just feed keys
+}
+```
 
 ## `Feed API`
 
