@@ -56,5 +56,5 @@ function finalizeAll (feeds, cb) {
 function sortByKey (a, b) {
   var aKey = Buffer.isBuffer(a) ? a : a.key
   var bKey = Buffer.isBuffer(b) ? b : b.key
-  return aKey.compare(bKey)
+  return aKey.toString('hex').localeCompare(bKey.toString('hex'))
 }
