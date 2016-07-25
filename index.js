@@ -67,12 +67,20 @@ Hypercore.prototype.stat = function (key, cb) {
   })
 }
 
-Hypercore.prototype.list = function (cb) {
+Hypercore.prototype.list = function (opts, cb) {
+  if (typeof opts === 'function') {
+    cb = opts
+    opts = null
+  }
   var stream = this._feeds.createValueStream({
     valueEncoding: {
       asBuffer: true,
       decode: function (key) {
-        return messages.Feed.decode(key).key
+        var value = messages.Feed.decode(key)
+        if (opts && opts.values) {
+          return value
+        }
+        return value.key
       }
     }
   })
