@@ -1,6 +1,6 @@
 # hypercore
 
-Hypercore is a protocol and p2p network for distributing and replicating feeds of binary data. It is the low level component that [Hyperdrive](https://github.com/mafintosh/hyperdrive) is built on top off.
+Hypercore is a protocol and p2p network for distributing and replicating feeds of binary data. It is the low level component that [Hyperdrive](https://github.com/mafintosh/hyperdrive) is built on top of.
 
 ```
 npm install hypercore
