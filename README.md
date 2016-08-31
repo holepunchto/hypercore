@@ -76,9 +76,17 @@ The storage option allows you to store data outside of leveldb. This is very use
 
 See the [Storage API](#storage-api) section for more info
 
-#### `var stream = core.replicate()`
+#### `var stream = core.replicate(opts)`
 
 Create a generic replication stream. Use the `feed.replicate(stream)` API described below to replicate specific feeds of data.
+Options include:
+
+``` js
+{
+  upload: true, // upload data to other peer
+  download: true // download data from other peer
+}
+```
 
 #### `var stream = core.list([options], [callback])`
 

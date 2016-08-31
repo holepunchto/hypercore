@@ -276,6 +276,38 @@ tape('same remote peer-id across streams', function (t) {
   stream1.pipe(stream2).pipe(stream1)
 })
 
+tape('replicate no upload', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+  var core3 = hypercore()
+
+  var feed1 = core1.createFeed()
+  var feed2 = core2.createFeed(feed1.key, {sparse: true})
+  var feed3 = core3.createFeed(feed1.key, {sparse: true})
+
+  feed1.append(['a', 'b', 'c'], function () {
+    var stream1 = feed1.replicate()
+    var stream2 = feed2.replicate()
+
+    stream1.pipe(stream2).pipe(stream1)
+
+    feed2.get(1, function () {
+      var stream3 = feed2.replicate({upload: false})
+      var stream4 = feed3.replicate()
+
+      stream3.pipe(stream4).pipe(stream3)
+
+      feed3.get(1, function () {
+        t.fail('should not download')
+      })
+
+      setTimeout(function () {
+        t.end()
+      }, 100)
+    })
+  })
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
