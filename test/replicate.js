@@ -203,11 +203,17 @@ tape('emits download finished', function (t) {
   feed.append('world')
   feed.flush(function () {
     var clone = core2.createFeed(feed.key)
+    var downloadCount = 0
+    clone.on('download', function () {
+      downloadCount++
+    })
 
     clone.once('download-finished', function () {
       t.pass('download finished')
+      t.same(downloadCount, 2, 'Two download events emitted')
       clone.on('download-finished', function () {
         t.pass('download finished again')
+        t.same(downloadCount, 3, 'Three download events emitted')
         t.end()
       })
       feed.append('update')
