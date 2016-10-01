@@ -451,3 +451,29 @@ function runOps (t, ops) {
     }
   }
 }
+
+tape('valueEncoding', function (t) {
+  var json = {
+    encode: function (obj, buf, offset) {
+      offset = offset || 0
+      var str = JSON.stringify(obj)
+      buf = buf || Buffer(str.length + offset)
+      buf.write(str, offset)
+      return buf
+    },
+    decode: function (buf, offset, end) {
+      var str = buf.toString(offset, end)
+      return JSON.parse(str)
+    }
+  }
+  var feed = hypercore({ valueEncoding: json }).createFeed()
+
+  feed.append({ foo: 'bar' }, function () {
+    t.same(feed.has(0), true, 'has first')
+    feed.get(0, function (err, data) {
+      t.error(err, 'no error')
+      t.same(data, { foo: 'bar' }, 'first is json')
+      t.end()
+    })
+  })
+})
