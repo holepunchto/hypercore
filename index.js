@@ -8,6 +8,7 @@ var feed = require('./lib/feed')
 var messages = require('./lib/messages')
 var hash = require('./lib/hash')
 var replicate = require('./lib/replicate')
+var passthroughEncoding = require('passthrough-encoding')
 
 module.exports = Hypercore
 
@@ -25,6 +26,7 @@ function Hypercore (db, opts) {
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
   this._storage = opts.storage || null
+  this._valueEncoding = opts.valueEncoding || passthroughEncoding
 }
 
 Hypercore.discoveryKey = Hypercore.prototype.discoveryKey = function (key) {
@@ -40,6 +42,7 @@ Hypercore.prototype.createFeed = function (key, opts) {
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
   if (!opts) opts = {}
   if (!opts.key) opts.key = key
+  if (!opts.valueEncoding) opts.valueEncoding = this._valueEncoding
   opts.live = key ? !!opts.live : opts.live !== false // default to live feeds
 
   // TODO: do not return the same feed but just have a small pool of shared state
