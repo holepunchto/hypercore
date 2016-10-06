@@ -8,15 +8,7 @@ var feed = require('./lib/feed')
 var messages = require('./lib/messages')
 var hash = require('./lib/hash')
 var replicate = require('./lib/replicate')
-
-var idEncoding = {
-  encode: (obj, buf, offset) => {
-    return Buffer(obj)
-  },
-  decode: (buf, offset, end) => {
-    return buf
-  }
-}
+var passthroughEncoding = require('passthrough-encoding')
 
 module.exports = Hypercore
 
@@ -34,7 +26,7 @@ function Hypercore (db, opts) {
   this._feeds = subleveldown(db, 'feeds', {valueEncoding: messages.Feed})
   this._bitfields = subleveldown(db, 'bitfields', {valueEncoding: 'binary'})
   this._storage = opts.storage || null
-  this._valueEncoding = opts.valueEncoding || idEncoding
+  this._valueEncoding = opts.valueEncoding || passthroughEncoding
 }
 
 Hypercore.discoveryKey = Hypercore.prototype.discoveryKey = function (key) {

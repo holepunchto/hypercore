@@ -17,6 +17,7 @@
     "last-one-wins": "^1.0.4",
     "levelup-defaults": "^2.0.0",
     "merkle-tree-stream": "^3.0.3",
+    "passthrough-encoding": "^1.2.0",
     "protocol-buffers": "^3.1.6",
     "randombytes": "^2.0.3",
     "sodium-signatures": "^1.2.2",
