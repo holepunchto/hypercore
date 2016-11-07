@@ -131,6 +131,10 @@ Append a block of data to the feed. If you want to append more than one block yo
 
 Retrieve a block of data from the feed.
 
+#### `feed.blocksRemaining()`
+
+Get the number of blocks remaining to be downloaded.
+
 #### `feed.prioritize(range, [callback])`
 
 Prioritize a range of blocks to download. Will call the callback when done.
