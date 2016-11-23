@@ -337,7 +337,7 @@ tape('unreplicate', function (t) {
         feed.append(['hej', 'verden'])
 
         // wait a second, and if nothing happens, we'll assume success
-        setTimeout(() => validate(clone), 1e3)
+        setTimeout(function () { validate(clone) }, 1e3)
       } else {
         // we should not be replicating anymore!
         t.fail('Block received after unreplicate')
