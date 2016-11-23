@@ -88,6 +88,12 @@ Options include:
 }
 ```
 
+#### `core.unreplicate(feed, [stream])`
+
+End a replication stream for the given feed. Can also use the `feed.unreplicate()` API described below.
+
+Optionally can pass the `stream` argument to end a specific replication stream.
+
 #### `var stream = core.list([options], [callback])`
 
 List all feed keys in the database. Optionally you can pass a callback to buffer them into an array. Options include:
@@ -195,6 +201,10 @@ feed.replicate({stream: anotherReplicationStream})
 ```
 
 As a shorthand you can also do `feed.replicate(stream)`.
+
+#### `feed.unreplicate([stream])`
+
+End a replication stream for the feed. Optionally can pass the `stream` argument to end a specific replication stream.
 
 #### `stream.on('open', discoveryKey)`
 

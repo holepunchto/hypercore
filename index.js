@@ -37,6 +37,10 @@ Hypercore.prototype.replicate = function (opts) {
   return replicate(this, null, opts)
 }
 
+Hypercore.prototype.unreplicate = function (feed, stream) {
+  return replicate.unreplicate(this, feed, stream)
+}
+
 Hypercore.prototype.createFeed = function (key, opts) {
   if (typeof key === 'string') key = Buffer(key, 'hex')
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
