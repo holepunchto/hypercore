@@ -308,6 +308,57 @@ tape('replicate no upload', function (t) {
   })
 })
 
+tape('unreplicate', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  // start a normal live append
+  feed.append('hello')
+  feed.append('world')
+  feed.flush(function () {
+    var clone = core2.createFeed(feed.key)
+    var missing = 2
+    var first = true
+
+    clone.on('download', function (block) {
+      if (first) {
+        // verify that 'hello' 'world' made it
+        missing--
+        t.ok(missing >= 0, 'downloading expected block')
+        if (missing) return // not done yet
+
+        // both received, now unreplicate...
+        clone.unreplicate()
+        first = false
+
+        // ...and add 'hej' 'verden' to see if they replicate
+        feed.append(['hej', 'verden'])
+
+        // wait a second, and if nothing happens, we'll assume success
+        setTimeout(function () { validate(clone) }, 1e3)
+      } else {
+        // we should not be replicating anymore!
+        t.fail('Block received after unreplicate')
+      }
+    })
+
+    replicate(clone, feed)
+  })
+
+  function validate (clone) {
+    clone.get(0, function (_, data) {
+      t.same(data, Buffer('hello'))
+      clone.get(1, function (_, data) {
+        t.same(data, Buffer('world'))
+        t.same(clone.bytes, 10, '10 bytes')
+        t.end()
+      })
+    })
+  }
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
