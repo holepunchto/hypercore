@@ -127,9 +127,15 @@ Call this method to ensure that a feed is opened. You do not need to call this b
 
 Append a block of data to the feed. If you want to append more than one block you can pass in an array.
 
-#### `feed.get(index, callback)`
+#### `feed.get(index, [options,] callback)`
 
-Retrieve a block of data from the feed.
+Retrieve a block of data from the feed. Options include:
+
+``` js
+{
+  verify: false // verify the data against the feed checksum, and fail the get() if !==
+}
+```
 
 #### `feed.blocksRemaining()`
 
