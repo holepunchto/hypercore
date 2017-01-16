@@ -360,6 +360,13 @@ tape('unreplicate', function (t) {
 })
 
 function replicate (a, b) {
-  var stream = a.replicate()
-  stream.pipe(b.replicate()).pipe(stream)
+  var stream1 = a.replicate()
+  var stream2 = b.replicate()
+  stream1.pipe(stream2).pipe(stream1)
+  stream1.on('error', function (err) {
+    console.log('Replication error', err)
+  })
+  stream2.on('error', function (err) {
+    console.log('Replication error', err)
+  })
 }
