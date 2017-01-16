@@ -567,3 +567,42 @@ tape('verify-on-read 2', function (t) {
     t.end()
   }
 })
+
+tape('verify storage', function (t) {
+  var n
+  var feed = hypercore().createFeed({ storage: ram() })
+
+  // write to feed
+  n = 5
+  feed.append('one', doneAppending)
+  feed.append('two', doneAppending)
+  feed.append('three', doneAppending)
+  feed.append('four', doneAppending)
+  feed.append('five', doneAppending)
+  function doneAppending (err) {
+    t.error(err, 'no error')
+    if (--n > 0) return
+
+    // modify in storage
+    feed.storage.put(0, Buffer('111'))
+    feed.storage.put(2, Buffer('33333'))
+
+    // verify storage
+    feed.verifyStorage(function (err, results) {
+      t.error(err, 'no error')
+      t.equal(results.numMissing, 2)
+      t.equal(feed.has(0), false, 'doesnt have block 0')
+      t.equal(feed.has(1), true, 'has block 1')
+      t.equal(feed.has(2), false, 'doesnt have block 2')
+      t.equal(feed.has(3), true, 'has block 3')
+      t.equal(feed.has(4), true, 'has block 4')
+
+      // verify storage again
+      feed.verifyStorage(function (err, results) {
+        t.error(err, 'no error')
+        t.equal(results.numMissing, 0) // no newly-lost blocks
+        t.end()
+      })
+    })
+  }
+})
