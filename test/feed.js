@@ -1,4 +1,5 @@
 var tape = require('tape')
+var ram = require('random-access-memory')
 var hypercore = require('./helpers/create')
 var copy = require('./helpers/copy')
 
@@ -494,6 +495,32 @@ tape('put valueEncoding', function (t) {
           t.same(data, { foo: 'bar' }, 'first is json')
           t.end()
         })
+      })
+    })
+  })
+})
+
+tape('verify-on-read', function (t) {
+  var feed = hypercore().createFeed({ storage: ram() })
+
+  // write to feed
+  feed.append('hello', function () {
+    // modify in storage
+    feed.storage.put(0, Buffer('ohell'))
+
+    // read without verification
+    feed.get(0, function (err, data) {
+      // ...no error detected
+      t.error(err, 'no error')
+      t.same(feed.has(0), true, 'has first')
+      t.same(data, Buffer('ohell'), 'first is modified')
+
+      // read with verification
+      feed.get(0, { verify: true }, function (err, data) {
+        // error detected
+        t.ok(err, 'error detected')
+        t.same(feed.has(0), false, 'does not have first')
+        t.end()
       })
     })
   })
