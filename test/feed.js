@@ -1,4 +1,5 @@
 var tape = require('tape')
+var ram = require('random-access-memory')
 var hypercore = require('./helpers/create')
 var copy = require('./helpers/copy')
 
@@ -497,4 +498,72 @@ tape('put valueEncoding', function (t) {
       })
     })
   })
+})
+
+tape('verify-on-read', function (t) {
+  var feed = hypercore().createFeed({ storage: ram() })
+
+  // write to feed
+  feed.append('hello', function () {
+    // modify in storage
+    feed.storage.put(0, Buffer('ohell'))
+
+    // read without verification
+    feed.get(0, function (err, data) {
+      // ...no error detected
+      t.error(err, 'no error')
+      t.same(feed.has(0), true, 'has first')
+      t.same(data, Buffer('ohell'), 'first is modified')
+
+      // read with verification
+      feed.get(0, { verify: true }, function (err, data) {
+        // error detected
+        t.ok(err, 'error detected')
+        t.same(feed.has(0), false, 'does not have first')
+        t.end()
+      })
+    })
+  })
+})
+
+tape('verify-on-read 2', function (t) {
+  var numErrors = 0
+  var n
+  var feed = hypercore().createFeed({ storage: ram() })
+
+  // write to feed
+  n = 5
+  feed.append('one', doneAppending)
+  feed.append('two', doneAppending)
+  feed.append('three', doneAppending)
+  feed.append('four', doneAppending)
+  feed.append('five', doneAppending)
+  function doneAppending (err) {
+    t.error(err, 'no error')
+    if (--n > 0) return
+
+    // modify in storage
+    feed.storage.put(2, Buffer('33333'))
+
+    // read all with verification
+    n = 5
+    feed.get(0, { verify: true }, doneReading)
+    feed.get(1, { verify: true }, doneReading)
+    feed.get(2, { verify: true }, doneReading)
+    feed.get(3, { verify: true }, doneReading)
+    feed.get(4, { verify: true }, doneReading)
+  }
+
+  function doneReading (err) {
+    if (err) numErrors++
+    if (--n > 0) return
+
+    t.equal(numErrors, 1, 'one error')
+    t.equal(feed.has(0), true, 'has block 0')
+    t.equal(feed.has(1), true, 'has block 1')
+    t.equal(feed.has(2), false, 'doesnt have block 2')
+    t.equal(feed.has(3), true, 'has block 3')
+    t.equal(feed.has(4), true, 'has block 4')
+    t.end()
+  }
 })
