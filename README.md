@@ -131,6 +131,20 @@ Append a block of data to the feed. If you want to append more than one block yo
 
 Retrieve a block of data from the feed.
 
+#### `feed.verifyStorage(callback)`
+
+Do a full read of the feed's data from storage, and verify the data against the feed's checksums. If any blocks that were thought to be saved are found missing, they will be marked as absent.
+
+Use this as a way to correct the internal tracking of available data, if you think the files were modified externally. Be warned: it will require a lot of disk-reads, as every block has to be verified.
+
+Calls back with the following structure:
+
+```js
+{
+  numMissing: number of blocks discovered missing
+}
+```
+
 #### `feed.blocksRemaining()`
 
 Get the number of blocks remaining to be downloaded.
