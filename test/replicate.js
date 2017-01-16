@@ -359,14 +359,47 @@ tape('unreplicate', function (t) {
   }
 })
 
+tape('verify replication reads', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed({live: false, storage: ram(), verifyReplicationReads: true})
+
+  for (var i = 0; i < 5; i++) {
+    feed.append('#' + i)
+  }
+
+  feed.finalize(function () {
+    // modify in storage
+    feed.storage.put(4, Buffer('--'))
+
+    var clone = core2.createFeed(feed.key, {storage: ram()})
+
+    var streams = replicate(clone, feed)
+
+    streams.stream1.on('close', function () {
+      t.equal(clone.has(0), true, 'has block 0')
+      t.equal(clone.has(1), true, 'has block 1')
+      t.equal(clone.has(2), true, 'has block 2')
+      t.equal(clone.has(3), true, 'has block 3')
+      t.equal(clone.has(4), false, 'doesnt have block 4')
+      t.end()
+    })
+  })
+})
+
 function replicate (a, b) {
   var stream1 = a.replicate()
   var stream2 = b.replicate()
   stream1.pipe(stream2).pipe(stream1)
   stream1.on('error', function (err) {
-    console.log('Replication error', err)
+    console.log('Replication error (stream1)', err)
   })
   stream2.on('error', function (err) {
-    console.log('Replication error', err)
+    console.log('Replication error (stream2)', err)
   })
+  return {
+    stream1: stream1,
+    stream2: stream2
+  }
 }
