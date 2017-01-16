@@ -65,11 +65,14 @@ Options include:
 {
   live: true,
   storage: externalStorage,
-  sparse: false
+  sparse: false,
+  verifyReplicationReads: false
 }
 ```
 
 Set `sparse` to `true` if you only want to download the pieces of the feed you are requesting / prioritizing. Otherwise the entire feed will be downloaded if nothing else is prioritized.
+
+Set `verifyReplicationReads` to `true` to automatically check the integrity of the feed-data during replication. This is computationally more intensive, but it allows the feed to recognize when local data has been changed or lost and correct its internal tracking.
 
 If you want to create a static feed, one you cannot reappend data to, pass the `{live: false}` option.
 The storage option allows you to store data outside of leveldb. This is very useful if you use hypercore to distribute files.
@@ -127,9 +130,15 @@ Call this method to ensure that a feed is opened. You do not need to call this b
 
 Append a block of data to the feed. If you want to append more than one block you can pass in an array.
 
-#### `feed.get(index, callback)`
+#### `feed.get(index, [options,] callback)`
 
-Retrieve a block of data from the feed.
+Retrieve a block of data from the feed. Options include:
+
+``` js
+{
+  verify: false // verify the data against the feed checksum, and fail the get() if !==
+}
+```
 
 #### `feed.verifyStorage(callback)`
 
