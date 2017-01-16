@@ -377,6 +377,9 @@ tape('verify replication reads', function (t) {
 
     var streams = replicate(clone, feed)
 
+    streams.stream1.on('error', function () {
+      // ignore
+    })
     streams.stream1.on('close', function () {
       // TODO: when unhave() is implemented, these 4 blocks will have synced:
       // t.equal(clone.has(0), true, 'has block 0')
