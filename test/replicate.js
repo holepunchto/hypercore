@@ -371,23 +371,21 @@ tape('verify replication reads', function (t) {
 
   feed.finalize(function () {
     // modify in storage
-    feed.storage.put(4, Buffer('--'))
+    feed.storage.put(2, Buffer('--'))
 
     var clone = core2.createFeed(feed.key, {storage: ram()})
 
-    var streams = replicate(clone, feed)
+    replicate(clone, feed)
 
-    streams.stream1.on('error', function () {
-      // ignore
-    })
-    streams.stream1.on('close', function () {
-      // TODO: when unhave() is implemented, these 4 blocks will have synced:
-      // t.equal(clone.has(0), true, 'has block 0')
-      // t.equal(clone.has(1), true, 'has block 1')
-      // t.equal(clone.has(2), true, 'has block 2')
-      // t.equal(clone.has(3), true, 'has block 3')
-
-      t.equal(clone.has(4), false, 'doesnt have block 4')
+    var missing = 4
+    clone.on('download', function (block) {
+      console.log('download', block)
+      if (--missing > 0) return
+      t.equal(clone.has(0), true, 'has block 0')
+      t.equal(clone.has(1), true, 'has block 1')
+      t.equal(clone.has(2), false, 'doesnt have block 2')
+      t.equal(clone.has(3), true, 'has block 3')
+      t.equal(clone.has(4), true, 'has block 4')
       t.end()
     })
   })
