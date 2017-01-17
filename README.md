@@ -79,6 +79,8 @@ The storage option allows you to store data outside of leveldb. This is very use
 
 See the [Storage API](#storage-api) section for more info
 
+Set `key` and `secretKey` (which correspond to `publicKey` and `secretKey` of `sodium-signatures` key pairs) to specify the secret key. *Note:* do not use the same key pair for more than one feed, as keys are used to tell apart different feeds.
+
 #### `var stream = core.replicate(opts)`
 
 Create a generic replication stream. Use the `feed.replicate(stream)` API described below to replicate specific feeds of data.
