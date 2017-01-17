@@ -42,12 +42,13 @@ Hypercore.prototype.unreplicate = function (feed, stream) {
 }
 
 Hypercore.prototype.createFeed = function (key, opts) {
-  if (typeof key === 'string') key = Buffer(key, 'hex')
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
   if (!opts) opts = {}
-  if (!opts.key) opts.key = key
+
+  opts.key = key || opts.key
+  if (typeof opts.key === 'string') opts.key = Buffer(opts.key, 'hex')
   if (!opts.valueEncoding) opts.valueEncoding = this._valueEncoding
-  opts.live = key ? !!opts.live : opts.live !== false // default to live feeds
+  opts.live = opts.key ? !!opts.live : opts.live !== false // default to live feeds
 
   // TODO: do not return the same feed but just have a small pool of shared state
   // Or! do not have any shared state in general.
