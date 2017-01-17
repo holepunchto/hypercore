@@ -13,7 +13,7 @@
     "debug": "^2.5.2",
     "flat-tree": "^1.4.0",
     "from2": "^2.1.1",
-    "hypercore-protocol": "^5.0.0",
+    "hypercore-protocol": "^5.1.0",
     "inherits": "^2.0.1",
     "last-one-wins": "^1.0.4",
     "levelup-defaults": "^2.0.0",
