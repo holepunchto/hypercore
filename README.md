@@ -139,7 +139,7 @@ Retrieve a block of data from the feed. If the block is not locally-available, t
 ``` js
 {
   verify: false // verify the data against the feed checksum, and fail the get() if !==
-  noWait: false // dont queue the download if not found, just repond with a notFound error
+  wait: true // queue the download if not found. If false, will just respond with a notFound error
 }
 ```
 
