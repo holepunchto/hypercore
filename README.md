@@ -134,11 +134,12 @@ Append a block of data to the feed. If you want to append more than one block yo
 
 #### `feed.get(index, [options,] callback)`
 
-Retrieve a block of data from the feed. Options include:
+Retrieve a block of data from the feed. If the block is not locally-available, this call will queue the block for download and defer calling-back until the block is received. Options include:
 
 ``` js
 {
   verify: false // verify the data against the feed checksum, and fail the get() if !==
+  wait: true // queue the download if not found. If false, will just respond with a notFound error
 }
 ```
 
