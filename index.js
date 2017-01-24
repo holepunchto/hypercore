@@ -42,6 +42,7 @@ Hypercore.prototype.unreplicate = function (feed, stream) {
 }
 
 Hypercore.prototype.createFeed = function (key, opts) {
+  if (typeof key === 'string') key = new Buffer(key, 'hex')
   if (key && !Buffer.isBuffer(key)) return this.createFeed(null, key)
   if (!opts) opts = {}
 
