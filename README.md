@@ -6,7 +6,7 @@ Hypercore is a protocol and p2p network for distributing and replicating feeds o
 npm install hypercore
 ```
 
-[![build status](http://img.shields.io/travis/mafintosh/hypercore.svg?style=flat)](http://travis-ci.org/mafintosh/hypercore)
+[![build status](http://img.shields.io/travis/mafintosh/hypercore/master.svg?style=flat)](http://travis-ci.org/mafintosh/hypercore)
 
 It runs both in the node and in the browser using [browserify](https://github.com/substack/node-browserify).
 
