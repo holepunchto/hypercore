@@ -1,7 +1,9 @@
-var hypercore = require('../../')
-var memdb = require('memdb')
+var hypercore = require('../..')
+var ram = require('random-access-memory')
 
-module.exports = function create (opts) {
-  // ensure hypercore overwrites the db's default encoding
-  return hypercore(memdb({keyEncoding: 'json'}), opts)
+module.exports = function create (key, opts) {
+  if (key && !(typeof key === 'string' || Buffer.isBuffer(key))) return create(null, key)
+  if (!opts) opts = {}
+  if (!opts.storage) opts.storage = ram
+  return hypercore(key, opts)
 }

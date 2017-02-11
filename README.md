@@ -1,272 +1,213 @@
 # hypercore
 
-Hypercore is a protocol and p2p network for distributing and replicating feeds of binary data. It is the low level component that [Hyperdrive](https://github.com/mafintosh/hyperdrive) is built on top of.
+Hypercore is a secure, distributed append-only log.
+
+Built for sharing large datasets and streams of real time data as part of the [Dat project](https://datproject.org).
 
 ```
 npm install hypercore
 ```
 
-[![build status](http://img.shields.io/travis/mafintosh/hypercore/master.svg?style=flat)](http://travis-ci.org/mafintosh/hypercore)
-
-It runs both in the node and in the browser using [browserify](https://github.com/substack/node-browserify).
+To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datproject/docs/blob/master/papers/dat-paper.pdf).
 
 ## Usage
 
 ``` js
 var hypercore = require('hypercore')
-var net = require('net')
+var raf = require('random-access-file')
 
-var core = hypercore(db) // db is a leveldb instance
-var feed = core.createFeed()
+var feed = hypercore('./my-first-dataset', {valueEncoding: 'utf-8'})
 
-feed.append(['hello', 'world'], function () {
-  console.log('appended two blocks')
-  console.log('key is', feed.key.toString('hex'))
-})
-
-feed.on('upload', function (block, data) {
-  console.log('uploaded block', block, data)
-})
-
-var server = net.createServer(function (socket) {
-  socket.pipe(feed.replicate()).pipe(socket)
-})
-
-server.listen(10000)
-```
-
-In another process
-
-``` js
-var core = hypercore(anotherDb)
-var feed = core.createFeed(<key-printed-out-above>)
-var socket = net.connect(10000)
-
-socket.pipe(feed.replicate()).pipe(socket)
-
-feed.on('download', function (block, data) {
-  console.log('downloaded block', block, data)
+feed.append('hello')
+feed.append('world', function (err) {
+  if (err) throw err
+  feed.get(0, console.log) // prints hello
+  feed.get(1, console.log) // prints world
 })
 ```
 
 ## API
 
-#### `var core = hypercore(db)`
+#### `var feed = hypercore(storage, [key], [options])`
 
-Create a new hypercore instance. `db` should be a leveldb instance.
+Create a new hypercore feed.
 
-#### `var feed = core.createFeed([key], [options])`
+`storage` should be set to a directory where you want to store the data and feed metadata.
 
-Create a new feed. A feed stores a list of append-only data (buffers). A feed has a `.key` property that you can pass in to `createFeed` if you want to retrieve an old feed. Per default all feeds are appendable (live).
+``` js
+var feed = hypercore('./directory') // store data in ./directory
+```
 
-Options include:
+Alternatively you can pass a function instead that is called with every filename hypercore needs to function and return your own [random-access](https://github.com/juliangruber/abstract-random-access) instance that is used to store the data.
+
+``` js
+var ram = require('random-access-memory')
+var feed = hypercore(function (filename) {
+  // filename will be one of: data, data.bitfield, tree, tree.bitfield, key, secret.key
+  // the data file will contain all your data concattenated.
+
+  // just store all files in ram by returning a random-access-memory instance
+  return ram()
+})
+```
+
+Per default hypercore uses [random-access-file](https://github.com/mafintosh/random-access-file). This is also useful if you want to store specific files in other directories. For example you might want to store the secret key elsewhere.
+
+`key` can be set to a hypercore feed public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
+
+`options` include:
 
 ``` js
 {
-  live: true,
-  storage: externalStorage,
-  sparse: false,
-  verifyReplicationReads: false
+  createIfMissing: true, // create a new hypercore key pair if none was present in storage
+  overwrite: false, // overwrite any old hypercore that might already exist
+  valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to binary
 }
 ```
 
-Set `sparse` to `true` if you only want to download the pieces of the feed you are requesting / prioritizing. Otherwise the entire feed will be downloaded if nothing else is prioritized.
+You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
 
-Set `verifyReplicationReads` to `true` to automatically check the integrity of the feed-data during replication. This is computationally more intensive, but it allows the feed to recognize when local data has been changed or lost and correct its internal tracking.
+#### `feed.ready(onready)`
 
-If you want to create a static feed, one you cannot reappend data to, pass the `{live: false}` option.
-The storage option allows you to store data outside of leveldb. This is very useful if you use hypercore to distribute files.
+Wait for the feed to be ready.
+After it is ready all feed are populated.
+The feed will also emit `ready` when it is ready.
 
-See the [Storage API](#storage-api) section for more info
+If the feed has already emitted `ready`, the `onready` function will be called right away.
 
-Set `key` and `secretKey` (which correspond to `publicKey` and `secretKey` of `sodium-signatures` key pairs) to specify the secret key. *Note:* do not use the same key pair for more than one feed, as keys are used to tell apart different feeds.
+#### `feed.writable`
 
-#### `var stream = core.replicate(opts)`
+Can we append to this feed?
 
-Create a generic replication stream. Use the `feed.replicate(stream)` API described below to replicate specific feeds of data.
-Options include:
+#### `feed.readable`
 
-``` js
-{
-  upload: true, // upload data to other peer
-  download: true // download data from other peer
-}
-```
-
-#### `var stream = core.list([options], [callback])`
-
-List all feed keys in the database. Optionally you can pass a callback to buffer them into an array. Options include:
-
-``` js
-{
-  values: false // set this to get feed attributes, not just feed keys
-}
-```
-
-## `Feed API`
-
-As mentioned above a feed stores a list of data for you that you can replicate to other peers. It has the following API
+Can we read from this feed? After closing a feed this will be false.
 
 #### `feed.key`
 
-The key of this feed. A 32 byte buffer. Other peers need this key to start replicating the feed.
+Buffer containing the public key identifying this feed.
 
 #### `feed.discoveryKey`
 
-A 32 byte buffer containing a discovery key of the feed. The discovery key is sha-256 hmac of the string `hypercore` using the feed key as the password.
-You can use the discovery key to find other peers sharing this feed without disclosing your feed key to a third party.
+Buffer containing a key derived from the feed.key.
+In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
 
-#### `feed.blocks`
+#### `feed.length`
 
-The total number of known data blocks in the feed.
+How many blocks of data are available on this feed?
 
-#### `feed.bytes`
+#### `feed.byteLength`
 
-The total byte size of known data blocks in the feed.
+How much data is available on this feed in bytes?
 
-#### `feed.open(cb)`
+#### `feed.get(index, [options], callback)`
 
-Call this method to ensure that a feed is opened. You do not need to call this but the `.blocks` property will not be populated until the feed has been opened.
+Get a block of data.
+If the data is not available locally this method will prioritize and wait for the data to be downloaded before calling the callback.
 
-#### `feed.append(data, callback)`
-
-Append a block of data to the feed. If you want to append more than one block you can pass in an array.
-
-#### `feed.get(index, [options,] callback)`
-
-Retrieve a block of data from the feed. If the block is not locally-available, this call will queue the block for download and defer calling-back until the block is received. Options include:
+Options include
 
 ``` js
 {
-  verify: false // verify the data against the feed checksum, and fail the get() if !==
-  wait: true // queue the download if not found. If false, will just respond with a notFound error
+  wait: true, // wait for index to be downloaded
+  timeout: 0 // wait at max some milliseconds (0 means no timeout)
 }
 ```
 
-#### `feed.verifyStorage(callback)`
+Callback is called with `(err, data)`
 
-Do a full read of the feed's data from storage, and verify the data against the feed's checksums. If any blocks that were thought to be saved are found missing, they will be marked as absent.
+#### `var bool = feed.has(index)`
 
-Use this as a way to correct the internal tracking of available data, if you think the files were modified externally. Be warned: it will require a lot of disk-reads, as every block has to be verified.
+Return true if a data block is available locally.
+False otherwise.
 
-Calls back with the following structure:
+#### `feed.append(data, [callback])`
 
-```js
-{
-  numMissing: number of blocks discovered missing
-}
-```
+Append a block of data to the feed.
 
-#### `feed.blocksRemaining()`
-
-Get the number of blocks remaining to be downloaded.
-
-#### `feed.prioritize(range, [callback])`
-
-Prioritize a range of blocks to download. Will call the callback when done.
-Range should look like this
-
-``` js
-{
-  start: startBlock,
-  end: optionalEndBlock,
-  priority: 2 // a priority level spanning [0-5]
-  linear: false // download the range linearly
-}
-```
-
-#### `feed.unprioritize(range)`
-
-Unprioritize a range.
+Callback is called with `(err)` when all data has been written or an error occured.
 
 #### `feed.seek(byteOffset, callback)`
 
-Find the block of data containing the byte offset. Calls the callback with `(err, index, offset)` where `index` is the block index and `offset` is the the relative byte offset in the block returned by `.get(index)`.
+Seek to a byte offset.
 
-#### `feed.finalize(callback)`
-
-If you are not using a live feed you need to call this method to finalize the feed once you are ready to share it.
-Finalizing will set the `.key` property and allow other peers to get your data.
-
-#### `var stream = feed.createWriteStream([options])`
-
-Create a writable stream that appends to the feed. If the feed is a static feed, it will be finalized when you end the stream.
+Calls the callback with `(err, index, relativeOffset)`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
+the relative byte offset in the data block.
 
 #### `var stream = feed.createReadStream([options])`
 
-Create a readable stream that reads from the feed. Options include:
+Create a readable stream of data.
+
+Options include:
 
 ``` js
 {
-  start: startIndex, // read from this index
-  end: endIndex, // read until this index
-  live: false // set this to keep the read stream open
+  start: 0, // read from this index
+  end: feed.blocks, // read until this index
+  live: false, // set to true to keep reading forever
+  timeout: 0, // timeout for each data event (0 means no timeout)
+  wait: true // wait for data to be downloaded
 }
 ```
 
+#### `var stream = feed.createWriteStream()`
+
+Create a writable stream.
+
 #### `var stream = feed.replicate([options])`
 
-Get a replication stream for this feed. Pipe this to another peer to start replicating this feed with another peer.
-If you create multiple replication streams to multiple peers you'll upload/download data to all of them (meaning the load will spread out).
-
-Per default the replication stream encrypts all messages sent using the feed key and an incrementing nonce. This helps ensures that the remote peer also the feed key and makes it harder for a man-in-the-middle to sniff the data you are sending.
-
-Set `{private: false}` to disable this.
-
-Hypercore uses a simple multiplexed protocol that allows one replication stream to be used for multiple feeds at once.
-If you want to join another replication stream simply pass it as the stream option
+Create a replication stream. You should pipe this to another hypercore instance.
 
 ``` js
-feed.replicate({stream: anotherReplicationStream})
+// assuming we have two feeds, localFeed + remoteFeed, sharing the same key
+// on a server
+var net = require('net')
+var server = net.createServer(function (socket) {
+  socket.pipe(remoteFeed.replicate()).pipe(socket)
+})
+
+// on a client
+var socket = net.connect(...)
+socket.pipe(localFeed.replicate()).pipe(socket)
 ```
 
-As a shorthand you can also do `feed.replicate(stream)`.
+Options include:
 
-#### `feed.unreplicate([stream])`
+``` js
+{
+  live: false // keep replicating after all remote data has been downloaded?
+}
+```
 
-End a replication stream for the feed. Optionally can pass the `stream` argument to end a specific replication stream.
+#### `feed.close([callback])`
 
-#### `stream.on('open', discoveryKey)`
+Fully close this feed.
 
-Emitted when a remote feed joins the replication stream and you haven't. You can use this as a signal to join the stream yourself if you want to.
+Calls the callback with `(err)` when all storage has been closed.
 
-#### `feed.on('download', block, data)`
+#### `feed.on('ready')`
 
-Emitted when a data block has been downloaded
+Emitted when the feed is ready and all properties have been populated.
 
-#### `feed.on('download-finished')`
+#### `feed.on('error', err)`
 
-Emitted when all available data has been downloaded.
-Will re-fire when a live feed is updated and you download all the new blocks.
+Emitted when the feed experiences a critical error.
 
-#### `feed.on('upload', block, data)`
+#### `feed.on('download', index, data)`
 
-Emitted when a data block has been uploaded
+Emitted when a data block has been downloaded.
 
-## Storage API
+#### `feed.on('upload', index, data)`
 
-If you want to use external storage to store the hypercore data (metadata will still be stored in the leveldb) you need to implement the following api and provide that as the `storage` option when creating a feed.
+Emitted when a data block is uploaded.
 
-Some node modules that implement this interface are
+#### `feed.on('append')`
 
-* [random-access-file](https://github.com/mafintosh/random-access-file) Writes data to a file.
-* [random-access-memory](https://github.com/mafintosh/random-access-memory) Writes data to memory.
+Emitted when the feed has been appended to (i.e. has a new length / byteLength)
 
-#### `storage.open(cb)`
+#### `feed.on('close')`
 
-This API is *optional*. If you provide this hypercore will call `.open` and wait for the callback to be called before calling any other methods.
-
-#### `storage.read(offset, length, cb)`
-
-This API is *required*. Hypercore calls this when it wants to read data. You should return a buffer with length `length` that way read at the corresponding offset. If you cannot read this buffer call the callback with an error.
-
-#### `storage.write(offset, buffer, cb)`
-
-This API is *required*. Hypercore calls this when it wants to write data. You should write the buffer at the corresponding offset and call the callback afterwards. If there was an error writing you should call the callback with that error.
-
-#### `storage.close(cb)`
-
-This API is *optional*. Hypercore will call this method when the feed is closing.
+Emitted when the feed has been fully closed
 
 ## License
 

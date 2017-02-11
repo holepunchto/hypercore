@@ -48,6 +48,10 @@ tape('digest', function (t) {
   index.set(2)
   t.same(index.digest(0), parseInt('1011', 2), 'rooted, has sibling, no uncle, has grand parent')
 
+  index = tree()
+  index.set(5)
+  t.same(index.digest(1), parseInt('10', 2), 'not rooted, has sibling')
+
   t.end()
 })
 

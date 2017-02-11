@@ -1,21 +1,34 @@
-var hypercore = require('hypercore')
-var memdb = require('memdb')
+var hypercore = require('./')
+var raf = require('random-access-file')
 
-var core1 = hypercore(memdb())
-var core2 = hypercore(memdb())
+var append = false
 
-var feed1 = core1.createFeed()
-var feed2 = core2.createFeed(feed1.key)
-
-feed2.get(0, console.log)
-feed1.get(0, console.log)
-
-feed2.on('download', function (block, data) {
-  console.log('downloaded', block, data)
+var w = hypercore({valueEncoding: 'json'}, function (name) {
+  return raf('tmp/' + name)
 })
 
-feed1.append('hello')
+w.ready(function () {
+  console.log('Contains %d blocks and %d bytes (live: %s)\n', w.blocks, w.bytes, w.live)
 
-setTimeout(function () {
-  feed1.append('world')
-}, 1000)
+  w.createReadStream()
+    .on('data', console.log)
+    .on('end', console.log.bind(console, '\n(end)'))
+})
+
+if (append) {
+  w.append({
+    hello: 'world'
+  })
+
+  w.append({
+    hej: 'verden'
+  })
+
+  w.append({
+    hola: 'mundo'
+  })
+
+  w.flush(function () {
+    console.log('Appended 3 more blocks')
+  })
+}

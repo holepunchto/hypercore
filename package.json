@@ -1,50 +1,40 @@
 {
   "name": "hypercore",
   "version": "4.19.4",
-  "description": "Hypercore is a protocol and network for distributing and replicating feeds of binary data.",
+  "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "dependencies": {
-    "bitfield-rle": "^1.1.1",
-    "brfs": "^1.4.3",
-    "buffer-equals": "^1.0.3",
+    "array-lru": "^1.1.0",
+    "atomic-batcher": "^1.0.0",
+    "bitfield-rle": "^1.1.2",
+    "buffer-equals": "^1.0.4",
     "bulk-write-stream": "^1.1.3",
+    "codecs": "^1.2.0",
     "create-hash": "^1.1.2",
     "create-hmac": "^1.1.4",
-    "debug": "^2.5.2",
     "flat-tree": "^1.4.0",
-    "from2": "^2.1.1",
-    "hypercore-protocol": "^5.1.0",
-    "inherits": "^2.0.1",
-    "last-one-wins": "^1.0.4",
-    "levelup-defaults": "^2.0.0",
+    "from2": "^2.3.0",
+    "hypercore-protocol": "mafintosh/hypercore-protocol#v6",
+    "inherits": "^2.0.3",
     "merkle-tree-stream": "^3.0.3",
-    "passthrough-encoding": "^1.2.0",
-    "pretty-hash": "^1.0.1",
-    "protocol-buffers": "^3.1.6",
     "randombytes": "^2.0.3",
-    "sodium-signatures": "^1.2.2",
-    "stream-collector": "^1.0.1",
-    "subleveldown": "^2.1.0",
-    "thunky": "^0.1.0",
-    "to-buffer": "^1.0.1",
+    "shuffle-array": "^1.0.0",
+    "sodium-signatures": "^2.0.0",
+    "sparse-bitfield": "^2.1.0",
+    "thunky": "^1.0.1",
     "uint64be": "^2.0.1",
-    "unordered-set": "^2.0.0",
-    "varint": "^4.0.0"
+    "unordered-array-remove": "^1.0.2",
+    "unordered-set": "^2.0.0"
   },
   "devDependencies": {
-    "concat-stream": "^1.5.1",
-    "memdb": "^1.3.1",
-    "random-access-memory": "^1.0.0",
-    "standard": "^6.0.8",
-    "tape": "^4.5.1"
+    "random-access-file": "^1.3.1",
+    "random-access-memory": "^2.2.0",
+    "speedometer": "^1.0.0",
+    "standard": "^8.6.0",
+    "tape": "^4.6.3"
   },
   "scripts": {
     "test": "standard && tape test/*.js"
-  },
-  "browserify": {
-    "transform": [
-      "brfs"
-    ]
   },
   "repository": {
     "type": "git",
