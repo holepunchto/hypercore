@@ -116,6 +116,10 @@ Options include
 
 Callback is called with `(err, data)`
 
+#### `feed.download(indexes, [callback])`
+
+Download an array of indexes but do not read them out. Callback is called when all data has been downloaded.
+
 #### `var bool = feed.has(index)`
 
 Return true if a data block is available locally.
