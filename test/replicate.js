@@ -60,7 +60,6 @@ tape('download while get', function (t) {
 
     replicate(feed, clone)
   })
-
 })
 
 function replicate (a, b) {
