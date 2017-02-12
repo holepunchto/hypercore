@@ -17,6 +17,7 @@
     "hypercore-protocol": "mafintosh/hypercore-protocol#v6",
     "inherits": "^2.0.3",
     "merkle-tree-stream": "^3.0.3",
+    "random-access-file": "^1.5.0",
     "randombytes": "^2.0.3",
     "shuffle-array": "^1.0.0",
     "sodium-signatures": "^2.0.0",
@@ -27,7 +28,6 @@
     "unordered-set": "^2.0.0"
   },
   "devDependencies": {
-    "random-access-file": "^1.3.1",
     "random-access-memory": "^2.2.0",
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",

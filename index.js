@@ -10,6 +10,7 @@ var thunky = require('thunky')
 var batcher = require('atomic-batcher')
 var inherits = require('inherits')
 var events = require('events')
+var raf = require('random-access-file')
 var randomBytes = require('randombytes')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
@@ -18,32 +19,28 @@ var replicate = null
 
 module.exports = Feed
 
-function Feed (key, opts, file) {
-  if (!(this instanceof Feed)) return new Feed(key, opts, file)
+function Feed (createStorage, key, opts) {
+  if (!(this instanceof Feed)) return new Feed(createStorage, key, opts)
   events.EventEmitter.call(this)
+
+  if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
+  if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
 
   if (typeof key === 'string') key = new Buffer(key, 'hex')
 
-  if (typeof key === 'function' || isObject(key)) {
-    file = opts
+  if (!Buffer.isBuffer(key)) {
     opts = key
     key = null
   }
-  if (typeof opts === 'function') {
-    file = opts
-    opts = null
-  }
 
-  if (!file) file = opts.storage
-  if (!file) throw new Error('You must specify a storage provider')
   if (!opts) opts = {}
 
   var self = this
 
   this.id = opts.id || randomBytes(32)
   this.live = opts.live !== false
-  this.blocks = 0
-  this.bytes = 0
+  this.length = 0
+  this.byteLength = 0
   this.key = key || null
   this.discoveryKey = this.key && hash.discoveryKey(this.key)
   this.secretKey = null
@@ -52,12 +49,13 @@ function Feed (key, opts, file) {
   this.writable = false
   this.readable = true // for completeness
   this.opened = false
-  this.ready = thunky(open)
 
+  this._ready = thunky(open) // TODO: if open fails, do not reopen next time
   this._indexing = !!opts.indexing
-  this._reset = !!opts.reset
+  this._createIfMissing = opts.createIfMissing !== false
+  this._overwrite = !!opts.overwrite
   this._merkle = null
-  this._storage = storage(file)
+  this._storage = storage(createStorage)
   this._batch = batcher(work)
 
   // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
@@ -66,6 +64,13 @@ function Feed (key, opts, file) {
   // for replication
   this._selection = []
   this._peers = []
+
+  // open it right away. TODO: do not reopen (i.e, set a flag not to retry)
+  this._ready(onerror)
+
+  function onerror (err) {
+    if (err) self.emit('error')
+  }
 
   function work (values, cb) {
     self._append(values, cb)
@@ -80,8 +85,14 @@ inherits(Feed, events.EventEmitter)
 
 Feed.prototype.replicate = function () {
   // Lazy load replication deps
-  if (!replicate) replicate = require('./replicate')
+  if (!replicate) replicate = require('./lib/replicate')
   return replicate(this)
+}
+
+Feed.prototype.ready = function (onready) {
+  this._ready(function (err) {
+    if (!err) onready()
+  })
 }
 
 Feed.prototype._open = function (cb) {
@@ -94,10 +105,10 @@ Feed.prototype._open = function (cb) {
 
     // if no key but we have data do a bitfield reset since we cannot verify the data.
     if (!state.key && (state.treeBitfield.length || state.dataBitfield.length)) {
-      self._reset = true
+      self._overwrite = true
     }
 
-    if (self._reset) {
+    if (self._overwrite) {
       state.dataBitfield.fill(0)
       state.treeBitfield.fill(0)
       state.key = state.secretKey = null
@@ -116,7 +127,7 @@ Feed.prototype._open = function (cb) {
         while (len > 0 && !self.tree.bitfield.get(len - 1)) len -= 2
       }
 
-      if (len > 0) self.blocks = (len + 1) / 2
+      if (len > 0) self.length = (len + 1) / 2
     }
 
     if (state.key && self.key && !equals(state.key, self.key)) {
@@ -126,13 +137,17 @@ Feed.prototype._open = function (cb) {
     if (state.key) self.key = state.key
     if (state.secretKey) self.secretKey = state.secretKey
 
-    if (self.blocks) self._storage.getNode(self.blocks * 2 - 2, onlastnode)
+    if (self.length) self._storage.getNode(self.length * 2 - 2, onlastnode)
     else onlastnode(null, null)
 
     function onlastnode (err, node) {
       if (err) return cb(err)
 
       if (node) self.live = !!node.signature
+
+      if (!self.key && !self._createIfMissing) {
+        return cb(new Error('No hypercore is stored here'))
+      }
 
       if (!self.key && self.live) {
         var keyPair = signatures.keyPair()
@@ -143,13 +158,13 @@ Feed.prototype._open = function (cb) {
       self.writable = !!self.secretKey || self.key === null
       self.discoveryKey = self.key && hash.discoveryKey(self.key)
 
-      var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._reset ? 2 : 0)
+      var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._overwrite ? 2 : 0)
       var error = null
 
       if (self.key) self._storage.key.write(0, self.key, done)
       if (self.secretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
-      if (self._reset) { // TODO: support storage.resize for this instead
+      if (self._overwrite) { // TODO: support storage.resize for this instead
         self._storage.treeBitfield.write(0, state.treeBitfield, done)
         self._storage.dataBitfield.write(0, state.dataBitfield, done)
       }
@@ -160,14 +175,14 @@ Feed.prototype._open = function (cb) {
         if (err) error = err
         if (--missing) return
         if (error) return cb(error)
-        self._roots(self.blocks, onroots)
+        self._roots(self.length, onroots)
       }
 
       function onroots (err, roots) {
         if (err) return cb(err)
 
         self._merkle = merkle(hash, roots)
-        self.bytes = roots.reduce(addSize, 0)
+        self.byteLength = roots.reduce(addSize, 0)
         self.opened = true
         self.emit('ready')
 
@@ -182,7 +197,7 @@ Feed.prototype.download = function (index, cb) {
 
   if (!index && typeof index !== 'number') {
     index = []
-    while (index.length < this.blocks) index.push(index.length)
+    while (index.length < this.length) index.push(index.length)
     require('shuffle-array')(index)
   }
 
@@ -256,7 +271,7 @@ Feed.prototype.proof = function (index, opts, cb) {
 
 Feed.prototype._readyAndProof = function (index, opts, cb) {
   var self = this
-  this.ready(function (err) {
+  this._ready(function (err) {
     if (err) return cb(err)
     self.proof(index, opts, cb)
   })
@@ -281,7 +296,7 @@ Feed.prototype._seek = function (offset, cb) {
   if (offset === 0) return cb(null, 0, 0)
 
   var self = this
-  var roots = flat.fullRoots(this.blocks * 2)
+  var roots = flat.fullRoots(this.length * 2)
   var nearestRoot = 0
 
   loop(null, null)
@@ -328,7 +343,7 @@ Feed.prototype._seek = function (offset, cb) {
 
 Feed.prototype._readyAndSeek = function (bytes, cb) {
   var self = this
-  this.ready(function (err) {
+  this._ready(function (err) {
     if (err) return cb(err)
     self.seek(bytes, cb)
   })
@@ -389,7 +404,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
 
 Feed.prototype._readyAndPut = function (index, data, proof, cb) {
   var self = this
-  this.ready(function (err) {
+  this._ready(function (err) {
     if (err) return cb(err)
     self.put(index, data, proof, cb)
   })
@@ -451,10 +466,11 @@ Feed.prototype._verifyRoots = function (top, proof, batch) {
     this.live = false
   }
 
-  var blocks = verifiedBy / 2
-  if (blocks > this.blocks) {
-    this.blocks = blocks
-    this.bytes = roots.reduce(addSize, 0)
+  var length = verifiedBy / 2
+  if (length > this.length) {
+    this.length = length
+    this.byteLength = roots.reduce(addSize, 0)
+    this.emit('append')
   }
 
   return batch
@@ -497,11 +513,16 @@ Feed.prototype.has = function (index) {
   return this.bitfield.get(index)
 }
 
-Feed.prototype.get = function (index, cb) {
-  if (!this.opened) return this._readyAndGet(index, cb)
+Feed.prototype.get = function (index, opts, cb) {
+  if (typeof opts === 'function') return this.get(index, null, opts)
+  if (!this.opened) return this._readyAndGet(index, opts, cb)
+
+  if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
   if (!this.has(index)) {
     if (this.writable) return cb(new Error('Block not written'))
+    if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
+
     this._selection.push({index: index, get: true, callback: cb})
     this._updatePeers()
     return
@@ -511,11 +532,11 @@ Feed.prototype.get = function (index, cb) {
   this._storage.getData(index, cb)
 }
 
-Feed.prototype._readyAndGet = function (index, cb) {
+Feed.prototype._readyAndGet = function (index, opts, cb) {
   var self = this
-  this.ready(function (err) {
+  this._ready(function (err) {
     if (err) return cb(err)
-    self.get(index, cb)
+    self.get(index, opts, cb)
   })
 }
 
@@ -540,26 +561,39 @@ Feed.prototype.createWriteStream = function () {
   }
 }
 
-Feed.prototype.createReadStream = function () {
+Feed.prototype.createReadStream = function (opts) {
+  if (!opts) opts = {}
+
   var self = this
-  var start = 0
+  var start = opts.start || 0
+  var end = typeof opts.end === 'number' ? opts.end : -1
+  var live = !!opts.live
+  var first = true
 
   return from.obj(read)
 
   function read (size, cb) {
     if (!self.opened) return open(size, cb)
-    if (start === self.blocks) return cb(null, null)
-    self.get(start++, cb)
+
+    if (first) {
+      if (end === -1) end = live ? Infinity : self.length
+      if (opts.tail) start = self.length
+      first = false
+    }
+
+    if (start === end) return cb(null, null)
+    self.get(start++, opts, cb)
   }
 
   function open (size, cb) {
-    self.ready(function (err) {
+    self._ready(function (err) {
       if (err) return cb(err)
       read(size, cb)
     })
   }
 }
 
+// TODO: when calling finalize on a live feed write an END_OF_FEED block (length === 0?)
 Feed.prototype.finalize = function (cb) {
   if (!this.key) this.key = hash.tree(this._merkle.roots)
   this._storage.key.write(0, this.key, cb)
@@ -576,7 +610,7 @@ Feed.prototype.flush = function (cb) {
 Feed.prototype.close = function (cb) {
   var self = this
 
-  this.ready(function () {
+  this._ready(function () {
     self._storage.close(cb)
   })
 }
@@ -598,7 +632,7 @@ Feed.prototype._append = function (batch, cb) {
     pending += nodes.length
 
     if (this._indexing) done(null)
-    else this._storage.data.write(this.bytes + offset, data, done)
+    else this._storage.data.write(this.byteLength + offset, data, done)
 
     offset += data.length
 
@@ -615,15 +649,16 @@ Feed.prototype._append = function (batch, cb) {
     if (--pending) return
     if (error) return cb(error)
 
-    var start = self.blocks
+    var start = self.length
 
-    self.bytes += offset // TODO: set after _sync (have a ._bytes prop)
+    self.byteLength += offset // TODO: set after _sync (have a ._bytes prop)
     for (var i = 0; i < batch.length; i++) {
-      self.bitfield.set(self.blocks, true)
-      self.tree.set(2 * self.blocks++) // TODO: also set after _sync (have a ._blocks prop)
+      self.bitfield.set(self.length, true)
+      self.tree.set(2 * self.length++) // TODO: also set after _sync (have a ._length prop)
     }
+    self.emit('append') // TODO: wait for sync before emitting
 
-    var message = self.blocks - start > 1 ? {start: start, end: self.blocks} : {start: start}
+    var message = self.length - start > 1 ? {start: start, end: self.length} : {start: start}
     if (self._peers.length) self._announce(message)
 
     self._sync(cb)
@@ -632,13 +667,13 @@ Feed.prototype._append = function (batch, cb) {
 
 Feed.prototype._readyAndAppend = function (batch, cb) {
   var self = this
-  this.ready(function (err) {
+  this._ready(function (err) {
     if (err) return cb(err)
     self._append(batch, cb)
   })
 }
 
-Feed.prototype._sync = function (cb) { // TODO: mutex it
+Feed.prototype._sync = function (cb) { // TODO: Last-One-Wins me
   var missing = this.bitfield.updates.length + this.tree.bitfield.updates.length
   var next = null
   var error = null
@@ -699,10 +734,6 @@ function addSize (size, node) {
   return size + node.size
 }
 
-function isObject (val) {
-  return !!(val && typeof val === 'object' && !Buffer.isBuffer(val))
-}
-
 function bitfieldLength (buf) {
   if (!buf.length) return 0
 
@@ -723,4 +754,30 @@ function bitfieldLength (buf) {
 
 function isBlock (index) {
   return (index & 1) === 0
+}
+
+function defaultStorage (dir) {
+  return function (name) {
+    return raf(name, {directory: dir})
+  }
+}
+
+function timeoutCallback (cb, timeout) {
+  var failed = false
+  var id = setTimeout(ontimeout, timeout)
+  return done
+
+  function ontimeout () {
+    failed = true
+    // TODO: make libs/errors for all this stuff
+    var err = new Error('ETIMEDOUT')
+    err.code = 'ETIMEDOUT'
+    cb(err)
+  }
+
+  function done (err, val) {
+    if (failed) return
+    clearTimeout(id)
+    cb(err, val)
+  }
 }

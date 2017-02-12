@@ -14,8 +14,6 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 
 ``` js
 var hypercore = require('hypercore')
-var raf = require('random-access-file')
-
 var feed = hypercore('./my-first-dataset', {valueEncoding: 'utf-8'})
 
 feed.append('hello')
@@ -120,6 +118,10 @@ Callback is called with `(err, data)`
 
 Download an array of indexes but do not read them out. Callback is called when all data has been downloaded.
 
+#### `feed.undownload(indexes)`
+
+Cancel a previous download request.
+
 #### `var bool = feed.has(index)`
 
 Return true if a data block is available locally.
@@ -147,7 +149,8 @@ Options include:
 ``` js
 {
   start: 0, // read from this index
-  end: feed.blocks, // read until this index
+  end: feed.length, // read until this index
+  tail: false, // sets start to feed.length
   live: false, // set to true to keep reading forever
   timeout: 0, // timeout for each data event (0 means no timeout)
   wait: true // wait for data to be downloaded
