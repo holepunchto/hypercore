@@ -39,6 +39,30 @@ tape('replicate live', function (t) {
   })
 })
 
+tape('download while get', function (t) {
+  t.plan(10)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    // add 5 so this never finished
+    clone.download([0, 1, 2, 3, 4, 5], function () {
+      t.fail('should never happen')
+    })
+
+    clone.get(0, same(t, 'a'))
+    clone.get(1, same(t, 'b'))
+    clone.get(2, same(t, 'c'))
+    clone.get(3, same(t, 'd'))
+    clone.get(4, same(t, 'e'))
+
+    replicate(feed, clone)
+  })
+
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
