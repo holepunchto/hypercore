@@ -1,13 +1,10 @@
 var path = require('path')
-var raf = require('random-access-file')
 var speedometer = require('speedometer')
 var hypercore = require('../../')
 
 module.exports = function (dir, proof) {
   var speed = speedometer()
-  var feed = hypercore(function (name) {
-    return raf(path.join(__dirname, '../cores', dir, name))
-  })
+  var feed = hypercore(path.join(__dirname, '../cores', dir))
 
   feed.ready(function () {
     for (var i = 0; i < 16; i++) read()
@@ -17,7 +14,7 @@ module.exports = function (dir, proof) {
       if (err) throw err
       if (data) speed(data.length)
 
-      var next = Math.floor(Math.random() * feed.blocks)
+      var next = Math.floor(Math.random() * feed.length)
       feed.get(next, read)
       if (proof) feed.proof(next, noop)
     }

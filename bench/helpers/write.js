@@ -3,12 +3,9 @@
 
 var hypercore = require('../../')
 var path = require('path')
-var raf = require('random-access-file')
 
 module.exports = function (dir, blockSize, count, finalize) {
-  var feed = hypercore({live: !finalize, reset: true}, function (name) {
-    return raf(path.join(__dirname, '../cores', dir, name))
-  })
+  var feed = hypercore(path.join(__dirname, '../cores', dir), {live: !finalize, overwrite: true})
 
   var then = Date.now()
   var buf = new Buffer(blockSize)
@@ -19,14 +16,14 @@ module.exports = function (dir, blockSize, count, finalize) {
 
   feed.append(blocks, function loop (err) {
     if (err) throw err
-    if (feed.blocks < count) feed.append(blocks, loop)
+    if (feed.length < count) feed.append(blocks, loop)
     else if (finalize) feed.finalize(done)
     else done()
   })
 
   function done () {
-    console.log(Math.floor(1000 * blockSize * feed.blocks / (Date.now() - then)) + ' bytes/s')
-    console.log(Math.floor(1000 * feed.blocks / (Date.now() - then)) + ' blocks/s')
+    console.log(Math.floor(1000 * blockSize * feed.length / (Date.now() - then)) + ' bytes/s')
+    console.log(Math.floor(1000 * feed.length / (Date.now() - then)) + ' blocks/s')
   }
 }
 

@@ -1,18 +1,15 @@
-var raf = require('random-access-file')
 var path = require('path')
 var hypercore = require('../../')
 
 module.exports = function (dir, proof) {
-  var feed = hypercore(function (name) {
-    return raf(path.join(__dirname, '../cores', dir, name))
-  })
+  var feed = hypercore(path.join(__dirname, '../cores', dir))
 
   var then = Date.now()
   var size = 0
   var cnt = 0
 
   feed.ready(function () {
-    var missing = feed.blocks
+    var missing = feed.length
     var reading = 0
 
     for (var i = 0; i < 16; i++) read(null, null)
@@ -37,7 +34,7 @@ module.exports = function (dir, proof) {
       missing--
       reading++
 
-      var block = Math.floor(Math.random() * feed.blocks)
+      var block = Math.floor(Math.random() * feed.length)
 
       if (proof) feed.proof(block, onproof)
       else onproof()

@@ -1,10 +1,7 @@
 var path = require('path')
-var raf = require('random-access-file')
 var hypercore = require('../')
 
-var feed = hypercore(function (name) {
-  return raf(path.join(__dirname, 'cores/64kb', name))
-})
+var feed = hypercore(path.join(__dirname, 'cores/64kb'))
 
 var then = Date.now()
 var size = 0
