@@ -20,6 +20,7 @@
     "random-access-file": "^1.5.0",
     "randombytes": "^2.0.3",
     "shuffle-array": "^1.0.0",
+    "sodium-native": "^1.5.0",
     "sodium-signatures": "^2.0.0",
     "sparse-bitfield": "^2.1.0",
     "thunky": "^1.0.1",
