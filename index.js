@@ -47,7 +47,7 @@ function Feed (createStorage, key, opts) {
   this.tree = treeIndex(bitfield({trackUpdates: true, pageSize: 1024}))
   this.bitfield = bitfield({trackUpdates: true, pageSize: 1024})
   this.writable = false
-  this.readable = true // for completeness
+  this.readable = true
   this.opened = false
 
   this._ready = thunky(open) // TODO: if open fails, do not reopen next time
@@ -611,12 +611,15 @@ Feed.prototype.close = function (cb) {
   var self = this
 
   this._ready(function () {
+    self.writable = false
+    self.readable = false
     self._storage.close(cb)
   })
 }
 
 Feed.prototype._append = function (batch, cb) {
   if (!this.opened) return this._readyAndAppend(batch, cb)
+  if (!this.writable) return cb(new Error('This feed is not writable (Did you create it?)'))
 
   var self = this
   var pending = batch.length
