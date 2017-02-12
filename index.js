@@ -11,7 +11,6 @@ var batcher = require('atomic-batcher')
 var inherits = require('inherits')
 var events = require('events')
 var raf = require('random-access-file')
-var randomBytes = require('randombytes')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var hash = require('./lib/hash')
@@ -37,7 +36,7 @@ function Feed (createStorage, key, opts) {
 
   var self = this
 
-  this.id = opts.id || randomBytes(32)
+  this.id = opts.id || hash.randomBytes(32)
   this.live = opts.live !== false
   this.length = 0
   this.byteLength = 0

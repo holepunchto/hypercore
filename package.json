@@ -16,7 +16,6 @@
     "inherits": "^2.0.3",
     "merkle-tree-stream": "^3.0.3",
     "random-access-file": "^1.5.0",
-    "randombytes": "^2.0.3",
     "shuffle-array": "^1.0.0",
     "sodium-native": "^1.5.0",
     "sodium-signatures": "^2.0.0",
