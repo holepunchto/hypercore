@@ -5,7 +5,8 @@ Hypercore is a secure, distributed append-only log.
 Built for sharing large datasets and streams of real time data as part of the [Dat project](https://datproject.org).
 
 ```
-npm install hypercore
+# install the latest rc for v5
+npm install hypercore@next-next
 ```
 
 To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datproject/docs/blob/master/papers/dat-paper.pdf).
