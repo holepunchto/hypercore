@@ -1,4 +1,5 @@
 var equals = require('buffer-equals')
+var low = require('last-one-wins')
 var merkle = require('merkle-tree-stream/generator')
 var flat = require('flat-tree')
 var bulk = require('bulk-write-stream')
@@ -59,6 +60,7 @@ function Feed (createStorage, key, opts) {
 
   // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
   this._codec = codecs(opts.valueEncoding === 'json' ? 'ndjson' : opts.valueEncoding)
+  this._sync = low(sync)
 
   // for replication
   this._selection = []
@@ -73,6 +75,10 @@ function Feed (createStorage, key, opts) {
 
   function work (values, cb) {
     self._append(values, cb)
+  }
+
+  function sync (_, cb) {
+    self._syncBitfield(cb)
   }
 
   function open (cb) {
@@ -432,7 +438,7 @@ Feed.prototype._commitDone = function (index, data, nodes, from, cb) {
   if (this.bitfield.set(index, true)) this.emit('download', index, data, nodes)
   if (this._peers.length && this._peers[0] !== from) this._announce({start: index}, from)
 
-  this._sync(cb)
+  this._sync(null, cb)
 }
 
 Feed.prototype._verifyRoots = function (top, proof, batch) {
@@ -663,7 +669,7 @@ Feed.prototype._append = function (batch, cb) {
     var message = self.length - start > 1 ? {start: start, end: self.length} : {start: start}
     if (self._peers.length) self._announce(message)
 
-    self._sync(cb)
+    self._sync(null, cb)
   }
 }
 
@@ -675,7 +681,7 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
   })
 }
 
-Feed.prototype._sync = function (cb) { // TODO: Last-One-Wins me
+Feed.prototype._syncBitfield = function (cb) {
   var missing = this.bitfield.updates.length + this.tree.bitfield.updates.length
   var next = null
   var error = null
