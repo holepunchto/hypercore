@@ -1,5 +1,6 @@
 var equals = require('buffer-equals')
 var low = require('last-one-wins')
+var remove = require('unordered-array-remove')
 var merkle = require('merkle-tree-stream/generator')
 var flat = require('flat-tree')
 var bulk = require('bulk-write-stream')
@@ -57,6 +58,7 @@ function Feed (createStorage, key, opts) {
   this._merkle = null
   this._storage = storage(createStorage)
   this._batch = batcher(work)
+  this._waiting = []
 
   // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
   this._codec = codecs(opts.valueEncoding === 'json' ? 'ndjson' : opts.valueEncoding)
@@ -206,20 +208,14 @@ Feed.prototype.download = function (index, cb) {
     require('shuffle-array')(index)
   }
 
-  if (Array.isArray(index)) {
-    this._selection.push({
-      blocks: index,
-      ptr: 0,
-      downloaded: 0,
-      callback: cb
-    })
-  } else {
-    this._selection.push({
-      index: index,
-      get: false,
-      callback: cb
-    })
-  }
+  if (!Array.isArray(index)) index = [index]
+
+  this._selection.push({
+    blocks: index,
+    ptr: 0,
+    downloaded: 0,
+    callback: cb
+  })
 
   this._updatePeers()
 }
@@ -525,10 +521,9 @@ Feed.prototype.get = function (index, opts, cb) {
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
   if (!this.has(index)) {
-    if (this.writable) return cb(new Error('Block not written'))
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    this._selection.push({index: index, get: true, callback: cb})
+    this._waiting.push({index: index, callback: cb})
     this._updatePeers()
     return
   }
@@ -659,12 +654,12 @@ Feed.prototype._append = function (batch, cb) {
 
     var start = self.length
 
-    self.byteLength += offset // TODO: set after _sync (have a ._bytes prop)
+    self.byteLength += offset
     for (var i = 0; i < batch.length; i++) {
       self.bitfield.set(self.length, true)
-      self.tree.set(2 * self.length++) // TODO: also set after _sync (have a ._length prop)
+      self.tree.set(2 * self.length++)
     }
-    self.emit('append') // TODO: wait for sync before emitting
+    self.emit('append')
 
     var message = self.length - start > 1 ? {start: start, end: self.length} : {start: start}
     if (self._peers.length) self._announce(message)
@@ -679,6 +674,15 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
     if (err) return cb(err)
     self._append(batch, cb)
   })
+}
+
+Feed.prototype._pollWaiting = function () {
+  for (var i = 0; i < this._waiting.length; i++) {
+    var next = this._waiting[i]
+    if (!this.has(next.index)) continue
+    remove(this._waiting, i--)
+    this.get(next.index, next.callback)
+  }
 }
 
 Feed.prototype._syncBitfield = function (cb) {
@@ -703,6 +707,8 @@ Feed.prototype._syncBitfield = function (cb) {
   while ((next = this.tree.bitfield.nextUpdate()) !== null) {
     this._storage.treeBitfield.write(next.offset, next.buffer, ondone)
   }
+
+  this._pollWaiting()
 
   function ondone (err) {
     if (err) error = err
