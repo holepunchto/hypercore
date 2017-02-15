@@ -193,30 +193,6 @@ tape('replicate live with append + early get', function (t) {
   }
 })
 
-tape('emits download finished', function (t) {
-  var core1 = hypercore()
-  var core2 = hypercore()
-
-  var feed = core1.createFeed()
-
-  feed.append('hello')
-  feed.append('world')
-  feed.flush(function () {
-    var clone = core2.createFeed(feed.key)
-
-    clone.once('download-finished', function () {
-      t.pass('download finished')
-      clone.on('download-finished', function () {
-        t.pass('download finished again')
-        t.end()
-      })
-      feed.append('update')
-    })
-
-    replicate(clone, feed)
-  })
-})
-
 tape('replicate + reload live feed', function (t) {
   var feed = hypercore().createFeed()
   var clone = hypercore()
@@ -276,127 +252,87 @@ tape('same remote peer-id across streams', function (t) {
   stream1.pipe(stream2).pipe(stream1)
 })
 
-tape('replicate no upload', function (t) {
-  var core1 = hypercore()
-  var core2 = hypercore()
-  var core3 = hypercore()
-
-  var feed1 = core1.createFeed()
-  var feed2 = core2.createFeed(feed1.key, {sparse: true})
-  var feed3 = core3.createFeed(feed1.key, {sparse: true})
-
-  feed1.append(['a', 'b', 'c'], function () {
-    var stream1 = feed1.replicate()
-    var stream2 = feed2.replicate()
-
-    stream1.pipe(stream2).pipe(stream1)
-
-    feed2.get(1, function () {
-      var stream3 = feed2.replicate({upload: false})
-      var stream4 = feed3.replicate()
-
-      stream3.pipe(stream4).pipe(stream3)
-
-      feed3.get(1, function () {
-        t.fail('should not download')
-      })
-
-      setTimeout(function () {
-        t.end()
-      }, 100)
-    })
-  })
-})
-
-tape('unreplicate', function (t) {
+tape('replicate live sparse with prioritization', function (t) {
   var core1 = hypercore()
   var core2 = hypercore()
 
   var feed = core1.createFeed()
 
-  // start a normal live append
   feed.append('hello')
   feed.append('world')
-  feed.flush(function () {
-    var clone = core2.createFeed(feed.key)
-    var missing = 2
-    var first = true
-
-    clone.on('download', function (block) {
-      if (first) {
-        // verify that 'hello' 'world' made it
-        missing--
-        t.ok(missing >= 0, 'downloading expected block')
-        if (missing) return // not done yet
-
-        // both received, now unreplicate...
-        clone.unreplicate()
-        first = false
-
-        // ...and add 'hej' 'verden' to see if they replicate
-        feed.append(['hej', 'verden'])
-
-        // wait a second, and if nothing happens, we'll assume success
-        setTimeout(function () { validate(clone) }, 1e3)
-      } else {
-        // we should not be replicating anymore!
-        t.fail('Block received after unreplicate')
-      }
+  feed.append('again')
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key, {
+      sparse: true
     })
 
     replicate(clone, feed)
-  })
 
-  function validate (clone) {
-    clone.get(0, function (_, data) {
-      t.same(data, Buffer('hello'))
-      clone.get(1, function (_, data) {
-        t.same(data, Buffer('world'))
-        t.same(clone.bytes, 10, '10 bytes')
-        t.end()
-      })
+    clone.on('download', function (block) {
+      t.same(clone.blocks, 3, 'should be 3 blocks')
+      if (block !== 2) return t.fail('unknown block')
+      t.pass('correct block')
+      t.end()
     })
-  }
+    clone.prioritize({start: 2, end: 3})
+  })
 })
 
-tape('verify replication reads', function (t) {
+tape('replicate live sparse with download', function (t) {
   var core1 = hypercore()
   var core2 = hypercore()
 
-  var feed = core1.createFeed({live: false, storage: ram(), verifyReplicationReads: true})
+  var feed = core1.createFeed()
 
-  for (var i = 0; i < 5; i++) {
-    feed.append('#' + i)
-  }
-
+  feed.append('hello')
+  feed.append('world')
+  feed.append('again')
   feed.finalize(function () {
-    // modify in storage
-    feed.storage.put(2, Buffer('--'))
-
-    var clone = core2.createFeed(feed.key, {storage: ram()})
+    var clone = core2.createFeed(feed.key, {
+      sparse: true
+    })
 
     replicate(clone, feed)
 
-    var missing = 4
     clone.on('download', function (block) {
-      console.log('download', block)
-      if (--missing > 0) return
-      t.equal(clone.has(0), true, 'has block 0')
-      t.equal(clone.has(1), true, 'has block 1')
-      t.equal(clone.has(2), false, 'doesnt have block 2')
-      t.equal(clone.has(3), true, 'has block 3')
-      t.equal(clone.has(4), true, 'has block 4')
+      t.same(clone.blocks, 3, 'should be 3 blocks')
+      if (block !== 2) return t.fail('unknown block')
+      t.pass('correct block')
       t.end()
     })
+    clone.get(2, function (_, data) {
+      t.same(data.toString(), 'again', 'correct string')
+    })
+  })
+})
+
+tape('replicate live sparse with prioritization', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  feed.append('hello')
+  feed.append('world')
+  feed.append('again')
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key, {
+      sparse: true
+    })
+
+    replicate(clone, feed)
+
+    clone.on('download', function (block) {
+      t.same(clone.blocks, 3, 'should be 3 blocks')
+      if (block !== 2) return t.fail('unknown block')
+      t.pass('correct block')
+      t.end()
+    })
+    clone.prioritize({start: 2, end: 3})
   })
 })
 
 function replicate (a, b) {
-  var stream1 = a.replicate()
-  var stream2 = b.replicate()
-  stream1.pipe(stream2).pipe(stream1)
-  return {
-    stream1: stream1,
-    stream2: stream2
-  }
+  var stream = a.replicate()
+  stream.pipe(b.replicate()).pipe(stream)
 }
