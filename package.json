@@ -30,6 +30,7 @@
     "random-access-memory": "^2.2.0",
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",
+    "stream-collector": "^1.0.1",
     "tape": "^4.6.3"
   },
   "scripts": {

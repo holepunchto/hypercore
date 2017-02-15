@@ -37,38 +37,14 @@ tape('append', function (t) {
   })
 })
 
-tape('seek', function (t) {
-  t.plan(13)
-
+tape('flush', function (t) {
   var feed = create()
 
-  feed.append(['foo', 'b', 'ar', 'baz'], function () {
-    feed.seek(0, function (err, index, offset) {
-      t.error(err, 'no error')
-      t.same(index, 0)
-      t.same(offset, 0)
-    })
+  feed.append('hello')
 
-    feed.seek(2, function (err, index, offset) {
-      t.error(err, 'no error')
-      t.same(index, 0)
-      t.same(offset, 2)
-    })
-
-    feed.seek(4, function (err, index, offset) {
-      t.error(err, 'no error')
-      t.same(index, 2)
-      t.same(offset, 0)
-    })
-
-    feed.seek(5, function (err, index, offset) {
-      t.error(err, 'no error')
-      t.same(index, 2)
-      t.same(offset, 1)
-    })
-
-    feed.seek(50, function (err, index, offset) {
-      t.ok(err, 'out of bounds')
-    })
+  feed.flush(function (err) {
+    t.error(err, 'no error')
+    t.same(feed.length, 1, '1 block')
+    t.end()
   })
 })

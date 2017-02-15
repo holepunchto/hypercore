@@ -144,19 +144,17 @@ Feed.prototype._open = function (cb) {
     if (state.key) self.key = state.key
     if (state.secretKey) self.secretKey = state.secretKey
 
-    if (self.length) self._storage.getNode(self.length * 2 - 2, onlastnode)
-    else onlastnode(null, null)
+    if (!self.length) return onsignature(null, null)
+    self._storage.getSignature(self.length - 1, onsignature)
 
-    function onlastnode (err, node) {
-      if (err) return cb(err)
-
-      if (node) self.live = !!node.signature
+    function onsignature (_, sig) {
+      if (self.length) self.live = !!sig
 
       if (!self.key && !self._createIfMissing) {
         return cb(new Error('No hypercore is stored here'))
       }
 
-      if (!self.key && self.live) {
+      if (!self.key && self.live) { // TODO: allow user to pass in keyPair
         var keyPair = signatures.keyPair()
         self.secretKey = keyPair.secretKey
         self.key = keyPair.publicKey
@@ -229,14 +227,19 @@ Feed.prototype.undownload = function (index, cb) {
   }
 }
 
+Feed.prototype.digest = function (index) {
+  return this.tree.digest(2 * index)
+}
+
 Feed.prototype.proof = function (index, opts, cb) {
   if (typeof opts === 'function') return this.proof(index, null, opts)
   if (!this.opened) return this._readyAndProof(index, opts, cb)
   if (!opts) opts = {}
 
   var proof = this.tree.proof(2 * index, opts)
+  if (!proof) return cb(new Error('No proof available for this index'))
+
   var needsSig = this.live && !!proof.verifiedBy
-  var sigIndex = needsSig ? proof.verifiedBy - 2 : 0
   var pending = proof.nodes.length + (needsSig ? 1 : 0)
   var error = null
   var signature = null
@@ -247,25 +250,24 @@ Feed.prototype.proof = function (index, opts, cb) {
   for (var i = 0; i < proof.nodes.length; i++) {
     this._storage.getNode(proof.nodes[i], onnode)
   }
-
   if (needsSig) {
-    this._storage.getNode(sigIndex, onnode)
+    this._storage.getSignature(proof.verifiedBy / 2 - 1, onsignature)
+  }
+
+  function onsignature (err, sig) {
+    if (sig) signature = sig
+    onnode(err, null)
   }
 
   function onnode (err, node) {
     if (err) error = err
 
     if (node) {
-      if (needsSig && !signature && node.index === sigIndex) {
-        signature = node.signature
-      } else {
-        nodes[proof.nodes.indexOf(node.index)] = node
-      }
+      nodes[proof.nodes.indexOf(node.index)] = node
     }
 
     if (--pending) return
     if (error) return cb(error)
-
     cb(null, {nodes: nodes, signature: signature})
   }
 }
@@ -351,13 +353,19 @@ Feed.prototype._readyAndSeek = function (bytes, cb) {
 }
 
 Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
+  // TODO: this nodes in proof are not instances of our Node prototype
+  // but just similar. Check if this has any v8 perf implications.
+
+  // TODO: if the proof contains a valid signature BUT fails, emit a critical error
+  // --> feed should be considered dead
+
   var self = this
   var trusted = -1
   var missing = []
   var next = 2 * index
   var i = 0
 
-  for (i = 0; i < proof.nodes.length; i++) {
+  while (true) {
     if (this.tree.get(next)) {
       trusted = next
       break
@@ -366,9 +374,12 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
     var sib = flat.sibling(next)
     next = flat.parent(next)
 
-    if (proof.nodes[i].index === sib) continue
-    if (!this.tree.get(sib)) break
+    if (i < proof.nodes.length && proof.nodes[i].index === sib) {
+      i++
+      continue
+    }
 
+    if (!this.tree.get(sib)) break
     missing.push(sib)
   }
 
@@ -397,9 +408,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
 
   function onmissingloaded (err) {
     if (err) return cb(err)
-    var writes = self._verify(index, data, proof, missingNodes, trustedNode)
-    if (!writes) return cb(new Error('Could not verify data'))
-    self._commit(index, data, writes, from, cb)
+    self._verifyAndWrite(index, data, proof, missingNodes, trustedNode, from, cb)
   }
 }
 
@@ -411,95 +420,134 @@ Feed.prototype._readyAndPut = function (index, data, proof, cb) {
   })
 }
 
-Feed.prototype._commit = function (index, data, nodes, from, cb) {
+Feed.prototype._write = function (index, data, nodes, sig, from, cb) {
   var self = this
-  var pending = nodes.length + 1
+  var pending = nodes.length + 1 + (sig ? 1 : 0)
   var error = null
 
   for (var i = 0; i < nodes.length; i++) this._storage.putNode(nodes[i].index, nodes[i], ondone)
   this._storage.putData(index, data, nodes, ondone)
+  if (sig) this._storage.putSignature(sig.index, sig.signature, ondone)
 
   function ondone (err) {
     if (err) error = err
     if (--pending) return
     if (error) return cb(error)
-    self._commitDone(index, data, nodes, from, cb)
+    self._writeDone(index, data, nodes, from, cb)
   }
 }
 
-Feed.prototype._commitDone = function (index, data, nodes, from, cb) {
+Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
   for (var i = 0; i < nodes.length; i++) this.tree.set(nodes[i].index)
   this.tree.set(2 * index)
 
   if (this.bitfield.set(index, true)) this.emit('download', index, data, nodes)
-  if (this._peers.length && this._peers[0] !== from) this._announce({start: index}, from)
+  if (this._peers.length) this._announce({start: index}, from)
 
   this._sync(null, cb)
 }
 
-Feed.prototype._verifyRoots = function (top, proof, batch) {
-  var lastNode = proof.nodes.length ? proof.nodes[proof.nodes.length - 1].index : top.index
-  var verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
-  var indexes = flat.fullRoots(verifiedBy)
-  var roots = new Array(indexes.length)
+Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trustedNode, from, cb) {
+  var top = new storage.Node(2 * index, hash.data(data), data.length)
+  var visited = []
+  var remoteNodes = proof.nodes
 
-  for (var i = 0; i < roots.length; i++) {
-    if (indexes[i] === top.index) {
-      roots[i] = top
-      batch.push(top)
-    } else if (proof.nodes.length && indexes[i] === proof.nodes[0].index) {
-      roots[i] = proof.nodes.shift()
-      batch.push(roots[i])
-    } else {
-      return null
-    }
+  // check if we already have the hash for this node
+  if (verifyNode(trustedNode, top)) {
+    this._write(index, data, visited, null, from, cb)
+    return
   }
 
-  var checksum = hash.tree(roots)
-
-  if (proof.signature) {
-    // check signature
-    if (!signatures.verify(checksum, proof.signature, this.key)) return null
-    this.live = true
-  } else {
-    // check tree root
-    if (!equals(checksum, this.key)) return null
-    this.live = false
-  }
-
-  var length = verifiedBy / 2
-  if (length > this.length) {
-    this.length = length
-    this.byteLength = roots.reduce(addSize, 0)
-    this.emit('append')
-  }
-
-  return batch
-}
-
-Feed.prototype._verify = function (index, data, proof, missing, trusted) {
-  var top = new storage.Node(2 * index, hash.data(data), data.length, null)
-  var writes = []
-
-  if (verifyNode(trusted, top)) return writes
-
+  // keep hashing with siblings until we reach or trusted node
   while (true) {
     var node = null
     var next = flat.sibling(top.index)
 
-    if (proof.nodes.length && proof.nodes[0].index === next) {
-      node = proof.nodes.shift()
-      writes.push(node)
-    } else if (missing.length && missing[0].index === next) {
-      node = missing.shift()
-    } else { // all remaining nodes should be roots now
-      return this._verifyRoots(top, proof, writes)
+    if (remoteNodes.length && remoteNodes[0].index === next) {
+      node = remoteNodes.shift()
+      visited.push(node)
+    } else if (localNodes.length && localNodes[0].index === next) {
+      node = localNodes.shift()
+    } else {
+      // we cannot create another parent, i.e. these nodes must be roots in the tree
+      this._verifyRootsAndWrite(index, data, top, proof, visited, from, cb)
+      return
     }
 
-    writes.push(top)
-    top = new storage.Node(flat.parent(top.index), hash.parent(top, node), top.size + node.size, null)
+    visited.push(top)
+    top = new storage.Node(flat.parent(top.index), hash.parent(top, node), top.size + node.size)
 
-    if (verifyNode(trusted, top)) return writes
+    // the tree checks out, write the data and the visited nodes
+    if (verifyNode(trustedNode, top)) {
+      this._write(index, data, visited, null, from, cb)
+      return
+    }
+  }
+}
+
+Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, from, cb) {
+  var remoteNodes = proof.nodes
+  var lastNode = remoteNodes.length ? remoteNodes[remoteNodes.length - 1].index : top.index
+  var verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
+  var indexes = flat.fullRoots(verifiedBy)
+  var roots = new Array(indexes.length)
+  var error = null
+  var pending = roots.length
+  var self = this
+
+  for (var i = 0; i < indexes.length; i++) {
+    if (indexes[i] === top.index) {
+      nodes.push(top)
+      onnode(null, top)
+    } else if (remoteNodes.length && indexes[i] === remoteNodes[0].index) {
+      nodes.push(remoteNodes[0])
+      onnode(null, remoteNodes.shift())
+    } else if (this.tree.get(indexes[i])) {
+      this._storage.getNode(indexes[i], onnode)
+    } else {
+      onnode(new Error('Remote did not send tree roots'))
+    }
+  }
+
+  function onnode (err, node) {
+    if (err) error = err
+    if (node) roots[indexes.indexOf(node.index)] = node
+    if (!--pending) verify(error)
+  }
+
+  function verify (err) {
+    if (err) return cb(err)
+
+    var checksum = hash.tree(roots)
+    var signature = null
+
+    if (self.length && self.live && !proof.signature) {
+      return cb(new Error('Remote did not include a signature'))
+    }
+
+    if (proof.signature) { // check signaturex
+      if (!signatures.verify(checksum, proof.signature, self.key)) {
+        return cb(new Error('Remote signature could not be verified'))
+      }
+
+      signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+    } else { // check tree root
+      if (!equals(checksum, self.key)) {
+        return cb(new Error('Remote checksum failed'))
+      }
+    }
+
+    self.live = !!signature
+
+    var length = verifiedBy / 2
+    if (length > self.length) {
+      // TODO: only emit this after the info has been flushed to storage
+      self.length = length
+      self.byteLength = roots.reduce(addSize, 0)
+      self.emit('append')
+    }
+
+    self._write(index, data, nodes, signature, from, cb)
   }
 }
 
@@ -595,7 +643,10 @@ Feed.prototype.createReadStream = function (opts) {
 
 // TODO: when calling finalize on a live feed write an END_OF_FEED block (length === 0?)
 Feed.prototype.finalize = function (cb) {
-  if (!this.key) this.key = hash.tree(this._merkle.roots)
+  if (!this.key) {
+    this.key = hash.tree(this._merkle.roots)
+    this.discoveryKey = hash.discoveryKey(this.key)
+  }
   this._storage.key.write(0, this.key, cb)
 }
 
@@ -619,10 +670,10 @@ Feed.prototype.close = function (cb) {
 
 Feed.prototype._append = function (batch, cb) {
   if (!this.opened) return this._readyAndAppend(batch, cb)
-  if (!this.writable) return cb(new Error('This feed is not writable (Did you create it?)'))
+  if (!this.writable) return cb(new Error('This feed is not writable. Did you create it?'))
 
   var self = this
-  var pending = batch.length
+  var pending = this.live ? 2 * batch.length : batch.length
   var offset = 0
   var error = null
 
@@ -632,17 +683,19 @@ Feed.prototype._append = function (batch, cb) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
 
-    pending += nodes.length
-
     if (this._indexing) done(null)
     else this._storage.data.write(this.byteLength + offset, data, done)
 
+    if (this.live) { // TODO: only sign the LAST set of roots in the batch
+      var sig = signatures.sign(hash.tree(this._merkle.roots), this.secretKey)
+      this._storage.putSignature(this.length + i, sig, done)
+    }
+
+    pending += nodes.length
     offset += data.length
 
     for (var j = 0; j < nodes.length; j++) {
       var node = nodes[j]
-      // TODO: this might deopt? pass in constructor to the merklelizer
-      if (this.live) node.signature = signatures.sign(hash.tree(this._merkle.roots), this.secretKey)
       this._storage.putNode(node.index, node, done)
     }
   }
@@ -654,6 +707,7 @@ Feed.prototype._append = function (batch, cb) {
 
     var start = self.length
 
+    // TODO: only emit append and update length / byteLength after the info has been flushed to storage
     self.byteLength += offset
     for (var i = 0; i < batch.length; i++) {
       self.bitfield.set(self.length, true)
