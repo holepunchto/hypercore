@@ -252,6 +252,60 @@ tape('same remote peer-id across streams', function (t) {
   stream1.pipe(stream2).pipe(stream1)
 })
 
+tape('replicate live sparse with prioritization', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  feed.append('hello')
+  feed.append('world')
+  feed.append('again')
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key, {
+      sparse: true
+    })
+
+    replicate(clone, feed)
+
+    clone.on('download', function (block) {
+      t.same(clone.blocks, 3, 'should be 3 blocks')
+      if (block !== 2) return t.fail('unknown block')
+      t.pass('correct block')
+      t.end()
+    })
+    clone.prioritize({start: 2, end: 3})
+  })
+})
+
+tape('replicate live sparse with download', function (t) {
+  var core1 = hypercore()
+  var core2 = hypercore()
+
+  var feed = core1.createFeed()
+
+  feed.append('hello')
+  feed.append('world')
+  feed.append('again')
+  feed.finalize(function () {
+    var clone = core2.createFeed(feed.key, {
+      sparse: true
+    })
+
+    replicate(clone, feed)
+
+    clone.on('download', function (block) {
+      t.same(clone.blocks, 3, 'should be 3 blocks')
+      if (block !== 2) return t.fail('unknown block')
+      t.pass('correct block')
+      t.end()
+    })
+    clone.get(2, function (_, data) {
+      t.same(data.toString(), 'again', 'correct string')
+    })
+  })
+})
+
 function replicate (a, b) {
   var stream = a.replicate()
   stream.pipe(b.replicate()).pipe(stream)
