@@ -196,7 +196,7 @@ tape('3-way another index + extra data + factor of two + static', function (t) {
   })
 })
 
-tape.skip('seek while replicating', function (t) {
+tape('seek while replicating', function (t) {
   t.plan(6)
 
   var feed = create()
@@ -204,15 +204,15 @@ tape.skip('seek while replicating', function (t) {
   feed.ready(function () {
     var clone = create(feed.key)
 
-    clone.seek(9, function (err, block, offset) {
+    clone.seek(9, function (err, index, offset) {
       t.error(err, 'no error')
-      t.same(block, 2)
+      t.same(index, 2)
       t.same(offset, 1)
     })
 
-    clone.seek(16, function (err, block, offset) {
+    clone.seek(16, function (err, index, offset) {
       t.error(err, 'no error')
-      t.same(block, 4)
+      t.same(index, 4)
       t.same(offset, 2)
     })
 

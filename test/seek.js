@@ -7,9 +7,9 @@ tape('seek to byte offset', function (t) {
   feed.append(['hello', 'how', 'are', 'you', 'doing', '?'])
 
   feed.flush(function () {
-    feed.seek(9, function (err, block, offset) {
+    feed.seek(9, function (err, index, offset) {
       t.error(err, 'no error')
-      t.same(block, 2)
+      t.same(index, 2)
       t.same(offset, 1)
       t.end()
     })
@@ -24,22 +24,22 @@ tape('seek twice', function (t) {
   feed.append(['hello', 'how', 'are', 'you', 'doing', '?'])
 
   feed.flush(function () {
-    feed.seek(9, function (err, block, offset) {
+    feed.seek(9, function (err, index, offset) {
       t.error(err, 'no error')
-      t.same(block, 2)
+      t.same(index, 2)
       t.same(offset, 1)
     })
 
-    feed.seek(16, function (err, block, offset) {
+    feed.seek(16, function (err, index, offset) {
       t.error(err, 'no error')
-      t.same(block, 4)
+      t.same(index, 4)
       t.same(offset, 2)
     })
   })
 })
 
 tape('seek many times', function (t) {
-  t.plan(13)
+  t.plan(12)
 
   var feed = create()
 
@@ -67,27 +67,23 @@ tape('seek many times', function (t) {
       t.same(index, 2)
       t.same(offset, 1)
     })
-
-    feed.seek(50, function (err, index, offset) {
-      t.ok(err, 'out of bounds')
-    })
   })
 })
 
-tape.skip('seek waits', function (t) {
+tape('seek waits', function (t) {
   t.plan(6)
 
   var feed = create()
 
-  feed.seek(9, function (err, block, offset) {
+  feed.seek(9, function (err, index, offset) {
     t.error(err, 'no error')
-    t.same(block, 2)
+    t.same(index, 2)
     t.same(offset, 1)
   })
 
-  feed.seek(16, function (err, block, offset) {
+  feed.seek(16, function (err, index, offset) {
     t.error(err, 'no error')
-    t.same(block, 4)
+    t.same(index, 4)
     t.same(offset, 2)
   })
 

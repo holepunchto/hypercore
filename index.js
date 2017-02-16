@@ -285,13 +285,23 @@ Feed.prototype.put = function (index, data, proof, cb) {
   this._putBuffer(index, this._codec.encode(data), proof, null, cb)
 }
 
-Feed.prototype.seek = function (bytes, cb) {
-  if (!this.opened) return this._readyAndSeek(bytes, cb)
+Feed.prototype.seek = function (bytes, opts, cb) {
+  if (typeof opts === 'function') return this.seek(bytes, null, opts)
+  if (!opts) opts = {}
+  if (!this.opened) return this._readyAndSeek(bytes, opts, cb)
 
-  // var self = this
+  var self = this
+
   this._seek(bytes, function (err, index, offset) {
     if (!err && isBlock(index)) return cb(null, index / 2, offset)
-    cb(err || new Error('not seekable: but in tree: ' + index))
+
+    self._waiting.push({
+      bytes: bytes,
+      index: -1,
+      callback: cb
+    })
+
+    self._updatePeers()
   })
 }
 
@@ -344,11 +354,11 @@ Feed.prototype._seek = function (offset, cb) {
   }
 }
 
-Feed.prototype._readyAndSeek = function (bytes, cb) {
+Feed.prototype._readyAndSeek = function (bytes, opts, cb) {
   var self = this
   this._ready(function (err) {
     if (err) return cb(err)
-    self.seek(bytes, cb)
+    self.seek(bytes, opts, cb)
   })
 }
 
@@ -571,7 +581,7 @@ Feed.prototype.get = function (index, opts, cb) {
   if (!this.has(index)) {
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    this._waiting.push({index: index, callback: cb})
+    this._waiting.push({bytes: -1, index: index, callback: cb})
     this._updatePeers()
     return
   }
@@ -733,9 +743,10 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
 Feed.prototype._pollWaiting = function () {
   for (var i = 0; i < this._waiting.length; i++) {
     var next = this._waiting[i]
-    if (!this.has(next.index)) continue
+    if (next.bytes === -1 && !this.has(next.index)) continue
     remove(this._waiting, i--)
-    this.get(next.index, next.callback)
+    if (next.bytes === -1) this.get(next.index, next.callback)
+    else this.seek(next.bytes, next.callback)
   }
 }
 
