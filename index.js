@@ -763,6 +763,11 @@ Feed.prototype._syncBitfield = function (cb) {
   // Added benefit is that if the program exits while flushing the bitfield the feed will only get
   // truncated and not have missing chunks which is what you expect.
 
+  if (!missing) {
+    this._pollWaiting()
+    return cb(null)
+  }
+
   while ((next = this.bitfield.nextUpdate()) !== null) {
     this._storage.bitfield.write(next.offset, next.buffer, ondone)
   }
