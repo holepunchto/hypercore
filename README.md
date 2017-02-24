@@ -124,6 +124,18 @@ The total number of known data blocks in the feed.
 
 The total byte size of known data blocks in the feed.
 
+#### `feed.peers`
+
+Peers connected on the feed.
+
+Each peer has the properties:
+
+```js
+peer.remoteLength // Number of blocks the peer has
+peer.bytesDownloaded // Number of bytes downloaded from this peer
+peer.downloaded // Number of blocks downloaded from this peer
+```
+
 #### `feed.open(cb)`
 
 Call this method to ensure that a feed is opened. You do not need to call this but the `.blocks` property will not be populated until the feed has been opened.
