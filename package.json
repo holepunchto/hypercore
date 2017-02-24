@@ -6,6 +6,7 @@
   "dependencies": {
     "array-lru": "^1.1.0",
     "atomic-batcher": "^1.0.2",
+    "bit-encode": "^1.0.0",
     "bitfield-rle": "^1.1.2",
     "buffer-equals": "^1.0.4",
     "bulk-write-stream": "^1.1.3",

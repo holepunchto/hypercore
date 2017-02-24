@@ -7,12 +7,12 @@ var bulk = require('bulk-write-stream')
 var signatures = require('sodium-signatures')
 var from = require('from2')
 var codecs = require('codecs')
-var bitfield = require('sparse-bitfield')
 var thunky = require('thunky')
 var batcher = require('atomic-batcher')
 var inherits = require('inherits')
 var events = require('events')
 var raf = require('random-access-file')
+var bitfield = require('./lib/bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var hash = require('./lib/hash')
@@ -45,8 +45,8 @@ function Feed (createStorage, key, opts) {
   this.key = key || null
   this.discoveryKey = this.key && hash.discoveryKey(this.key)
   this.secretKey = null
-  this.tree = treeIndex(bitfield({trackUpdates: true, pageSize: 1024}))
-  this.bitfield = bitfield({trackUpdates: true, pageSize: 1024})
+  this.bitfield = null
+  this.tree = null
   this.writable = false
   this.readable = true
   this.opened = false
@@ -72,7 +72,7 @@ function Feed (createStorage, key, opts) {
   this._ready(onerror)
 
   function onerror (err) {
-    if (err) self.emit('error')
+    if (err) self.emit('error', err)
   }
 
   function work (values, cb) {
@@ -111,20 +111,19 @@ Feed.prototype._open = function (cb) {
     if (err) return cb(err)
 
     // if no key but we have data do a bitfield reset since we cannot verify the data.
-    if (!state.key && (state.treeBitfield.length || state.dataBitfield.length)) {
+    if (!state.key && state.bitfield.length) {
       self._overwrite = true
     }
 
     if (self._overwrite) {
-      state.dataBitfield.fill(0)
-      state.treeBitfield.fill(0)
+      state.bitfield.fill(0)
       state.key = state.secretKey = null
     }
 
-    self.bitfield.setBuffer(0, state.dataBitfield)
-    self.tree.bitfield.setBuffer(0, state.treeBitfield)
+    self.bitfield = bitfield(state.bitfield)
+    self.tree = treeIndex(self.bitfield.tree)
 
-    var len = bitfieldLength(state.treeBitfield)
+    var len = trimLength(self.bitfield.tree)
     if (len) {
       // last node should be a factor of 2 (leaf node)
       // if not, last write wasn't flushed completely and we need to find the
@@ -163,15 +162,14 @@ Feed.prototype._open = function (cb) {
       self.writable = !!self.secretKey || self.key === null
       self.discoveryKey = self.key && hash.discoveryKey(self.key)
 
-      var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._overwrite ? 2 : 0)
+      var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
       var error = null
 
       if (self.key) self._storage.key.write(0, self.key, done)
       if (self.secretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) { // TODO: support storage.resize for this instead
-        self._storage.treeBitfield.write(0, state.treeBitfield, done)
-        self._storage.dataBitfield.write(0, state.dataBitfield, done)
+        self._storage.bitfield.write(0, state.bitfield, done)
       }
 
       done(null)
@@ -751,7 +749,7 @@ Feed.prototype._pollWaiting = function () {
 }
 
 Feed.prototype._syncBitfield = function (cb) {
-  var missing = this.bitfield.updates.length + this.tree.bitfield.updates.length
+  var missing = this.bitfield.updates.length
   var next = null
   var error = null
 
@@ -766,11 +764,7 @@ Feed.prototype._syncBitfield = function (cb) {
   // truncated and not have missing chunks which is what you expect.
 
   while ((next = this.bitfield.nextUpdate()) !== null) {
-    this._storage.dataBitfield.write(next.offset, next.buffer, ondone)
-  }
-
-  while ((next = this.tree.bitfield.nextUpdate()) !== null) {
-    this._storage.treeBitfield.write(next.offset, next.buffer, ondone)
+    this._storage.bitfield.write(next.offset, next.buffer, ondone)
   }
 
   this._pollWaiting()
@@ -813,22 +807,13 @@ function addSize (size, node) {
   return size + node.size
 }
 
-function bitfieldLength (buf) {
-  if (!buf.length) return 0
+function trimLength (bitfield) {
+  if (!bitfield.length) return 0
 
-  var max = buf.length - 1
-  while (max && !buf[max]) max--
+  var len = bitfield.length
+  while (len && !bitfield.get(len - 1)) len--
 
-  var b = buf[max]
-  if (!b) return max * 8
-
-  var length = (max + 1) * 8
-
-  while (true) {
-    if (b & 1) return length
-    b >>= 1
-    length--
-  }
+  return len
 }
 
 function isBlock (index) {
