@@ -42,7 +42,7 @@ Alternatively you can pass a function instead that is called with every filename
 ``` js
 var ram = require('random-access-memory')
 var feed = hypercore(function (filename) {
-  // filename will be one of: data, data.bitfield, tree, tree.bitfield, key, secret.key
+  // filename will be one of: data, bitfield, tree, signatures, key, secret_key
   // the data file will contain all your data concattenated.
 
   // just store all files in ram by returning a random-access-memory instance
