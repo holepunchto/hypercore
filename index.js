@@ -749,7 +749,7 @@ Feed.prototype._pollWaiting = function () {
 }
 
 Feed.prototype._syncBitfield = function (cb) {
-  var missing = this.bitfield.updates.length
+  var missing = this.bitfield.pages.updates.length
   var next = null
   var error = null
 
@@ -768,7 +768,7 @@ Feed.prototype._syncBitfield = function (cb) {
     return cb(null)
   }
 
-  while ((next = this.bitfield.nextUpdate()) !== null) {
+  while ((next = this.bitfield.pages.lastUpdate()) !== null) {
     this._storage.bitfield.write(next.offset, next.buffer, ondone)
   }
 
