@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "random-access-memory": "^2.2.0",
+    "shuffle-array": "^1.0.1",
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",
     "stream-collector": "^1.0.1",
