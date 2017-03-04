@@ -5,19 +5,15 @@ var source = hypercore(path.join(__dirname, 'cores/64kb'))
 
 source.ready(function () {
   var dest = hypercore(path.join(__dirname, 'cores/64kb-copy'), source.key, {overwrite: true})
+  var then = Date.now()
 
-  replicate(source, dest)
-
-  dest.get(0, function () {
-    var then = Date.now()
-    dest.download(function () {
-      console.log(Math.floor(1000 * dest.byteLength / (Date.now() - then)) + ' bytes/s')
-      console.log(Math.floor(1000 * dest.length / (Date.now() - then)) + ' blocks/s')
-    })
+  replicate(source, dest).on('end', function () {
+    console.log(Math.floor(1000 * dest.byteLength / (Date.now() - then)) + ' bytes/s')
+    console.log(Math.floor(1000 * dest.length / (Date.now() - then)) + ' blocks/s')
   })
 })
 
 function replicate (a, b) {
   var s = a.replicate()
-  s.pipe(b.replicate()).pipe(s)
+  return s.pipe(b.replicate()).pipe(s)
 }

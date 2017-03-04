@@ -1,6 +1,7 @@
 var equals = require('buffer-equals')
 var low = require('last-one-wins')
 var remove = require('unordered-array-remove')
+var set = require('unordered-set')
 var merkle = require('merkle-tree-stream/generator')
 var flat = require('flat-tree')
 var bulk = require('bulk-write-stream')
@@ -13,6 +14,7 @@ var inherits = require('inherits')
 var events = require('events')
 var raf = require('random-access-file')
 var bitfield = require('./lib/bitfield')
+var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var hash = require('./lib/hash')
@@ -40,6 +42,7 @@ function Feed (createStorage, key, opts) {
 
   this.id = opts.id || hash.randomBytes(32)
   this.live = opts.live !== false
+  this.sparse = !!opts.sparse
   this.length = 0
   this.byteLength = 0
   this.key = key || null
@@ -50,6 +53,7 @@ function Feed (createStorage, key, opts) {
   this.writable = false
   this.readable = true
   this.opened = false
+  this.peers = []
 
   this._ready = thunky(open) // TODO: if open fails, do not reopen next time
   this._indexing = !!opts.indexing
@@ -58,15 +62,15 @@ function Feed (createStorage, key, opts) {
   this._merkle = null
   this._storage = storage(createStorage)
   this._batch = batcher(work)
+
   this._waiting = []
+  this._selections = []
+  this._reserved = sparseBitfield()
 
   // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
   this._codec = codecs(opts.valueEncoding === 'json' ? 'ndjson' : opts.valueEncoding)
   this._sync = low(sync)
-
-  // for replication
-  this._selection = []
-  this._peers = []
+  if (!this.sparse) this.download({start: 0, end: -1})
 
   // open it right away. TODO: do not reopen (i.e, set a flag not to retry)
   this._ready(onerror)
@@ -90,10 +94,10 @@ function Feed (createStorage, key, opts) {
 
 inherits(Feed, events.EventEmitter)
 
-Feed.prototype.replicate = function () {
+Feed.prototype.replicate = function (opts) {
   // Lazy load replication deps
   if (!replicate) replicate = require('./lib/replicate')
-  return replicate(this)
+  return replicate(this, opts || {})
 }
 
 Feed.prototype.ready = function (onready) {
@@ -195,31 +199,47 @@ Feed.prototype._open = function (cb) {
   }
 }
 
-Feed.prototype.download = function (index, cb) {
-  if (typeof index === 'function') return this.download(null, index)
+Feed.prototype.download = function (range, cb) {
+  if (typeof range === 'function') return this.download(null, range)
+  if (typeof range === 'number') range = {start: range, end: range + 1}
+  if (!range) range = {}
 
-  if (!index && typeof index !== 'number') {
-    index = []
-    while (index.length < this.length) index.push(index.length)
-    require('shuffle-array')(index)
+  var sel = {
+    _index: this._selections.length,
+    hash: !!range.hash,
+    iterator: null,
+    start: range.start || 0,
+    end: range.end || -1,
+    linear: !!range.linear,
+    callback: cb || noop
   }
 
-  if (!Array.isArray(index)) index = [index]
-
-  this._selection.push({
-    blocks: index,
-    ptr: 0,
-    downloaded: 0,
-    callback: cb
-  })
-
+  this._selections.push(sel)
   this._updatePeers()
+
+  return sel
 }
 
-Feed.prototype.undownload = function (index, cb) {
-  for (var i = 0; i < this._selection.length; i++) {
-    if (this._selection[i].index === index) {
-      this._selection.splice(i, 1)
+Feed.prototype.undownload = function (range) {
+  if (typeof range === 'number') range = {start: range, end: range + 1}
+  if (!range) range = {}
+
+  if (range.callback && range._index > -1) {
+    set.remove(this._selections, range)
+    range.callback(new Error('Download was cancelled'))
+    return
+  }
+
+  var start = range.start || 0
+  var end = range.end || -1
+  var hash = !!range.hash
+  var linear = !!range.linear
+
+  for (var i = 0; i < this._selections.length; i++) {
+    var s = this._selections[i]
+
+    if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
+      this._selections.splice(i, 1)
       return
     }
   }
@@ -291,16 +311,40 @@ Feed.prototype.seek = function (bytes, opts, cb) {
   var self = this
 
   this._seek(bytes, function (err, index, offset) {
-    if (!err && isBlock(index)) return cb(null, index / 2, offset)
+    if (!err && isBlock(index)) return done(index / 2, offset)
+    if (opts.wait === false) return cb(err || new Error('Unable to seek to this offset'))
+
+    var start = opts.start || 0
+    var end = opts.end || -1
+
+    if (!err) {
+      var left = flat.leftSpan(index) / 2
+      var right = flat.rightSpan(index) / 2 + 1
+
+      if (left > start) start = left
+      if (right < end || end === -1) end = right
+    }
+
+    if (end > -1 && end <= start) return cb(new Error('Unable to seek to this offset'))
 
     self._waiting.push({
+      hash: opts.hash !== false,
       bytes: bytes,
       index: -1,
-      callback: cb
+      start: start,
+      end: end,
+      callback: cb || noop
     })
 
     self._updatePeers()
   })
+
+  function done (index, offset) {
+    for (var i = 0; i < self.peers.length; i++) {
+      self.peers[i].haveBytes(bytes)
+    }
+    cb(null, index, offset)
+  }
 }
 
 Feed.prototype._seek = function (offset, cb) {
@@ -358,6 +402,10 @@ Feed.prototype._readyAndSeek = function (bytes, opts, cb) {
     if (err) return cb(err)
     self.seek(bytes, opts, cb)
   })
+}
+
+Feed.prototype._getBuffer = function (index, cb) {
+  this._storage.getData(index, cb)
 }
 
 Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
@@ -434,7 +482,8 @@ Feed.prototype._write = function (index, data, nodes, sig, from, cb) {
   var error = null
 
   for (var i = 0; i < nodes.length; i++) this._storage.putNode(nodes[i].index, nodes[i], ondone)
-  this._storage.putData(index, data, nodes, ondone)
+  if (data) this._storage.putData(index, data, nodes, ondone)
+  else ondone()
   if (sig) this._storage.putSignature(sig.index, sig.signature, ondone)
 
   function ondone (err) {
@@ -449,16 +498,18 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
   for (var i = 0; i < nodes.length; i++) this.tree.set(nodes[i].index)
   this.tree.set(2 * index)
 
-  if (this.bitfield.set(index, true)) this.emit('download', index, data, nodes)
-  if (this._peers.length) this._announce({start: index}, from)
+  if (data) {
+    if (this.bitfield.set(index, true)) this.emit('download', index, data, from)
+    if (this.peers.length) this._announce({start: index}, from)
+  }
 
   this._sync(null, cb)
 }
 
 Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trustedNode, from, cb) {
-  var top = new storage.Node(2 * index, hash.data(data), data.length)
   var visited = []
   var remoteNodes = proof.nodes
+  var top = data ? new storage.Node(2 * index, hash.data(data), data.length) : remoteNodes.shift()
 
   // check if we already have the hash for this node
   if (verifyNode(trustedNode, top)) {
@@ -560,8 +611,8 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
 }
 
 Feed.prototype._announce = function (message, from) {
-  for (var i = 0; i < this._peers.length; i++) {
-    var peer = this._peers[i]
+  for (var i = 0; i < this.peers.length; i++) {
+    var peer = this.peers[i]
     if (peer !== from) peer.have(message)
   }
 }
@@ -576,16 +627,16 @@ Feed.prototype.get = function (index, opts, cb) {
 
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
-  if (!this.has(index)) {
+  if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    this._waiting.push({bytes: -1, index: index, callback: cb})
+    this._waiting.push({bytes: 0, hash: false, index: index, callback: cb})
     this._updatePeers()
     return
   }
 
   if (this._codec !== codecs.binary) cb = this._wrapCodec(cb)
-  this._storage.getData(index, cb)
+  this._getBuffer(index, cb)
 }
 
 Feed.prototype._readyAndGet = function (index, opts, cb) {
@@ -597,7 +648,7 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
 }
 
 Feed.prototype._updatePeers = function () {
-  for (var i = 0; i < this._peers.length; i++) this._peers[i].update()
+  for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
 }
 
 Feed.prototype._wrapCodec = function (cb) {
@@ -723,8 +774,8 @@ Feed.prototype._append = function (batch, cb) {
     }
     self.emit('append')
 
-    var message = self.length - start > 1 ? {start: start, end: self.length} : {start: start}
-    if (self._peers.length) self._announce(message)
+    var message = self.length - start > 1 ? {start: start, length: self.length - start} : {start: start}
+    if (self.peers.length) self._announce(message)
 
     self._sync(null, cb)
   }
@@ -739,12 +790,16 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
 }
 
 Feed.prototype._pollWaiting = function () {
-  for (var i = 0; i < this._waiting.length; i++) {
+  var len = this._waiting.length
+  for (var i = 0; i < len; i++) {
     var next = this._waiting[i]
-    if (next.bytes === -1 && !this.has(next.index)) continue
+    if (!next.bytes && !this.bitfield.get(next.index)) continue
+
     remove(this._waiting, i--)
-    if (next.bytes === -1) this.get(next.index, next.callback)
-    else this.seek(next.bytes, next.callback)
+    len--
+
+    if (next.bytes) this.seek(next.bytes, next, next.callback)
+    else this.get(next.index, next.callback)
   }
 }
 
