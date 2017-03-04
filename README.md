@@ -9,6 +9,8 @@ Built for sharing large datasets and streams of real time data as part of the [D
 npm install hypercore@next-next
 ```
 
+![travis](https://travis-ci.org/mafintosh/hypercore.svg?branch=master)
+
 To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datproject/docs/blob/master/papers/dat-paper.pdf).
 
 ## Usage
