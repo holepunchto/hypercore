@@ -18,7 +18,6 @@
     "merkle-tree-stream": "^3.0.3",
     "protocol-buffers": "^3.2.1",
     "random-access-file": "^1.5.0",
-    "shuffle-array": "^1.0.0",
     "sodium-native": "^1.6.0",
     "sodium-signatures": "^2.0.0",
     "sparse-bitfield": "^3.0.0",
