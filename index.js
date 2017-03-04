@@ -173,7 +173,7 @@ Feed.prototype._open = function (cb) {
       if (self.secretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) { // TODO: support storage.resize for this instead
-        self._storage.bitfield.write(0, state.bitfield, done)
+        self._storage.putBitfield(0, state.bitfield, done)
       }
 
       done(null)
@@ -824,7 +824,7 @@ Feed.prototype._syncBitfield = function (cb) {
   }
 
   while ((next = this.bitfield.pages.lastUpdate()) !== null) {
-    this._storage.bitfield.write(next.offset, next.buffer, ondone)
+    this._storage.putBitfield(next.offset, next.buffer, ondone)
   }
 
   this._pollWaiting()
