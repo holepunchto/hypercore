@@ -61,7 +61,8 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
 {
   createIfMissing: true, // create a new hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old hypercore that might already exist
-  valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to binary
+  valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
+  sparse: false // do not mark the entire feed to be downloaded
 }
 ```
 
@@ -116,11 +117,25 @@ Options include
 
 Callback is called with `(err, data)`
 
-#### `feed.download(indexes, [callback])`
+#### `feed.download([range], [callback])`
 
-Download an array of indexes but do not read them out. Callback is called when all data has been downloaded.
+Download a range of data. Callback is called when all data has been downloaded.
+A range can have the following properties:
 
-#### `feed.undownload(indexes)`
+``` js
+{
+  start: startIndex,
+  end: nonInclusiveEndIndex,
+  linear: false // download range linearly and not randomly
+}
+```
+
+If you do not mark a range the entire feed will be marked for download.
+
+If you have not enabled sparse mode (`sparse: true` in the feed constructor) then the entire
+feed will be marked for download for you when the feed is created.
+
+#### `feed.undownload(range)`
 
 Cancel a previous download request.
 
@@ -184,7 +199,8 @@ Options include:
 
 ``` js
 {
-  live: false // keep replicating after all remote data has been downloaded?
+  live: false, // keep replicating after all remote data has been downloaded?
+  encrypt: true // encrypt the data sent using the hypercore key pair.
 }
 ```
 
