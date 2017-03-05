@@ -174,8 +174,8 @@ Options include:
 {
   start: 0, // read from this index
   end: feed.length, // read until this index
-  snapshot: true, // if set to false it will update end to feed.length on every read
-  tail: false, // sets start to feed.length
+  snapshot: true, // if set to false it will update `end` to `feed.length` on every read
+  tail: false, // sets `start` to `feed.length`
   live: false, // set to true to keep reading forever
   timeout: 0, // timeout for each data event (0 means no timeout)
   wait: true // wait for data to be downloaded
