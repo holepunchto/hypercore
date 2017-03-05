@@ -676,8 +676,9 @@ Feed.prototype.createReadStream = function (opts) {
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
   var first = true
+  var range = this.download({start: start, end: end, linear: true})
 
-  return from.obj(read)
+  return from.obj(read).on('end', cleanup).on('close', cleanup)
 
   function read (size, cb) {
     if (!self.opened) return open(size, cb)
@@ -690,6 +691,12 @@ Feed.prototype.createReadStream = function (opts) {
 
     if (start === end) return cb(null, null)
     self.get(start++, opts, cb)
+  }
+
+  function cleanup () {
+    if (!range) return
+    self.undownload(range)
+    range = null
   }
 
   function open (size, cb) {
