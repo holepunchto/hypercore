@@ -676,6 +676,7 @@ Feed.prototype.createReadStream = function (opts) {
   var start = opts.start || 0
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
+  var snapshot = opts.snapshot !== false
   var first = true
   var range = this.download({start: start, end: end, linear: true})
 
@@ -685,12 +686,12 @@ Feed.prototype.createReadStream = function (opts) {
     if (!self.opened) return open(size, cb)
 
     if (first) {
-      if (end === -1) end = live ? Infinity : self.length
+      if (end === -1 && snapshot) end = live ? Infinity : self.length
       if (opts.tail) start = self.length
       first = false
     }
 
-    if (start === end) return cb(null, null)
+    if (start === end || (end === -1 && start === self.length)) return cb(null, null)
     self.get(start++, opts, cb)
   }
 
