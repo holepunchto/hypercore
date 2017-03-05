@@ -45,6 +45,7 @@ function Feed (createStorage, key, opts) {
   this.sparse = !!opts.sparse
   this.length = 0
   this.byteLength = 0
+  this.maxRequests = opts.maxRequests || 16
   this.key = key || null
   this.discoveryKey = this.key && hash.discoveryKey(this.key)
   this.secretKey = null
