@@ -51,7 +51,7 @@ function Feed (createStorage, key, opts) {
   this.secretKey = null
   this.bitfield = null
   this.tree = null
-  this.writable = false
+  this.writable = !!opts.writable
   this.readable = true
   this.opened = false
   this.peers = []
@@ -164,7 +164,10 @@ Feed.prototype._open = function (cb) {
         self.key = keyPair.publicKey
       }
 
-      self.writable = !!self.secretKey || self.key === null
+      var writable = !!self.secretKey || self.key === null
+
+      if (!writable && self.writable) return cb(new Error('Feed is not writable'))
+      self.writable = writable
       self.discoveryKey = self.key && hash.discoveryKey(self.key)
 
       var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
