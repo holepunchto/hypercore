@@ -75,38 +75,42 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
 
-#### `feed.ready(onready)`
-
-Wait for the feed to be ready.
-After it is ready all feed are populated.
-The feed will also emit `ready` when it is ready.
-
-If the feed has already emitted `ready`, the `onready` function will be called right away.
-
 #### `feed.writable`
 
 Can we append to this feed?
+
+Populated after `ready` has been emitted. Will be `false` before the event.
 
 #### `feed.readable`
 
 Can we read from this feed? After closing a feed this will be false.
 
+Populated after `ready` has been emitted. Will be `false` before the event.
+
 #### `feed.key`
 
 Buffer containing the public key identifying this feed.
+
+Populated after `ready` has been emitted. Will be `null` before the event.
 
 #### `feed.discoveryKey`
 
 Buffer containing a key derived from the feed.key.
 In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
 
+Populated after `ready` has been emitted. Will be `null` before the event.
+
 #### `feed.length`
 
 How many blocks of data are available on this feed?
 
+Populated after `ready` has been emitted. Will be `0` before the event.
+
 #### `feed.byteLength`
 
 How much data is available on this feed in bytes?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `feed.get(index, [options], callback)`
 
