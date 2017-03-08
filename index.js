@@ -634,7 +634,7 @@ Feed.prototype.get = function (index, opts, cb) {
   if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    this._waiting.push({bytes: 0, hash: false, index: index, callback: cb})
+    this._waiting.push({bytes: 0, hash: false, index: index, options: opts, callback: cb})
     this._updatePeers()
     return
   }
@@ -805,7 +805,7 @@ Feed.prototype._pollWaiting = function () {
     len--
 
     if (next.bytes) this.seek(next.bytes, next, next.callback)
-    else this.get(next.index, next.callback)
+    else this.get(next.index, next.options, next.callback)
   }
 }
 
