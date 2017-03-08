@@ -283,6 +283,31 @@ tape('seek while replicating', function (t) {
   })
 })
 
+tape('non spare live replication', function (t) {
+  var feed = create()
+
+  feed.on('ready', function () {
+    feed.append(['a', 'b', 'c'], function () {
+      var clone = create(feed.key)
+
+      clone.get(0, function () {
+        clone.get(1, function () {
+          clone.get(2, function () {
+            clone.once('download', function () {
+              t.pass('downloaded new block')
+              t.end()
+            })
+
+            feed.append('a')
+          })
+        })
+      })
+
+      replicate(feed, clone, {live: true})
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
