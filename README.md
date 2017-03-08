@@ -122,7 +122,8 @@ Options include
 ``` js
 {
   wait: true, // wait for index to be downloaded
-  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+  timeout: 0, // wait at max some milliseconds (0 means no timeout)
+  valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the feed's valueEncoding
 }
 ```
 

@@ -639,7 +639,9 @@ Feed.prototype.get = function (index, opts, cb) {
     return
   }
 
-  if (this._codec !== codecs.binary) cb = this._wrapCodec(cb)
+  if (opts && opts.valueEncoding) cb = wrapCodec(opts.valueEncoding, cb)
+  else if (this._codec !== codecs.binary) cb = wrapCodec(this._codec, cb)
+
   this._getBuffer(index, cb)
 }
 
@@ -653,14 +655,6 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
 
 Feed.prototype._updatePeers = function () {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
-}
-
-Feed.prototype._wrapCodec = function (cb) {
-  var self = this
-  return function (err, buf) {
-    if (err) return cb(err)
-    cb(null, self._codec.decode(buf))
-  }
 }
 
 Feed.prototype.createWriteStream = function () {
@@ -895,6 +889,13 @@ function isBlock (index) {
 function defaultStorage (dir) {
   return function (name) {
     return raf(name, {directory: dir})
+  }
+}
+
+function wrapCodec (enc, cb) {
+  return function (err, buf) {
+    if (err) return cb(err)
+    cb(null, enc.decode(buf))
   }
 }
 
