@@ -127,19 +127,7 @@ Feed.prototype._open = function (cb) {
 
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
-
-    var len = trimLength(self.bitfield.tree)
-    if (len) {
-      // last node should be a factor of 2 (leaf node)
-      // if not, last write wasn't flushed completely and we need to find the
-      // last written leaf
-      if ((len & 1) === 0) {
-        len--
-        while (len > 0 && !self.tree.bitfield.get(len - 1)) len -= 2
-      }
-
-      if (len > 0) self.length = (len + 1) / 2
-    }
+    self.length = self.tree.blocks()
 
     if (state.key && self.key && !equals(state.key, self.key)) {
       return cb(new Error('Another hypercore is stored here'))
@@ -874,15 +862,6 @@ function verifyNode (trusted, node) {
 
 function addSize (size, node) {
   return size + node.size
-}
-
-function trimLength (bitfield) {
-  if (!bitfield.length) return 0
-
-  var len = bitfield.length
-  while (len && !bitfield.get(len - 1)) len--
-
-  return len
 }
 
 function isBlock (index) {
