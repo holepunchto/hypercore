@@ -231,7 +231,7 @@ Feed.prototype.undownload = function (range) {
     var s = this._selections[i]
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
-      this._selections.splice(i, 1)
+      set.remove(this._selections, s)
       return
     }
   }
