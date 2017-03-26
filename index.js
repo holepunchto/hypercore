@@ -411,7 +411,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
   var trusted = -1
   var missing = []
   var next = 2 * index
-  var i = 0
+  var i = data ? 0 : 1
 
   while (true) {
     if (this.tree.get(next)) {
