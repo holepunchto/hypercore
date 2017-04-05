@@ -69,7 +69,8 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   createIfMissing: true, // create a new hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old hypercore that might already exist
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
-  sparse: false // do not mark the entire feed to be downloaded
+  sparse: false, // do not mark the entire feed to be downloaded
+  secretKey: buffer // optionally pass the corresponding secret key yourself. will make hypercore not store it.
 }
 ```
 

@@ -40,6 +40,9 @@ function Feed (createStorage, key, opts) {
 
   var self = this
 
+  var secretKey = opts.secretKey || null
+  if (typeof secretKey === 'string') secretKey = new Buffer(secretKey, 'hex')
+
   this.id = opts.id || hash.randomBytes(32)
   this.live = opts.live !== false
   this.sparse = !!opts.sparse
@@ -48,7 +51,7 @@ function Feed (createStorage, key, opts) {
   this.maxRequests = opts.maxRequests || 16
   this.key = key || null
   this.discoveryKey = this.key && hash.discoveryKey(this.key)
-  this.secretKey = null
+  this.secretKey = secretKey
   this.bitfield = null
   this.tree = null
   this.writable = !!opts.writable
@@ -125,6 +128,9 @@ Feed.prototype._open = function (cb) {
       state.key = state.secretKey = null
     }
 
+    // do not store a secret key that is passed to us
+    var storeSecretKey = !self.secretKey
+
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
@@ -158,11 +164,13 @@ Feed.prototype._open = function (cb) {
       self.writable = writable
       self.discoveryKey = self.key && hash.discoveryKey(self.key)
 
-      var missing = 1 + (self.key ? 1 : 0) + (self.secretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
+      if (storeSecretKey && !self.secretKey) storeSecretKey = false
+
+      var missing = 1 + (self.key ? 1 : 0) + (storeSecretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
       var error = null
 
       if (self.key) self._storage.key.write(0, self.key, done)
-      if (self.secretKey) self._storage.secretKey.write(0, self.secretKey, done)
+      if (storeSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) { // TODO: support storage.resize for this instead
         self._storage.putBitfield(0, state.bitfield, done)
