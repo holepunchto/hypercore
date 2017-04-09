@@ -1,5 +1,5 @@
 var create = require('./helpers/create')
-var sodium = require('sodium-native')
+var sodium = require('sodium-universal')
 var tape = require('tape')
 
 tape('append', function (t) {
