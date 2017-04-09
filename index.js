@@ -110,6 +110,28 @@ Feed.prototype.ready = function (onready) {
   })
 }
 
+Feed.prototype.update = function (len, cb) {
+  if (typeof len === 'function') return this.update(-1, len)
+  if (typeof len !== 'number') len = -1
+  if (!cb) cb = noop
+
+  var self = this
+
+  this.ready(function (err) {
+    if (err) return cb(err)
+    if (len === -1) len = self.length + 1
+    if (self.length >= len) return cb(null)
+
+    self._waiting.push({
+      hash: true,
+      bytes: 0,
+      index: len - 1,
+      update: true,
+      callback: cb
+    })
+  })
+}
+
 Feed.prototype._open = function (cb) {
   var self = this
 
@@ -804,6 +826,7 @@ Feed.prototype._pollWaiting = function () {
     len--
 
     if (next.bytes) this.seek(next.bytes, next, next.callback)
+    else if (next.update) this.update(next.index + 1, next.callback)
     else this.get(next.index, next.options, next.callback)
   }
 }

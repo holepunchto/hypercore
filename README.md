@@ -170,6 +170,20 @@ Seek to a byte offset.
 Calls the callback with `(err, index, relativeOffset)`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
 the relative byte offset in the data block.
 
+#### `feed.update([minLength], [callback])`
+
+Wait for the feed to contain at least `minLength` elements.
+If you do not provide `minLength` it will be set to current length + 1.
+
+Does not download any data from peers except for a proof of the new feed length.
+
+``` js
+console.log('length is', feed.length)
+feed.update(function () {
+  console.log('length has increased', feed.length)
+})
+```
+
 #### `var stream = feed.createReadStream([options])`
 
 Create a readable stream of data.

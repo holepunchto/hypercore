@@ -308,6 +308,24 @@ tape('non spare live replication', function (t) {
   })
 })
 
+tape('can wait for updates', function (t) {
+  var feed = create()
+
+  feed.on('ready', function () {
+    var clone = create(feed.key)
+
+    clone.update(function (err) {
+      t.error(err, 'no error')
+      t.same(clone.length, 3)
+      t.end()
+    })
+
+    replicate(feed, clone, {live: true}).on('handshake', function () {
+      feed.append(['a', 'b', 'c'])
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
