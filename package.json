@@ -12,7 +12,7 @@
     "codecs": "^1.2.0",
     "flat-tree": "^1.6.0",
     "from2": "^2.3.0",
-    "hypercore-protocol": "^6.1.0",
+    "hypercore-protocol": "^6.3.0",
     "inherits": "^2.0.3",
     "last-one-wins": "^1.0.4",
     "memory-pager": "^1.0.2",
