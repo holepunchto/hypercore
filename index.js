@@ -22,6 +22,8 @@ var replicate = null
 
 module.exports = Feed
 
+Feed.discoveryKey = hash.discoveryKey
+
 function Feed (createStorage, key, opts) {
   if (!(this instanceof Feed)) return new Feed(createStorage, key, opts)
   events.EventEmitter.call(this)
