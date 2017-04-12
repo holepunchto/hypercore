@@ -63,6 +63,7 @@ function Feed (createStorage, key, opts) {
   this._indexing = !!opts.indexing
   this._createIfMissing = opts.createIfMissing !== false
   this._overwrite = !!opts.overwrite
+  this._storeSecretKey = opts.storeSecretKey !== false
   this._merkle = null
   this._storage = storage(createStorage)
   this._batch = batcher(work)
@@ -152,9 +153,6 @@ Feed.prototype._open = function (cb) {
       state.key = state.secretKey = null
     }
 
-    // do not store a secret key that is passed to us
-    var storeSecretKey = !self.secretKey
-
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
@@ -188,13 +186,15 @@ Feed.prototype._open = function (cb) {
       self.writable = writable
       self.discoveryKey = self.key && hash.discoveryKey(self.key)
 
-      if (storeSecretKey && !self.secretKey) storeSecretKey = false
+      if (this._storeSecretKey && !self.secretKey) {
+        this._storeSecretKey = false
+      }
 
-      var missing = 1 + (self.key ? 1 : 0) + (storeSecretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
+      var missing = 1 + (self.key ? 1 : 0) + (this._storeSecretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
       var error = null
 
       if (self.key) self._storage.key.write(0, self.key, done)
-      if (storeSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
+      if (this._storeSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) { // TODO: support storage.resize for this instead
         self._storage.putBitfield(0, state.bitfield, done)
