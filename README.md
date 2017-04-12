@@ -164,6 +164,13 @@ Append a block of data to the feed.
 
 Callback is called with `(err)` when all data has been written or an error occured.
 
+#### `feed.clear(start, [end], [callback])`
+
+Clear a range of data from the local cache.
+Will clear the data from the bitfield and make a call to the underlying storage provider to delete the byte range the range occupies.
+
+`end` defaults to `start + 1`.
+
 #### `feed.seek(byteOffset, callback)`
 
 Seek to a byte offset.

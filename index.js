@@ -327,6 +327,47 @@ Feed.prototype.put = function (index, data, proof, cb) {
   this._putBuffer(index, this._codec.encode(data), proof, null, cb)
 }
 
+Feed.prototype.clear = function (start, end, cb) {
+  if (typeof end === 'function') return this.clear(start, start + 1, end)
+  if (!cb) cb = noop
+  if (!end) end = start + 1
+
+  var self = this
+
+  this._ready(function (err) {
+    if (err) return cb(err)
+
+    // TODO: use a buffer.fill thing here to speed this up!
+    for (var i = start; i < end; i++) {
+      self.bitfield.set(i, false)
+    }
+
+    // TODO: use the bitfield index for this instead
+    while (start && !self.has(start - 1)) start--
+    while (end < self.length && !self.has(end)) end++
+
+    // TODO: send unhaves
+    self._sync(null, onsync)
+
+    function onsync (err) {
+      if (err) return cb(err)
+      self._storage.dataOffset(start, [], onstartbytes)
+    }
+
+    function onstartbytes (err, startBytes) {
+      if (err) return cb(err)
+      if (end === self.length) return onendbytes(null, self.byteLength)
+      self._storage.dataOffset(end, [], onendbytes)
+
+      function onendbytes (err, endBytes) {
+        if (err) return cb(err)
+        if (!self._storage.data.del) return cb(null) // Not all data storage impls del
+        self._storage.data.del(startBytes, endBytes, cb)
+      }
+    }
+  })
+}
+
 Feed.prototype.seek = function (bytes, opts, cb) {
   if (typeof opts === 'function') return this.seek(bytes, null, opts)
   if (!opts) opts = {}
