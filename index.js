@@ -362,7 +362,7 @@ Feed.prototype.clear = function (start, end, cb) {
       function onendbytes (err, endBytes) {
         if (err) return cb(err)
         if (!self._storage.data.del) return cb(null) // Not all data storage impls del
-        self._storage.data.del(startBytes, endBytes, cb)
+        self._storage.data.del(startBytes, endBytes - startBytes, cb)
       }
     }
   })
