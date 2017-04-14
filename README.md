@@ -266,6 +266,10 @@ Emitted when a data block is uploaded.
 
 Emitted when the feed has been appended to (i.e. has a new length / byteLength)
 
+#### `feed.on('sync')`
+
+Emitted everytime ALL data from `0` to `feed.length` has been downloaded.
+
 #### `feed.on('close')`
 
 Emitted when the feed has been fully closed

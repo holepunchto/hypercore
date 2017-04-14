@@ -71,6 +71,7 @@ function Feed (createStorage, key, opts) {
   this._waiting = []
   this._selections = []
   this._reserved = sparseBitfield()
+  this._synced = null
 
   // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
   this._codec = codecs(opts.valueEncoding === 'json' ? 'ndjson' : opts.valueEncoding)
@@ -156,6 +157,7 @@ Feed.prototype._open = function (cb) {
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
+    this._synced = null
 
     if (state.key && self.key && !equals(state.key, self.key)) {
       return cb(new Error('Another hypercore is stored here'))
@@ -566,6 +568,16 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
   if (data) {
     if (this.bitfield.set(index, true)) this.emit('download', index, data, from)
     if (this.peers.length) this._announce({start: index}, from)
+
+    if (!this.writable) {
+      if (!this._synced) this._synced = this.bitfield.iterator(0, this.length)
+      if (this._synced.next() === -1) {
+        this._synced.seek(0, this.length)
+        if (this._synced.next() === -1) {
+          this.emit('sync')
+        }
+      }
+    }
   }
 
   this._sync(null, cb)
@@ -668,6 +680,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       // TODO: only emit this after the info has been flushed to storage
       self.length = length
       self.byteLength = roots.reduce(addSize, 0)
+      if (self._synced) self._synced.seek(0, self.length)
       self.emit('append')
     }
 
