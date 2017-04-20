@@ -326,6 +326,29 @@ tape('can wait for updates', function (t) {
   })
 })
 
+tape('replicate while clearing', function (t) {
+  var feed = create()
+
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true})
+
+    clone.get(1, function (err) {
+      t.error(err, 'no error')
+      feed.clear(2, function (err) {
+        t.error(err, 'no error')
+        clone.get(2, {timeout: 50}, function (err) {
+          t.ok(err, 'had timeout error')
+          t.end()
+        })
+      })
+    })
+
+    replicate(feed, clone, {live: true}).on('handshake', function () {
+      feed.append(['a', 'b', 'c'])
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')

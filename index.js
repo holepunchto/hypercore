@@ -348,7 +348,7 @@ Feed.prototype.clear = function (start, end, cb) {
     while (start && !self.has(start - 1)) start--
     while (end < self.length && !self.has(end)) end++
 
-    // TODO: send unhaves
+    self._unannounce({start: start, length: end - start})
     self._sync(null, onsync)
 
     function onsync (err) {
@@ -693,6 +693,10 @@ Feed.prototype._announce = function (message, from) {
     var peer = this.peers[i]
     if (peer !== from) peer.have(message)
   }
+}
+
+Feed.prototype._unannounce = function (message) {
+  for (var i = 0; i < this.peers.length; i++) this.peers[i].unhave(message)
 }
 
 Feed.prototype.has = function (index) {
