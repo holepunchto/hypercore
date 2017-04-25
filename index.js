@@ -73,8 +73,7 @@ function Feed (createStorage, key, opts) {
   this._reserved = sparseBitfield()
   this._synced = null
 
-  // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
-  this._codec = codecs(opts.valueEncoding === 'json' ? 'ndjson' : opts.valueEncoding)
+  this._codec = toCodec(opts.valueEncoding)
   this._sync = low(sync)
   if (!this.sparse) this.download({start: 0, end: -1})
 
@@ -717,7 +716,7 @@ Feed.prototype.get = function (index, opts, cb) {
     return
   }
 
-  if (opts && opts.valueEncoding) cb = wrapCodec(opts.valueEncoding, cb)
+  if (opts && opts.valueEncoding) cb = wrapCodec(toCodec(opts.valueEncoding), cb)
   else if (this._codec !== codecs.binary) cb = wrapCodec(this._codec, cb)
 
   this._getBuffer(index, cb)
@@ -963,6 +962,11 @@ function defaultStorage (dir) {
   return function (name) {
     return raf(name, {directory: dir})
   }
+}
+
+function toCodec (enc) {
+  // Switch to ndjson encoding if JSON is used. That way data files parse like ndjson \o/
+  return codecs(enc === 'json' ? 'ndjson' : enc)
 }
 
 function wrapCodec (enc, cb) {
