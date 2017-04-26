@@ -347,10 +347,6 @@ Feed.prototype.clear = function (start, end, cb) {
 
     if (!modified) return process.nextTick(cb)
 
-    // TODO: use the bitfield index for this instead
-    while (start && !self.has(start - 1)) start--
-    while (end < self.length && !self.has(end)) end++
-
     self._unannounce({start: start, length: end - start})
     self._sync(null, onsync)
 
