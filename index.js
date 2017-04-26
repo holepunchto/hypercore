@@ -338,10 +338,14 @@ Feed.prototype.clear = function (start, end, cb) {
   this._ready(function (err) {
     if (err) return cb(err)
 
+    var modified = false
+
     // TODO: use a buffer.fill thing here to speed this up!
     for (var i = start; i < end; i++) {
-      self.bitfield.set(i, false)
+      if (self.bitfield.set(i, false)) modified = true
     }
+
+    if (!modified) return process.nextTick(cb)
 
     // TODO: use the bitfield index for this instead
     while (start && !self.has(start - 1)) start--
