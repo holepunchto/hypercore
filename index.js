@@ -347,12 +347,13 @@ Feed.prototype.clear = function (start, end, cb) {
 
     if (!modified) return process.nextTick(cb)
 
-    self._unannounce({start: start, length: end - start})
-    self._sync(null, onsync)
+    // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 
-    function onsync (err) {
-      if (err) return cb(err)
-      self._storage.dataOffset(start, [], onstartbytes)
+    self._unannounce({start: start, length: end - start})
+    self._storage.dataOffset(start, [], onstartbytes)
+
+    function sync () {
+      self._sync(null, cb)
     }
 
     function onstartbytes (err, startBytes) {
@@ -362,8 +363,8 @@ Feed.prototype.clear = function (start, end, cb) {
 
       function onendbytes (err, endBytes) {
         if (err) return cb(err)
-        if (!self._storage.data.del) return cb(null) // Not all data storage impls del
-        self._storage.data.del(startBytes, endBytes - startBytes, cb)
+        if (!self._storage.data.del) return sync() // Not all data storage impls del
+        self._storage.data.del(startBytes, endBytes - startBytes, sync)
       }
     }
   })
