@@ -1,5 +1,5 @@
 var tape = require('tape')
-var hypercore = require('hypercore')
+var hypercore = require('../')
 var ram = require('random-access-memory')
 
 tape('deterministic data and tree', function (t) {
