@@ -328,12 +328,19 @@ Feed.prototype.put = function (index, data, proof, cb) {
   this._putBuffer(index, this._codec.encode(data), proof, null, cb)
 }
 
-Feed.prototype.clear = function (start, end, cb) {
-  if (typeof end === 'function') return this.clear(start, start + 1, end)
-  if (!cb) cb = noop
+Feed.prototype.clear = function (start, end, opts, cb) {
+  if (typeof end === 'function') return this.clear(start, start + 1, null, end)
+  if (typeof opts === 'function') return this.clear(start, end, null, opts)
+  if (!opts) opts = {}
   if (!end) end = start + 1
+  if (!cb) cb = noop
+
+  // TODO: this needs some work. fx we can only calc byte offset for blocks we know about
+  // so internally we should make sure to only do that. We should use the merkle tree for this
 
   var self = this
+  var byteOffset = start === 0 ? 0 : (typeof opts.byteOffset === 'number' ? opts.byteOffset : -1)
+  var byteLength = typeof opts.byteLength === 'number' ? opts.byteLength : -1
 
   this._ready(function (err) {
     if (err) return cb(err)
@@ -341,6 +348,7 @@ Feed.prototype.clear = function (start, end, cb) {
     var modified = false
 
     // TODO: use a buffer.fill thing here to speed this up!
+
     for (var i = start; i < end; i++) {
       if (self.bitfield.set(i, false)) modified = true
     }
@@ -350,22 +358,25 @@ Feed.prototype.clear = function (start, end, cb) {
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 
     self._unannounce({start: start, length: end - start})
+    if (opts.delete === false) return sync()
     self._storage.dataOffset(start, [], onstartbytes)
 
     function sync () {
       self._sync(null, cb)
     }
 
-    function onstartbytes (err, startBytes) {
+    function onstartbytes (err, offset) {
       if (err) return cb(err)
+      byteOffset = offset
+      if (byteLength > -1) return onendbytes(null, byteLength + byteOffset)
       if (end === self.length) return onendbytes(null, self.byteLength)
       self._storage.dataOffset(end, [], onendbytes)
+    }
 
-      function onendbytes (err, endBytes) {
-        if (err) return cb(err)
-        if (!self._storage.data.del) return sync() // Not all data storage impls del
-        self._storage.data.del(startBytes, endBytes - startBytes, sync)
-      }
+    function onendbytes (err, end) {
+      if (err) return cb(err)
+      if (!self._storage.data.del) return sync() // Not all data storage impls del
+      self._storage.data.del(byteOffset, end - byteOffset, sync)
     }
   })
 }
