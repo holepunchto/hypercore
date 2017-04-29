@@ -138,7 +138,20 @@ Feed.prototype.update = function (len, cb) {
 Feed.prototype._open = function (cb) {
   var self = this
 
-  this._storage.open(onopen)
+  // TODO: clean up the duplicate code below ...
+
+  this._storage.openKey(function (_, key) {
+    if (key && !self._overwrite) self.key = key
+
+    if (!self.key && self.live) {
+      var keyPair = signatures.keyPair()
+      self.secretKey = keyPair.secretKey
+      self.key = keyPair.publicKey
+    }
+
+    self.discoveryKey = self.key && hash.discoveryKey(self.key)
+    self._storage.open({key: self.key, discoveryKey: self.discoveryKey}, onopen)
+  })
 
   function onopen (err, state) {
     if (err) return cb(err)
@@ -175,7 +188,7 @@ Feed.prototype._open = function (cb) {
         return cb(new Error('No hypercore is stored here'))
       }
 
-      if (!self.key && self.live) { // TODO: allow user to pass in keyPair
+      if (!self.key && self.live) {
         var keyPair = signatures.keyPair()
         self.secretKey = keyPair.secretKey
         self.key = keyPair.publicKey
