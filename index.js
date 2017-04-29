@@ -362,6 +362,7 @@ Feed.prototype.clear = function (start, end, opts, cb) {
     self._storage.dataOffset(start, [], onstartbytes)
 
     function sync () {
+      self.emit('clear', start, end)
       self._sync(null, cb)
     }
 
