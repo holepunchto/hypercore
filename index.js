@@ -358,7 +358,7 @@ Feed.prototype.clear = function (start, end, opts, cb) {
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 
     self._unannounce({start: start, length: end - start})
-    if (opts.delete === false) return sync()
+    if (opts.delete === false || self._indexing) return sync()
     self._storage.dataOffset(start, [], onstartbytes)
 
     function sync () {
