@@ -372,6 +372,7 @@ Feed.prototype.clear = function (start, end, opts, cb) {
 
     self._unannounce({start: start, length: end - start})
     if (opts.delete === false || self._indexing) return sync()
+    if (byteOffset > -1) return onstartbytes(null, byteOffset)
     self._storage.dataOffset(start, [], onstartbytes)
 
     function sync () {
