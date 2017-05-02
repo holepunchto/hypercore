@@ -141,7 +141,7 @@ Feed.prototype._open = function (cb) {
   // TODO: clean up the duplicate code below ...
 
   this._storage.openKey(function (_, key) {
-    if (key && !self._overwrite) self.key = key
+    if (key && !self._overwrite && !self.key) self.key = key
 
     if (!self.key && self.live) {
       var keyPair = signatures.keyPair()

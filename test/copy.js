@@ -274,7 +274,9 @@ tape('chaos monkey randomized', function (t) {
   feed.ready(function () {
     clone1 = create(feed.key)
     clone2 = create(feed.key)
-    loop()
+    clone1.ready(function () {
+      clone2.ready(loop)
+    })
   })
 
   function loop () {
