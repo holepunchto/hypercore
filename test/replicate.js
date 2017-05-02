@@ -349,6 +349,60 @@ tape('replicate while clearing', function (t) {
   })
 })
 
+tape('replicate while cancelling', function (t) {
+  t.plan(2)
+
+  var feed = create()
+
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true})
+
+    clone.on('download', function () {
+      t.fail('should not download')
+    })
+
+    feed.on('upload', function () {
+      t.pass('should upload')
+      clone.cancel(0)
+    })
+
+    clone.get(0, function (err) {
+      t.ok(err, 'expected error')
+    })
+
+    feed.append(['a', 'b', 'c'])
+
+    replicate(feed, clone, {live: true})
+  })
+})
+
+tape('allow push', function (t) {
+  t.plan(3)
+
+  var feed = create()
+
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true, allowPush: true})
+
+    clone.on('download', function () {
+      t.pass('push allowed')
+    })
+
+    feed.on('upload', function () {
+      t.pass('should upload')
+      clone.cancel(0)
+    })
+
+    clone.get(0, function (err) {
+      t.ok(err, 'expected error')
+    })
+
+    feed.append(['a', 'b', 'c'])
+
+    replicate(feed, clone, {live: true})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
