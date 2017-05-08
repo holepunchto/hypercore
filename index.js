@@ -57,6 +57,7 @@ function Feed (createStorage, key, opts) {
   this.writable = !!opts.writable
   this.readable = true
   this.opened = false
+  this.allowPush = !!opts.allowPush
   this.peers = []
 
   this._ready = thunky(open) // TODO: if open fails, do not reopen next time
@@ -341,7 +342,39 @@ Feed.prototype.put = function (index, data, proof, cb) {
   this._putBuffer(index, this._codec.encode(data), proof, null, cb)
 }
 
-Feed.prototype.clear = function (start, end, opts, cb) {
+Feed.prototype.cancel = function (start, end) {  // TODO: use same argument scheme as download
+  if (!end) end = start + 1
+
+  // cancel these right away as .download does not wait for ready
+  for (var i = this._selections.length - 1; i >= 0; i--) {
+    var sel = this._selections[i]
+    if (start <= sel.start && sel.end <= end) {
+      this.undownload(sel)
+    }
+  }
+
+  // defer the last part until after ready as .get does that as well
+  if (this.opened) this._cancel(start, end)
+  else this._readyAndCancel(start, end)
+}
+
+Feed.prototype._cancel = function (start, end) {
+  var i = 0
+
+  for (i = start; i < end; i++) {
+    this._reserved.set(i, false) // TODO: send cancel message if set returns true
+  }
+
+  for (i = this._waiting.length - 1; i >= 0; i--) {
+    var w = this._waiting[i]
+    if ((start <= w.start && w.end <= end) || (start <= w.index && w.index < end)) {
+      remove(this._waiting, i)
+      if (w.callback) w.callback(new Error('Request cancelled'))
+    }
+  }
+}
+
+Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argument scheme as download
   if (typeof end === 'function') return this.clear(start, start + 1, null, end)
   if (typeof opts === 'function') return this.clear(start, end, null, opts)
   if (!opts) opts = {}
@@ -899,6 +932,13 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
   this._ready(function (err) {
     if (err) return cb(err)
     self._append(batch, cb)
+  })
+}
+
+Feed.prototype._readyAndCancel = function (start, end) {
+  var self = this
+  this.ready(function () {
+    self._cancel(start, end)
   })
 }
 
