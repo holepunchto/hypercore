@@ -31,7 +31,7 @@ function Feed (createStorage, key, opts) {
 
   if (typeof key === 'string') key = new Buffer(key, 'hex')
 
-  if (!Buffer.isBuffer(key)) {
+  if (!Buffer.isBuffer(key) && !opts) {
     opts = key
     key = null
   }
