@@ -631,7 +631,8 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
     if (!this.writable) {
       if (!this._synced) this._synced = this.bitfield.iterator(0, this.length)
       if (this._synced.next() === -1) {
-        this._synced.seek(0, this.length)
+        this._synced.range(0, this.length)
+        this._synced.seek(0)
         if (this._synced.next() === -1) {
           this.emit('sync')
         }
