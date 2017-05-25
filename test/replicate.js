@@ -20,6 +20,34 @@ tape('replicate', function (t) {
   })
 })
 
+tape('replicate twice', function (t) {
+  t.plan(20)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    clone.get(0, same(t, 'a'))
+    clone.get(1, same(t, 'b'))
+    clone.get(2, same(t, 'c'))
+    clone.get(3, same(t, 'd'))
+    clone.get(4, same(t, 'e'))
+
+    replicate(feed, clone).on('end', function () {
+      feed.append(['f', 'g', 'h', 'i', 'j'], function () {
+        replicate(feed, clone).on('end', function () {
+          clone.get(5, same(t, 'f'))
+          clone.get(6, same(t, 'g'))
+          clone.get(7, same(t, 'h'))
+          clone.get(8, same(t, 'i'))
+          clone.get(9, same(t, 'j'))
+        })
+      })
+    })
+  })
+})
+
 tape('replicate live', function (t) {
   t.plan(6)
 
