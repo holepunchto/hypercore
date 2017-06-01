@@ -431,6 +431,36 @@ tape('allow push', function (t) {
   })
 })
 
+tape('shared stream, non live', function (t) {
+  var a = create()
+  var b = create()
+
+  a.append(['a', 'b'], function () {
+    b.append(['c', 'd'], function () {
+      var a1 = create(a.key)
+      var b1 = create(b.key)
+
+      a1.ready(function () {
+        var s = a.replicate({expectedFeeds: 2})
+        b1.replicate({stream: s})
+
+        var s1 = a1.replicate({expectedFeeds: 2})
+        b.replicate({stream: s1})
+
+        s.pipe(s1).pipe(s)
+
+        s.on('end', function () {
+          t.ok(a1.has(0))
+          t.ok(a1.has(1))
+          t.ok(b1.has(0))
+          t.ok(b1.has(1))
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
