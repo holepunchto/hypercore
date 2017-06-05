@@ -116,3 +116,20 @@ tape('set and index (random)', function (t) {
     }
   }
 })
+
+tape('get total positive bits', function (t) {
+  var b = bitfield()
+
+  t.same(b.set(1, true), true)
+  t.same(b.set(2, true), true)
+  t.same(b.set(4, true), true)
+  t.same(b.set(5, true), true)
+  t.same(b.set(39, true), true)
+
+  t.same(b.total(0, 4), 2)
+  t.same(b.total(3, 4), 0)
+  t.same(b.total(3, 5), 1)
+  t.same(b.total(3, 40), 3)
+
+  t.end()
+})
