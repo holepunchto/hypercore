@@ -130,6 +130,8 @@ tape('get total positive bits', function (t) {
   t.same(b.total(3, 4), 0)
   t.same(b.total(3, 5), 1)
   t.same(b.total(3, 40), 3)
+  t.same(b.total(), 5)
+  t.same(b.total(7), 1)
 
   t.end()
 })
