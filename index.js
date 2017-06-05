@@ -765,6 +765,10 @@ Feed.prototype._unannounce = function (message) {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].unhave(message)
 }
 
+Feed.prototype.downloaded = function (start, end) {
+  return this.bitfield.total(start, end)
+}
+
 Feed.prototype.has = function (index) {
   return this.bitfield.get(index)
 }
