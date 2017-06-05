@@ -154,6 +154,12 @@ feed will be marked for download for you when the feed is created.
 
 Cancel a previous download request.
 
+#### `var number = feed.downloaded([start], [end])`
+
+Returns total number of downloaded blocks within range.
+If `end` is not specified it will default to the total number of blocks.
+If `start` is not specified it will default to 0.
+
 #### `var bool = feed.has(index)`
 
 Return true if a data block is available locally.
