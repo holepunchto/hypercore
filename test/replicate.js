@@ -461,6 +461,32 @@ tape('shared stream, non live', function (t) {
   })
 })
 
+tape('get total downloaded chunks', function (t) {
+  var feed = create()
+  feed.append(['a', 'b', 'c', 'e'])
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true})
+    clone.get(1, function (err) {
+      t.error(err, 'no error')
+      t.same(clone.downloaded(), 1)
+      t.same(clone.downloaded(0), 1)
+      t.same(clone.downloaded(2), 0)
+      t.same(clone.downloaded(0, 1), 0)
+      t.same(clone.downloaded(2, 4), 0)
+      clone.get(3, function (err) {
+        t.error(err, 'no error')
+        t.same(clone.downloaded(), 2)
+        t.same(clone.downloaded(0), 2)
+        t.same(clone.downloaded(2), 1)
+        t.same(clone.downloaded(0, 3), 1)
+        t.same(clone.downloaded(2, 4), 1)
+        t.end()
+      })
+    })
+    replicate(feed, clone, {live: true})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
