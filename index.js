@@ -769,8 +769,10 @@ Feed.prototype.downloaded = function (start, end) {
   return this.bitfield.total(start, end)
 }
 
-Feed.prototype.has = function (index) {
-  return this.bitfield.get(index)
+Feed.prototype.has = function (start, end) {
+  if (end === undefined) return this.bitfield.get(start)
+  var total = end - start
+  return total === this.bitfield.total(start, end)
 }
 
 Feed.prototype.get = function (index, opts, cb) {
