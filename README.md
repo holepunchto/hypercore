@@ -165,6 +165,10 @@ If `start` is not specified it will default to 0.
 Return true if a data block is available locally.
 False otherwise.
 
+#### `var bool = feed.has(start, end)`
+Return true if all data blocks within a range are available locally.
+False otherwise.
+
 #### `feed.append(data, [callback])`
 
 Append a block of data to the feed.

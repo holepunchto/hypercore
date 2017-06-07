@@ -487,6 +487,31 @@ tape('get total downloaded chunks', function (t) {
   })
 })
 
+tape('feed has a range of chuncks', function (t) {
+  var feed = create()
+  feed.append(['a', 'b', 'c', 'e'])
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true})
+    clone.get(0, function (err) {
+      t.error(err, 'no error')
+      clone.get(1, function (err) {
+        t.error(err, 'no error')
+        clone.get(2, function (err) {
+          t.error(err, 'no error')
+          t.ok(clone.has(1))
+          t.notOk(clone.has(3))
+          t.ok(clone.has(0, clone.length - 1))
+          t.notOk(clone.has(0, clone.length))
+          t.ok(clone.has(1, 3))
+          t.notOk(clone.has(3, 4))
+          t.end()
+        })
+      })
+    })
+    replicate(feed, clone, {live: true})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
