@@ -144,6 +144,7 @@ Feed.prototype.update = function (len, cb) {
 
 Feed.prototype._open = function (cb) {
   var self = this
+  var generatedKey = false
 
   // TODO: clean up the duplicate code below ...
 
@@ -154,6 +155,7 @@ Feed.prototype._open = function (cb) {
       var keyPair = signatures.keyPair()
       self.secretKey = keyPair.secretKey
       self.key = keyPair.publicKey
+      generatedKey = true
     }
 
     self.discoveryKey = self.key && hash.discoveryKey(self.key)
@@ -191,7 +193,7 @@ Feed.prototype._open = function (cb) {
     function onsignature (_, sig) {
       if (self.length) self.live = !!sig
 
-      if (!self.key && !self._createIfMissing) {
+      if ((generatedKey || !self.key) && !self._createIfMissing) {
         return cb(new Error('No hypercore is stored here'))
       }
 
