@@ -512,6 +512,39 @@ tape('feed has a range of chuncks', function (t) {
   })
 })
 
+tape('feed has a large range', function (t) {
+  var feed = create()
+  feed.append(['a', 'b', 'c', 'e', 'd', 'e', 'f', 'g'])
+  feed.append(['a', 'b', 'c', 'e', 'd', 'e', 'f', 'g'])
+  feed.append(['a', 'b', 'c', 'e', 'd', 'e', 'f', 'g'])
+  feed.on('ready', function () {
+    var clone = create(feed.key, {sparse: true})
+    var count = 20
+    var gotten = 20
+    function got () {
+      gotten--
+      if (gotten === 0) {
+        t.same(clone.downloaded(), 20)
+        t.notOk(clone.has(5, 24))
+        t.notOk(clone.has(12, 24))
+        t.notOk(clone.has(20, 24))
+        t.ok(clone.has(0, 20))
+        t.ok(clone.has(3, 20))
+        t.ok(clone.has(8, 20))
+        t.ok(clone.has(19, 20))
+        t.ok(clone.has(0, 16))
+        t.ok(clone.has(3, 16))
+        t.ok(clone.has(8, 16))
+        t.end()
+      }
+    }
+    for (var i = 0; i < count; i++) {
+      clone.get(i, got)
+    }
+    replicate(feed, clone, {live: true})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
