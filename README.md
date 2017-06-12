@@ -247,6 +247,7 @@ Options include:
 ``` js
 {
   live: false, // keep replicating after all remote data has been downloaded?
+  download: true, // download data from peers?
   encrypt: true // encrypt the data sent using the hypercore key pair
 }
 ```
