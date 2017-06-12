@@ -558,7 +558,7 @@ tape('replicate no download', function (t) {
     var stream = feed.replicate({live: true})
     stream.pipe(clone.replicate({live: true, download: false})).pipe(stream)
 
-    setTimeout(() => {
+    setTimeout(function () {
       t.pass('No data was received')
       t.end()
     }, 300)
