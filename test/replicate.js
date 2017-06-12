@@ -545,6 +545,26 @@ tape('feed has a large range', function (t) {
   })
 })
 
+tape('replicate no download', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    clone.get(0, function () {
+      t.fail('Data was received')
+    })
+
+    var stream = feed.replicate({live: true})
+    stream.pipe(clone.replicate({live: true, download: false})).pipe(stream)
+
+    setTimeout(function () {
+      t.pass('No data was received')
+      t.end()
+    }, 300)
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
