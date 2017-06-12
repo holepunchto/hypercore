@@ -551,7 +551,7 @@ tape('replicate no download', function (t) {
   feed.append(['a', 'b', 'c', 'd', 'e'], function () {
     var clone = create(feed.key)
 
-    clone.get(0, function (err) {
+    clone.get(0, function () {
       t.fail('Data was received')
     })
 
