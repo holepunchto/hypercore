@@ -252,6 +252,9 @@ Feed.prototype.download = function (range, cb) {
   if (typeof range === 'number') range = {start: range, end: range + 1}
   if (!range) range = {}
 
+  // TODO: if no peers, check if range is already satisfied and nextTick(cb) if so
+  // this._updatePeers does this for us when there is a peer though, so not critical
+
   var sel = {
     _index: this._selections.length,
     hash: !!range.hash,
