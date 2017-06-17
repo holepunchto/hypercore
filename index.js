@@ -18,6 +18,7 @@ var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var hash = require('./lib/hash')
+var nextTick = require('process-nextick-args')
 var replicate = null
 
 module.exports = Feed
@@ -273,7 +274,7 @@ Feed.prototype.undownload = function (range) {
 
   if (range.callback && range._index > -1) {
     set.remove(this._selections, range)
-    range.callback(new Error('Download was cancelled'))
+    nextTick(range.callback, new Error('Download was cancelled'))
     return
   }
 
@@ -377,7 +378,7 @@ Feed.prototype._cancel = function (start, end) {
     var w = this._waiting[i]
     if ((start <= w.start && w.end <= end) || (start <= w.index && w.index < end)) {
       remove(this._waiting, i)
-      if (w.callback) w.callback(new Error('Request cancelled'))
+      if (w.callback) nextTick(w.callback, new Error('Request cancelled'))
     }
   }
 }
@@ -407,7 +408,7 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
       if (self.bitfield.set(i, false)) modified = true
     }
 
-    if (!modified) return process.nextTick(cb)
+    if (!modified) return nextTick(cb)
 
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 

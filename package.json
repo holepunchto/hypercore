@@ -17,6 +17,7 @@
     "last-one-wins": "^1.0.4",
     "memory-pager": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
+    "process-nextick-args": "^1.0.7",
     "random-access-file": "^1.5.0",
     "sodium-signatures": "^2.0.0",
     "sodium-universal": "^1.0.0",
