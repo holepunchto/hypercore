@@ -291,6 +291,7 @@ Feed.prototype.undownload = function (range) {
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
       set.remove(this._selections, s)
+      nextTick(s.callback, new Error('Download was cancelled'))
       return
     }
   }
