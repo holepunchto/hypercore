@@ -5,7 +5,6 @@ var set = require('unordered-set')
 var merkle = require('merkle-tree-stream/generator')
 var flat = require('flat-tree')
 var bulk = require('bulk-write-stream')
-var signatures = require('sodium-signatures')
 var from = require('from2')
 var codecs = require('codecs')
 var thunky = require('thunky')
@@ -17,7 +16,7 @@ var bitfield = require('./lib/bitfield')
 var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
-var hash = require('./lib/hash')
+var crypto = require('./lib/crypto')
 var nextTick = require('process-nextick-args')
 var replicate = null
 
@@ -44,14 +43,14 @@ function Feed (createStorage, key, opts) {
   var secretKey = opts.secretKey || null
   if (typeof secretKey === 'string') secretKey = new Buffer(secretKey, 'hex')
 
-  this.id = opts.id || hash.randomBytes(32)
+  this.id = opts.id || crypto.randomBytes(32)
   this.live = opts.live !== false
   this.sparse = !!opts.sparse
   this.length = 0
   this.byteLength = 0
   this.maxRequests = opts.maxRequests || 16
   this.key = key || null
-  this.discoveryKey = this.key && hash.discoveryKey(this.key)
+  this.discoveryKey = this.key && crypto.discoveryKey(this.key)
   this.secretKey = secretKey
   this.bitfield = null
   this.tree = null
@@ -101,7 +100,7 @@ function Feed (createStorage, key, opts) {
 
 inherits(Feed, events.EventEmitter)
 
-Feed.discoveryKey = hash.discoveryKey
+Feed.discoveryKey = crypto.discoveryKey
 
 Feed.prototype.replicate = function (opts) {
   // Lazy load replication deps
@@ -153,13 +152,13 @@ Feed.prototype._open = function (cb) {
     if (key && !self._overwrite && !self.key) self.key = key
 
     if (!self.key && self.live) {
-      var keyPair = signatures.keyPair()
+      var keyPair = crypto.keyPair()
       self.secretKey = keyPair.secretKey
       self.key = keyPair.publicKey
       generatedKey = true
     }
 
-    self.discoveryKey = self.key && hash.discoveryKey(self.key)
+    self.discoveryKey = self.key && crypto.discoveryKey(self.key)
     self._storage.open({key: self.key, discoveryKey: self.discoveryKey}, onopen)
   })
 
@@ -199,7 +198,7 @@ Feed.prototype._open = function (cb) {
       }
 
       if (!self.key && self.live) {
-        var keyPair = signatures.keyPair()
+        var keyPair = crypto.keyPair()
         self.secretKey = keyPair.secretKey
         self.key = keyPair.publicKey
       }
@@ -208,7 +207,7 @@ Feed.prototype._open = function (cb) {
 
       if (!writable && self.writable) return cb(new Error('Feed is not writable'))
       self.writable = writable
-      self.discoveryKey = self.key && hash.discoveryKey(self.key)
+      self.discoveryKey = self.key && crypto.discoveryKey(self.key)
 
       if (self._storeSecretKey && !self.secretKey) {
         self._storeSecretKey = false
@@ -236,7 +235,7 @@ Feed.prototype._open = function (cb) {
       function onroots (err, roots) {
         if (err) return cb(err)
 
-        self._merkle = merkle(hash, roots)
+        self._merkle = merkle(crypto, roots)
         self.byteLength = roots.reduce(addSize, 0)
         self.opened = true
         self.emit('ready')
@@ -659,7 +658,7 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
 Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trustedNode, from, cb) {
   var visited = []
   var remoteNodes = proof.nodes
-  var top = data ? new storage.Node(2 * index, hash.data(data), data.length) : remoteNodes.shift()
+  var top = data ? new storage.Node(2 * index, crypto.data(data), data.length) : remoteNodes.shift()
 
   // check if we already have the hash for this node
   if (verifyNode(trustedNode, top)) {
@@ -684,7 +683,7 @@ Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trust
     }
 
     visited.push(top)
-    top = new storage.Node(flat.parent(top.index), hash.parent(top, node), top.size + node.size)
+    top = new storage.Node(flat.parent(top.index), crypto.parent(top, node), top.size + node.size)
 
     // the tree checks out, write the data and the visited nodes
     if (verifyNode(trustedNode, top)) {
@@ -727,7 +726,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
   function verify (err) {
     if (err) return cb(err)
 
-    var checksum = hash.tree(roots)
+    var checksum = crypto.tree(roots)
     var signature = null
 
     if (self.length && self.live && !proof.signature) {
@@ -735,7 +734,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
     }
 
     if (proof.signature) { // check signaturex
-      if (!signatures.verify(checksum, proof.signature, self.key)) {
+      if (!crypto.verify(checksum, proof.signature, self.key)) {
         return cb(new Error('Remote signature could not be verified'))
       }
 
@@ -869,8 +868,8 @@ Feed.prototype.createReadStream = function (opts) {
 // TODO: when calling finalize on a live feed write an END_OF_FEED block (length === 0?)
 Feed.prototype.finalize = function (cb) {
   if (!this.key) {
-    this.key = hash.tree(this._merkle.roots)
-    this.discoveryKey = hash.discoveryKey(this.key)
+    this.key = crypto.tree(this._merkle.roots)
+    this.discoveryKey = crypto.discoveryKey(this.key)
   }
   this._storage.key.write(0, this.key, cb)
 }
@@ -912,7 +911,7 @@ Feed.prototype._append = function (batch, cb) {
     else this._storage.data.write(this.byteLength + offset, data, done)
 
     if (this.live) { // TODO: only sign the LAST set of roots in the batch
-      var sig = signatures.sign(hash.tree(this._merkle.roots), this.secretKey)
+      var sig = crypto.sign(crypto.tree(this._merkle.roots), this.secretKey)
       this._storage.putSignature(this.length + i, sig, done)
     }
 
