@@ -1,5 +1,5 @@
 var create = require('./helpers/create')
-var sodium = require('sodium-universal')
+var crypto = require('../lib/crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
@@ -53,9 +53,9 @@ tape('flush', function (t) {
 })
 
 tape('pass in secret key', function (t) {
-  var secretKey = new Buffer(sodium.crypto_sign_SECRETKEYBYTES)
-  var key = new Buffer(sodium.crypto_sign_PUBLICKEYBYTES)
-  sodium.crypto_sign_keypair(key, secretKey)
+  var keyPair = crypto.keyPair()
+  var secretKey = keyPair.secretKey
+  var key = keyPair.publicKey
 
   var feed = create(key, {secretKey: secretKey})
 
