@@ -216,10 +216,10 @@ Feed.prototype._open = function (cb) {
       var shouldWriteKey = self.key && generatedKey
       var shouldWriteSecretKey = self._storeSecretKey && generatedKey
 
-      var missing = 1
-        + (shouldWriteKey ? 1 : 0)
-        + (shouldWriteSecretKey ? 1 : 0)
-        + (self._overwrite ? 1 : 0)
+      var missing = 1 +
+        (shouldWriteKey ? 1 : 0) +
+        (shouldWriteSecretKey ? 1 : 0) +
+        (self._overwrite ? 1 : 0)
       var error = null
 
       if (shouldWriteKey) self._storage.key.write(0, self.key, done)
