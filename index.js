@@ -213,8 +213,8 @@ Feed.prototype._open = function (cb) {
         self._storeSecretKey = false
       }
 
-      var shouldWriteKey = self.key && generatedKey
-      var shouldWriteSecretKey = self._storeSecretKey && generatedKey
+      var shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
+      var shouldWriteSecretKey = (self._storeSecretKey && generatedKey) || !safeBufferEquals(self.secretKey, state.secretKey)
 
       var missing = 1 +
         (shouldWriteKey ? 1 : 0) +
@@ -1086,4 +1086,11 @@ function timeoutCallback (cb, timeout) {
     clearTimeout(id)
     cb(err, val)
   }
+}
+
+// buffer-equals, but handle 'null' buffer parameters.
+function safeBufferEquals (a, b) {
+  if (!a) return !b
+  if (!b) return !a
+  return equals(a, b)
 }
