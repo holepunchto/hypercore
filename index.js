@@ -787,6 +787,16 @@ Feed.prototype.has = function (start, end) {
   return total === this.bitfield.total(start, end)
 }
 
+Feed.prototype.head = function (opts, cb) {
+  if (typeof opts === 'function') return this.head({}, opts)
+  var self = this
+  this._ready(function (err) {
+    if (err) return cb(err)
+    if (self.length === 0) cb(new Error('feed is empty'))
+    else self.get(self.length - 1, cb)
+  })
+}
+
 Feed.prototype.get = function (index, opts, cb) {
   if (typeof opts === 'function') return this.get(index, null, opts)
   if (!this.opened) return this._readyAndGet(index, opts, cb)
