@@ -132,6 +132,13 @@ Options include
 
 Callback is called with `(err, data)`
 
+#### `feed.head([options], callback)`
+
+Get the block of data at the tip of the feed. This will be the most recently
+appended block.
+
+Accepts the same `options` as `feed.get()`.
+
 #### `feed.download([range], [callback])`
 
 Download a range of data. Callback is called when all data has been downloaded.

@@ -114,3 +114,40 @@ tape('create from existing keys', function (t) {
     return storage[fullname]
   }
 })
+
+tape('head', function (t) {
+  t.plan(6)
+
+  var feed = create({valueEncoding: 'json'})
+
+  feed.head(function (err, head) {
+    t.ok(!!err)
+    t.ok(err instanceof Error)
+    step2()
+  })
+
+  function step2 () {
+    feed.append({
+      hello: 'world'
+    }, function () {
+      feed.head(function (err, head) {
+        t.error(err)
+        t.same(head, {hello: 'world'})
+        step3()
+      })
+    })
+  }
+
+  function step3 () {
+    feed.append([{
+      hello: 'verden'
+    }, {
+      hello: 'welt'
+    }], function () {
+      feed.head({}, function (err, head) {
+        t.error(err)
+        t.same(head, {hello: 'welt'})
+      })
+    })
+  }
+})
