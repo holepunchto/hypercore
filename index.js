@@ -789,8 +789,12 @@ Feed.prototype.has = function (start, end) {
 
 Feed.prototype.head = function (opts, cb) {
   if (typeof opts === 'function') return this.head({}, opts)
-  if (this.length === 0) cb(new Error('feed is empty'))
-  else this.get(this.length - 1, cb)
+  var self = this
+  this._ready(function (err) {
+    if (err) return cb(err)
+    if (self.length === 0) cb(new Error('feed is empty'))
+    else self.get(self.length - 1, cb)
+  })
 }
 
 Feed.prototype.get = function (index, opts, cb) {
