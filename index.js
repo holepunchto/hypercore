@@ -213,11 +213,17 @@ Feed.prototype._open = function (cb) {
         self._storeSecretKey = false
       }
 
-      var missing = 1 + (self.key ? 1 : 0) + (self._storeSecretKey ? 1 : 0) + (self._overwrite ? 1 : 0)
+      var shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
+      var shouldWriteSecretKey = (self._storeSecretKey && generatedKey) || !safeBufferEquals(self.secretKey, state.secretKey)
+
+      var missing = 1 +
+        (shouldWriteKey ? 1 : 0) +
+        (shouldWriteSecretKey ? 1 : 0) +
+        (self._overwrite ? 1 : 0)
       var error = null
 
-      if (self.key) self._storage.key.write(0, self.key, done)
-      if (self._storeSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
+      if (shouldWriteKey) self._storage.key.write(0, self.key, done)
+      if (shouldWriteSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) { // TODO: support storage.resize for this instead
         self._storage.putBitfield(0, state.bitfield, done)
@@ -1080,4 +1086,11 @@ function timeoutCallback (cb, timeout) {
     clearTimeout(id)
     cb(err, val)
   }
+}
+
+// buffer-equals, but handle 'null' buffer parameters.
+function safeBufferEquals (a, b) {
+  if (!a) return !b
+  if (!b) return !a
+  return equals(a, b)
 }
