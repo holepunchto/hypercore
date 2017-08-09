@@ -178,7 +178,6 @@ Feed.prototype._open = function (cb) {
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
-    this._synced = null
 
     if (state.key && self.key && !equals(state.key, self.key)) {
       return cb(new Error('Another hypercore is stored here'))
