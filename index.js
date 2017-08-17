@@ -102,6 +102,11 @@ inherits(Feed, events.EventEmitter)
 
 Feed.discoveryKey = crypto.discoveryKey
 
+Feed.prototype.defaults = function (opts) {
+  if (!opts) return
+  this._indexing = !!opts.indexing
+}
+
 Feed.prototype.replicate = function (opts) {
   // Lazy load replication deps
   if (!replicate) replicate = require('./lib/replicate')

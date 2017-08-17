@@ -265,6 +265,12 @@ Fully close this feed.
 
 Calls the callback with `(err)` when all storage has been closed.
 
+#### `feed.defaults(opts)`
+
+Overwrite options set on initialization. Currently supported:
+
+* `opts.indexing` - change indexing value. `indexing: false` makes hyperdrive write files to storage when you write to the archive.
+
 #### `feed.on('ready')`
 
 Emitted when the feed is ready and all properties have been populated.
