@@ -102,6 +102,19 @@ inherits(Feed, events.EventEmitter)
 
 Feed.discoveryKey = crypto.discoveryKey
 
+// TODO: instead of using a getter, update on remote-update/add/remove
+Object.defineProperty(Feed.prototype, 'remoteLength', {
+  enumerable: true,
+  get: function () {
+    var len = 0
+    for (var i = 0; i < this.peers.length; i++) {
+      var remoteLength = this.peers[i].remoteLength
+      if (remoteLength > len) len = remoteLength
+    }
+    return len
+  }
+})
+
 Feed.prototype.replicate = function (opts) {
   // Lazy load replication deps
   if (!replicate) replicate = require('./lib/replicate')
