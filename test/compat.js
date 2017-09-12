@@ -96,19 +96,14 @@ tape('deterministic signatures', function (t) {
   for (var i = 0; i < 5; i++) run()
 
   function run () {
-    var feed = hypercore(ram, key, {
+    var st = storage()
+    var feed = hypercore(st, key, {
       secretKey: secretKey
     })
 
     feed.append(['a', 'b', 'c'], function () {
-      var st = storage()
-      var clone = hypercore(st, feed.key)
-      var stream = clone.replicate()
-
-      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
-        t.same(st.data.toBuffer().toString(), 'abc')
-        t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
-      })
+      t.same(st.data.toBuffer().toString(), 'abc')
+      t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
     })
   }
 })
@@ -136,14 +131,19 @@ tape('deterministic signatures after replication', function (t) {
   for (var i = 0; i < 5; i++) run()
 
   function run () {
-    var st = storage()
-    var feed = hypercore(st, key, {
+    var feed = hypercore(ram, key, {
       secretKey: secretKey
     })
 
     feed.append(['a', 'b', 'c'], function () {
-      t.same(st.data.toBuffer().toString(), 'abc')
-      t.same(st.signatures.toBuffer(), expectedSignatures)
+      var st = storage()
+      var clone = hypercore(st, feed.key)
+      var stream = clone.replicate()
+
+      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
+        t.same(st.data.toBuffer().toString(), 'abc')
+        t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
+      })
     })
   }
 })

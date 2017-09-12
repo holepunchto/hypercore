@@ -925,7 +925,7 @@ Feed.prototype._append = function (batch, cb) {
   if (!this.writable) return cb(new Error('This feed is not writable. Did you create it?'))
 
   var self = this
-  var pending = this.live ? 2 * batch.length : batch.length
+  var pending = this.live && batch.length ? 1 + batch.length : batch.length
   var offset = 0
   var error = null
 
@@ -938,7 +938,7 @@ Feed.prototype._append = function (batch, cb) {
     if (this._indexing) done(null)
     else this._storage.data.write(this.byteLength + offset, data, done)
 
-    if (this.live) { // TODO: only sign the LAST set of roots in the batch
+    if (this.live && i === batch.length - 1) {
       var sig = crypto.sign(crypto.tree(this._merkle.roots), this.secretKey)
       this._storage.putSignature(this.length + i, sig, done)
     }
