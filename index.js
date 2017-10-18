@@ -934,6 +934,13 @@ Feed.prototype.close = function (cb) {
   this._ready(function () {
     self.writable = false
     self.readable = false
+    if (self.bitfield) {
+      self.bitfield.release()
+    }
+    if (self.tree) {
+      self.tree.release()
+    }
+    self._reserved.release()
     self._storage.close(cb)
   })
 }
