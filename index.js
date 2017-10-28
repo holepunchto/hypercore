@@ -244,7 +244,7 @@ Feed.prototype._open = function (cb) {
       }
 
       var shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
-      var shouldWriteSecretKey = (self._storeSecretKey && generatedKey) || !safeBufferEquals(self.secretKey, state.secretKey)
+      var shouldWriteSecretKey = self._storeSecretKey && (generatedKey || !safeBufferEquals(self.secretKey, state.secretKey))
 
       var missing = 1 +
         (shouldWriteKey ? 1 : 0) +
