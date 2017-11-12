@@ -156,6 +156,8 @@ Feed.prototype.update = function (len, cb) {
     if (len === -1) len = self.length + 1
     if (self.length >= len) return cb(null)
 
+    if (self.writable) cb = self._writeStateReloader(cb)
+
     self._waiting.push({
       hash: true,
       bytes: 0,
@@ -163,7 +165,23 @@ Feed.prototype.update = function (len, cb) {
       update: true,
       callback: cb
     })
+
+    self._updatePeers()
   })
+}
+
+// will reload the writable state. used by .update on a writable peer
+Feed.prototype._writeStateReloader = function (cb) {
+  var self = this
+  return function (err) {
+    if (err) return cb(err)
+
+    self._roots(self.length, function (err, roots) {
+      if (err) return cb(err)
+      self._merkle = merkle(crypto, roots)
+      cb(null)
+    })
+  }
 }
 
 Feed.prototype._open = function (cb) {
@@ -237,7 +255,7 @@ Feed.prototype._open = function (cb) {
       }
 
       var shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
-      var shouldWriteSecretKey = (self._storeSecretKey && generatedKey) || !safeBufferEquals(self.secretKey, state.secretKey)
+      var shouldWriteSecretKey = self._storeSecretKey && (generatedKey || !safeBufferEquals(self.secretKey, state.secretKey))
 
       var missing = 1 +
         (shouldWriteKey ? 1 : 0) +

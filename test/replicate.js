@@ -565,6 +565,28 @@ tape('replicate no download', function (t) {
   })
 })
 
+tape('sparse mode, two downloads', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key, {sparse: true})
+
+    replicate(feed, clone)
+    clone.update(function () {
+      clone.download({start: 0, end: 4}, function (err) {
+        t.error(err, 'no error')
+        // next tick so selection is cleared
+        process.nextTick(function () {
+          clone.download(4, function (err) {
+            t.error(err, 'no error')
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
