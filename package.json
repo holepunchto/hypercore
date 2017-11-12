@@ -36,6 +36,7 @@
   },
   "scripts": {
     "test": "standard && tape test/*.js",
+    "fix": "standard --fix",
     "bench": "cd bench && ./all.sh"
   },
   "repository": {
