@@ -66,7 +66,7 @@ function Feed (createStorage, key, opts) {
   this._overwrite = !!opts.overwrite
   this._storeSecretKey = opts.storeSecretKey !== false
   this._merkle = null
-  this._storage = storage(createStorage)
+  this._storage = storage(createStorage, opts.storageCacheSize)
   this._batch = batcher(work)
 
   this._waiting = []
