@@ -18,7 +18,7 @@ var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('./lib/crypto')
 var nextTick = require('process-nextick-args')
-var replicate = null
+var replicate = require('./lib/replicate')
 
 module.exports = Feed
 
@@ -116,9 +116,6 @@ Object.defineProperty(Feed.prototype, 'remoteLength', {
 })
 
 Feed.prototype.replicate = function (opts) {
-  // Lazy load replication deps
-  if (!replicate) replicate = require('./lib/replicate')
-
   if ((!this._selections.length || this._selections[0].end !== -1) && !this.sparse && !(opts && opts.live)) {
     // hack!! proper fix is to refactor ./replicate to *not* clear our non-sparse selection
     this.download({start: 0, end: -1})
