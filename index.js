@@ -9,7 +9,6 @@ var from = require('from2')
 var codecs = require('codecs')
 var thunky = require('thunky')
 var batcher = require('atomic-batcher')
-// var inherits = require('inherits')
 var events = require('events')
 var raf = require('random-access-file')
 var bitfield = require('./lib/bitfield')
@@ -336,7 +335,7 @@ Feed.prototype.undownload = function (range) {
 }
 
 Feed.prototype.digest = function (index) {
-  return this.tree.digest(2 * index)
+  return this.tree.digest(index << 1)
 }
 
 Feed.prototype.proof = function (index, opts, cb) {
@@ -344,7 +343,7 @@ Feed.prototype.proof = function (index, opts, cb) {
   if (!this.opened) return this._readyAndProof(index, opts, cb)
   if (!opts) opts = {}
 
-  var proof = this.tree.proof(2 * index, opts)
+  var proof = this.tree.proof(index << 1, opts)
   if (!proof) return cb(new Error('No proof available for this index'))
 
   var needsSig = this.live && !!proof.verifiedBy
@@ -359,7 +358,7 @@ Feed.prototype.proof = function (index, opts, cb) {
     this._storage.getNode(proof.nodes[i], onnode)
   }
   if (needsSig) {
-    this._storage.getSignature(proof.verifiedBy / 2 - 1, onsignature)
+    this._storage.getSignature((proof.verifiedBy >> 1) - 1, onsignature)
   }
 
   function onsignature (err, sig) {
@@ -488,15 +487,15 @@ Feed.prototype.seek = function (bytes, opts, cb) {
   var self = this
 
   this._seek(bytes, function (err, index, offset) {
-    if (!err && isBlock(index)) return done(index / 2, offset)
+    if (!err && isBlock(index)) return done(index >> 1, offset)
     if (opts.wait === false) return cb(err || new Error('Unable to seek to this offset'))
 
     var start = opts.start || 0
     var end = opts.end || -1
 
     if (!err) {
-      var left = flat.leftSpan(index) / 2
-      var right = flat.rightSpan(index) / 2 + 1
+      var left = flat.leftSpan(index) >> 1
+      var right = (flat.rightSpan(index) >> 1) + 1
 
       if (left > start) start = left
       if (right < end || end === -1) end = right
@@ -528,7 +527,7 @@ Feed.prototype._seek = function (offset, cb) {
   if (offset === 0) return cb(null, 0, 0)
 
   var self = this
-  var roots = flat.fullRoots(this.length * 2)
+  var roots = flat.fullRoots(this.length << 1)
   var nearestRoot = 0
 
   loop(null, null)
@@ -595,7 +594,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
   var self = this
   var trusted = -1
   var missing = []
-  var next = 2 * index
+  var next = index << 1
   var i = data ? 0 : 1
 
   while (true) {
@@ -673,7 +672,7 @@ Feed.prototype._write = function (index, data, nodes, sig, from, cb) {
 
 Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
   for (var i = 0; i < nodes.length; i++) this.tree.set(nodes[i].index)
-  this.tree.set(2 * index)
+  this.tree.set(index << 1)
 
   if (data) {
     if (this.bitfield.set(index, true)) this.emit('download', index, data, from)
@@ -697,7 +696,7 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
 Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trustedNode, from, cb) {
   var visited = []
   var remoteNodes = proof.nodes
-  var top = data ? new storage.Node(2 * index, crypto.data(data), data.length) : remoteNodes.shift()
+  var top = data ? new storage.Node(index << 1, crypto.data(data), data.length) : remoteNodes.shift()
 
   // check if we already have the hash for this node
   if (verifyNode(trustedNode, top)) {
@@ -777,7 +776,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
         return cb(new Error('Remote signature could not be verified'))
       }
 
-      signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+      signature = {index: (verifiedBy >> 1) - 1, signature: proof.signature}
     } else { // check tree root
       if (!equals(checksum, self.key)) {
         return cb(new Error('Remote checksum failed'))
@@ -786,7 +785,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
 
     self.live = !!signature
 
-    var length = verifiedBy / 2
+    var length = verifiedBy >> 1
     if (length > self.length) {
       // TODO: only emit this after the info has been flushed to storage
       self.length = length
@@ -984,7 +983,7 @@ Feed.prototype._append = function (batch, cb) {
     self.byteLength += offset
     for (var i = 0; i < batch.length; i++) {
       self.bitfield.set(self.length, true)
-      self.tree.set(2 * self.length++)
+      self.tree.set(self.length++ << 1)
     }
     self.emit('append')
 
@@ -1059,7 +1058,7 @@ Feed.prototype._syncBitfield = function (cb) {
 }
 
 Feed.prototype._roots = function (index, cb) {
-  var roots = flat.fullRoots(2 * index)
+  var roots = flat.fullRoots(index << 1)
   var result = new Array(roots.length)
   var pending = roots.length
   var error = null
