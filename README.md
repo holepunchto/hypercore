@@ -73,6 +73,7 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   sparse: false, // do not mark the entire feed to be downloaded
   secretKey: buffer // optionally pass the corresponding secret key yourself
   storeSecretKey: true // if false, will not save the secret key
+  storageCacheSize: 65536 // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
 }
 ```
 
