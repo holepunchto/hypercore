@@ -98,6 +98,7 @@ function Feed (createStorage, key, opts) {
   }
 }
 
+// as per node doc advice https://nodejs.org/docs/latest/api/util.html#util_util_inherits_constructor_superconstructor
 class Inherited extends events.EventEmitter {}
 Feed.prototype = Inherited.prototype
 Feed.prototype.constructor = Feed
