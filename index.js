@@ -217,6 +217,12 @@ Feed.prototype._open = function (cb) {
     if (state.key) self.key = state.key
     if (state.secretKey) self.secretKey = state.secretKey
 
+    if (self.key && self.secretKey) {
+      var challenge = new Buffer('');
+      if (!crypto.verify(challenge, crypto.sign(challenge, self.secretKey), self.key))
+        return cb(new Error('Key and secret do not match'))
+    }
+
     if (!self.length) return onsignature(null, null)
     self._storage.getSignature(self.length - 1, onsignature)
 
