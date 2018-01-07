@@ -52,6 +52,25 @@ tape('flush', function (t) {
   })
 })
 
+tape('verify', function (t) {
+  var feed = create()
+
+  feed.append('test', function (err) {
+    t.error(err, 'no error')
+
+    feed.signature(0, function (err, sig) {
+      t.error(err, 'no error')
+      t.same(sig.index, 0, '0 signed at 0')
+
+      feed.verify(0, sig.signature, function (err, success) {
+        t.error(err, 'no error')
+        t.ok(success)
+        t.end()
+      })
+    })
+  })
+})
+
 tape('pass in secret key', function (t) {
   var keyPair = crypto.keyPair()
   var secretKey = keyPair.secretKey

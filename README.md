@@ -162,6 +162,30 @@ feed will be marked for download for you when the feed is created.
 
 Cancel a previous download request.
 
+#### `feed.signature([index], callback)`
+
+Get a signature proving the correctness of the block at index, or the whole stream.
+
+Callback is called with `(err, signature)`.
+The signature has the following properties:
+``` js
+{
+  index: lastSignedBlock,
+  signature: Buffer
+}
+```
+
+#### `feed.verify(index, signature, callback)`
+
+Verify a signature is correct for the data up to index, which must be the last signed
+block associated with the signature.
+
+Callback is called with `(err, success)` where success is true only if the signature is
+correct.
+
+It is fine if the passed signature is unfamiliar; it is recalculated for verification,
+rather than compared with the local storage.
+
 #### `var number = feed.downloaded([start], [end])`
 
 Returns total number of downloaded blocks within range.

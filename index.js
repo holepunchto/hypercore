@@ -485,6 +485,30 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
   })
 }
 
+Feed.prototype.signature = function (index, cb) {
+  if (typeof index === 'function') return this.signature(this.length - 1, index)
+
+  if (index < 0 || index >= this.length) return cb(new Error('No signature available for this index'))
+
+  this._storage.nextSignature(index, cb)
+}
+
+Feed.prototype.verify = function (index, signature, cb) {
+  var self = this
+
+  this._getRootsToVerify(index * 2 + 2, {}, [], function (err, roots) {
+    if (err) return cb(err)
+
+    var checksum = crypto.tree(roots)
+
+    if (!crypto.verify(checksum, signature, self.key)) {
+      cb(new Error('Signature verification failed'))
+    } else {
+      cb(null, true)
+    }
+  })
+}
+
 Feed.prototype.seek = function (bytes, opts, cb) {
   if (typeof opts === 'function') return this.seek(bytes, null, opts)
   if (!opts) opts = {}
@@ -741,33 +765,9 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
   var remoteNodes = proof.nodes
   var lastNode = remoteNodes.length ? remoteNodes[remoteNodes.length - 1].index : top.index
   var verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
-  var indexes = flat.fullRoots(verifiedBy)
-  var roots = new Array(indexes.length)
-  var error = null
-  var pending = roots.length
   var self = this
 
-  for (var i = 0; i < indexes.length; i++) {
-    if (indexes[i] === top.index) {
-      nodes.push(top)
-      onnode(null, top)
-    } else if (remoteNodes.length && indexes[i] === remoteNodes[0].index) {
-      nodes.push(remoteNodes[0])
-      onnode(null, remoteNodes.shift())
-    } else if (this.tree.get(indexes[i])) {
-      this._storage.getNode(indexes[i], onnode)
-    } else {
-      onnode(new Error('Remote did not send tree roots'))
-    }
-  }
-
-  function onnode (err, node) {
-    if (err) error = err
-    if (node) roots[indexes.indexOf(node.index)] = node
-    if (!--pending) verify(error)
-  }
-
-  function verify (err) {
+  this._getRootsToVerify(verifiedBy, top, remoteNodes, function (err, roots, extraNodes) {
     if (err) return cb(err)
 
     var checksum = crypto.tree(roots)
@@ -800,7 +800,41 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       self.emit('append')
     }
 
-    self._write(index, data, nodes, signature, from, cb)
+    self._write(index, data, nodes.concat(extraNodes), signature, from, cb)
+  })
+}
+
+Feed.prototype._getRootsToVerify = function (verifiedBy, top, remoteNodes, cb) {
+  var indexes = flat.fullRoots(verifiedBy)
+  var roots = new Array(indexes.length)
+  var nodes = []
+  var error = null
+  var pending = roots.length
+
+  for (var i = 0; i < indexes.length; i++) {
+    if (indexes[i] === top.index) {
+      nodes.push(top)
+      onnode(null, top)
+    } else if (remoteNodes.length && indexes[i] === remoteNodes[0].index) {
+      nodes.push(remoteNodes[0])
+      onnode(null, remoteNodes.shift())
+    } else if (this.tree.get(indexes[i])) {
+      this._storage.getNode(indexes[i], onnode)
+    } else {
+      onnode(new Error('Missing tree roots needed for verify'))
+    }
+  }
+
+  function onnode (err, node) {
+    if (err) error = err
+    if (node) roots[indexes.indexOf(node.index)] = node
+    if (!--pending) done(error)
+  }
+
+  function done (err) {
+    if (err) return cb(err)
+
+    cb(null, roots, nodes)
   }
 }
 
