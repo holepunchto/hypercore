@@ -799,7 +799,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
 Feed.prototype._announce = function (message, from) {
   for (var i = 0; i < this.peers.length; i++) {
     var peer = this.peers[i]
-    if (peer !== from) peer.have(message)
+    if (peer !== from || peer.remoteAck) peer.have(message)
   }
 }
 

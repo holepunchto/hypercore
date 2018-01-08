@@ -587,24 +587,27 @@ tape('sparse mode, two downloads', function (t) {
   })
 })
 
-tape.only('replicate with ack', function (t) {
+tape('replicate with ack', function (t) {
   var feed = create()
-  feed.emilsId = 'feed'
   feed.on('ready', function () {
     var clone = create(feed.key)
-    clone.emilsId = 'clone'
 
-    replicate(feed, clone, {live: true, ack: true}).on('handshake', function () {
+    var stream = feed.replicate({live: true, ack: true})
+    stream.pipe(clone.replicate({live: true})).pipe(stream)
+
+    stream.on('handshake', function () {
       feed.append(['a', 'b', 'c'])
     })
 
-    clone.on('ack', function (ack) {
-      console.log('clone ack :(')
+    var seen = 0
+    feed.on('peer-add', function (peer) {
+      peer.on('ack', function (block) {
+        t.ok(clone.has(block))
+        seen++
+        if (seen > 3) t.fail()
+        if (seen === 3) t.end()
+      })
     })
-  })
-
-  feed.on('ack', function (ack) {
-    console.log('ackackackackakc', ack)
   })
 })
 
