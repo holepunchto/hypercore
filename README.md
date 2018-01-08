@@ -255,6 +255,7 @@ Options include:
 ``` js
 {
   live: false, // keep replicating after all remote data has been downloaded?
+  ack: false, // set to true to get explicit acknowledgement when a peer has written a block
   download: true, // download data from peers?
   encrypt: true // encrypt the data sent using the hypercore key pair
 }

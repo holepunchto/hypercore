@@ -587,6 +587,27 @@ tape('sparse mode, two downloads', function (t) {
   })
 })
 
+tape.only('replicate with ack', function (t) {
+  var feed = create()
+  feed.emilsId = 'feed'
+  feed.on('ready', function () {
+    var clone = create(feed.key)
+    clone.emilsId = 'clone'
+
+    replicate(feed, clone, {live: true, ack: true}).on('handshake', function () {
+      feed.append(['a', 'b', 'c'])
+    })
+
+    clone.on('ack', function (ack) {
+      console.log('clone ack :(')
+    })
+  })
+
+  feed.on('ack', function (ack) {
+    console.log('ackackackackakc', ack)
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
