@@ -183,9 +183,6 @@ block associated with the signature.
 Callback is called with `(err, success)` where success is true only if the signature is
 correct.
 
-It is fine if the passed signature is unfamiliar; it is recalculated for verification,
-rather than compared with the local storage.
-
 #### `var number = feed.downloaded([start], [end])`
 
 Returns total number of downloaded blocks within range.
