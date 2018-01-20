@@ -59,6 +59,7 @@ function Feed (createStorage, key, opts) {
   this.opened = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+  this.lastSignature = null
 
   this._ready = thunky(open) // TODO: if open fails, do not reopen next time
   this._indexing = !!opts.indexing
@@ -230,6 +231,7 @@ Feed.prototype._open = function (cb) {
 
     function onsignature (_, sig) {
       if (self.length) self.live = !!sig
+      self.lastSignature = sig
 
       if ((generatedKey || !self.key) && !self._createIfMissing) {
         return cb(new Error('No hypercore is stored here'))
@@ -487,6 +489,8 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
 
 Feed.prototype.signature = function (index, cb) {
   if (typeof index === 'function') return this.signature(this.length - 1, index)
+
+  if (index === this.length - 1 && this.lastSignature) return cb(null, { index: index, signature: this.lastSignature })
 
   if (index < 0 || index >= this.length) return cb(new Error('No signature available for this index'))
 
@@ -796,6 +800,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       // TODO: only emit this after the info has been flushed to storage
       self.length = length
       self.byteLength = roots.reduce(addSize, 0)
+      self.lastSignature = proof.signature
       if (self._synced) self._synced.seek(0, self.length)
       self.emit('append')
     }
