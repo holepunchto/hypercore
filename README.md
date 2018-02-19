@@ -52,7 +52,7 @@ Alternatively you can pass a function instead that is called with every filename
 var ram = require('random-access-memory')
 var feed = hypercore(function (filename) {
   // filename will be one of: data, bitfield, tree, signatures, key, secret_key
-  // the data file will contain all your data concattenated.
+  // the data file will contain all your data concatenated.
 
   // just store all files in ram by returning a random-access-memory instance
   return ram()
@@ -202,7 +202,7 @@ False otherwise.
 
 Append a block of data to the feed.
 
-Callback is called with `(err)` when all data has been written or an error occured.
+Callback is called with `(err)` when all data has been written or an error occurred.
 
 #### `feed.clear(start, [end], [callback])`
 
@@ -309,7 +309,7 @@ Emitted when the feed has been appended to (i.e. has a new length / byteLength)
 
 #### `feed.on('sync')`
 
-Emitted everytime ALL data from `0` to `feed.length` has been downloaded.
+Emitted every time ALL data from `0` to `feed.length` has been downloaded.
 
 #### `feed.on('close')`
 
