@@ -1146,7 +1146,12 @@ function toCodec (enc) {
 function wrapCodec (enc, cb) {
   return function (err, buf) {
     if (err) return cb(err)
-    cb(null, enc.decode(buf))
+    try {
+      buf = enc.decode(buf)
+    } catch (err) {
+      return cb(err)
+    }
+    cb(null, buf)
   }
 }
 
