@@ -74,7 +74,7 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   secretKey: buffer // optionally pass the corresponding secret key yourself
   storeSecretKey: true // if false, will not save the secret key
   storageCacheSize: 65536 // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
-  discoveryKey: <Key> // optionally pass your own generated Key
+  discoveryKey: <Key> // optionally pass your own discoveryKey
 }
 ```
 
