@@ -189,7 +189,7 @@ Feed.prototype._open = function (cb) {
       generatedKey = true
     }
 
-    self.discoveryKey = self.key && crypto.discoveryKey(self.key)
+    self.discoveryKey = self.key && (self.discoveryKey ? self.discoveryKey : crypto.discoveryKey(self.key))
     self._storage.open({key: self.key, discoveryKey: self.discoveryKey}, onopen)
   })
 
@@ -245,7 +245,7 @@ Feed.prototype._open = function (cb) {
 
       if (!writable && self.writable) return cb(new Error('Feed is not writable'))
       self.writable = writable
-      self.discoveryKey = self.key && crypto.discoveryKey(self.key)
+      self.discoveryKey = self.key && (self.discoveryKey ? self.discoveryKey : crypto.discoveryKey(self.key))
 
       if (self._storeSecretKey && !self.secretKey) {
         self._storeSecretKey = false
@@ -957,7 +957,7 @@ Feed.prototype.createReadStream = function (opts) {
 Feed.prototype.finalize = function (cb) {
   if (!this.key) {
     this.key = crypto.tree(this._merkle.roots)
-    this.discoveryKey = crypto.discoveryKey(this.key)
+    this.discoveryKey = this.discoveryKey ? this.discoveryKey : crypto.discoveryKey(this.key)
   }
   this._storage.key.write(0, this.key, cb)
 }

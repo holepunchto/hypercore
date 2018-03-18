@@ -218,3 +218,16 @@ tape('append, no cache', function (t) {
     })
   })
 })
+
+tape('pass in discovery key', function (t) {
+  var myDiscoveryKey = 'feeb189135cda315ca15e2d03c26543b'
+  var keyPair = crypto.keyPair()
+  // var secretKey = keyPair.secretKey
+  var key = keyPair.publicKey
+  var feed = create(key, {discoveryKey: myDiscoveryKey})
+
+  feed.on('ready', function () {
+    t.same(feed.discoveryKey.toString('hex'), myDiscoveryKey)
+    t.end()
+  })
+})
