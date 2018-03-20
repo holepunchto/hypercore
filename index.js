@@ -100,7 +100,7 @@ function Feed (createStorage, key, opts) {
 
 inherits(Feed, events.EventEmitter)
 
-Feed.discoveryKey = crypto.discoveryKey
+Feed.discoveryKey = (opts.discoveryKey ? opts.discoveryKey : crypto.discoveryKey(crypto.randomBytes(32)))
 
 // TODO: instead of using a getter, update on remote-update/add/remove
 Object.defineProperty(Feed.prototype, 'remoteLength', {
