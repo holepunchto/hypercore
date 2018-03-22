@@ -3,6 +3,7 @@ var crypto = require('../lib/crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
+var bufferAlloc = require('buffer-alloc')
 
 tape('append', function (t) {
   t.plan(8)
@@ -102,7 +103,7 @@ tape('check existing key', function (t) {
   var feed = hypercore(storage)
 
   feed.append('hi', function () {
-    var key = new Buffer(32)
+    var key = bufferAlloc(32)
     key.fill(0)
     var otherFeed = hypercore(storage, key)
     otherFeed.on('error', function () {

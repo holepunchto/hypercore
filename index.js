@@ -18,6 +18,8 @@ var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('./lib/crypto')
 var nextTick = require('process-nextick-args')
+var bufferFrom = require('buffer-from')
+var bufferAlloc = require('buffer-alloc')
 var replicate = null
 
 module.exports = Feed
@@ -29,7 +31,7 @@ function Feed (createStorage, key, opts) {
   if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
   if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
 
-  if (typeof key === 'string') key = new Buffer(key, 'hex')
+  if (typeof key === 'string') key = bufferFrom(key, 'hex')
 
   if (!Buffer.isBuffer(key) && !opts) {
     opts = key
@@ -41,7 +43,7 @@ function Feed (createStorage, key, opts) {
   var self = this
 
   var secretKey = opts.secretKey || null
-  if (typeof secretKey === 'string') secretKey = new Buffer(secretKey, 'hex')
+  if (typeof secretKey === 'string') secretKey = bufferFrom(secretKey, 'hex')
 
   this.id = opts.id || crypto.randomBytes(32)
   this.live = opts.live !== false
@@ -219,7 +221,7 @@ Feed.prototype._open = function (cb) {
 
     // verify key and secretKey go together
     if (self.key && self.secretKey) {
-      var challenge = new Buffer('')
+      var challenge = bufferAlloc(0)
       if (!crypto.verify(challenge, crypto.sign(challenge, self.secretKey), self.key)) {
         return cb(new Error('Key and secret do not match'))
       }
