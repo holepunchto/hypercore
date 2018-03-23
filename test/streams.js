@@ -1,6 +1,7 @@
 var tape = require('tape')
 var collect = require('stream-collector')
 var create = require('./helpers/create')
+var bufferFrom = require('buffer-from')
 
 tape('createReadStream to createWriteStream', function (t) {
   var feed1 = create()
@@ -13,7 +14,7 @@ tape('createReadStream to createWriteStream', function (t) {
     r.pipe(w).on('finish', function () {
       collect(feed2.createReadStream(), function (err, data) {
         t.error(err, 'no error')
-        t.same(data, [new Buffer('hello'), new Buffer('world')])
+        t.same(data, [bufferFrom('hello'), bufferFrom('world')])
         t.end()
       })
     })
