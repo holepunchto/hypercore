@@ -3,13 +3,14 @@
 
 var hypercore = require('../../')
 var path = require('path')
-var bufferAlloc = require('buffer-alloc')
+var bufferAlloc = require('buffer-alloc-unsafe')
 
 module.exports = function (dir, blockSize, count, finalize) {
   var feed = hypercore(path.join(__dirname, '../cores', dir), {live: !finalize, overwrite: true})
 
   var then = Date.now()
   var buf = bufferAlloc(blockSize)
+  buf.fill(0)
 
   var blocks = []
   while (blocks.length < 128) blocks.push(buf)

@@ -3,7 +3,7 @@ var crypto = require('../lib/crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
-var bufferAlloc = require('buffer-alloc')
+var bufferAlloc = require('buffer-alloc-unsafe')
 
 tape('append', function (t) {
   t.plan(8)

@@ -19,7 +19,7 @@ var storage = require('./lib/storage')
 var crypto = require('./lib/crypto')
 var nextTick = require('process-nextick-args')
 var bufferFrom = require('buffer-from')
-var bufferAlloc = require('buffer-alloc')
+var bufferAlloc = require('buffer-alloc-unsafe')
 var replicate = null
 
 module.exports = Feed
