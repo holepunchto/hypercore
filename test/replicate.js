@@ -588,6 +588,31 @@ tape('sparse mode, two downloads', function (t) {
   })
 })
 
+tape('peer-add and peer-remove are emitted', function (t) {
+  t.plan(4)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    feed.on('peer-add', function (peer) {
+      t.pass('peer-add1')
+    })
+    clone.on('peer-add', function (peer) {
+      t.pass('peer-add2')
+    })
+    feed.on('peer-remove', function (peer) {
+      t.pass('peer-remove1')
+    })
+    clone.on('peer-remove', function (peer) {
+      t.pass('peer-remove2')
+    })
+
+    replicate(clone, feed)
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
