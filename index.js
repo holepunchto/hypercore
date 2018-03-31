@@ -62,6 +62,9 @@ function Feed (createStorage, key, opts) {
   this.allowPush = !!opts.allowPush
   this.peers = []
 
+  // hooks
+  this._onwrite = opts.onwrite || null
+
   this._ready = thunky(open) // TODO: if open fails, do not reopen next time
   this._indexing = !!opts.indexing
   this._createIfMissing = opts.createIfMissing !== false
@@ -69,7 +72,7 @@ function Feed (createStorage, key, opts) {
   this._storeSecretKey = opts.storeSecretKey !== false
   this._merkle = null
   this._storage = storage(createStorage, opts.storageCacheSize)
-  this._batch = batcher(work)
+  this._batch = batcher(this._onwrite ? workHook : work)
 
   this._waiting = []
   this._selections = []
@@ -85,6 +88,10 @@ function Feed (createStorage, key, opts) {
 
   function onerror (err) {
     if (err) self.emit('error', err)
+  }
+
+  function workHook (values, cb) {
+    self._appendHook(values, cb)
   }
 
   function work (values, cb) {
@@ -685,6 +692,18 @@ Feed.prototype._readyAndPut = function (index, data, proof, cb) {
 }
 
 Feed.prototype._write = function (index, data, nodes, sig, from, cb) {
+  if (!this._onwrite) return this._writeAfterHook(index, data, nodes, sig, from, cb)
+  this._onwrite(index, data, from, writeHookDone(this, index, data, nodes, sig, from, cb))
+}
+
+function writeHookDone (self, index, data, nodes, sig, from, cb) {
+  return function (err) {
+    if (err) return cb(err)
+    self._writeAfterHook(index, data, nodes, sig, from, cb)
+  }
+}
+
+Feed.prototype._writeAfterHook = function (index, data, nodes, sig, from, cb) {
   var self = this
   var pending = nodes.length + 1 + (sig ? 1 : 0)
   var error = null
@@ -980,6 +999,24 @@ Feed.prototype.close = function (cb) {
     self.readable = false
     self._storage.close(cb)
   })
+}
+
+Feed.prototype._appendHook = function (batch, cb) {
+  var self = this
+  var missing = batch.length
+  var error = null
+
+  if (!missing) return this._append(batch, cb)
+  for (var i = 0; i < batch.length; i++) {
+    this._onwrite(i + this.length, batch[i], null, done)
+  }
+
+  function done (err) {
+    if (err) error = err
+    if (--missing) return
+    if (error) return cb(error)
+    self._append(batch, cb)
+  }
 }
 
 Feed.prototype._append = function (batch, cb) {
