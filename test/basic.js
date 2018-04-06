@@ -219,3 +219,23 @@ tape('append, no cache', function (t) {
     })
   })
 })
+
+tape('onwrite', function (t) {
+  var expected = [
+    {index: 0, data: 'hello', peer: null},
+    {index: 1, data: 'world', peer: null}
+  ]
+
+  var feed = create({
+    onwrite: function (index, data, peer, cb) {
+      t.same({index: index, data: data.toString(), peer: peer}, expected.shift())
+      cb()
+    }
+  })
+
+  feed.append(['hello', 'world'], function (err) {
+    t.error(err, 'no error')
+    t.same(expected.length, 0)
+    t.end()
+  })
+})
