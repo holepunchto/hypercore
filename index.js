@@ -103,6 +103,8 @@ Feed.prototype = Inherited.prototype
 Feed.prototype.constructor = Feed
 
 Feed.discoveryKey = crypto.discoveryKey
+// expose internal libs
+Feed.crypto = crypto
 
 // TODO: instead of using a getter, update on remote-update/add/remove
 Object.defineProperty(Feed.prototype, 'remoteLength', {
