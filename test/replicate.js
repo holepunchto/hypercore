@@ -613,6 +613,30 @@ tape('peer-add and peer-remove are emitted', function (t) {
   })
 })
 
+tape('replicate with onwrite', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var expected = ['a', 'b', 'c', 'd', 'e']
+
+    var clone = create(feed.key, {
+      onwrite: function (index, data, peer, cb) {
+        t.ok(peer, 'has peer')
+        t.same(expected[index], data.toString())
+        expected[index] = null
+        cb()
+      }
+    })
+
+    clone.on('sync', function () {
+      t.same(expected, [null, null, null, null, null])
+      t.end()
+    })
+
+    replicate(feed, clone, {live: true})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
