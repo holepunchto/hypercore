@@ -3,6 +3,7 @@ var crypto = require('../lib/crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
+var bufferAlloc = require('buffer-alloc-unsafe')
 
 tape('append', function (t) {
   t.plan(8)
@@ -102,7 +103,7 @@ tape('check existing key', function (t) {
   var feed = hypercore(storage)
 
   feed.append('hi', function () {
-    var key = new Buffer(32)
+    var key = bufferAlloc(32)
     key.fill(0)
     var otherFeed = hypercore(storage, key)
     otherFeed.on('error', function () {
@@ -219,6 +220,7 @@ tape('append, no cache', function (t) {
   })
 })
 
+
 tape('pass in discovery key', function (t) {
   var myDiscoveryKey = 'feeb189135cda315ca15e2d03c26543b'
   var keyPair = crypto.keyPair()
@@ -228,6 +230,25 @@ tape('pass in discovery key', function (t) {
 
   feed.on('ready', function () {
     t.same(feed.discoveryKey.toString('hex'), myDiscoveryKey)
+  })
+})
+    
+tape('onwrite', function (t) {
+  var expected = [
+    {index: 0, data: 'hello', peer: null},
+    {index: 1, data: 'world', peer: null}
+  ]
+
+  var feed = create({
+    onwrite: function (index, data, peer, cb) {
+      t.same({index: index, data: data.toString(), peer: peer}, expected.shift())
+      cb()
+    }
+  })
+
+  feed.append(['hello', 'world'], function (err) {
+    t.error(err, 'no error')
+    t.same(expected.length, 0)
     t.end()
   })
 })
