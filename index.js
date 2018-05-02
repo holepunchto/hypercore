@@ -505,7 +505,7 @@ Feed.prototype.signature = function (index, cb) {
 Feed.prototype.verify = function (index, signature, cb) {
   var self = this
 
-  this._getRootsToVerify(index * 2 + 2, {}, [], function (err, roots) {
+  this._withRoots(index, function (err, roots) {
     if (err) return cb(err)
 
     var checksum = crypto.tree(roots)
@@ -516,6 +516,14 @@ Feed.prototype.verify = function (index, signature, cb) {
       cb(null, true)
     }
   })
+}
+
+Feed.prototype.rootHashes = function (index, cb) {
+  this._withRoots(index, cb)
+}
+
+Feed.prototype._withRoots = function (index, cb) {
+  this._getRootsToVerify(index * 2 + 2, {}, [], cb)
 }
 
 Feed.prototype.seek = function (bytes, opts, cb) {

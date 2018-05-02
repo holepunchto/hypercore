@@ -84,6 +84,36 @@ tape('verify', function (t) {
   })
 })
 
+tape('rootHashes', function (t) {
+  t.plan(9)
+
+  var feed = create()
+  var evilfeed = create(feed.key, {secretKey: feed.secretKey})
+
+  feed.append('test', function (err) {
+    t.error(err, 'no error')
+
+    evilfeed.append('t\0st', function (err) {
+      t.error(err, 'no error')
+
+      var result = []
+
+      feed.rootHashes(0, onroots)
+      evilfeed.rootHashes(0, onroots)
+
+      function onroots (err, roots) {
+        t.error(err, 'no error')
+        t.ok(roots instanceof Array)
+        result.push(roots)
+        if (result.length < 2) return
+        t.notEqual(result[0], result[1])
+        t.equal(result[0].length, result[1].length)
+        t.notEqual(Buffer.compare(result[0][0].hash, result[1][0].hash), 0)
+      }
+    })
+  })
+})
+
 tape('pass in secret key', function (t) {
   var keyPair = crypto.keyPair()
   var secretKey = keyPair.secretKey

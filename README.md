@@ -184,6 +184,12 @@ block associated with the signature.
 Callback is called with `(err, success)` where success is true only if the signature is
 correct.
 
+#### `feed.rootHashes(index, callback)`
+
+Retrieve the root *hashes* for given `index`.
+
+Callback is called with `(err, roots)`; `roots` is an *Array* of root *hashes*.
+
 #### `var number = feed.downloaded([start], [end])`
 
 Returns total number of downloaded blocks within range.
