@@ -117,6 +117,12 @@ How much data is available on this feed in bytes?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
+#### `feed.lastSignature`
+
+What signature verified the last block in the stream?
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
 #### `feed.get(index, [options], callback)`
 
 Get a block of data.
