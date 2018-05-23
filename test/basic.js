@@ -269,3 +269,21 @@ tape('onwrite', function (t) {
     t.end()
   })
 })
+
+tape('close, emitter and callback', function (t) {
+  t.plan(3)
+  var feed = create()
+
+  feed.on('close', function () {
+    t.pass('close emitted')
+  })
+
+  feed.close(function (err) {
+    t.error(err, 'closed without error')
+    t.pass('callback invoked')
+  })
+
+  feed.close(function () {
+    t.end()
+  })
+})
