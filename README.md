@@ -34,6 +34,14 @@ feed.append('world', function (err) {
 })
 ```
 
+## Terminology
+
+ - **feed**. This is what hypercores are: a data feed. Feeds are permanent data structures that can be shared on the dat network.
+ - **stream**. Streams are a tool in the code for reading or writing data. Streams are temporary and almost always returned by functions.
+ - **pipe**. Streams tend to either be readable (giving data) or writable (receiving data). If you connect a readable to a writable, that's called piping.
+ - **replication stream**. A stream returned by the `replicate()` function which can be piped to a peer. It is used to sync the peers' hypercore feeds.
+ - **swarming**. Swarming describes adding yourself to the network, finding peers, and sharing data with them. Piping a replication feed describes sharing the data with one peer.
+
 ## API
 
 #### `var feed = hypercore(storage, [key], [options])`
