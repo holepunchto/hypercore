@@ -59,6 +59,7 @@ function Feed (createStorage, key, opts) {
   this.writable = !!opts.writable
   this.readable = true
   this.opened = false
+  this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
 
@@ -1001,7 +1002,13 @@ Feed.prototype.close = function (cb) {
   this._ready(function () {
     self.writable = false
     self.readable = false
-    self._storage.close(cb)
+    self._storage.close(function (err) {
+      if (!self.closed && !err) {
+        self.closed = true
+        self.emit('close')
+      }
+      if (cb) cb(err)
+    })
   })
 }
 
