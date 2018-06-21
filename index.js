@@ -923,6 +923,55 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
   })
 }
 
+Feed.prototype.getBatch = function (start, end, opts, cb) {
+  if (typeof opts === 'function') return this.getBatch(start, end, null, opts)
+  if (!this.opened) return this._readyAndGetBatch(start, end, opts, cb)
+
+  var self = this
+  var wait = !opts || opts.wait !== false
+
+  if (this.has(start, end)) return this._getBatch(start, end, opts, cb)
+  if (!wait) return cb(new Error('Block not downloaded'))
+
+  if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
+
+  this.download({start: start, end: end}, function (err) {
+    if (err) return cb(err)
+    self._getBatch(start, end, opts, cb)
+  })
+}
+
+Feed.prototype._getBatch = function (start, end, opts, cb) {
+  var enc = opts && opts.valueEncoding
+  var codec = enc ? toCodec(enc) : this._codec
+
+  this._storage.getDataBatch(start, end - start, onbatch)
+
+  function onbatch (err, buffers) {
+    if (err) return cb(err)
+
+    var batch = new Array(buffers.length)
+
+    for (var i = 0; i < buffers.length; i++) {
+      try {
+        batch[i] = codec ? codec.decode(buffers[i]) : buffers[i]
+      } catch (err) {
+        return cb(err)
+      }
+    }
+
+    cb(null, batch)
+  }
+}
+
+Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
+  var self = this
+  this._ready(function (err) {
+    if (err) return cb(err)
+    self.getBatch(start, end, opts, cb)
+  })
+}
+
 Feed.prototype._updatePeers = function () {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
 }

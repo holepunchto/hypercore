@@ -142,6 +142,18 @@ Options include
 
 Callback is called with `(err, data)`
 
+#### `feed.getBatch(start, end, [options], callback)`
+
+Get a range of blocks efficiently. Options include
+
+``` js
+{
+  wait: sameAsAbove,
+  timeout: sameAsAbove,
+  valueEncoding: sameAsAbove
+}
+```
+
 #### `feed.head([options], callback)`
 
 Get the block of data at the tip of the feed. This will be the most recently
