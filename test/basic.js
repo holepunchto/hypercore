@@ -287,3 +287,24 @@ tape('close, emitter and callback', function (t) {
     t.end()
   })
 })
+
+tape('get batch', function (t) {
+  t.plan(2 * 3)
+
+  var feed = create({valueEncoding: 'utf-8'})
+
+  feed.append(['a', 'be', 'cee', 'd'], function () {
+    feed.getBatch(0, 4, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['a', 'be', 'cee', 'd'])
+    })
+    feed.getBatch(1, 3, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['be', 'cee'])
+    })
+    feed.getBatch(2, 4, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['cee', 'd'])
+    })
+  })
+})

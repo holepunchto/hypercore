@@ -923,6 +923,73 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
   })
 }
 
+Feed.prototype.getBatch = function (start, end, opts, cb) {
+  if (typeof opts === 'function') return this.getBatch(start, end, null, opts)
+  if (!this.opened) return this._readyAndGetBatch(start, end, opts, cb)
+
+  var self = this
+  var firstDownload = true
+  var batch = []
+  var codec = (opts && opts.valueEncoding) ? toCodec(opts.valueEncoding) : this._codec
+  var partial = !!(opts && opts.partial)
+
+  loop()
+
+  function loop () {
+    if (start >= end) return cb(null, batch)
+
+    var hasEnd = start
+    for (; hasEnd < end; hasEnd++) {
+      if (!self.bitfield.get(hasEnd)) break
+    }
+
+    if (start < hasEnd) {
+      self._storage.getDataBatch(start, hasEnd - start, onbatch)
+      return
+    }
+
+    if (partial) return cb(null, batch)
+
+    if (firstDownload) {
+      firstDownload = false
+      self.download({start: start, end: end, linear: true})
+    }
+
+    self.get(start, opts, onget)
+  }
+
+  function onget (err, data) {
+    if (err) return cb(err)
+
+    batch.push(data)
+    start++
+    loop()
+  }
+
+  function onbatch (err, buffers) {
+    if (err) return cb(err)
+
+    for (var i = 0; i < buffers.length; i++) {
+      try {
+        batch.push(codec ? codec.decode(buffers[i]) : buffers[i])
+      } catch (err) {
+        return cb(err)
+      }
+    }
+
+    start += buffers.length
+    loop()
+  }
+}
+
+Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
+  var self = this
+  this._ready(function (err) {
+    if (err) return cb(err)
+    self.getBatch(start, end, opts, cb)
+  })
+}
+
 Feed.prototype._updatePeers = function () {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
 }
