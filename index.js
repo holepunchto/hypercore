@@ -956,6 +956,7 @@ Feed.prototype.createReadStream = function (opts) {
       if (end === -1) {
         if (live) end = Infinity
         else if (snapshot) end = self.length
+        if (start > end) return cb(null, null)
       }
       if (opts.tail) start = self.length
       first = false
