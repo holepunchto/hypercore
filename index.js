@@ -928,57 +928,39 @@ Feed.prototype.getBatch = function (start, end, opts, cb) {
   if (!this.opened) return this._readyAndGetBatch(start, end, opts, cb)
 
   var self = this
-  var firstDownload = true
-  var batch = []
-  var codec = (opts && opts.valueEncoding) ? toCodec(opts.valueEncoding) : this._codec
-  var partial = !!(opts && opts.partial)
+  var wait = !opts || opts.wait !== false
 
-  loop()
+  if (this.has(start, end)) return this._getBatch(start, end, opts, cb)
+  if (!wait) return cb(new Error('Block not downloaded'))
 
-  function loop () {
-    if (start >= end) return cb(null, batch)
+  if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
-    var hasEnd = start
-    for (; hasEnd < end; hasEnd++) {
-      if (!self.bitfield.get(hasEnd)) break
-    }
-
-    if (start < hasEnd) {
-      self._storage.getDataBatch(start, hasEnd - start, onbatch)
-      return
-    }
-
-    if (partial) return cb(null, batch)
-
-    if (firstDownload) {
-      firstDownload = false
-      self.download({start: start, end: end, linear: true})
-    }
-
-    self.get(start, opts, onget)
-  }
-
-  function onget (err, data) {
+  this.download({start: start, end: end}, function (err) {
     if (err) return cb(err)
+    self._getBatch(start, end, opts, cb)
+  })
+}
 
-    batch.push(data)
-    start++
-    loop()
-  }
+Feed.prototype._getBatch = function (start, end, opts, cb) {
+  var enc = opts && opts.valueEncoding
+  var codec = enc ? toCodec(enc) : this._codec
+
+  this._storage.getDataBatch(start, end - start, onbatch)
 
   function onbatch (err, buffers) {
     if (err) return cb(err)
 
+    var batch = new Array(buffers.length)
+
     for (var i = 0; i < buffers.length; i++) {
       try {
-        batch.push(codec ? codec.decode(buffers[i]) : buffers[i])
+        batch[i] = codec ? codec.decode(buffers[i]) : buffers[i]
       } catch (err) {
         return cb(err)
       }
     }
 
-    start += buffers.length
-    loop()
+    cb(null, batch)
   }
 }
 
