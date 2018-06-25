@@ -20,6 +20,8 @@ var crypto = require('./lib/crypto')
 var nextTick = require('process-nextick-args')
 var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
+var inspect = require('inspect-custom-symbol')
+var pretty = require('pretty-hash')
 var replicate = null
 
 module.exports = Feed
@@ -111,6 +113,18 @@ function Feed (createStorage, key, opts) {
 inherits(Feed, events.EventEmitter)
 
 Feed.discoveryKey = crypto.discoveryKey
+
+Feed.prototype[inspect] = function () {
+  return 'Hypercore(\n' +
+    '  key: ' + (this.key && pretty(this.key)) + '\n' +
+    '  discoveryKey: ' + (this.discoveryKey && pretty(this.discoveryKey)) + '\n' +
+    '  opened: ' + this.opened + '\n' +
+    '  writable: ' + this.writable + '\n' +
+    '  length: ' + this.length + '\n' +
+    '  byteLength: ' + this.byteLength + '\n' +
+    '  peers: ' + this.peers.length + '\n' +
+    ')'
+}
 
 // TODO: instead of using a getter, update on remote-update/add/remove
 Object.defineProperty(Feed.prototype, 'remoteLength', {
