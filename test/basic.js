@@ -1,5 +1,5 @@
 var create = require('./helpers/create')
-var crypto = require('../lib/crypto')
+var crypto = require('hypercore-crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')

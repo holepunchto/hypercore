@@ -14,6 +14,7 @@
     "codecs": "^1.2.0",
     "flat-tree": "^1.6.0",
     "from2": "^2.3.0",
+    "hypercore-crypto": "^1.0.0",
     "hypercore-protocol": "^6.4.1",
     "inherits": "^2.0.3",
     "inspect-custom-symbol": "^1.1.0",
