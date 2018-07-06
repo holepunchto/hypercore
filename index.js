@@ -114,16 +114,20 @@ inherits(Feed, events.EventEmitter)
 
 Feed.discoveryKey = crypto.discoveryKey
 
-Feed.prototype[inspect] = function () {
+Feed.prototype[inspect] = function (depth, opts) {
+  var indent = ''
+  if (typeof opts.indentationLvl === 'number') {
+    while (indent.length < opts.indentationLvl) indent += ' '
+  }
   return 'Hypercore(\n' +
-    '  key: ' + (this.key && pretty(this.key)) + '\n' +
-    '  discoveryKey: ' + (this.discoveryKey && pretty(this.discoveryKey)) + '\n' +
-    '  opened: ' + this.opened + '\n' +
-    '  writable: ' + this.writable + '\n' +
-    '  length: ' + this.length + '\n' +
-    '  byteLength: ' + this.byteLength + '\n' +
-    '  peers: ' + this.peers.length + '\n' +
-    ')'
+    indent + '  key: ' + opts.stylize((this.key && pretty(this.key)), 'string') + '\n' +
+    indent + '  discoveryKey: ' + opts.stylize((this.discoveryKey && pretty(this.discoveryKey)), 'string') + '\n' +
+    indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
+    indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
+    indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
+    indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
+    indent + '  peers: ' + opts.stylize(this.peers.length, 'number') + '\n' +
+    indent + ')'
 }
 
 // TODO: instead of using a getter, update on remote-update/add/remove
