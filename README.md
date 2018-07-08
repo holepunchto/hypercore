@@ -346,6 +346,10 @@ Emitted when the feed has been appended to (i.e. has a new length / byteLength)
 
 Emitted every time ALL data from `0` to `feed.length` has been downloaded.
 
+#### `feed.on('sync-bitfield')`
+
+Emitted after data has been downloaded and the bitfield has been updated.
+
 #### `feed.on('close')`
 
 Emitted when the feed has been fully closed

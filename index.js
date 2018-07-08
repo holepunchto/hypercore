@@ -1183,6 +1183,7 @@ Feed.prototype._pollWaiting = function () {
 }
 
 Feed.prototype._syncBitfield = function (cb) {
+  var self = this
   var missing = this.bitfield.pages.updates.length
   var next = null
   var error = null
@@ -1212,6 +1213,7 @@ Feed.prototype._syncBitfield = function (cb) {
     if (err) error = err
     if (--missing) return
     cb(error)
+    self.emit('sync-bitfield')
   }
 }
 
