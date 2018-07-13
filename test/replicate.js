@@ -1,6 +1,7 @@
 var create = require('./helpers/create')
 var replicate = require('./helpers/replicate')
 var tape = require('tape')
+var bufferFrom = require('buffer-from')
 
 tape('replicate', function (t) {
   t.plan(10)
@@ -162,11 +163,11 @@ tape('basic 3-way replication', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, new Buffer('a'))
+      t.same(data, bufferFrom('a'))
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, new Buffer('a'))
+        t.same(data, bufferFrom('a'))
         t.end()
       })
     })
@@ -183,7 +184,7 @@ tape('extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, new Buffer('b'))
+      t.same(data, bufferFrom('b'))
       t.end()
     })
   })
@@ -201,11 +202,11 @@ tape('3-way another index', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, new Buffer('b'))
+      t.same(data, bufferFrom('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, new Buffer('b'))
+        t.same(data, bufferFrom('b'))
         t.end()
       })
     })
@@ -224,11 +225,11 @@ tape('3-way another index + extra data', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, new Buffer('b'))
+      t.same(data, bufferFrom('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, new Buffer('b'))
+        t.same(data, bufferFrom('b'))
         t.end()
       })
     })
@@ -247,11 +248,11 @@ tape('3-way another index + extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, new Buffer('b'))
+      t.same(data, bufferFrom('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, new Buffer('b'))
+        t.same(data, bufferFrom('b'))
         t.end()
       })
     })
@@ -271,11 +272,11 @@ tape('3-way another index + extra data + factor of two + static', function (t) {
 
       clone1.get(1, function (err, data) {
         t.error(err, 'no error')
-        t.same(data, new Buffer('b'))
+        t.same(data, bufferFrom('b'))
 
         clone2.get(1, function (err) {
           t.error(err, 'no error')
-          t.same(data, new Buffer('b'))
+          t.same(data, bufferFrom('b'))
           t.end()
         })
       })
@@ -584,6 +585,55 @@ tape('sparse mode, two downloads', function (t) {
         })
       })
     })
+  })
+})
+
+tape('peer-add and peer-remove are emitted', function (t) {
+  t.plan(4)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    feed.on('peer-add', function (peer) {
+      t.pass('peer-add1')
+    })
+    clone.on('peer-add', function (peer) {
+      t.pass('peer-add2')
+    })
+    feed.on('peer-remove', function (peer) {
+      t.pass('peer-remove1')
+    })
+    clone.on('peer-remove', function (peer) {
+      t.pass('peer-remove2')
+    })
+
+    replicate(clone, feed)
+  })
+})
+
+tape('replicate with onwrite', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var expected = ['a', 'b', 'c', 'd', 'e']
+
+    var clone = create(feed.key, {
+      onwrite: function (index, data, peer, cb) {
+        t.ok(peer, 'has peer')
+        t.same(expected[index], data.toString())
+        expected[index] = null
+        cb()
+      }
+    })
+
+    clone.on('sync', function () {
+      t.same(expected, [null, null, null, null, null])
+      t.end()
+    })
+
+    replicate(feed, clone, {live: true})
   })
 })
 
