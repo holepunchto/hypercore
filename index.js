@@ -53,7 +53,7 @@ function Feed (createStorage, key, opts) {
   this.length = 0
   this.byteLength = 0
   this.maxRequests = opts.maxRequests || 16
-  this.key = key || null
+  this.key = key || opts.key || null
   this.discoveryKey = this.key && crypto.discoveryKey(this.key)
   this.secretKey = secretKey
   this.bitfield = null
