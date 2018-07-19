@@ -1030,6 +1030,10 @@ Feed.prototype.createReadStream = function (opts) {
     }
 
     if (start === end || (end === -1 && start === self.length)) return cb(null, null)
+
+    range.start++
+    if (range.iterator) range.iterator.start++
+
     self.get(start++, opts, cb)
   }
 
