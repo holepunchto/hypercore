@@ -1012,7 +1012,7 @@ Feed.prototype.createReadStream = function (opts) {
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
   var first = true
-  var range = this.download({start: start, end: end, linear: true})
+  var range
 
   return from.obj(read).on('end', cleanup).on('close', cleanup)
 
@@ -1020,12 +1020,13 @@ Feed.prototype.createReadStream = function (opts) {
     if (!self.opened) return open(size, cb)
 
     if (first) {
+      if (opts.tail) start = self.length
+      range = self.download({start: start, end: end, linear: true})
       if (end === -1) {
         if (live) end = Infinity
         else if (snapshot) end = self.length
         if (start > end) return cb(null, null)
       }
-      if (opts.tail) start = self.length
       first = false
     }
 
