@@ -16,10 +16,12 @@ var bitfield = require('./lib/bitfield')
 var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
-var crypto = require('./lib/crypto')
+var crypto = require('hypercore-crypto')
 var nextTick = require('process-nextick-args')
 var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
+var inspect = require('inspect-custom-symbol')
+var pretty = require('pretty-hash')
 var replicate = null
 
 module.exports = Feed
@@ -51,7 +53,7 @@ function Feed (createStorage, key, opts) {
   this.length = 0
   this.byteLength = 0
   this.maxRequests = opts.maxRequests || 16
-  this.key = key || null
+  this.key = key || opts.key || null
   this.discoveryKey = this.key && (opts.discoveryKey ? opts.discoveryKey : crypto.discoveryKey(this.key))
   this.secretKey = secretKey
   this.bitfield = null
@@ -59,6 +61,7 @@ function Feed (createStorage, key, opts) {
   this.writable = !!opts.writable
   this.readable = true
   this.opened = false
+  this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
 
@@ -110,6 +113,22 @@ function Feed (createStorage, key, opts) {
 inherits(Feed, events.EventEmitter)
 
 Feed.discoveryKey = crypto.discoveryKey
+
+Feed.prototype[inspect] = function (depth, opts) {
+  var indent = ''
+  if (typeof opts.indentationLvl === 'number') {
+    while (indent.length < opts.indentationLvl) indent += ' '
+  }
+  return 'Hypercore(\n' +
+    indent + '  key: ' + opts.stylize((this.key && pretty(this.key)), 'string') + '\n' +
+    indent + '  discoveryKey: ' + opts.stylize((this.discoveryKey && pretty(this.discoveryKey)), 'string') + '\n' +
+    indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
+    indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
+    indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
+    indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
+    indent + '  peers: ' + opts.stylize(this.peers.length, 'number') + '\n' +
+    indent + ')'
+}
 
 // TODO: instead of using a getter, update on remote-update/add/remove
 Object.defineProperty(Feed.prototype, 'remoteLength', {
@@ -505,7 +524,7 @@ Feed.prototype.signature = function (index, cb) {
 Feed.prototype.verify = function (index, signature, cb) {
   var self = this
 
-  this._getRootsToVerify(index * 2 + 2, {}, [], function (err, roots) {
+  this.rootHashes(index, function (err, roots) {
     if (err) return cb(err)
 
     var checksum = crypto.tree(roots)
@@ -516,6 +535,10 @@ Feed.prototype.verify = function (index, signature, cb) {
       cb(null, true)
     }
   })
+}
+
+Feed.prototype.rootHashes = function (index, cb) {
+  this._getRootsToVerify(index * 2 + 2, {}, [], cb)
 }
 
 Feed.prototype.seek = function (bytes, opts, cb) {
@@ -918,6 +941,55 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
   })
 }
 
+Feed.prototype.getBatch = function (start, end, opts, cb) {
+  if (typeof opts === 'function') return this.getBatch(start, end, null, opts)
+  if (!this.opened) return this._readyAndGetBatch(start, end, opts, cb)
+
+  var self = this
+  var wait = !opts || opts.wait !== false
+
+  if (this.has(start, end)) return this._getBatch(start, end, opts, cb)
+  if (!wait) return cb(new Error('Block not downloaded'))
+
+  if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
+
+  this.download({start: start, end: end}, function (err) {
+    if (err) return cb(err)
+    self._getBatch(start, end, opts, cb)
+  })
+}
+
+Feed.prototype._getBatch = function (start, end, opts, cb) {
+  var enc = opts && opts.valueEncoding
+  var codec = enc ? toCodec(enc) : this._codec
+
+  this._storage.getDataBatch(start, end - start, onbatch)
+
+  function onbatch (err, buffers) {
+    if (err) return cb(err)
+
+    var batch = new Array(buffers.length)
+
+    for (var i = 0; i < buffers.length; i++) {
+      try {
+        batch[i] = codec ? codec.decode(buffers[i]) : buffers[i]
+      } catch (err) {
+        return cb(err)
+      }
+    }
+
+    cb(null, batch)
+  }
+}
+
+Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
+  var self = this
+  this._ready(function (err) {
+    if (err) return cb(err)
+    self.getBatch(start, end, opts, cb)
+  })
+}
+
 Feed.prototype._updatePeers = function () {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
 }
@@ -951,12 +1023,17 @@ Feed.prototype.createReadStream = function (opts) {
       if (end === -1) {
         if (live) end = Infinity
         else if (snapshot) end = self.length
+        if (start > end) return cb(null, null)
       }
       if (opts.tail) start = self.length
       first = false
     }
 
     if (start === end || (end === -1 && start === self.length)) return cb(null, null)
+
+    range.start++
+    if (range.iterator) range.iterator.start++
+
     self.get(start++, opts, cb)
   }
 
@@ -997,7 +1074,13 @@ Feed.prototype.close = function (cb) {
   this._ready(function () {
     self.writable = false
     self.readable = false
-    self._storage.close(cb)
+    self._storage.close(function (err) {
+      if (!self.closed && !err) {
+        self.closed = true
+        self.emit('close')
+      }
+      if (cb) cb(err)
+    })
   })
 }
 

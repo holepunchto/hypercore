@@ -1,5 +1,5 @@
 var create = require('./helpers/create')
-var crypto = require('../lib/crypto')
+var crypto = require('hypercore-crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
@@ -80,6 +80,36 @@ tape('verify', function (t) {
           t.ok(!success, 'fake verify failed')
         })
       })
+    })
+  })
+})
+
+tape('rootHashes', function (t) {
+  t.plan(9)
+
+  var feed = create()
+  var evilfeed = create(feed.key, {secretKey: feed.secretKey})
+
+  feed.append('test', function (err) {
+    t.error(err, 'no error')
+
+    evilfeed.append('t\0st', function (err) {
+      t.error(err, 'no error')
+
+      var result = []
+
+      feed.rootHashes(0, onroots)
+      evilfeed.rootHashes(0, onroots)
+
+      function onroots (err, roots) {
+        t.error(err, 'no error')
+        t.ok(roots instanceof Array)
+        result.push(roots)
+        if (result.length < 2) return
+        t.notEqual(result[0], result[1])
+        t.equal(result[0].length, result[1].length)
+        t.notEqual(Buffer.compare(result[0][0].hash, result[1][0].hash), 0)
+      }
     })
   })
 })
@@ -248,5 +278,44 @@ tape('onwrite', function (t) {
     t.error(err, 'no error')
     t.same(expected.length, 0)
     t.end()
+  })
+})
+
+tape('close, emitter and callback', function (t) {
+  t.plan(3)
+  var feed = create()
+
+  feed.on('close', function () {
+    t.pass('close emitted')
+  })
+
+  feed.close(function (err) {
+    t.error(err, 'closed without error')
+    t.pass('callback invoked')
+  })
+
+  feed.close(function () {
+    t.end()
+  })
+})
+
+tape('get batch', function (t) {
+  t.plan(2 * 3)
+
+  var feed = create({valueEncoding: 'utf-8'})
+
+  feed.append(['a', 'be', 'cee', 'd'], function () {
+    feed.getBatch(0, 4, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['a', 'be', 'cee', 'd'])
+    })
+    feed.getBatch(1, 3, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['be', 'cee'])
+    })
+    feed.getBatch(2, 4, function (err, batch) {
+      t.error(err)
+      t.same(batch, ['cee', 'd'])
+    })
   })
 })

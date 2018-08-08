@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "6.13.0",
+  "version": "6.18.1",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "dependencies": {
@@ -14,11 +14,14 @@
     "codecs": "^1.2.0",
     "flat-tree": "^1.6.0",
     "from2": "^2.3.0",
+    "hypercore-crypto": "^1.0.0",
     "hypercore-protocol": "^6.4.1",
     "inherits": "^2.0.3",
+    "inspect-custom-symbol": "^1.1.0",
     "last-one-wins": "^1.0.4",
     "memory-pager": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
+    "pretty-hash": "^1.0.1",
     "process-nextick-args": "^1.0.7",
     "random-access-file": "^2.0.1",
     "sodium-universal": "^2.0.0",

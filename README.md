@@ -34,6 +34,14 @@ feed.append('world', function (err) {
 })
 ```
 
+## Terminology
+
+ - **feed**. This is what hypercores are: a data feed. Feeds are permanent data structures that can be shared on the dat network.
+ - **stream**. Streams are a tool in the code for reading or writing data. Streams are temporary and almost always returned by functions.
+ - **pipe**. Streams tend to either be readable (giving data) or writable (receiving data). If you connect a readable to a writable, that's called piping.
+ - **replication stream**. A stream returned by the `replicate()` function which can be piped to a peer. It is used to sync the peers' hypercore feeds.
+ - **swarming**. Swarming describes adding yourself to the network, finding peers, and sharing data with them. Piping a replication feed describes sharing the data with one peer.
+
 ## API
 
 #### `var feed = hypercore(storage, [key], [options])`
@@ -136,6 +144,18 @@ Options include
 
 Callback is called with `(err, data)`
 
+#### `feed.getBatch(start, end, [options], callback)`
+
+Get a range of blocks efficiently. Options include
+
+``` js
+{
+  wait: sameAsAbove,
+  timeout: sameAsAbove,
+  valueEncoding: sameAsAbove
+}
+```
+
 #### `feed.head([options], callback)`
 
 Get the block of data at the tip of the feed. This will be the most recently
@@ -185,6 +205,20 @@ block associated with the signature.
 
 Callback is called with `(err, success)` where success is true only if the signature is
 correct.
+
+#### `feed.rootHashes(index, callback)`
+
+Retrieve the root *hashes* for given `index`.
+
+Callback is called with `(err, roots)`; `roots` is an *Array* of *Node* objects:
+```
+Node {
+  index: location in the merkle tree of this root
+  size: total bytes in children of this root
+  hash: hash of the children of this root (32-byte buffer)
+}
+```
+
 
 #### `var number = feed.downloaded([start], [end])`
 
