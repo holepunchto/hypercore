@@ -637,6 +637,37 @@ tape('replicate with onwrite', function (t) {
   })
 })
 
+tape('replicate from very sparse', function (t) {
+  t.plan(3)
+
+  var feed = create()
+  var arr = new Array(1e6)
+
+  arr.fill('a')
+  feed.append(arr, function (err) {
+    t.error(err, 'no error')
+    t.pass('appended ' + arr.length + ' blocks')
+
+    var clone1 = create(feed.key, {sparse: true})
+    var clone2 = create(feed.key)
+    var missing = 30
+    var then = 0
+
+    replicate(feed, clone1, {live: true})
+
+    clone2.on('download', function () {
+      if (--missing <= 0) {
+        t.pass('downloaded all in ' + (Date.now() - then) + 'ms')
+      }
+    })
+
+    clone1.download({start: feed.length - 30, end: feed.length}, function () {
+      then = Date.now()
+      replicate(clone2, clone1, {live: true})
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
