@@ -322,6 +322,8 @@ Feed.prototype.download = function (range, cb) {
   if (typeof range === 'function') return this.download(null, range)
   if (typeof range === 'number') range = {start: range, end: range + 1}
   if (!range) range = {}
+  if (!cb) cb = noop
+  if (!this.readable) return cb(new Error('Feed is closed'))
 
   // TODO: if no peers, check if range is already satisfied and nextTick(cb) if so
   // this._updatePeers does this for us when there is a peer though, so not critical
@@ -333,7 +335,7 @@ Feed.prototype.download = function (range, cb) {
     start: range.start || 0,
     end: range.end || -1,
     linear: !!range.linear,
-    callback: cb || noop
+    callback: cb
   }
 
   this._selections.push(sel)
@@ -916,6 +918,7 @@ Feed.prototype.head = function (opts, cb) {
 Feed.prototype.get = function (index, opts, cb) {
   if (typeof opts === 'function') return this.get(index, null, opts)
   if (!this.opened) return this._readyAndGet(index, opts, cb)
+  if (!this.readable) return cb(new Error('Feed is closed'))
 
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
@@ -1018,6 +1021,7 @@ Feed.prototype.createReadStream = function (opts) {
 
   function read (size, cb) {
     if (!self.opened) return open(size, cb)
+    if (!self.readable) return cb(new Error('Feed is closed'))
 
     if (first) {
       if (end === -1) {
@@ -1075,13 +1079,23 @@ Feed.prototype.close = function (cb) {
     self.writable = false
     self.readable = false
     self._storage.close(function (err) {
-      if (!self.closed && !err) {
-        self.closed = true
-        self.emit('close')
-      }
+      if (!self.closed && !err) self._onclose()
       if (cb) cb(err)
     })
   })
+}
+
+Feed.prototype._onclose = function () {
+  this.closed = true
+
+  while (this._waiting.length) {
+    this._waiting.pop().callback(new Error('Feed is closed'))
+  }
+  while (this._selections.length) {
+    this._selections.pop().callback(new Error('Feed is closed'))
+  }
+
+  this.emit('close')
 }
 
 Feed.prototype._appendHook = function (batch, cb) {

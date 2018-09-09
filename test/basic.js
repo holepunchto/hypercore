@@ -288,6 +288,41 @@ tape('close, emitter and callback', function (t) {
   })
 })
 
+tape('close calls pending callbacks', function (t) {
+  t.plan(5)
+
+  var feed = create()
+
+  feed.createReadStream({live: true})
+    .once('error', function (err) {
+      t.ok(err, 'read stream errors')
+    })
+    .resume()
+
+  feed.get(0, function (err) {
+    t.ok(err, 'get errors')
+  })
+
+  feed.once('close', function () {
+    t.pass('close emitted')
+  })
+
+  feed.ready(function () {
+    feed.close(function () {
+      feed.createReadStream({live: true})
+        .once('error', function (err) {
+          t.ok(err, 'read stream still errors')
+        })
+        .resume()
+
+      feed.get(0, function (err) {
+        t.ok(err, 'get still errors')
+      })
+    })
+  })
+})
+
+
 tape('get batch', function (t) {
   t.plan(2 * 3)
 
