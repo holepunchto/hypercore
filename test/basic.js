@@ -322,7 +322,6 @@ tape('close calls pending callbacks', function (t) {
   })
 })
 
-
 tape('get batch', function (t) {
   t.plan(2 * 3)
 
