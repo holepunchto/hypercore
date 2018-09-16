@@ -325,15 +325,19 @@ Feed.prototype.download = function (range, cb) {
   if (!cb) cb = noop
   if (!this.readable) return cb(new Error('Feed is closed'))
 
-  // TODO: if no peers, check if range is already satisfied and nextTick(cb) if so
-  // this._updatePeers does this for us when there is a peer though, so not critical
+  var start = range.start || 0;
+  var end = range.end || -1;
+
+  if (!this.peers.length && this.has(start, end)) {
+    return nextTick(cb)
+  }
 
   var sel = {
     _index: this._selections.length,
     hash: !!range.hash,
     iterator: null,
-    start: range.start || 0,
-    end: range.end || -1,
+    start: start,
+    end: end,
     linear: !!range.linear,
     callback: cb
   }
