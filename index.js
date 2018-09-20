@@ -94,10 +94,12 @@ function Feed (createStorage, key, opts) {
   }
 
   function workHook (values, cb) {
+    if (!self._merkle) return self._reloadMerkleStateBeforeAppend(workHook, values, cb)
     self._appendHook(values, cb)
   }
 
   function work (values, cb) {
+    if (!self._merkle) return self._reloadMerkleStateBeforeAppend(work, values, cb)
     self._append(values, cb)
   }
 
@@ -192,13 +194,25 @@ Feed.prototype._writeStateReloader = function (cb) {
   var self = this
   return function (err) {
     if (err) return cb(err)
-
-    self._roots(self.length, function (err, roots) {
-      if (err) return cb(err)
-      self._merkle = merkle(crypto, roots)
-      cb(null)
-    })
+    self._reloadMerkleState(cb)
   }
+}
+
+Feed.prototype._reloadMerkleState = function (cb) {
+  var self = this
+
+  this._roots(self.length, function (err, roots) {
+    if (err) return cb(err)
+    self._merkle = merkle(crypto, roots)
+    cb(null)
+  })
+}
+
+Feed.prototype._reloadMerkleStateBeforeAppend = function (work, values, cb) {
+  this._reloadMerkleState(function (err) {
+    if (err) return cb(err)
+    work(values, cb)
+  })
 }
 
 Feed.prototype._open = function (cb) {
@@ -840,6 +854,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
     var length = verifiedBy / 2
     if (length > self.length) {
       // TODO: only emit this after the info has been flushed to storage
+      if (self.writable) self._merkle = null // We need to reload merkle state now
       self.length = length
       self.byteLength = roots.reduce(addSize, 0)
       if (self._synced) self._synced.seek(0, self.length)
