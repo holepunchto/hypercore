@@ -77,6 +77,7 @@ function Feed (createStorage, key, opts) {
   this._storage = storage(createStorage, opts.storageCacheSize)
   this._batch = batcher(this._onwrite ? workHook : work)
 
+  this._seq = 0
   this._waiting = []
   this._selections = []
   this._reserved = sparseBitfield()
@@ -251,6 +252,7 @@ Feed.prototype._open = function (cb) {
     self.bitfield = bitfield(state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
+    self._seq = self.length
 
     if (state.key && self.key && !equals(state.key, self.key)) {
       return cb(new Error('Another hypercore is stored here'))
@@ -856,6 +858,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       // TODO: only emit this after the info has been flushed to storage
       if (self.writable) self._merkle = null // We need to reload merkle state now
       self.length = length
+      self._seq = length
       self.byteLength = roots.reduce(addSize, 0)
       if (self._synced) self._synced.seek(0, self.length)
       self.emit('append')
@@ -1017,7 +1020,7 @@ Feed.prototype.createWriteStream = function () {
   return bulk.obj(write)
 
   function write (batch, cb) {
-    self._batch(batch, cb)
+    self.append(batch, cb)
   }
 }
 
@@ -1080,11 +1083,22 @@ Feed.prototype.finalize = function (cb) {
 }
 
 Feed.prototype.append = function (batch, cb) {
-  this._batch(Array.isArray(batch) ? batch : [batch], cb || noop)
+  if (!cb) cb = noop
+
+  var self = this
+  var list = Array.isArray(batch) ? batch : [batch]
+  this._batch(list, onappend)
+
+  function onappend (err) {
+    if (err) return cb(err)
+    var seq = self._seq
+    self._seq += list.length
+    cb(null, seq)
+  }
 }
 
 Feed.prototype.flush = function (cb) {
-  this._batch([], cb)
+  this.append([], cb)
 }
 
 Feed.prototype.close = function (cb) {

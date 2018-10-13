@@ -237,7 +237,7 @@ False otherwise.
 
 Append a block of data to the feed.
 
-Callback is called with `(err)` when all data has been written or an error occurred.
+Callback is called with `(err, seq)` when all data has been written at the returned `seq` or an error occurred.
 
 #### `feed.clear(start, [end], [callback])`
 
