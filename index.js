@@ -1020,7 +1020,7 @@ Feed.prototype.createWriteStream = function () {
   return bulk.obj(write)
 
   function write (batch, cb) {
-    self._batch(batch, cb)
+    self.append(batch, cb)
   }
 }
 

@@ -342,3 +342,65 @@ tape('get batch', function (t) {
     })
   })
 })
+
+tape('append returns the seq', function (t) {
+  var feed = hypercore(storage)
+
+  feed.append('a', function (err, seq) {
+    t.error(err)
+    t.same(seq, 0)
+    feed.append(['b', 'c'], function (err, seq) {
+      t.error(err)
+      t.same(seq, 1)
+      feed.append(['d'], function (err, seq) {
+        t.error(err)
+        t.same(seq, 3)
+
+        var reloaded = hypercore(storage)
+        reloaded.append(['e'], function (err, seq) {
+          t.error(err)
+          t.same(seq, 4)
+          t.same(reloaded.length, 5)
+          t.end()
+        })
+      })
+    })
+  })
+
+  function storage (name) {
+    if (storage[name]) return storage[name]
+    storage[name] = ram()
+    return storage[name]
+  }
+})
+
+tape('append and createWriteStreams preserve seq', function (t) {
+  var feed = create()
+
+  var ws = feed.createWriteStream()
+
+  ws.write('a')
+  ws.write('b')
+  ws.write('c')
+  ws.end(function () {
+    t.same(feed.length, 3)
+    feed.append('d', function (err, seq) {
+      t.error(err)
+      t.same(seq, 3)
+      t.same(feed.length, 4)
+
+      var ws1 = feed.createWriteStream()
+
+      ws1.write('e')
+      ws1.write('f')
+      ws1.end(function () {
+        feed.append('g', function (err, seq) {
+          t.error(err)
+          t.same(seq, 6)
+          t.same(feed.length, 7)
+          t.end()
+        })
+      })
+    })
+  })
+})
