@@ -858,6 +858,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       // TODO: only emit this after the info has been flushed to storage
       if (self.writable) self._merkle = null // We need to reload merkle state now
       self.length = length
+      self._seq = length
       self.byteLength = roots.reduce(addSize, 0)
       if (self._synced) self._synced.seek(0, self.length)
       self.emit('append')
