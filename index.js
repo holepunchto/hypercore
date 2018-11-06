@@ -1283,6 +1283,52 @@ Feed.prototype._roots = function (index, cb) {
   }
 }
 
+Feed.prototype.audit = function (cb) {
+  if (!cb) cb = noop
+
+  var self = this
+  var report = {
+    valid: 0,
+    invalid: 0
+  }
+
+  this.ready(function (err) {
+    if (err) return cb(err)
+
+    var block = 0
+    var max = self.length
+
+    next()
+
+    function onnode (err, node) {
+      if (err) return ondata(null, null)
+      self._storage.getData(block, ondata)
+
+      function ondata (_, data) {
+        var verified = data && crypto.data(data).equals(node.hash)
+        if (verified) report.valid++
+        else report.invalid++
+        self.bitfield.set(block, verified)
+        block++
+        next()
+      }
+    }
+
+    function next () {
+      while (block < max && !self.bitfield.get(block)) block++
+      if (block >= max) return done()
+      self._storage.getNode(2 * block, onnode)
+    }
+
+    function done () {
+      self._sync(null, function (err) {
+        if (err) return cb(err)
+        cb(null, report)
+      })
+    }
+  })
+}
+
 function noop () {}
 
 function verifyNode (trusted, node) {

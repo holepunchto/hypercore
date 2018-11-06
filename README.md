@@ -322,6 +322,22 @@ Fully close this feed.
 
 Calls the callback with `(err)` when all storage has been closed.
 
+#### `feed.audit([callback])`
+
+Audit all data in the feed. Will check that all current data stored
+matches the hashes in the merkle tree and clear the bitfield if not.
+
+When done a report is passed to the callback that looks like this:
+
+```js
+{
+  valid: 10, // how many data blocks matches the hashes
+  invalid: 0, // how many did not
+}
+```
+
+If a block does not match the hash it is cleared from the data bitfield.
+
 #### `feed.on('ready')`
 
 Emitted when the feed is ready and all properties have been populated.
