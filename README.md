@@ -88,42 +88,11 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
 
-#### `feed.writable`
+#### `feed.append(data, [callback])`
 
-Can we append to this feed?
+Append a block of data to the feed.
 
-Populated after `ready` has been emitted. Will be `false` before the event.
-
-#### `feed.readable`
-
-Can we read from this feed? After closing a feed this will be false.
-
-Populated after `ready` has been emitted. Will be `false` before the event.
-
-#### `feed.key`
-
-Buffer containing the public key identifying this feed.
-
-Populated after `ready` has been emitted. Will be `null` before the event.
-
-#### `feed.discoveryKey`
-
-Buffer containing a key derived from the feed.key.
-In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
-
-Populated after `ready` has been emitted. Will be `null` before the event.
-
-#### `feed.length`
-
-How many blocks of data are available on this feed?
-
-Populated after `ready` has been emitted. Will be `0` before the event.
-
-#### `feed.byteLength`
-
-How much data is available on this feed in bytes?
-
-Populated after `ready` has been emitted. Will be `0` before the event.
+Callback is called with `(err, seq)` when all data has been written at the returned `seq` or an error occurred.
 
 #### `feed.get(index, [options], callback)`
 
@@ -233,12 +202,6 @@ False otherwise.
 Return true if all data blocks within a range are available locally.
 False otherwise.
 
-#### `feed.append(data, [callback])`
-
-Append a block of data to the feed.
-
-Callback is called with `(err, seq)` when all data has been written at the returned `seq` or an error occurred.
-
 #### `feed.clear(start, [end], [callback])`
 
 Clear a range of data from the local cache.
@@ -337,6 +300,43 @@ When done a report is passed to the callback that looks like this:
 ```
 
 If a block does not match the hash it is cleared from the data bitfield.
+
+#### `feed.writable`
+
+Can we append to this feed?
+
+Populated after `ready` has been emitted. Will be `false` before the event.
+
+#### `feed.readable`
+
+Can we read from this feed? After closing a feed this will be false.
+
+Populated after `ready` has been emitted. Will be `false` before the event.
+
+#### `feed.key`
+
+Buffer containing the public key identifying this feed.
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
+#### `feed.discoveryKey`
+
+Buffer containing a key derived from the feed.key.
+In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
+#### `feed.length`
+
+How many blocks of data are available on this feed?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `feed.byteLength`
+
+How much data is available on this feed in bytes?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `feed.on('ready')`
 
