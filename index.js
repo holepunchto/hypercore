@@ -1283,9 +1283,6 @@ Feed.prototype._roots = function (index, cb) {
   }
 }
 
-Feed.prototype.truncate = function (len, cb) {
-}
-
 Feed.prototype.audit = function (cb) {
   if (!cb) cb = noop
 
