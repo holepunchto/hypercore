@@ -160,7 +160,7 @@ tape('create from existing keys', function (t) {
   feed.append('hi', function () {
     var otherFeed = hypercore(storage2, feed.key, { secretKey: feed.secretKey })
     var store = otherFeed._storage
-    otherFeed.close(function () {
+    otherFeed.ready(function () {
       store.open({key: feed.key}, function (err, data) {
         t.error(err)
         t.equals(data.key.toString('hex'), feed.key.toString('hex'))

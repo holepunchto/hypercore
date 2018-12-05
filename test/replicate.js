@@ -637,7 +637,7 @@ tape('replicate with onwrite', function (t) {
   })
 })
 
-tape('replicate from very sparse', function (t) {
+tape.skip('replicate from very sparse', function (t) {
   t.plan(3)
 
   var feed = create()
