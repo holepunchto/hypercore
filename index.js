@@ -245,7 +245,7 @@ Feed.prototype._open = function (cb) {
     }
 
     if (self._overwrite) {
-      state.bitfield.fill(0)
+      state.bitfield = []
       state.key = state.secretKey = null
     }
 
