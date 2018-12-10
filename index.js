@@ -249,7 +249,7 @@ Feed.prototype._open = function (cb) {
       state.key = state.secretKey = null
     }
 
-    self.bitfield = bitfield(state.bitfield)
+    self.bitfield = bitfield(state.bitfieldPageSize, state.bitfield)
     self.tree = treeIndex(self.bitfield.tree)
     self.length = self.tree.blocks()
     self._seq = self.length
