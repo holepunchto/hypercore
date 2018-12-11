@@ -12,7 +12,7 @@
     "buffer-from": "^1.0.0",
     "bulk-write-stream": "^1.1.3",
     "codecs": "^1.2.0",
-    "fast-bitfield": "^1.2.1",
+    "fast-bitfield": "^1.2.2",
     "flat-tree": "^1.6.0",
     "from2": "^2.3.0",
     "hypercore-crypto": "^1.0.0",
@@ -33,7 +33,7 @@
     "unordered-set": "^2.0.0"
   },
   "devDependencies": {
-    "random-access-memory": "^2.2.0",
+    "random-access-memory": "^3.1.0",
     "shuffle-array": "^1.0.1",
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",

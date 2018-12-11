@@ -641,10 +641,12 @@ tape('replicate from very sparse', function (t) {
   t.plan(3)
 
   var feed = create()
-  var arr = new Array(1e6)
+  var arr = new Array(1e3)
 
   arr.fill('a')
-  feed.append(arr, function (err) {
+  feed.append(arr, function loop (err) {
+    if (feed.length < 1e6) return feed.append(arr, loop)
+
     t.error(err, 'no error')
     t.pass('appended ' + arr.length + ' blocks')
 
