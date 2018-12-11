@@ -350,9 +350,12 @@ Feed.prototype.download = function (range, cb) {
     iterator: null,
     start: range.start || 0,
     end: range.end || -1,
+    want: 0,
     linear: !!range.linear,
     callback: cb
   }
+
+  sel.want = toWantRange(sel.start)
 
   this._selections.push(sel)
   this._updatePeers()
@@ -589,6 +592,7 @@ Feed.prototype.seek = function (bytes, opts, cb) {
       index: -1,
       start: start,
       end: end,
+      want: toWantRange(start),
       callback: cb || noop
     })
 
@@ -1391,4 +1395,8 @@ function safeBufferEquals (a, b) {
   if (!a) return !b
   if (!b) return !a
   return equals(a, b)
+}
+
+function toWantRange (i) {
+  return Math.floor(i / 1024 / 1024) * 1024 * 1024
 }
