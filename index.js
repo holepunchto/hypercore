@@ -21,6 +21,7 @@ var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
+var safeBufferEquals = require('./lib/saveBufferEquals')
 var replicate = null
 
 module.exports = Feed
@@ -1387,13 +1388,6 @@ function timeoutCallback (cb, timeout) {
     clearTimeout(id)
     cb(err, val)
   }
-}
-
-// buffer-equals, but handle 'null' buffer parameters.
-function safeBufferEquals (a, b) {
-  if (!a) return !b
-  if (!b) return !a
-  return Buffer.compare(a, b) === 0
 }
 
 function toWantRange (i) {
