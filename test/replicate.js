@@ -589,7 +589,7 @@ tape('sparse mode, two downloads', function (t) {
 })
 
 tape('peer-add and peer-remove are emitted', function (t) {
-  t.plan(4)
+  t.plan(5)
 
   var feed = create()
 
@@ -597,6 +597,7 @@ tape('peer-add and peer-remove are emitted', function (t) {
     var clone = create(feed.key)
 
     feed.on('peer-add', function (peer) {
+      t.notEquals(peer.remoteId, null)
       t.pass('peer-add1')
     })
     clone.on('peer-add', function (peer) {
