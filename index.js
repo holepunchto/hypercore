@@ -17,7 +17,7 @@ var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
-var nextTick = require('process-nextick-args')
+var pna = require('process-nextick-args')
 var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
@@ -369,7 +369,7 @@ Feed.prototype.undownload = function (range) {
 
   if (range.callback && range._index > -1) {
     set.remove(this._selections, range)
-    nextTick(range.callback, new Error('Download was cancelled'))
+    pna.nextTick(range.callback, new Error('Download was cancelled'))
     return
   }
 
@@ -383,7 +383,7 @@ Feed.prototype.undownload = function (range) {
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
       set.remove(this._selections, s)
-      nextTick(s.callback, new Error('Download was cancelled'))
+      pna.nextTick(s.callback, new Error('Download was cancelled'))
       return
     }
   }
@@ -474,7 +474,7 @@ Feed.prototype._cancel = function (start, end) {
     var w = this._waiting[i]
     if ((start <= w.start && w.end <= end) || (start <= w.index && w.index < end)) {
       remove(this._waiting, i)
-      if (w.callback) nextTick(w.callback, new Error('Request cancelled'))
+      if (w.callback) pna.nextTick(w.callback, new Error('Request cancelled'))
     }
   }
 }
@@ -504,7 +504,7 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
       if (self.bitfield.set(i, false)) modified = true
     }
 
-    if (!modified) return nextTick(cb)
+    if (!modified) return pna.nextTick(cb)
 
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 

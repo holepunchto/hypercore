@@ -23,7 +23,7 @@
     "memory-pager": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
     "pretty-hash": "^1.0.1",
-    "process-nextick-args": "^1.0.7",
+    "process-nextick-args": "^2.0.0",
     "random-access-file": "^2.0.1",
     "sodium-universal": "^2.0.0",
     "sparse-bitfield": "^3.0.0",
