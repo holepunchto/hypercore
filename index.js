@@ -21,6 +21,24 @@ var pretty = require('pretty-hash')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
+var defaultCrypto = {
+  sign (data, sk, cb) {
+    try {
+      return cb(null, crypto.sign(data, sk))
+    } catch (ex) {
+      return cb(ex)
+    }
+  },
+
+  verify (sig, data, pk, cb) {
+    try {
+      return cb(null, crypto.verify(sig, data, pk))
+    } catch (ex) {
+      return cb(ex)
+    }
+  }
+}
+
 module.exports = Feed
 
 function Feed (createStorage, key, opts) {
@@ -61,6 +79,8 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+
+  this.crypto = opts.crypto || defaultCrypto
 
   // hooks
   this._onwrite = opts.onwrite || null
@@ -573,11 +593,13 @@ Feed.prototype.verify = function (index, signature, cb) {
 
     var checksum = crypto.tree(roots)
 
-    if (!crypto.verify(checksum, signature, self.key)) {
-      cb(new Error('Signature verification failed'))
-    } else {
-      cb(null, true)
-    }
+    self.crypto.verify(checksum, signature, self.key, function (err, valid) {
+      if (err) return cb(err)
+
+      if (!valid) return cb(new Error('Signature verification failed'))
+
+      return cb(null, true)
+    })
   })
 }
 
@@ -1198,8 +1220,10 @@ Feed.prototype._append = function (batch, cb) {
 
     if (this.live && i === batch.length - 1) {
       pending++
-      var sig = crypto.sign(crypto.tree(this._merkle.roots), this.secretKey)
-      this._storage.putSignature(this.length + i, sig, done)
+      this.crypto.sign(crypto.tree(this._merkle.roots), this.secretKey, function (err, sig) {
+        if (err) return done(err)
+        self._storage.putSignature(self.length + i, sig, done)
+      })
     }
 
     offset += data.length
