@@ -21,7 +21,7 @@ var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
-var safeBufferEquals = require('./lib/saveBufferEquals')
+var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
 module.exports = Feed
