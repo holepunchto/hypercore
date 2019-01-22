@@ -1154,9 +1154,12 @@ Feed.prototype._append = function (batch, cb) {
   if (!this.writable) return cb(new Error('This feed is not writable. Did you create it?'))
 
   var self = this
-  var pending = this.live && batch.length ? 1 + batch.length : batch.length
+  var pending = 1
   var offset = 0
   var error = null
+  var nodeBatch = new Array(batch.length ? batch.length * 2 - 1 : 0)
+  var nodeOffset = this.length * 2
+  var dataBatch = new Array(batch.length)
 
   if (!pending) return cb()
 
@@ -1164,22 +1167,33 @@ Feed.prototype._append = function (batch, cb) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
 
-    if (this._indexing) done(null)
-    else this._storage.data.write(this.byteLength + offset, data, done)
-
     if (this.live && i === batch.length - 1) {
+      pending++
       var sig = crypto.sign(crypto.tree(this._merkle.roots), this.secretKey)
       this._storage.putSignature(this.length + i, sig, done)
     }
 
-    pending += nodes.length
     offset += data.length
+    dataBatch[i] = data
 
     for (var j = 0; j < nodes.length; j++) {
       var node = nodes[j]
-      this._storage.putNode(node.index, node, done)
+      if (node.index >= nodeOffset && node.index - nodeOffset < nodeBatch.length) {
+        nodeBatch[node.index - nodeOffset] = node
+      } else {
+        pending++
+        this._storage.putNode(node.index, node, done)
+      }
     }
   }
+
+  if (!this._indexing) {
+    pending++
+    if (dataBatch.length === 1) this._storage.data.write(this.byteLength, dataBatch[0], done)
+    else this._storage.data.write(this.byteLength, Buffer.concat(dataBatch), done)
+  }
+
+  this._storage.putNodeBatch(nodeOffset, nodeBatch, done)
 
   function done (err) {
     if (err) error = err
