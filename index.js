@@ -307,8 +307,8 @@ Feed.prototype._open = function (cb) {
       if (shouldWriteKey) self._storage.key.write(0, self.key, done)
       if (shouldWriteSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
-      if (self._overwrite) { // TODO: support storage.resize for this instead
-        self._storage.putBitfield(0, state.bitfield, done)
+      if (self._overwrite) {
+        self._storage.bitfield.del(0, Infinity, done)
       }
 
       done(null)
