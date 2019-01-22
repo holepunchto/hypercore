@@ -83,6 +83,7 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   storeSecretKey: true, // if false, will not save the secret key
   storageCacheSize: 65536, // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
   onwrite: (index, data, peer, cb) // optional hook called before data is written after being verified
+                                   // (remember to call cb() at the end of your handler)
 }
 ```
 
