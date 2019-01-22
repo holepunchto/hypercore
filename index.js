@@ -1,4 +1,3 @@
-var equals = require('buffer-equals')
 var low = require('last-one-wins')
 var remove = require('unordered-array-remove')
 var set = require('unordered-set')
@@ -254,7 +253,7 @@ Feed.prototype._open = function (cb) {
     self.length = self.tree.blocks()
     self._seq = self.length
 
-    if (state.key && self.key && !equals(state.key, self.key)) {
+    if (state.key && self.key && Buffer.compare(state.key, self.key) !== 0) {
       return cb(new Error('Another hypercore is stored here'))
     }
 
@@ -850,7 +849,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
 
       signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
     } else { // check tree root
-      if (!equals(checksum, self.key)) {
+      if (Buffer.compare(checksum, self.key) !== 0) {
         return cb(new Error('Remote checksum failed'))
       }
     }
@@ -1336,7 +1335,7 @@ Feed.prototype.audit = function (cb) {
 function noop () {}
 
 function verifyNode (trusted, node) {
-  return trusted && trusted.index === node.index && equals(trusted.hash, node.hash)
+  return trusted && trusted.index === node.index && Buffer.compare(trusted.hash, node.hash) === 0
 }
 
 function addSize (size, node) {
@@ -1394,7 +1393,7 @@ function timeoutCallback (cb, timeout) {
 function safeBufferEquals (a, b) {
   if (!a) return !b
   if (!b) return !a
-  return equals(a, b)
+  return Buffer.compare(a, b) === 0
 }
 
 function toWantRange (i) {
