@@ -17,7 +17,6 @@ var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
 var nextTick = require('process-nextick-args')
-var bufferFrom = require('buffer-from')
 var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
@@ -33,7 +32,7 @@ function Feed (createStorage, key, opts) {
   if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
   if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
 
-  if (typeof key === 'string') key = bufferFrom(key, 'hex')
+  if (typeof key === 'string') key = Buffer.from(key, 'hex')
 
   if (!Buffer.isBuffer(key) && !opts) {
     opts = key
@@ -45,7 +44,7 @@ function Feed (createStorage, key, opts) {
   var self = this
 
   var secretKey = opts.secretKey || null
-  if (typeof secretKey === 'string') secretKey = bufferFrom(secretKey, 'hex')
+  if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
 
   this.id = opts.id || crypto.randomBytes(32)
   this.live = opts.live !== false

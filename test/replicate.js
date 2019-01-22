@@ -1,7 +1,6 @@
 var create = require('./helpers/create')
 var replicate = require('./helpers/replicate')
 var tape = require('tape')
-var bufferFrom = require('buffer-from')
 
 tape('replicate', function (t) {
   t.plan(10)
@@ -163,11 +162,11 @@ tape('basic 3-way replication', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('a'))
+      t.same(data, Buffer.from('a'))
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('a'))
+        t.same(data, Buffer.from('a'))
         t.end()
       })
     })
@@ -184,7 +183,7 @@ tape('extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
       t.end()
     })
   })
@@ -202,11 +201,11 @@ tape('3-way another index', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -225,11 +224,11 @@ tape('3-way another index + extra data', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -248,11 +247,11 @@ tape('3-way another index + extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -272,11 +271,11 @@ tape('3-way another index + extra data + factor of two + static', function (t) {
 
       clone1.get(1, function (err, data) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
 
         clone2.get(1, function (err) {
           t.error(err, 'no error')
-          t.same(data, bufferFrom('b'))
+          t.same(data, Buffer.from('b'))
           t.end()
         })
       })
