@@ -7,6 +7,7 @@
     "array-lru": "^1.1.0",
     "atomic-batcher": "^1.0.2",
     "bitfield-rle": "^2.2.1",
+    "buffer-alloc": "^1.2.0",
     "buffer-alloc-unsafe": "^1.0.0",
     "buffer-from": "^1.0.0",
     "bulk-write-stream": "^1.1.3",
