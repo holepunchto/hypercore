@@ -17,7 +17,6 @@ var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
 var nextTick = require('process-nextick-args')
-var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
@@ -262,7 +261,7 @@ Feed.prototype._open = function (cb) {
 
     // verify key and secretKey go together
     if (self.key && self.secretKey) {
-      var challenge = bufferAlloc(0)
+      var challenge = Buffer.allocUnsafe(0)
       if (!crypto.verify(challenge, crypto.sign(challenge, self.secretKey), self.key)) {
         return cb(new Error('Key and secret do not match'))
       }
