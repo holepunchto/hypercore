@@ -83,10 +83,23 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   storeSecretKey: true, // if false, will not save the secret key
   storageCacheSize: 65536, // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
   onwrite: (index, data, peer, cb) // optional hook called before data is written after being verified
+                                   // (remember to call cb() at the end of your handler)
 }
 ```
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
+
+__Note:__ The `[key]` and `secretKey` are _Node.js_ buffer instances, not browser-based ArrayBuffer instances. When creating hypercores in browser, if you pass an ArrayBuffer instance, you will get an error similar to `key must be at least 16, was given undefined`. Instead, create a Node.js Buffer instance using [Feross‘s](https://github.com/feross) [buffer](https://github.com/feross/buffer) module (`npm install buffer`). e.g.,
+
+```javascript
+const storage = someRandomAccessStorage
+const myPublicKey = someUint8Array
+
+const Buffer = require('buffer').Buffer
+const hypercorePublicKeyBuffer = Buffer.from(myPublicKeyAsUint8Array.buffer)
+
+const hypercore = hypercore(storage, hypercorePublicKeyBuffer)
+```
 
 #### `feed.append(data, [callback])`
 
