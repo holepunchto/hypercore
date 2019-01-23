@@ -369,7 +369,7 @@ Feed.prototype.undownload = function (range) {
 
   if (range.callback && range._index > -1) {
     set.remove(this._selections, range)
-    nextTick(range.callback, new Error('Download was cancelled'))
+    nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
     return
   }
 
@@ -383,7 +383,7 @@ Feed.prototype.undownload = function (range) {
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
       set.remove(this._selections, s)
-      nextTick(s.callback, new Error('Download was cancelled'))
+      nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
       return
     }
   }
@@ -1406,4 +1406,11 @@ function timeoutCallback (cb, timeout) {
 
 function toWantRange (i) {
   return Math.floor(i / 1024 / 1024) * 1024 * 1024
+}
+
+function createError (code, errno, msg) {
+  var err = new Error(msg)
+  err.code = code
+  err.errno = errno
+  return err
 }
