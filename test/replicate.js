@@ -671,6 +671,24 @@ tape('replicate from very sparse', function (t) {
   })
 })
 
+tape('first get hash, then get block', function (t) {
+  var feed = create()
+  feed.append([ 'a', 'b', 'c' ], function () {
+    var clone = create(feed.key, {sparse: true})
+    replicate(feed, clone, {live: true})
+
+    // fetches the hash for block #2
+    clone.seek(2, function (err) {
+      t.error(err, 'no error')
+      clone.get(2, function (err, data) {
+        t.error(err, 'no error')
+        t.same(data, Buffer.from('c'))
+        t.end()
+      })
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
