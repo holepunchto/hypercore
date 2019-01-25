@@ -1,4 +1,5 @@
 var create = require('./helpers/create')
+var createTrackingRam = require('./helpers/create-tracking-ram')
 var crypto = require('hypercore-crypto')
 var tape = require('tape')
 var hypercore = require('../')
@@ -423,6 +424,25 @@ tape('closing all streams on close', function (t) {
         var memory = memories[filename]
         t.ok(memory.closed, filename + ' is closed')
       })
+      t.end()
+    })
+  })
+})
+
+tape('writes are batched', function (t) {
+  var trackingRam = createTrackingRam()
+  var feed = hypercore(trackingRam)
+  var ws = feed.createWriteStream()
+
+  ws.write('ab')
+  ws.write('cd')
+  ws.write('ef')
+  ws.end(function () {
+    t.deepEquals(trackingRam.log.data, [
+      { write: [ 0, Buffer.from('ab') ] },
+      { write: [ 2, Buffer.from('cdef') ] }
+    ])
+    feed.close(function () {
       t.end()
     })
   })
