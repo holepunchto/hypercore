@@ -1363,7 +1363,10 @@ function isBlock (index) {
 
 function defaultStorage (dir) {
   return function (name) {
-    return raf(name, {directory: dir})
+    try {
+      var lock = name === 'bitfield' ? require('fd-lock') : null
+    } catch (err) {}
+    return raf(name, {directory: dir, lock: lock})
   }
 }
 
