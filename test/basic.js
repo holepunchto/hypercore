@@ -404,3 +404,26 @@ tape('append and createWriteStreams preserve seq', function (t) {
     })
   })
 })
+
+tape('closing all streams on close', function (t) {
+  var memories = {}
+  var feed = hypercore(function (filename) {
+    var memory = memories[filename]
+    if (!memory) {
+      memory = ram()
+      memories[filename] = memory
+    }
+    return memory
+  })
+  var expectedFiles = [ 'key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures' ]
+  feed.ready(function () {
+    t.deepEquals(Object.keys(memories), expectedFiles, 'all files are open')
+    feed.close(function () {
+      expectedFiles.forEach(function (filename) {
+        var memory = memories[filename]
+        t.ok(memory.closed, filename + ' is closed')
+      })
+      t.end()
+    })
+  })
+})
