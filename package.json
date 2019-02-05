@@ -40,6 +40,9 @@
     "stream-collector": "^1.0.1",
     "tape": "^4.6.3"
   },
+  "optionalDependencies": {
+    "fd-lock": "^1.0.2"
+  },
   "scripts": {
     "test": "standard && tape test/*.js",
     "bench": "cd bench && ./all.sh"
@@ -53,8 +56,5 @@
   "bugs": {
     "url": "https://github.com/mafintosh/hypercore/issues"
   },
-  "homepage": "https://github.com/mafintosh/hypercore",
-  "optionalDependencies": {
-    "fd-lock": "^1.0.2"
-  }
+  "homepage": "https://github.com/mafintosh/hypercore"
 }
