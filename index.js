@@ -1210,14 +1210,6 @@ Feed.prototype._append = function (batch, cb) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
 
-    if (this.live && i === batch.length - 1) {
-      pending++
-      this.crypto.sign(crypto.tree(this._merkle.roots), this.secretKey, function (err, sig) {
-        if (err) return done(err)
-        self._storage.putSignature(self.length + i, sig, done)
-      })
-    }
-
     offset += data.length
     dataBatch[i] = data
 
@@ -1230,6 +1222,14 @@ Feed.prototype._append = function (batch, cb) {
         this._storage.putNode(node.index, node, done)
       }
     }
+  }
+
+  if (this.live && batch.length) {
+    pending++
+    this.crypto.sign(crypto.tree(this._merkle.roots), this.secretKey, function (err, sig) {
+      if (err) return done(err)
+      self._storage.putSignature(self.length + batch.length - 1, sig, done)
+    })
   }
 
   if (!this._indexing) {
