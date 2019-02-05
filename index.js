@@ -23,19 +23,11 @@ var replicate = null
 
 var defaultCrypto = {
   sign (data, sk, cb) {
-    try {
-      return cb(null, crypto.sign(data, sk))
-    } catch (ex) {
-      return cb(ex)
-    }
+    return cb(null, crypto.sign(data, sk))
   },
 
   verify (sig, data, pk, cb) {
-    try {
-      return cb(null, crypto.verify(sig, data, pk))
-    } catch (ex) {
-      return cb(ex)
-    }
+    return cb(null, crypto.verify(sig, data, pk))
   }
 }
 
