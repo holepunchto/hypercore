@@ -5,3 +5,4 @@ bench/cores
 tmp
 
 *.log
+.nyc_output/

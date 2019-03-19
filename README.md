@@ -10,7 +10,7 @@ npm install hypercore
 
 [![Build Status](https://travis-ci.org/mafintosh/hypercore.svg?branch=master)](https://travis-ci.org/mafintosh/hypercore)
 
-To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datproject/docs/blob/master/papers/dat-paper.pdf).
+To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datprotocol/whitepaper/blob/master/dat-paper.pdf).
 
 ## Features
 
@@ -84,48 +84,30 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   storeSecretKey: true // if false, will not save the secret key
   storageCacheSize: 65536 // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
   onwrite: (index, data, peer, cb) // optional hook called before data is written after being verified
+  // (remember to call cb() at the end of your handler)
   discoveryKey: <Key> // optionally pass your own discoveryKey
 }
 ```
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
 
-#### `feed.writable`
+__Note:__ The `[key]` and `secretKey` are _Node.js_ buffer instances, not browser-based ArrayBuffer instances. When creating hypercores in browser, if you pass an ArrayBuffer instance, you will get an error similar to `key must be at least 16, was given undefined`. Instead, create a Node.js Buffer instance using [Feross‘s](https://github.com/feross) [buffer](https://github.com/feross/buffer) module (`npm install buffer`). e.g.,
 
-Can we append to this feed?
+```javascript
+const storage = someRandomAccessStorage
+const myPublicKey = someUint8Array
 
-Populated after `ready` has been emitted. Will be `false` before the event.
+const Buffer = require('buffer').Buffer
+const hypercorePublicKeyBuffer = Buffer.from(myPublicKeyAsUint8Array.buffer)
 
-#### `feed.readable`
+const hypercore = hypercore(storage, hypercorePublicKeyBuffer)
+```
 
-Can we read from this feed? After closing a feed this will be false.
+#### `feed.append(data, [callback])`
 
-Populated after `ready` has been emitted. Will be `false` before the event.
+Append a block of data to the feed.
 
-#### `feed.key`
-
-Buffer containing the public key identifying this feed.
-
-Populated after `ready` has been emitted. Will be `null` before the event.
-
-#### `feed.discoveryKey`
-
-Buffer containing a key derived from the feed.key.
-In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
-
-Populated after `ready` has been emitted. Will be `null` before the event.
-
-#### `feed.length`
-
-How many blocks of data are available on this feed?
-
-Populated after `ready` has been emitted. Will be `0` before the event.
-
-#### `feed.byteLength`
-
-How much data is available on this feed in bytes?
-
-Populated after `ready` has been emitted. Will be `0` before the event.
+Callback is called with `(err, seq)` when all data has been written at the returned `seq` or an error occurred.
 
 #### `feed.get(index, [options], callback)`
 
@@ -235,12 +217,6 @@ False otherwise.
 Return true if all data blocks within a range are available locally.
 False otherwise.
 
-#### `feed.append(data, [callback])`
-
-Append a block of data to the feed.
-
-Callback is called with `(err)` when all data has been written or an error occurred.
-
 #### `feed.clear(start, [end], [callback])`
 
 Clear a range of data from the local cache.
@@ -323,6 +299,59 @@ Options include:
 Fully close this feed.
 
 Calls the callback with `(err)` when all storage has been closed.
+
+#### `feed.audit([callback])`
+
+Audit all data in the feed. Will check that all current data stored
+matches the hashes in the merkle tree and clear the bitfield if not.
+
+When done a report is passed to the callback that looks like this:
+
+```js
+{
+  valid: 10, // how many data blocks matches the hashes
+  invalid: 0, // how many did not
+}
+```
+
+If a block does not match the hash it is cleared from the data bitfield.
+
+#### `feed.writable`
+
+Can we append to this feed?
+
+Populated after `ready` has been emitted. Will be `false` before the event.
+
+#### `feed.readable`
+
+Can we read from this feed? After closing a feed this will be false.
+
+Populated after `ready` has been emitted. Will be `false` before the event.
+
+#### `feed.key`
+
+Buffer containing the public key identifying this feed.
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
+#### `feed.discoveryKey`
+
+Buffer containing a key derived from the feed.key.
+In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
+#### `feed.length`
+
+How many blocks of data are available on this feed?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `feed.byteLength`
+
+How much data is available on this feed in bytes?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `feed.on('ready')`
 

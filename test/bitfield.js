@@ -135,3 +135,22 @@ tape('get total positive bits', function (t) {
 
   t.end()
 })
+
+tape('bitfield dedup', function (t) {
+  var b = bitfield()
+
+  for (var i = 0; i < 32 * 1024; i++) {
+    b.set(i, true)
+  }
+
+  for (var j = 0; j < 64 * 1024; j++) {
+    b.tree.set(j, true)
+  }
+
+  t.ok(b.get(8 * 1024))
+  t.ok(b.get(16 * 1024))
+  b.set(8 * 1024, false)
+  t.notOk(b.get(8 * 1024))
+  t.ok(b.get(16 * 1024))
+  t.end()
+})

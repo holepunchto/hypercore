@@ -589,7 +589,7 @@ tape('sparse mode, two downloads', function (t) {
 })
 
 tape('peer-add and peer-remove are emitted', function (t) {
-  t.plan(4)
+  t.plan(5)
 
   var feed = create()
 
@@ -597,6 +597,7 @@ tape('peer-add and peer-remove are emitted', function (t) {
     var clone = create(feed.key)
 
     feed.on('peer-add', function (peer) {
+      t.notEquals(peer.remoteId, null)
       t.pass('peer-add1')
     })
     clone.on('peer-add', function (peer) {
@@ -634,6 +635,57 @@ tape('replicate with onwrite', function (t) {
     })
 
     replicate(feed, clone, {live: true})
+  })
+})
+
+tape('replicate from very sparse', function (t) {
+  t.plan(3)
+
+  var feed = create()
+  var arr = new Array(1e3)
+
+  arr.fill('a')
+  feed.append(arr, function loop (err) {
+    if (feed.length < 1e6) return feed.append(arr, loop)
+
+    t.error(err, 'no error')
+    t.pass('appended ' + arr.length + ' blocks')
+
+    var clone1 = create(feed.key, {sparse: true})
+    var clone2 = create(feed.key)
+    var missing = 30
+    var then = 0
+
+    replicate(feed, clone1, {live: true})
+
+    clone2.on('download', function () {
+      if (--missing <= 0) {
+        t.pass('downloaded all in ' + (Date.now() - then) + 'ms')
+      }
+    })
+
+    clone1.download({start: feed.length - 30, end: feed.length}, function () {
+      then = Date.now()
+      replicate(clone2, clone1, {live: true})
+    })
+  })
+})
+
+tape('first get hash, then get block', function (t) {
+  var feed = create()
+  feed.append([ 'a', 'b', 'c' ], function () {
+    var clone = create(feed.key, {sparse: true})
+    replicate(feed, clone, {live: true})
+
+    // fetches the hash for block #2
+    clone.seek(2, function (err) {
+      t.error(err, 'no error')
+      clone.get(2, function (err, data) {
+        t.error(err, 'no error')
+        t.same(data, Buffer.from('c'))
+        t.end()
+      })
+    })
   })
 })
 
