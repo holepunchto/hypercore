@@ -39,7 +39,8 @@
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",
     "stream-collector": "^1.0.1",
-    "tape": "^4.6.3"
+    "tape": "^4.6.3",
+    "tmp": "0.0.33"
   },
   "optionalDependencies": {
     "fd-lock": "^1.0.2"

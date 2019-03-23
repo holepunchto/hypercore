@@ -1,6 +1,7 @@
 var hypercore = require('../..')
-var ram = require('random-access-memory')
+var tmp = require('tmp')
 
 module.exports = function create (key, opts) {
-  return hypercore(ram, key, opts)
+  var tmpobj = tmp.dirSync({unsafeCleanup: true})
+  return hypercore(tmpobj.name, key, opts)
 }
