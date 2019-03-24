@@ -44,6 +44,9 @@
   "optionalDependencies": {
     "fd-lock": "^1.0.2"
   },
+  "browser": {
+    "fd-lock": false
+  },
   "scripts": {
     "test": "standard && nyc tape test/*.js",
     "bench": "cd bench && ./all.sh"
