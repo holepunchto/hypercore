@@ -174,6 +174,31 @@ tape('basic 3-way replication', function (t) {
   })
 })
 
+tape('basic 3-way replication sparse and not sparse', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone1 = create(feed.key, { sparse: true })
+    var clone2 = create(feed.key)
+
+    replicate(feed, clone1, {live: true})
+
+    clone1.get(0, function (err, data) {
+      t.error(err, 'no error')
+      t.same(data, bufferFrom('a'))
+
+      replicate(clone1, clone2, {live: true})
+
+      clone2.get(0, function (err) {
+        t.error(err, 'no error')
+        t.same(data, bufferFrom('a'))
+        t.same(clone2.peers[0].inflightRequests, [], 'no additional requests')
+        t.end()
+      })
+    })
+  })
+})
+
 tape('extra data + factor of two', function (t) {
   var feed = create()
 
