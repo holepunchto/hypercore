@@ -192,7 +192,9 @@ tape('basic 3-way replication sparse and not sparse', function (t) {
       clone2.get(0, function (err) {
         t.error(err, 'no error')
         t.same(data, bufferFrom('a'))
-        t.same(clone2.peers[0].inflightRequests, [], 'no additional requests')
+        var inflight = clone2.peers[0].inflightRequests
+        if (inflight.length === 1 && inflight[0].index === 0) inflight = [] // just has not been cleared yet
+        t.same(inflight, [], 'no additional requests')
         t.end()
       })
     })
