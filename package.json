@@ -35,11 +35,13 @@
   "devDependencies": {
     "nyc": "^13.1.0",
     "random-access-memory": "^3.1.0",
+    "rimraf": "^2.6.3",
     "shuffle-array": "^1.0.1",
     "speedometer": "^1.0.0",
     "standard": "^8.6.0",
     "stream-collector": "^1.0.1",
-    "tape": "^4.6.3"
+    "tape": "^4.6.3",
+    "tmp": "^0.1.0"
   },
   "optionalDependencies": {
     "fd-lock": "^1.0.2"

@@ -1,10 +1,13 @@
 var create = require('./helpers/create')
+var cleanup = require('./helpers/cleanup')
 var createTrackingRam = require('./helpers/create-tracking-ram')
 var crypto = require('hypercore-crypto')
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
 var bufferAlloc = require('buffer-alloc-unsafe')
+var rimraf = require('rimraf')
+var tmp = require('tmp')
 
 tape('append', function (t) {
   t.plan(8)
@@ -50,7 +53,7 @@ tape('flush', function (t) {
   feed.flush(function (err) {
     t.error(err, 'no error')
     t.same(feed.length, 1, '1 block')
-    t.end()
+    cleanup(feed, t)
   })
 })
 
@@ -126,7 +129,7 @@ tape('pass in secret key', function (t) {
     t.same(feed.key, key)
     t.same(feed.secretKey, secretKey)
     t.ok(feed.writable)
-    t.end()
+    cleanup(feed, t)
   })
 })
 
@@ -267,7 +270,7 @@ tape('onwrite', function (t) {
   feed.append(['hello', 'world'], function (err) {
     t.error(err, 'no error')
     t.same(expected.length, 0)
-    t.end()
+    cleanup(feed, t)
   })
 })
 
@@ -285,7 +288,7 @@ tape('close, emitter and callback', function (t) {
   })
 
   feed.close(function () {
-    t.end()
+    cleanup(feed, t)
   })
 })
 
@@ -399,7 +402,7 @@ tape('append and createWriteStreams preserve seq', function (t) {
           t.error(err)
           t.same(seq, 6)
           t.same(feed.length, 7)
-          t.end()
+          cleanup(feed, t)
         })
       })
     })
@@ -446,4 +449,27 @@ tape('writes are batched', function (t) {
       t.end()
     })
   })
+})
+
+tape('close after double-open', function (t) {
+  var storage = tmp.dirSync({unsafeCleanup: true}).name
+
+  openWriteClose(function (err) {
+    t.error(err)
+    openWriteClose(function (err) {
+      t.error(err)
+      rimraf(storage, function (err) {
+        t.error(err, 'Deleted folder without error')
+        t.end()
+      })
+    })
+  })
+
+  function openWriteClose (cb) {
+    var feed = hypercore(storage, { valueEncoding: 'json' })
+    feed.append({type: 'node'}, function (err) {
+      t.error(err)
+      feed.close(cb)
+    })
+  }
 })
