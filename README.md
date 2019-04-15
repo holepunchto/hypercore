@@ -84,6 +84,7 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
   storageCacheSize: 65536, // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
   onwrite: (index, data, peer, cb) // optional hook called before data is written after being verified
                                    // (remember to call cb() at the end of your handler)
+  stats: true // collect network statistics
 }
 ```
 
@@ -350,6 +351,33 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 How much data is available on this feed in bytes?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `feed.stats`
+
+Return per-peer and total upload/download counts.
+
+The returned object is of the form:
+```js
+{
+  totals: {
+    uploadedBytes: 100,
+    uploadedBlocks: 1,
+    downloadedBytes: 0,
+    downloadedBlocks: 0
+  },
+  peers: [
+    {
+      uploadedBytes: 100,
+      uploadedBlocks: 1,
+      downloadedBytes: 0,
+      downloadedBlocks: 0
+    },
+    ...
+  ]
+}
+```
+
+Stats will be collected by default, but this can be disabled by setting `opts.stats` to false.
 
 #### `feed.on('ready')`
 
