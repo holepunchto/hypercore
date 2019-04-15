@@ -180,7 +180,7 @@ Feed.prototype.replicate = function (opts) {
     this.download({start: 0, end: -1})
   }
 
-  var opts = opts || {}
+  opts = opts || {}
   opts.stats = !!this._stats
 
   return replicate(this, opts)
