@@ -83,6 +83,15 @@ function Feed (createStorage, key, opts) {
   this._reserved = sparseBitfield()
   this._synced = null
 
+  if (typeof opts.stats === 'undefined' || opts.stats) {
+    this._stats = {
+      downloadedBlocks: 0,
+      downloadedBytes: 0,
+      uploadedBlocks: 0,
+      uploadedBytes: 0
+    }
+  }
+
   this._codec = toCodec(opts.valueEncoding)
   this._sync = low(sync)
   if (!this.sparse) this.download({start: 0, end: -1})
@@ -146,6 +155,22 @@ Object.defineProperty(Feed.prototype, 'remoteLength', {
   }
 })
 
+Object.defineProperty(Feed.prototype, 'stats', {
+  enumerable: true,
+  get: function () {
+    if (!this._stats) return null
+    var peerStats = []
+    for (var i = 0; i < this.peers.length; i++) {
+      var peer = this.peers[i]
+      peerStats[i] = peer._stats
+    }
+    return {
+      peers: peerStats,
+      totals: this._stats
+    }
+  }
+})
+
 Feed.prototype.replicate = function (opts) {
   // Lazy load replication deps
   if (!replicate) replicate = require('./lib/replicate')
@@ -155,7 +180,10 @@ Feed.prototype.replicate = function (opts) {
     this.download({start: 0, end: -1})
   }
 
-  return replicate(this, opts || {})
+  var opts = opts || {}
+  opts.stats = !!this._stats
+
+  return replicate(this, opts)
 }
 
 Feed.prototype.ready = function (onready) {
@@ -447,7 +475,7 @@ Feed.prototype.put = function (index, data, proof, cb) {
   this._putBuffer(index, this._codec.encode(data), proof, null, cb)
 }
 
-Feed.prototype.cancel = function (start, end) {  // TODO: use same argument scheme as download
+Feed.prototype.cancel = function (start, end) { // TODO: use same argument scheme as download
   if (!end) end = start + 1
 
   // cancel these right away as .download does not wait for ready
@@ -771,7 +799,13 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
   this.tree.set(2 * index)
 
   if (data) {
-    if (this.bitfield.set(index, true)) this.emit('download', index, data, from)
+    if (this.bitfield.set(index, true)) {
+      if (this._stats) {
+        this._stats.downloadedBlocks += 1
+        this._stats.downloadedBytes += data.length
+      }
+      this.emit('download', index, data, from)
+    }
     if (this.peers.length) this._announce({start: index}, from)
 
     if (!this.writable) {

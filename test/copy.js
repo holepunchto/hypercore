@@ -362,7 +362,6 @@ function runOps (t, ops) {
         t.pass('copied ' + next.block + ' from ' + next.from + ' to ' + next.to)
         loop()
       })
-      return
     }
   }
 }
