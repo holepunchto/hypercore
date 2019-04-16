@@ -3,3 +3,7 @@ node_js:
   - '6'
   - '8'
   - '10'
+os:
+  - windows
+  - osx
+  - linux
