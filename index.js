@@ -83,8 +83,6 @@ function Feed (createStorage, key, opts) {
   this._reserved = sparseBitfield()
   this._synced = null
 
-  this._stats = null
-
   this._stats = (typeof opts.stats !== 'undefined' && !opts.stats) ? null : {
     downloadedBlocks: 0,
     downloadedBytes: 0,
