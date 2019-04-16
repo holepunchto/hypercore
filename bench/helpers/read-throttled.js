@@ -25,4 +25,3 @@ module.exports = function (dir, proof) {
 }
 
 function noop () {}
-

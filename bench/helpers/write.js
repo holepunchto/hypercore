@@ -27,4 +27,3 @@ module.exports = function (dir, blockSize, count, finalize) {
     console.log(Math.floor(1000 * feed.length / (Date.now() - then)) + ' blocks/s')
   }
 }
-
