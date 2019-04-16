@@ -85,13 +85,11 @@ function Feed (createStorage, key, opts) {
 
   this._stats = null
 
-  if (typeof opts.stats === 'undefined' || opts.stats) {
-    this._stats = {
-      downloadedBlocks: 0,
-      downloadedBytes: 0,
-      uploadedBlocks: 0,
-      uploadedBytes: 0
-    }
+  this._stats = (typeof opts.stats !== 'undefined' && !opts.stats) ? null : {
+    downloadedBlocks: 0,
+    downloadedBytes: 0,
+    uploadedBlocks: 0,
+    uploadedBytes: 0
   }
 
   this._codec = toCodec(opts.valueEncoding)
