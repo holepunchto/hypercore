@@ -16,9 +16,6 @@ var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
 var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
-var nextTick = require('process-nextick-args')
-var bufferFrom = require('buffer-from')
-var bufferAlloc = require('buffer-alloc-unsafe')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
@@ -33,7 +30,7 @@ function Feed (createStorage, key, opts) {
   if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
   if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
 
-  if (typeof key === 'string') key = bufferFrom(key, 'hex')
+  if (typeof key === 'string') key = Buffer.from(key, 'hex')
 
   if (!Buffer.isBuffer(key) && !opts) {
     opts = key
@@ -45,7 +42,7 @@ function Feed (createStorage, key, opts) {
   var self = this
 
   var secretKey = opts.secretKey || null
-  if (typeof secretKey === 'string') secretKey = bufferFrom(secretKey, 'hex')
+  if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
 
   this.id = opts.id || crypto.randomBytes(32)
   this.live = opts.live !== false
@@ -289,7 +286,7 @@ Feed.prototype._open = function (cb) {
 
     // verify key and secretKey go together
     if (self.key && self.secretKey) {
-      var challenge = bufferAlloc(0)
+      var challenge = Buffer.alloc(0)
       if (!crypto.verify(challenge, crypto.sign(challenge, self.secretKey), self.key)) {
         return cb(new Error('Key and secret do not match'))
       }
@@ -395,7 +392,7 @@ Feed.prototype.undownload = function (range) {
 
   if (range.callback && range._index > -1) {
     set.remove(this._selections, range)
-    nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
+    process.nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
     return
   }
 
@@ -409,7 +406,7 @@ Feed.prototype.undownload = function (range) {
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
       set.remove(this._selections, s)
-      nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
+      process.nextTick(range.callback, createError('ECANCELED', -11, 'Download was cancelled'))
       return
     }
   }
@@ -500,7 +497,7 @@ Feed.prototype._cancel = function (start, end) {
     var w = this._waiting[i]
     if ((start <= w.start && w.end <= end) || (start <= w.index && w.index < end)) {
       remove(this._waiting, i)
-      if (w.callback) nextTick(w.callback, new Error('Request cancelled'))
+      if (w.callback) process.nextTick(w.callback, new Error('Request cancelled'))
     }
   }
 }
@@ -530,7 +527,7 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
       if (self.bitfield.set(i, false)) modified = true
     }
 
-    if (!modified) return nextTick(cb)
+    if (!modified) return process.nextTick(cb)
 
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 
