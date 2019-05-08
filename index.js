@@ -130,6 +130,7 @@ Feed.prototype[inspect] = function (depth, opts) {
     indent + '  key: ' + opts.stylize((this.key && pretty(this.key)), 'string') + '\n' +
     indent + '  discoveryKey: ' + opts.stylize((this.discoveryKey && pretty(this.discoveryKey)), 'string') + '\n' +
     indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
+    indent + '  sparse: ' + opts.stylize(this.sparse, 'boolean') + '\n' +
     indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
     indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
     indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
