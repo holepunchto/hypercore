@@ -878,32 +878,38 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       return cb(new Error('Remote did not include a signature'))
     }
 
-    if (proof.signature) { // check signaturex
-      if (!crypto.verify(checksum, proof.signature, self.key)) {
-        return cb(new Error('Remote signature could not be verified'))
-      }
+    if (proof.signature) { // check signatures
+      self.crypto.verify(checksum, proof.signature, self.key, function (err, valid) {
+        if (err) return cb(err)
+        if (!valid) return cb(new Error('Remote signature could not be verified'))
 
-      signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+        signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+        write()
+      })
     } else { // check tree root
       if (Buffer.compare(checksum, self.key) !== 0) {
         return cb(new Error('Remote checksum failed'))
       }
+
+      write()
     }
 
-    self.live = !!signature
+    function write () {
+      self.live = !!signature
 
-    var length = verifiedBy / 2
-    if (length > self.length) {
-      // TODO: only emit this after the info has been flushed to storage
-      if (self.writable) self._merkle = null // We need to reload merkle state now
-      self.length = length
-      self._seq = length
-      self.byteLength = roots.reduce(addSize, 0)
-      if (self._synced) self._synced.seek(0, self.length)
-      self.emit('append')
+      var length = verifiedBy / 2
+      if (length > self.length) {
+        // TODO: only emit this after the info has been flushed to storage
+        if (self.writable) self._merkle = null // We need to reload merkle state now
+        self.length = length
+        self._seq = length
+        self.byteLength = roots.reduce(addSize, 0)
+        if (self._synced) self._synced.seek(0, self.length)
+        self.emit('append')
+      }
+
+      self._write(index, data, nodes.concat(extraNodes), signature, from, cb)
     }
-
-    self._write(index, data, nodes.concat(extraNodes), signature, from, cb)
   })
 }
 
