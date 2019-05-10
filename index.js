@@ -21,6 +21,16 @@ var pretty = require('pretty-hash')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
+var defaultCrypto = {
+  sign (data, sk, cb) {
+    return cb(null, crypto.sign(data, sk))
+  },
+
+  verify (sig, data, pk, cb) {
+    return cb(null, crypto.verify(sig, data, pk))
+  }
+}
+
 module.exports = Feed
 
 function Feed (createStorage, key, opts) {
@@ -61,6 +71,8 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+
+  this.crypto = opts.crypto || defaultCrypto
 
   // hooks
   this._onwrite = opts.onwrite || null
@@ -284,14 +296,6 @@ Feed.prototype._open = function (cb) {
 
     if (state.key) self.key = state.key
     if (state.secretKey) self.secretKey = state.secretKey
-
-    // verify key and secretKey go together
-    if (self.key && self.secretKey) {
-      var challenge = Buffer.alloc(0)
-      if (!crypto.verify(challenge, crypto.sign(challenge, self.secretKey), self.key)) {
-        return cb(new Error('Key and secret do not match'))
-      }
-    }
 
     if (!self.length) return onsignature(null, null)
     self._storage.getSignature(self.length - 1, onsignature)
@@ -574,11 +578,13 @@ Feed.prototype.verify = function (index, signature, cb) {
 
     var checksum = crypto.tree(roots)
 
-    if (!crypto.verify(checksum, signature, self.key)) {
-      cb(new Error('Signature verification failed'))
-    } else {
-      cb(null, true)
-    }
+    self.crypto.verify(checksum, signature, self.key, function (err, valid) {
+      if (err) return cb(err)
+
+      if (!valid) return cb(new Error('Signature verification failed'))
+
+      return cb(null, true)
+    })
   })
 }
 
@@ -873,32 +879,38 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
       return cb(new Error('Remote did not include a signature'))
     }
 
-    if (proof.signature) { // check signaturex
-      if (!crypto.verify(checksum, proof.signature, self.key)) {
-        return cb(new Error('Remote signature could not be verified'))
-      }
+    if (proof.signature) { // check signatures
+      self.crypto.verify(checksum, proof.signature, self.key, function (err, valid) {
+        if (err) return cb(err)
+        if (!valid) return cb(new Error('Remote signature could not be verified'))
 
-      signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+        signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+        write()
+      })
     } else { // check tree root
       if (Buffer.compare(checksum, self.key) !== 0) {
         return cb(new Error('Remote checksum failed'))
       }
+
+      write()
     }
 
-    self.live = !!signature
+    function write () {
+      self.live = !!signature
 
-    var length = verifiedBy / 2
-    if (length > self.length) {
-      // TODO: only emit this after the info has been flushed to storage
-      if (self.writable) self._merkle = null // We need to reload merkle state now
-      self.length = length
-      self._seq = length
-      self.byteLength = roots.reduce(addSize, 0)
-      if (self._synced) self._synced.seek(0, self.length)
-      self.emit('append')
+      var length = verifiedBy / 2
+      if (length > self.length) {
+        // TODO: only emit this after the info has been flushed to storage
+        if (self.writable) self._merkle = null // We need to reload merkle state now
+        self.length = length
+        self._seq = length
+        self.byteLength = roots.reduce(addSize, 0)
+        if (self._synced) self._synced.seek(0, self.length)
+        self.emit('append')
+      }
+
+      self._write(index, data, nodes.concat(extraNodes), signature, from, cb)
     }
-
-    self._write(index, data, nodes.concat(extraNodes), signature, from, cb)
   })
 }
 
@@ -1197,12 +1209,6 @@ Feed.prototype._append = function (batch, cb) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
 
-    if (this.live && i === batch.length - 1) {
-      pending++
-      var sig = crypto.sign(crypto.tree(this._merkle.roots), this.secretKey)
-      this._storage.putSignature(this.length + i, sig, done)
-    }
-
     offset += data.length
     dataBatch[i] = data
 
@@ -1215,6 +1221,14 @@ Feed.prototype._append = function (batch, cb) {
         this._storage.putNode(node.index, node, done)
       }
     }
+  }
+
+  if (this.live && batch.length) {
+    pending++
+    this.crypto.sign(crypto.tree(this._merkle.roots), this.secretKey, function (err, sig) {
+      if (err) return done(err)
+      self._storage.putSignature(self.length + batch.length - 1, sig, done)
+    })
   }
 
   if (!this._indexing) {
