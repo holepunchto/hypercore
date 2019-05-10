@@ -179,7 +179,7 @@ tape('create from existing keys', function (t) {
 })
 
 tape('head', function (t) {
-  t.plan(6)
+  t.plan(8)
 
   var feed = create({valueEncoding: 'json'})
 
@@ -210,6 +210,16 @@ tape('head', function (t) {
       feed.head({}, function (err, head) {
         t.error(err)
         t.same(head, {hello: 'welt'})
+        step4()
+      })
+    })
+  }
+
+  function step4 () {
+    feed.append('blender', function () {
+      feed.head({ valueEncoding: 'utf-8' }, function (err, head) {
+        t.error(err)
+        t.same(head, '"blender"\n')
       })
     })
   }

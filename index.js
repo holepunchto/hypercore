@@ -963,7 +963,7 @@ Feed.prototype.head = function (opts, cb) {
   this._ready(function (err) {
     if (err) return cb(err)
     if (self.length === 0) cb(new Error('feed is empty'))
-    else self.get(self.length - 1, cb)
+    else self.get(self.length - 1, opts, cb)
   })
 }
 
