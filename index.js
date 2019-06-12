@@ -291,7 +291,7 @@ Feed.prototype._open = function (cb) {
     self._seq = self.length
 
     if (state.key && self.key && Buffer.compare(state.key, self.key) !== 0) {
-      return cb(new Error('Another hypercore is stored here'))
+      return self._forceCloseAndError(cb, new Error('Another hypercore is stored here'))
     }
 
     if (state.key) self.key = state.key
@@ -304,7 +304,7 @@ Feed.prototype._open = function (cb) {
       if (self.length) self.live = !!sig
 
       if ((generatedKey || !self.key) && !self._createIfMissing) {
-        return cb(new Error('No hypercore is stored here'))
+        return self._forceCloseAndError(cb, new Error('No hypercore is stored here'))
       }
 
       if (!self.key && self.live) {
@@ -315,7 +315,7 @@ Feed.prototype._open = function (cb) {
 
       var writable = !!self.secretKey || self.key === null
 
-      if (!writable && self.writable) return cb(new Error('Feed is not writable'))
+      if (!writable && self.writable) return self._forceCloseAndError(cb, new Error('Feed is not writable'))
       self.writable = writable
       self.discoveryKey = self.key && crypto.discoveryKey(self.key)
 
@@ -344,12 +344,12 @@ Feed.prototype._open = function (cb) {
       function done (err) {
         if (err) error = err
         if (--missing) return
-        if (error) return cb(error)
+        if (error) return self._forceCloseAndError(cb, error)
         self._roots(self.length, onroots)
       }
 
       function onroots (err, roots) {
-        if (err) return cb(err)
+        if (err) return self._forceCloseAndError(cb, err)
 
         self._merkle = merkle(crypto, roots)
         self.byteLength = roots.reduce(addSize, 0)
@@ -1151,12 +1151,19 @@ Feed.prototype.close = function (cb) {
   var self = this
 
   this._ready(function () {
-    self.writable = false
-    self.readable = false
-    self._storage.close(function (err) {
-      if (!self.closed && !err) self._onclose()
-      if (cb) cb(err)
-    })
+    self._forceCloseAndError(cb, null)
+  })
+}
+
+Feed.prototype._forceCloseAndError = function (cb, error) {
+  var self = this
+
+  this.writable = false
+  this.readable = false
+  this._storage.close(function (err) {
+    if (!err) err = error
+    if (!self.closed && !err) self._onclose()
+    if (cb) cb(err)
   })
 }
 
