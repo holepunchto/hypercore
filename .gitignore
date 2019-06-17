@@ -2,6 +2,7 @@ node_modules
 package-lock.json
 .DS_Store
 sandbox
+sandbox.js
 bench/cores
 tmp
 

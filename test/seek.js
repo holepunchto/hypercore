@@ -91,3 +91,34 @@ tape('seek waits', function (t) {
     feed.append(['how', 'are', 'you', 'doing', '?'])
   })
 })
+
+tape('seek works for sparse trees', function (t) {
+  var feed = create()
+
+  feed.append('aa', function () {
+    var clone = create(feed.key, { sparse: true })
+
+    var s = feed.replicate({ live: true })
+    s.pipe(clone.replicate({ live: true })).pipe(s)
+
+    clone.get(0, function () { // make sure we have a tree rooted at 0
+      const chunks = Array(15)
+      chunks.fill('aa')
+      feed.append(chunks, function () {
+        clone.get(15, function () { // get an updated tree that is disconnected with the prev one
+          clone.seek(1, function (err, index, offset) { // old seek still works
+            t.error(err, 'no error')
+            t.same(index, 0)
+            t.same(offset, 1)
+            clone.seek(8, function (err, index, offset) {
+              t.error(err, 'no error')
+              t.same(index, 4)
+              t.same(offset, 0)
+              t.end()
+            })
+          })
+        })
+      })
+    })
+  })
+})
