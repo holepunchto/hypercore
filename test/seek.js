@@ -122,3 +122,27 @@ tape('seek works for sparse trees', function (t) {
     })
   })
 })
+
+tape('seek to sibling', function (t) {
+  t.plan(9)
+
+  var feed = create()
+
+  feed.append([ 'aa', 'aa' ], function () {
+    feed.seek(2, function (err, index, offset) { // sibling seek
+      t.error(err, 'no error')
+      t.same(index, 1)
+      t.same(offset, 0)
+    })
+    feed.seek(3, function (err, index, offset) {
+      t.error(err, 'no error')
+      t.same(index, 1)
+      t.same(offset, 1)
+    })
+    feed.seek(1, function (err, index, offset) {
+      t.error(err, 'no error')
+      t.same(index, 0)
+      t.same(offset, 1)
+    })
+  })
+})
