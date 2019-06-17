@@ -666,7 +666,12 @@ Feed.prototype._seek = function (offset, cb) {
       onroot(node.index)
     } else {
       offset -= node.size
-      onroot(flat.sibling(node.index))
+      if (flat.parent(node.index) === nearestRoot) {
+        nearestRoot = flat.sibling(node.index)
+        onroot(nearestRoot)
+      } else {
+        onroot(flat.sibling(node.index))
+      }
     }
   }
 
