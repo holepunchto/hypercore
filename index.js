@@ -647,7 +647,7 @@ Feed.prototype._seek = function (offset, cb) {
   loop(null, null)
 
   function onroot (top) {
-    if (isBlock(top)) return cb(null, top, offset)
+    if (isBlock(top)) return cb(null, nearestRoot, offset)
 
     var left = flat.leftChild(top)
     while (!self.tree.get(left)) {
