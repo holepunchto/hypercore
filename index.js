@@ -103,6 +103,13 @@ function Feed (createStorage, key, opts) {
   this._sync = low(sync)
   if (!this.sparse) this.download({start: 0, end: -1})
 
+  if (this.sparse && opts.eagerUpdate) {
+    this.update(function loop (err) {
+      if (err) this.emit('update-error', err)
+      self.update(loop)
+    })
+  }
+
   // open it right away. TODO: do not reopen (i.e, set a flag not to retry)
   this._ready(onerror)
 
