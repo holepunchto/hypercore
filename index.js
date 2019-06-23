@@ -22,12 +22,13 @@ var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
 var defaultCrypto = {
+  keyPair: crypto.keyPair,
   sign (data, sk, cb) {
     return cb(null, crypto.sign(data, sk))
   },
 
-  verify (sig, data, pk, cb) {
-    return cb(null, crypto.verify(sig, data, pk))
+  verify (data, sig, pk, cb) {
+    return cb(null, crypto.verify(data, sig, pk))
   }
 }
 
@@ -83,7 +84,7 @@ function Feed (createStorage, key, opts) {
   this._overwrite = !!opts.overwrite
   this._storeSecretKey = opts.storeSecretKey !== false
   this._merkle = null
-  this._storage = storage(createStorage, opts.storageCacheSize)
+  this._storage = storage(createStorage, { crypto: this.crypto, cacheSize: opts.storageCacheSize })
   this._batch = batcher(this._onwrite ? workHook : work)
 
   this._seq = 0
@@ -269,7 +270,7 @@ Feed.prototype._open = function (cb) {
     if (key && !self._overwrite && !self.key) self.key = key
 
     if (!self.key && self.live) {
-      var keyPair = crypto.keyPair()
+      var keyPair = self.crypto.keyPair()
       self.secretKey = keyPair.secretKey
       self.key = keyPair.publicKey
       generatedKey = true
@@ -315,7 +316,7 @@ Feed.prototype._open = function (cb) {
       }
 
       if (!self.key && self.live) {
-        var keyPair = crypto.keyPair()
+        var keyPair = self.crypto.keyPair()
         self.secretKey = keyPair.secretKey
         self.key = keyPair.publicKey
       }
