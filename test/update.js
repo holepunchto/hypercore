@@ -85,3 +85,19 @@ tape('update if available (no one has it)', function (t) {
     })
   })
 })
+
+tape('update with block data', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c', 'd' ], function () {
+    const clone = create(feed.key, { sparse: true })
+
+    const s = clone.replicate({ live: true })
+    s.pipe(feed.replicate({ live: true })).pipe(s)
+
+    clone.update({ hash: false }, function () {
+      t.ok(clone.has(0))
+      t.end()
+    })
+  })
+})
