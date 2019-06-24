@@ -400,7 +400,7 @@ Feed.prototype._open = function (cb) {
       if (shouldWriteSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
 
       if (self._overwrite) {
-        self._storage.bitfield.del(0, Infinity, done)
+        self._storage.bitfield.del(32, Infinity, done)
       }
 
       done(null)
