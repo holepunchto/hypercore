@@ -198,7 +198,9 @@ Feed.prototype.replicate = function (opts) {
   opts = opts || {}
   opts.stats = !!this._stats
 
-  return replicate(this, opts)
+  var stream = replicate(this, opts)
+  this.emit('replicating', stream)
+  return stream
 }
 
 Feed.prototype.ready = function (onready) {
@@ -207,12 +209,14 @@ Feed.prototype.ready = function (onready) {
   })
 }
 
-Feed.prototype.update = function (len, cb) {
-  if (typeof len === 'function') return this.update(-1, len)
-  if (typeof len !== 'number') len = -1
+Feed.prototype.update = function (opts, cb) {
+  if (typeof opts === 'function') return this.update(-1, opts)
+  if (typeof opts === 'number') opts = { minLength: opts }
+  if (!opts) opts = {}
   if (!cb) cb = noop
 
   var self = this
+  var len = typeof opts.minLength === 'number' ? opts.minLength : -1
 
   this.ready(function (err) {
     if (err) return cb(err)
@@ -221,16 +225,64 @@ Feed.prototype.update = function (len, cb) {
 
     if (self.writable) cb = self._writeStateReloader(cb)
 
-    self._waiting.push({
-      hash: true,
+    var w = {
+      hash: opts.hash !== false,
       bytes: 0,
       index: len - 1,
       update: true,
       callback: cb
-    })
+    }
 
+    self._waiting.push(w)
+    if (opts.ifAvailable) self._ifAvailable(w, len)
     self._updatePeers()
   })
+}
+
+Feed.prototype._ifAvailable = function (w, minLength) {
+  var cb = w.callback
+  var called = false
+  var self = this
+
+  w.callback = done
+
+  this.on('peer-add', onupdate)
+  this.on('remote-update', onupdate)
+  this.on('peer-remove', onupdate)
+
+  process.nextTick(onupdate)
+
+  function done (err) {
+    if (called) return
+    called = true
+
+    self.removeListener('peer-add', onupdate)
+    self.removeListener('remote-update', onupdate)
+    self.removeListener('peer-remove', onupdate)
+
+    var i = self._waiting.indexOf(w)
+    if (i > -1) self._waiting.splice(i, 1)
+    cb(err)
+  }
+
+  function onupdate () {
+    var allUpdated = true
+
+    if (self.length >= minLength || self.remoteLength >= minLength) return
+
+    for (var i = 0; i < self.peers.length; i++) {
+      var p = self.peers[i]
+      if (!p.updated) {
+        allUpdated = false
+        break
+      }
+    }
+
+    if (!allUpdated) return
+
+    // no update avail from current peers
+    done(new Error('No update available from peers'))
+  }
 }
 
 // will reload the writable state. used by .update on a writable peer

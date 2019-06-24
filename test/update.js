@@ -37,3 +37,51 @@ tape('disable eager update', function (t) {
     })
   })
 })
+
+tape('update if available', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c' ], function () {
+    const clone = create(feed.key, { sparse: true })
+
+    const s = clone.replicate({ live: true })
+    s.pipe(feed.replicate({ live: true })).pipe(s)
+
+    clone.update({ ifAvailable: true }, function (err) {
+      t.error(err, 'no error')
+      t.same(clone.length, feed.length, 'was updated')
+      t.end()
+    })
+  })
+})
+
+tape('update if available (no peers)', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c' ], function () {
+    const clone = create(feed.key, { sparse: true })
+
+    clone.update({ ifAvailable: true }, function (err) {
+      t.ok(err)
+      t.same(clone.length, 0, 'was not updated')
+      t.end()
+    })
+  })
+})
+
+tape('update if available (no one has it)', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c' ], function () {
+    const clone = create(feed.key, { sparse: true })
+
+    const s = clone.replicate({ live: true })
+    s.pipe(feed.replicate({ live: true })).pipe(s)
+
+    clone.update({ ifAvailable: true, minLength: 4 }, function (err) {
+      t.ok(err)
+      t.same(clone.length, 0, 'was not updated')
+      t.end()
+    })
+  })
+})

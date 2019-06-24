@@ -250,6 +250,16 @@ feed.update(function () {
 })
 ```
 
+Per default update will wait until a peer arrives and the update can be performed.
+If you only wanna check if any of the current peers you are connected to can
+update you (and return an error otherwise use the `ifAvailable` option)
+
+``` js
+feed.update({ ifAvailable: true, minLength: 10 }, function (err) {
+  // returns an error if non of your current peers can update you
+})
+```
+
 #### `var stream = feed.createReadStream([options])`
 
 Create a readable stream of data.
