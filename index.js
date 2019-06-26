@@ -1466,9 +1466,11 @@ Feed.prototype.audit = function (cb) {
 }
 
 Feed.prototype.extension = function (name, message) {
-  this.peers.forEach(function (peer) {
-    peer.extension(name, message)
-  })
+  var peers = this.peers
+
+  for (var i = 0; i < peers.length; i++) {
+    peers[i].extension(name, message)
+  }
 }
 
 function noop () {}
