@@ -71,6 +71,7 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+  this.extensions = opts.extensions || []
 
   this.crypto = opts.crypto || defaultCrypto
 
@@ -197,6 +198,8 @@ Feed.prototype.replicate = function (opts) {
 
   opts = opts || {}
   opts.stats = !!this._stats
+
+  if(!opts.extensions) opts.extensions = this.extensions
 
   var stream = replicate(this, opts)
   this.emit('replicating', stream)
@@ -1459,6 +1462,12 @@ Feed.prototype.audit = function (cb) {
         cb(null, report)
       })
     }
+  })
+}
+
+Feed.prototype.extension = function (name, message) {
+  this.peers.forEach(function (peer) {
+    peer.extension(name, message)
   })
 }
 
