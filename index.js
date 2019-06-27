@@ -71,7 +71,9 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
-  this.extensions = opts.extensions || []
+
+  // Extensions must be sorted for handshaking to work
+  this.extensions = (opts.extensions || []).sort()
 
   this.crypto = opts.crypto || defaultCrypto
 
