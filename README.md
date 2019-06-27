@@ -91,6 +91,7 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
     sign (data, secretKey, cb(err, signature)),
     verify (signature, data, key, cb(err, valid))
   }
+  extensions: [] // Optionally specify which extensions to use when replicating
 }
 ```
 
@@ -395,6 +396,10 @@ The returned object is of the form:
 
 Stats will be collected by default, but this can be disabled by setting `opts.stats` to false.
 
+#### `feed.extension(name, message)`
+
+Send an extension message to all connected peers. `name` should be in the list of `extensions` from the constructor. `message` should be a `Buffer`.
+
 #### `feed.on('ready')`
 
 Emitted when the feed is ready and all properties have been populated.
@@ -418,6 +423,16 @@ Emitted when the feed has been appended to (i.e. has a new length / byteLength)
 #### `feed.on('sync')`
 
 Emitted every time ALL data from `0` to `feed.length` has been downloaded.
+
+### `feed.on('extension', name, message, peer)`
+
+Emitted when a peer sends an extension message. `name` is the name of the extension from the `extensions` list in the header, `message` is a Buffer containing the message data, and `peer` is the peer that sent the message.
+
+You can send a message back using:
+
+```js
+peer.extension(name, message)
+```
 
 #### `feed.on('close')`
 
