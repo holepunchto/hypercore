@@ -201,7 +201,7 @@ Feed.prototype.replicate = function (opts) {
   opts = opts || {}
   opts.stats = !!this._stats
 
-  if(!opts.extensions) opts.extensions = this.extensions
+  if (!opts.extensions) opts.extensions = this.extensions
 
   var stream = replicate(this, opts)
   this.emit('replicating', stream)
