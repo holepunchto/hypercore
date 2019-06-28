@@ -22,10 +22,10 @@ tape('createReadStream to createWriteStream', function (t) {
 })
 
 tape('createReadStream with start, end', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
 
   feed.append(['hello', 'multiple', 'worlds'], function () {
-    collect(feed.createReadStream({ start: 1, end: 2 }), function (err, data) {
+    collect(feed.createReadStream({start: 1, end: 2}), function (err, data) {
       t.error(err, 'no error')
       t.same(data, ['multiple'])
       t.end()
@@ -34,10 +34,10 @@ tape('createReadStream with start, end', function (t) {
 })
 
 tape('createReadStream with start, no end', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
 
   feed.append(['hello', 'multiple', 'worlds'], function () {
-    collect(feed.createReadStream({ start: 1 }), function (err, data) {
+    collect(feed.createReadStream({start: 1}), function (err, data) {
       t.error(err, 'no error')
       t.same(data, ['multiple', 'worlds'])
       t.end()
@@ -46,10 +46,10 @@ tape('createReadStream with start, no end', function (t) {
 })
 
 tape('createReadStream with no start, end', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
 
   feed.append(['hello', 'multiple', 'worlds'], function () {
-    collect(feed.createReadStream({ end: 2 }), function (err, data) {
+    collect(feed.createReadStream({end: 2}), function (err, data) {
       t.error(err, 'no error')
       t.same(data, ['hello', 'multiple'])
       t.end()
@@ -58,12 +58,12 @@ tape('createReadStream with no start, end', function (t) {
 })
 
 tape('createReadStream with live: true', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
   var expected = ['a', 'b', 'c', 'd', 'e']
 
   t.plan(expected.length)
 
-  var rs = feed.createReadStream({ live: true })
+  var rs = feed.createReadStream({live: true})
 
   rs.on('data', function (data) {
     t.same(data, expected.shift())
@@ -81,13 +81,13 @@ tape('createReadStream with live: true', function (t) {
 })
 
 tape('createReadStream with live: true after append', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
   var expected = ['a', 'b', 'c', 'd', 'e']
 
   t.plan(expected.length)
 
   feed.append(['a', 'b'], function () {
-    var rs = feed.createReadStream({ live: true })
+    var rs = feed.createReadStream({live: true})
 
     rs.on('data', function (data) {
       t.same(data, expected.shift())
@@ -102,13 +102,13 @@ tape('createReadStream with live: true after append', function (t) {
 })
 
 tape('createReadStream with live: true and tail: true', function (t) {
-  var feed = create({ valueEncoding: 'utf-8' })
+  var feed = create({valueEncoding: 'utf-8'})
   var expected = ['c', 'd', 'e']
 
   t.plan(expected.length)
 
   feed.append(['a', 'b'], function () {
-    var rs = feed.createReadStream({ live: true, tail: true })
+    var rs = feed.createReadStream({live: true, tail: true})
 
     rs.on('data', function (data) {
       t.same(data, expected.shift())
