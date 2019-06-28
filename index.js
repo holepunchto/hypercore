@@ -72,6 +72,9 @@ function Feed (createStorage, key, opts) {
   this.allowPush = !!opts.allowPush
   this.peers = []
 
+  // Extensions must be sorted for handshaking to work
+  this.extensions = (opts.extensions || []).sort()
+
   this.crypto = opts.crypto || defaultCrypto
 
   // hooks
@@ -197,6 +200,8 @@ Feed.prototype.replicate = function (opts) {
 
   opts = opts || {}
   opts.stats = !!this._stats
+
+  if (!opts.extensions) opts.extensions = this.extensions
 
   var stream = replicate(this, opts)
   this.emit('replicating', stream)
@@ -1460,6 +1465,14 @@ Feed.prototype.audit = function (cb) {
       })
     }
   })
+}
+
+Feed.prototype.extension = function (name, message) {
+  var peers = this.peers
+
+  for (var i = 0; i < peers.length; i++) {
+    peers[i].extension(name, message)
+  }
 }
 
 function noop () {}
