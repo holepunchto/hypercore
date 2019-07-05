@@ -305,9 +305,20 @@ Options include:
 ``` js
 {
   live: false, // keep replicating after all remote data has been downloaded?
+  ack: false, // set to true to get explicit acknowledgement when a peer has written a block
   download: true, // download data from peers?
   encrypt: true // encrypt the data sent using the hypercore key pair
 }
+```
+
+When `ack` is `true`, you can listen on the replication `stream` for an `ack`
+event:
+
+``` js
+var stream = feed.replicate({ ack: true })
+stream.on('ack', function (block) {
+  console.log(block) // block is a sequence number
+})
 ```
 
 #### `feed.close([callback])`
