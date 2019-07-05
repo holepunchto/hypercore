@@ -129,50 +129,7 @@ tape('simultaneous replication with two acks', function (t) {
   })
 })
 
-tape('acks from replication peer event', function (t) {
-  t.plan(1)
-  var feed = create()
-  feed.on('ready', function () {
-    feed.append(['a', 'b', 'c'])
-
-    var clone1 = create(feed.key)
-    var clone2 = create(feed.key)
-    var stream1 = feed.replicate({ ack: true })
-    var stream2 = feed.replicate({ ack: true })
-    var cstream1 = clone1.replicate()
-    var cstream2 = clone2.replicate()
-    stream1.pipe(cstream1).pipe(stream1)
-    stream2.pipe(cstream2).pipe(stream2)
-
-    cstream1.on('ack', function (block) {
-      t.fail('unexpected ack')
-    })
-    cstream2.on('ack', function (block) {
-      t.fail('unexpected ack')
-    })
-    var acks = [[], []]
-    stream1.on('ack', function (block) {
-      acks[0].push(block)
-    })
-    stream2.on('ack', function (block) {
-      acks[1].push(block)
-    })
-    var pending = 2
-    stream1.on('end', function () {
-      if (--pending === 0) check()
-    })
-    stream2.on('end', function () {
-      if (--pending === 0) check()
-    })
-    function check () {
-      acks.forEach(function (r) { r.sort() })
-      t.deepEqual(acks, [[0, 1, 2], [0, 1, 2]])
-      t.end()
-    }
-  })
-})
-
-tape('acks from replication peer event where clones should not ack', function (t) {
+tape('acks where clones should not ack', function (t) {
   t.plan(1)
   var feed = create()
   feed.on('ready', function () {
