@@ -253,7 +253,7 @@ feed.update(function () {
 
 Per default update will wait until a peer arrives and the update can be performed.
 If you only wanna check if any of the current peers you are connected to can
-update you (and return an error otherwise use the `ifAvailable` option)
+update you (and return an error otherwise if you use the `ifAvailable` option)
 
 ``` js
 feed.update({ ifAvailable: true, minLength: 10 }, function (err) {
