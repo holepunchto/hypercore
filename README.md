@@ -340,7 +340,7 @@ Populated after `ready` has been emitted. Will be `false` before the event.
 
 #### `feed.readable`
 
-Can we read from this feed? After closing a feed this will be false.
+Can we read from this feed? After closing the feed this will be false.
 
 Populated after `ready` has been emitted. Will be `false` before the event.
 
