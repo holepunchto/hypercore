@@ -201,8 +201,8 @@ Retrieve the root *hashes* for given `index`.
 Callback is called with `(err, roots)`; `roots` is an *Array* of *Node* objects:
 ```
 Node {
-  index: location in the merkle tree of this root
-  size: total bytes in children of this root
+  index: location in the merkle tree of this root,
+  size: total bytes in children of this root,
   hash: hash of the children of this root (32-byte buffer)
 }
 ```
