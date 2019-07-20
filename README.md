@@ -414,11 +414,11 @@ Emitted when a data block has been downloaded.
 
 #### `feed.on('upload', index, data)`
 
-Emitted when a data block is uploaded.
+Emitted when a data block has been uploaded.
 
 #### `feed.on('append')`
 
-Emitted when the feed has been appended to (i.e. has a new length / byteLength)
+Emitted when the feed has been appended to (i.e. has a new length / byteLength).
 
 #### `feed.on('sync')`
 
