@@ -104,7 +104,7 @@ const storage = someRandomAccessStorage
 const myPublicKey = someUint8Array
 
 const Buffer = require('buffer').Buffer
-const hypercorePublicKeyBuffer = Buffer.from(myPublicKeyAsUint8Array.buffer)
+const hypercorePublicKeyBuffer = Buffer.from(myPublicKey.buffer)
 
 const hypercore = hypercore(storage, hypercorePublicKeyBuffer)
 ```
