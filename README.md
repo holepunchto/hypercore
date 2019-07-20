@@ -167,7 +167,7 @@ A range can have the following properties:
 If you do not mark a range the entire feed will be marked for download.
 
 If you have not enabled sparse mode (`sparse: true` in the feed constructor) then the entire
-feed will be marked for download for you when the feed is created.
+feed will be marked for download when the feed is created.
 
 #### `feed.undownload(range)`
 
