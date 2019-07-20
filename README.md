@@ -134,7 +134,7 @@ Callback is called with `(err, data)`
 
 #### `feed.getBatch(start, end, [options], callback)`
 
-Get a range of blocks efficiently. Options include
+Get a range of blocks efficiently. End index is non-inclusive. Options include
 
 ``` js
 {
