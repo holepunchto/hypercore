@@ -414,7 +414,7 @@ Emitted when a data block has been downloaded.
 
 #### `feed.on('upload', index, data)`
 
-Emitted when a data block has been uploaded.
+Emitted when a data block is going to be uploaded.
 
 #### `feed.on('append')`
 
