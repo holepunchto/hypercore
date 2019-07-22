@@ -352,7 +352,7 @@ Populated after `ready` has been emitted. Will be `null` before the event.
 
 #### `feed.discoveryKey`
 
-Buffer containing a key derived from the feeds public key.
+Buffer containing a key derived from the feeds' public key.
 In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
 
 Populated after `ready` has been emitted. Will be `null` before the event.
