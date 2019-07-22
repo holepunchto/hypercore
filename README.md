@@ -14,11 +14,11 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 
 ## Features
 
-* Sparse replication. Only download the data you are interested in.
-* Realtime. Get the latest updates to the log fast and securely.
-* Performant. Uses a simple flat file structure to maximize I/O performance.
-* Secure. Uses signed merkle trees to verify log integrity in real time.
-* Browser support. Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
+* **Sparse replication.** Only download the data you are interested in.
+* **Realtime.** Get the latest updates to the log fast and securely.
+* **Performant.** Uses a simple flat file structure to maximize I/O performance.
+* **Secure.** Uses signed merkle trees to verify log integrity in real time.
+* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
 
 ## Usage
 
