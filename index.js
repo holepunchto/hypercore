@@ -319,6 +319,7 @@ Feed.prototype._reloadMerkleStateBeforeAppend = function (work, values, cb) {
 Feed.prototype._open = function (cb) {
   var self = this
   var generatedKey = false
+  var retryOpen = true
 
   // TODO: clean up the duplicate code below ...
 
@@ -413,6 +414,13 @@ Feed.prototype._open = function (cb) {
       }
 
       function onroots (err, roots) {
+        if (err && retryOpen) {
+          retryOpen = false
+          self.length--
+          self._storage.getSignature(self.length - 1, onsignature)
+          return
+        }
+
         if (err) return self._forceCloseAndError(cb, err)
 
         self._merkle = merkle(crypto, roots)
