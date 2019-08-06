@@ -14,11 +14,11 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 
 ## Features
 
-* Sparse replication. Only download the data you are interested in.
-* Realtime. Get the latest updates to the log fast and securely.
-* Performant. Uses a simple flat file structure to maximize I/O performance.
-* Secure. Uses signed merkle trees to verify log integrity in real time.
-* Browser support. Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
+* **Sparse replication.** Only download the data you are interested in.
+* **Realtime.** Get the latest updates to the log fast and securely.
+* **Performant.** Uses a simple flat file structure to maximize I/O performance.
+* **Secure.** Uses signed merkle trees to verify log integrity in real time.
+* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
 
 ## Usage
 
@@ -104,7 +104,7 @@ const storage = someRandomAccessStorage
 const myPublicKey = someUint8Array
 
 const Buffer = require('buffer').Buffer
-const hypercorePublicKeyBuffer = Buffer.from(myPublicKeyAsUint8Array.buffer)
+const hypercorePublicKeyBuffer = Buffer.from(myPublicKey.buffer)
 
 const hypercore = hypercore(storage, hypercorePublicKeyBuffer)
 ```
@@ -113,7 +113,7 @@ const hypercore = hypercore(storage, hypercorePublicKeyBuffer)
 
 Append a block of data to the feed.
 
-Callback is called with `(err, seq)` when all data has been written at the returned `seq` or an error occurred.
+Callback is called with `(err, seq)` when all data has been written at the returned `seq` number or error will be not `null`.
 
 #### `feed.get(index, [options], callback)`
 
@@ -134,7 +134,7 @@ Callback is called with `(err, data)`
 
 #### `feed.getBatch(start, end, [options], callback)`
 
-Get a range of blocks efficiently. Options include
+Get a range of blocks efficiently. End index is non-inclusive. Options include
 
 ``` js
 {
@@ -167,7 +167,7 @@ A range can have the following properties:
 If you do not mark a range the entire feed will be marked for download.
 
 If you have not enabled sparse mode (`sparse: true` in the feed constructor) then the entire
-feed will be marked for download for you when the feed is created.
+feed will be marked for download when the feed is created.
 
 #### `feed.undownload(range)`
 
@@ -201,8 +201,8 @@ Retrieve the root *hashes* for given `index`.
 Callback is called with `(err, roots)`; `roots` is an *Array* of *Node* objects:
 ```
 Node {
-  index: location in the merkle tree of this root
-  size: total bytes in children of this root
+  index: location in the merkle tree of this root,
+  size: total bytes in children of this root,
   hash: hash of the children of this root (32-byte buffer)
 }
 ```
@@ -253,7 +253,7 @@ feed.update(function () {
 
 Per default update will wait until a peer arrives and the update can be performed.
 If you only wanna check if any of the current peers you are connected to can
-update you (and return an error otherwise use the `ifAvailable` option)
+update you (and return an error otherwise if you use the `ifAvailable` option)
 
 ``` js
 feed.update({ ifAvailable: true, minLength: 10 }, function (err) {
@@ -340,7 +340,7 @@ Populated after `ready` has been emitted. Will be `false` before the event.
 
 #### `feed.readable`
 
-Can we read from this feed? After closing a feed this will be false.
+Can we read from this feed? After closing the feed this will be false.
 
 Populated after `ready` has been emitted. Will be `false` before the event.
 
@@ -352,7 +352,7 @@ Populated after `ready` has been emitted. Will be `null` before the event.
 
 #### `feed.discoveryKey`
 
-Buffer containing a key derived from the feed.key.
+Buffer containing a key derived from the feeds' public key.
 In contrast to `feed.key` this key does not allow you to verify the data but can be used to announce or look for peers that are sharing the same feed, without leaking the feed key.
 
 Populated after `ready` has been emitted. Will be `null` before the event.
@@ -414,11 +414,11 @@ Emitted when a data block has been downloaded.
 
 #### `feed.on('upload', index, data)`
 
-Emitted when a data block is uploaded.
+Emitted when a data block is going to be uploaded.
 
 #### `feed.on('append')`
 
-Emitted when the feed has been appended to (i.e. has a new length / byteLength)
+Emitted when the feed has been appended to (i.e. has a new length / byteLength).
 
 #### `feed.on('sync')`
 
