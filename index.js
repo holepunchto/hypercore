@@ -671,6 +671,8 @@ Feed.prototype.seek = function (bytes, opts, cb) {
 
   var self = this
 
+  if (bytes === this.byteLength) return process.nextTick(cb, null, this.length, 0)
+
   this._seek(bytes, function (err, index, offset) {
     if (!err && isBlock(index)) return done(index / 2, offset)
     if (opts.wait === false) return cb(err || new Error('Unable to seek to this offset'))
