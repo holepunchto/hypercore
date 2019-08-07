@@ -316,8 +316,8 @@ event:
 
 ``` js
 var stream = feed.replicate({ ack: true })
-stream.on('ack', function (block) {
-  console.log(block) // block is a sequence number
+stream.on('ack', function (ack) {
+  console.log(ack.start, ack.length)
 })
 ```
 

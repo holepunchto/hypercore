@@ -13,7 +13,7 @@ tape('replicate with ack', function (t) {
       feed.append(['a', 'b', 'c'])
     })
     var seen = 0
-    stream.on('ack', function (block) {
+    stream.on('ack', function (ack) {
       seen++
       if (seen > 3) t.fail()
       if (seen === 3) t.end()
@@ -27,7 +27,7 @@ tape('ack only when something is downloaded', function (t) {
   feed.on('ready', function () {
     var clone = create(feed.key)
     var stream1 = clone.replicate()
-    stream1.on('ack', function (block) {
+    stream1.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
     feed.append(['a', 'b', 'c'], function () {
@@ -39,8 +39,8 @@ tape('ack only when something is downloaded', function (t) {
       // add 2 more records. only these should be ACK'd
       var acks = []
       var stream2 = feed.replicate({ ack: true })
-      stream2.on('ack', function (block) {
-        acks.push(block)
+      stream2.on('ack', function (ack) {
+        acks.push(ack.start)
       })
       stream2.pipe(clone.replicate()).pipe(stream2)
       stream2.on('end', function () {
@@ -67,16 +67,16 @@ tape('simultaneous replication with ack and no-ack', function (t) {
     stream2.pipe(stream3).pipe(stream2)
 
     var acks = []
-    stream0.on('ack', function (block) {
-      acks.push(block)
+    stream0.on('ack', function (ack) {
+      acks.push(ack.start)
     })
-    stream1.on('ack', function (block) {
+    stream1.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
-    stream2.on('ack', function (block) {
+    stream2.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
-    stream3.on('ack', function (block) {
+    stream3.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
     stream1.on('end', function () {
@@ -102,17 +102,17 @@ tape('simultaneous replication with two acks', function (t) {
     stream2.pipe(stream3).pipe(stream2)
 
     var acks = [[], []]
-    stream0.on('ack', function (block) {
-      acks[0].push(block)
+    stream0.on('ack', function (ack) {
+      acks[0].push(ack.start)
     })
-    stream1.on('ack', function (block) {
+    stream1.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
-    stream2.on('ack', function (block) {
+    stream2.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
-    stream3.on('ack', function (block) {
-      acks[1].push(block)
+    stream3.on('ack', function (ack) {
+      acks[1].push(ack.start)
     })
     var pending = 2
     stream1.on('end', function () {
@@ -144,18 +144,18 @@ tape('acks where clones should not ack', function (t) {
     stream1.pipe(cstream1).pipe(stream1)
     stream2.pipe(cstream2).pipe(stream2)
 
-    cstream1.on('ack', function (block) {
+    cstream1.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
-    cstream2.on('ack', function (block) {
+    cstream2.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
     var acks = [[], []]
-    stream1.on('ack', function (block) {
-      acks[0].push(block)
+    stream1.on('ack', function (ack) {
+      acks[0].push(ack.start)
     })
-    stream2.on('ack', function (block) {
-      acks[1].push(block)
+    stream2.on('ack', function (ack) {
+      acks[1].push(ack.start)
     })
     var pending = 2
     stream1.on('end', function () {
@@ -188,8 +188,8 @@ tape('transitive clone acks', function (t) {
     var stream4 = clone2.replicate({ live: true, ack: true })
     var acks = [[], [], [], []]
     ;[stream1, stream2, stream3, stream4].forEach(function (stream, i) {
-      stream.on('ack', function (block) {
-        acks[i].push(block)
+      stream.on('ack', function (ack) {
+        acks[i].push(ack.start)
       })
     })
     stream1.pipe(stream2).pipe(stream1)
@@ -264,15 +264,15 @@ tape('larger gossip network acks', function (t) {
       var dst = cores[op[2]]
       var sr = src.replicate({ ack: true })
       var dr = dst.replicate({ ack: true })
-      sr.on('ack', function (block) {
+      sr.on('ack', function (ack) {
         var key = op[1] + ',' + op[2]
         if (!acks[key]) acks[key] = []
-        acks[key].push(block)
+        acks[key].push(ack.start)
       })
-      dr.on('ack', function (block) {
+      dr.on('ack', function (ack) {
         var key = op[2] + ',' + op[1]
         if (!acks[key]) acks[key] = []
-        acks[key].push(block)
+        acks[key].push(ack.start)
       })
       sr.pipe(dr).pipe(sr)
       var pending = 2
