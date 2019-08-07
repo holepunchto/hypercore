@@ -146,3 +146,23 @@ tape('seek to sibling', function (t) {
     })
   })
 })
+
+tape('seek to 0 and byteLength', function (t) {
+  t.plan(6)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    feed.seek(0, function (err, index, offset) {
+      t.same(err, null)
+      t.same(index, 0)
+      t.same(offset, 0)
+    })
+
+    feed.seek(feed.byteLength, function (err, index, offset) {
+      t.same(err, null)
+      t.same(index, feed.length)
+      t.same(offset, 0)
+    })
+  })
+})
