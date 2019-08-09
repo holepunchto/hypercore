@@ -724,6 +724,7 @@ tape('setting expectedFeeds together with a stream', function (t) {
   var feed2 = create()
   feed2.replicate({ stream: stream, expectedFeeds: 10 })
   t.equal(stream.expectedFeeds, 11)
+  t.end()
 })
 
 function same (t, val) {
