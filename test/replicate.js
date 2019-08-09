@@ -716,6 +716,16 @@ tape('first get hash, then get block', function (t) {
   })
 })
 
+tape('setting expectedFeeds together with a stream', function (t) {
+  t.plan(2)
+  var feed = create()
+  var stream = feed.replicate()
+  t.equal(stream.expectedFeeds, 1)
+  var feed2 = create()
+  feed2.replicate({ stream: stream, expectedFeeds: 10 })
+  t.equal(stream.expectedFeeds, 11)
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
