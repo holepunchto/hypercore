@@ -255,7 +255,11 @@ Feed.prototype._ifAvailable = function (w, minLength) {
   this.on('remote-update', onupdate)
   this.on('peer-remove', onupdate)
 
-  process.nextTick(onupdate)
+  this._ready(updateNT)
+
+  function updateNT () {
+    process.nextTick(onupdate)
+  }
 
   function done (err) {
     if (called) return
@@ -271,6 +275,8 @@ Feed.prototype._ifAvailable = function (w, minLength) {
   }
 
   function onupdate () {
+    if (self.closed) return done(new Error('Closed'))
+
     var allUpdated = true
 
     if (self.length >= minLength || self.remoteLength >= minLength) return
