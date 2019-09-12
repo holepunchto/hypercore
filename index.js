@@ -18,6 +18,7 @@ var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
+var Nanoguard = require('nanoguard')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
@@ -71,6 +72,7 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+  this.ifAvailable = new Nanoguard()
 
   // Extensions must be sorted for handshaking to work
   this.extensions = (opts.extensions || []).sort()
@@ -235,6 +237,7 @@ Feed.prototype.update = function (opts, cb) {
       bytes: 0,
       index: len - 1,
       update: true,
+      options: opts,
       callback: cb
     }
 
@@ -251,48 +254,45 @@ Feed.prototype._ifAvailable = function (w, minLength) {
 
   w.callback = done
 
-  this.on('peer-add', onupdate)
-  this.on('remote-update', onupdate)
-  this.on('peer-remove', onupdate)
-
-  this._ready(updateNT)
-
-  function updateNT () {
-    process.nextTick(onupdate)
-  }
+  this.ifAvailable.ready(function () {
+    if (self.closed) return done(new Error('Closed'))
+    if (self.length >= minLength || self.remoteLength >= minLength) return
+    done(new Error('No update available from peers'))
+  })
 
   function done (err) {
     if (called) return
     called = true
 
-    self.removeListener('peer-add', onupdate)
-    self.removeListener('remote-update', onupdate)
-    self.removeListener('peer-remove', onupdate)
-
     var i = self._waiting.indexOf(w)
     if (i > -1) self._waiting.splice(i, 1)
     cb(err)
   }
+}
 
-  function onupdate () {
+Feed.prototype._ifAvailableGet = function (w) {
+  var cb = w.callback
+  var called = false
+  var self = this
+
+  w.callback = done
+
+  this.ifAvailable.ready(function () {
     if (self.closed) return done(new Error('Closed'))
-
-    var allUpdated = true
-
-    if (self.length >= minLength || self.remoteLength >= minLength) return
-
     for (var i = 0; i < self.peers.length; i++) {
-      var p = self.peers[i]
-      if (!p.updated) {
-        allUpdated = false
-        break
-      }
+      var peer = self.peers[i]
+      if (peer.remoteBitfield.get(w.index)) return
     }
+    done(new Error('Block not available from peers'))
+  })
 
-    if (!allUpdated) return
+  function done (err, data) {
+    if (called) return
+    called = true
 
-    // no update avail from current peers
-    done(new Error('No update available from peers'))
+    var i = self._waiting.indexOf(w)
+    if (i > -1) self._waiting.splice(i, 1)
+    cb(err, data)
   }
 }
 
@@ -1074,7 +1074,11 @@ Feed.prototype.get = function (index, opts, cb) {
   if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    this._waiting.push({bytes: 0, hash: false, index: index, options: opts, callback: cb})
+    var w = { bytes: 0, hash: false, index: index, options: opts, callback: cb }
+    this._waiting.push(w)
+
+    if (opts && opts.ifAvailable) this._ifAvailableGet(w)
+
     this._updatePeers()
     return
   }
@@ -1253,6 +1257,7 @@ Feed.prototype._forceCloseAndError = function (cb, error) {
 }
 
 Feed.prototype._onclose = function () {
+  this.ifAvailable.destroy()
   this.closed = true
 
   while (this._waiting.length) {
