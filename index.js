@@ -18,6 +18,7 @@ var storage = require('./lib/storage')
 var crypto = require('hypercore-crypto')
 var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
+var Nanoguard = require('nanoguard')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = null
 
@@ -71,6 +72,7 @@ function Feed (createStorage, key, opts) {
   this.closed = false
   this.allowPush = !!opts.allowPush
   this.peers = []
+  this.ifAvailable = new Nanoguard()
 
   // Extensions must be sorted for handshaking to work
   this.extensions = (opts.extensions || []).sort()
@@ -251,48 +253,19 @@ Feed.prototype._ifAvailable = function (w, minLength) {
 
   w.callback = done
 
-  this.on('peer-add', onupdate)
-  this.on('remote-update', onupdate)
-  this.on('peer-remove', onupdate)
-
-  this._ready(updateNT)
-
-  function updateNT () {
-    process.nextTick(onupdate)
-  }
+  this.ifAvailable.ready(function () {
+    if (self.closed) return done(new Error('Closed'))
+    if (self.length >= minLength || self.remoteLength >= minLength) return
+    done(new Error('No update available from peers'))
+  })
 
   function done (err) {
     if (called) return
     called = true
 
-    self.removeListener('peer-add', onupdate)
-    self.removeListener('remote-update', onupdate)
-    self.removeListener('peer-remove', onupdate)
-
     var i = self._waiting.indexOf(w)
     if (i > -1) self._waiting.splice(i, 1)
     cb(err)
-  }
-
-  function onupdate () {
-    if (self.closed) return done(new Error('Closed'))
-
-    var allUpdated = true
-
-    if (self.length >= minLength || self.remoteLength >= minLength) return
-
-    for (var i = 0; i < self.peers.length; i++) {
-      var p = self.peers[i]
-      if (!p.updated) {
-        allUpdated = false
-        break
-      }
-    }
-
-    if (!allUpdated) return
-
-    // no update avail from current peers
-    done(new Error('No update available from peers'))
   }
 }
 
@@ -1253,6 +1226,7 @@ Feed.prototype._forceCloseAndError = function (cb, error) {
 }
 
 Feed.prototype._onclose = function () {
+  this.ifAvailable.destroy()
   this.closed = true
 
   while (this._waiting.length) {
