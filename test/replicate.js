@@ -376,7 +376,7 @@ tape('can wait for updates', function (t) {
       t.end()
     })
 
-    replicate(feed, clone, {live: true}).on('handshake', function () {
+    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -399,7 +399,7 @@ tape('replicate while clearing', function (t) {
       })
     })
 
-    replicate(feed, clone, {live: true}).on('handshake', function () {
+    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -469,11 +469,11 @@ tape('shared stream, non live', function (t) {
       var b1 = create(b.key)
 
       a1.ready(function () {
-        var s = a.replicate({expectedFeeds: 2})
-        b1.replicate({stream: s})
+        var s = a.replicate(true)
+        b1.replicate(s)
 
-        var s1 = a1.replicate({expectedFeeds: 2})
-        b.replicate({stream: s1})
+        var s1 = a1.replicate(false)
+        b.replicate(s1)
 
         s.pipe(s1).pipe(s)
 
@@ -583,8 +583,8 @@ tape('replicate no download', function (t) {
       t.fail('Data was received')
     })
 
-    var stream = feed.replicate({live: true})
-    stream.pipe(clone.replicate({live: true, download: false})).pipe(stream)
+    var stream = feed.replicate(true, {live: true})
+    stream.pipe(clone.replicate(false, {live: true, download: false})).pipe(stream)
 
     setTimeout(function () {
       t.pass('No data was received')

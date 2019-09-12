@@ -1,13 +1,13 @@
 var create = require('./helpers/create')
 var tape = require('tape')
 
-tape('replicate with ack', function (t) {
+tape.only('replicate with ack', function (t) {
   var feed = create()
   feed.on('ready', function () {
     var clone = create(feed.key)
 
-    var stream = feed.replicate({live: true, ack: true})
-    stream.pipe(clone.replicate({live: true})).pipe(stream)
+    var stream = feed.replicate(true, {live: true, ack: true})
+    stream.pipe(clone.replicate(false, {live: true})).pipe(stream)
 
     stream.on('handshake', function () {
       feed.append(['a', 'b', 'c'])
@@ -26,23 +26,23 @@ tape('ack only when something is downloaded', function (t) {
   var feed = create()
   feed.on('ready', function () {
     var clone = create(feed.key)
-    var stream1 = clone.replicate()
+    var stream1 = clone.replicate(true)
     stream1.on('ack', function (ack) {
       t.fail('unexpected ack')
     })
     feed.append(['a', 'b', 'c'], function () {
       // pre-populate with 3 records
-      stream1.pipe(feed.replicate()).pipe(stream1)
+      stream1.pipe(feed.replicate(false)).pipe(stream1)
     })
     stream1.on('end', function () {
       feed.append([ 'd', 'e' ])
       // add 2 more records. only these should be ACK'd
       var acks = []
-      var stream2 = feed.replicate({ ack: true })
+      var stream2 = feed.replicate(true, { ack: true })
       stream2.on('ack', function (ack) {
         acks.push(ack.start)
       })
-      stream2.pipe(clone.replicate()).pipe(stream2)
+      stream2.pipe(clone.replicate(false)).pipe(stream2)
       stream2.on('end', function () {
         t.deepEqual(acks.sort(), [3, 4])
         t.end()
@@ -59,10 +59,10 @@ tape('simultaneous replication with ack and no-ack', function (t) {
 
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
-    var stream0 = feed.replicate({ ack: true })
-    var stream1 = clone1.replicate()
-    var stream2 = clone2.replicate()
-    var stream3 = feed.replicate()
+    var stream0 = feed.replicate(true, { ack: true })
+    var stream1 = clone1.replicate(false)
+    var stream2 = clone2.replicate(false)
+    var stream3 = feed.replicate(true)
     stream1.pipe(stream0).pipe(stream1)
     stream2.pipe(stream3).pipe(stream2)
 
@@ -94,10 +94,10 @@ tape('simultaneous replication with two acks', function (t) {
 
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
-    var stream0 = feed.replicate({ ack: true })
-    var stream1 = clone1.replicate()
-    var stream2 = clone2.replicate()
-    var stream3 = feed.replicate({ ack: true })
+    var stream0 = feed.replicate(true, { ack: true })
+    var stream1 = clone1.replicate(false)
+    var stream2 = clone2.replicate(false)
+    var stream3 = feed.replicate(true, { ack: true })
     stream1.pipe(stream0).pipe(stream1)
     stream2.pipe(stream3).pipe(stream2)
 
@@ -137,10 +137,10 @@ tape('acks where clones should not ack', function (t) {
 
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
-    var stream1 = feed.replicate({ ack: true })
-    var stream2 = feed.replicate({ ack: true })
-    var cstream1 = clone1.replicate({ ack: true }) // but shouldn't get any acks
-    var cstream2 = clone2.replicate({ ack: true }) // but shouldn't get any acks
+    var stream1 = feed.replicate(true, { ack: true })
+    var stream2 = feed.replicate(true, { ack: true })
+    var cstream1 = clone1.replicate(false, { ack: true }) // but shouldn't get any acks
+    var cstream2 = clone2.replicate(false, { ack: true }) // but shouldn't get any acks
     stream1.pipe(cstream1).pipe(stream1)
     stream2.pipe(cstream2).pipe(stream2)
 
@@ -182,10 +182,10 @@ tape('transitive clone acks', function (t) {
     t.ifError(err)
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
-    var stream1 = feed.replicate({ live: true, ack: true })
-    var stream2 = clone1.replicate({ live: true, ack: true })
-    var stream3 = clone1.replicate({ live: true, ack: true })
-    var stream4 = clone2.replicate({ live: true, ack: true })
+    var stream1 = feed.replicate(true, { live: true, ack: true })
+    var stream2 = clone1.replicate(false, { live: true, ack: true })
+    var stream3 = clone1.replicate(true, { live: true, ack: true })
+    var stream4 = clone2.replicate(false, { live: true, ack: true })
     var acks = [[], [], [], []]
     ;[stream1, stream2, stream3, stream4].forEach(function (stream, i) {
       stream.on('ack', function (ack) {
@@ -262,8 +262,8 @@ tape('larger gossip network acks', function (t) {
     } else if (op[0] === 'connect') {
       var src = cores[op[1]]
       var dst = cores[op[2]]
-      var sr = src.replicate({ ack: true })
-      var dr = dst.replicate({ ack: true })
+      var sr = src.replicate(true, { ack: true })
+      var dr = dst.replicate(false, { ack: true })
       sr.on('ack', function (ack) {
         var key = op[1] + ',' + op[2]
         if (!acks[key]) acks[key] = []

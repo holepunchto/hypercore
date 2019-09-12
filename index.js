@@ -191,7 +191,7 @@ Object.defineProperty(Feed.prototype, 'stats', {
   }
 })
 
-Feed.prototype.replicate = function (opts) {
+Feed.prototype.replicate = function (initiator, opts) {
   // Lazy load replication deps
   if (!replicate) replicate = require('./lib/replicate')
 
@@ -205,7 +205,7 @@ Feed.prototype.replicate = function (opts) {
 
   if (!opts.extensions) opts.extensions = this.extensions
 
-  var stream = replicate(this, opts)
+  var stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)
   return stream
 }
