@@ -1061,9 +1061,14 @@ Feed.prototype.head = function (opts, cb) {
   var self = this
   this._ready(function (err) {
     if (err) return cb(err)
+    if (opts && opts.update) self.update(opts, onupdate)
+    else process.nextTick(onupdate)
+  })
+
+  function onupdate () {
     if (self.length === 0) cb(new Error('feed is empty'))
     else self.get(self.length - 1, opts, cb)
-  })
+  }
 }
 
 Feed.prototype.get = function (index, opts, cb) {
