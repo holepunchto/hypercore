@@ -716,6 +716,23 @@ tape('first get hash, then get block', function (t) {
   })
 })
 
+tape('destroy replication stream before handshake', function (t) {
+  var feed = create()
+  feed.append([ 'a', 'b', 'c' ], function () {
+    var stream = feed.replicate(true)
+    stream.destroy()
+    var anotherStream = feed.replicate(true)
+    setImmediate(function () {
+      anotherStream.destroy()
+      feed.ifAvailable.ready(function () {
+        t.pass('ifAvailable still triggers')
+        t.same(feed.peers.length, 0)
+        t.end()
+      })
+    })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
