@@ -98,8 +98,8 @@ tape('seek works for sparse trees', function (t) {
   feed.append('aa', function () {
     var clone = create(feed.key, { sparse: true })
 
-    var s = feed.replicate({ live: true })
-    s.pipe(clone.replicate({ live: true })).pipe(s)
+    var s = feed.replicate(true, { live: true })
+    s.pipe(clone.replicate(false, { live: true })).pipe(s)
 
     clone.get(0, function () { // make sure we have a tree rooted at 0
       const chunks = Array(15)

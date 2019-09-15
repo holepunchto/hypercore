@@ -1,7 +1,7 @@
 var create = require('./helpers/create')
 var tape = require('tape')
 
-tape.only('replicate with ack', function (t) {
+tape('replicate with ack', function (t) {
   var feed = create()
   feed.on('ready', function () {
     var clone = create(feed.key)
@@ -9,7 +9,7 @@ tape.only('replicate with ack', function (t) {
     var stream = feed.replicate(true, {live: true, ack: true})
     stream.pipe(clone.replicate(false, {live: true})).pipe(stream)
 
-    stream.on('handshake', function () {
+    stream.once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
     var seen = 0
@@ -197,7 +197,7 @@ tape('transitive clone acks', function (t) {
     var dl = 0
     clone2.on('download', function () {
       // allow an extra tick for ack response to arrive
-      if (++dl === 3) ntick(2, check)
+      if (++dl === 3) setImmediate(check)
     })
     function check () {
       acks.forEach(function (r) { r.sort() })
@@ -304,8 +304,3 @@ tape('larger gossip network acks', function (t) {
     })
   }
 })
-
-function ntick (times, cb) {
-  if (times === 0) cb()
-  else process.nextTick(ntick, times - 1, cb)
-}

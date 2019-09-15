@@ -64,9 +64,9 @@ tape('deterministic data and tree after replication', function (t) {
     feed.append(['a', 'b', 'c', 'd', 'e', 'f'], function () {
       var st = storage()
       var clone = hypercore(st, feed.key)
-      var stream = clone.replicate()
+      var stream = clone.replicate(true)
 
-      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
+      stream.pipe(feed.replicate(false)).pipe(stream).on('end', function () {
         t.same(st.data.toBuffer().toString(), 'abcdef')
         t.same(st.tree.toBuffer(), expectedTree)
       })
@@ -139,9 +139,9 @@ tape('deterministic signatures after replication', function (t) {
     feed.append(['a', 'b', 'c'], function () {
       var st = storage()
       var clone = hypercore(st, feed.key)
-      var stream = clone.replicate()
+      var stream = clone.replicate(true)
 
-      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
+      stream.pipe(feed.replicate(false)).pipe(stream).on('end', function () {
         t.same(st.data.toBuffer().toString(), 'abc')
         t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
       })

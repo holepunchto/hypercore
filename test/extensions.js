@@ -19,12 +19,12 @@ tape('send and receive extension messages', function (t) {
   t.plan(4)
 
   var feed1 = create(null, {
-    extensions: ['example']
+    extensions: [EXAMPLE_TYPE]
   })
 
   feed1.ready(function () {
     var feed2 = create(feed1.key, {
-      extensions: ['example']
+      extensions: [EXAMPLE_TYPE]
     })
 
     feed2.on('extension', function (type, message, peer) {
@@ -39,10 +39,12 @@ tape('send and receive extension messages', function (t) {
       t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
     })
 
-    feed1.on('peer-add', function () {
-      feed1.extension(EXAMPLE_TYPE, EXAMPLE_MESSAGE)
+    feed1.once('peer-add', function () {
+      setImmediate(function () {
+        feed1.extension(EXAMPLE_TYPE, EXAMPLE_MESSAGE)
+      })
     })
 
-    replicate(feed1, feed2)
+    replicate(feed1, feed2, { live: true })
   })
 })
