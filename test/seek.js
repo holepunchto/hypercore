@@ -1,5 +1,6 @@
 var create = require('./helpers/create')
 var tape = require('tape')
+var replicate = require('./helpers/replicate')
 
 tape('seek to byte offset', function (t) {
   var feed = create()
@@ -98,8 +99,7 @@ tape('seek works for sparse trees', function (t) {
   feed.append('aa', function () {
     var clone = create(feed.key, { sparse: true })
 
-    var s = feed.replicate(true, { live: true })
-    s.pipe(clone.replicate(false, { live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.get(0, function () { // make sure we have a tree rooted at 0
       const chunks = Array(15)

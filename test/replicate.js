@@ -1,7 +1,6 @@
 var create = require('./helpers/create')
 var replicate = require('./helpers/replicate')
 var tape = require('tape')
-var bufferFrom = require('buffer-from')
 
 tape('replicate', function (t) {
   t.plan(10)
@@ -163,11 +162,11 @@ tape('basic 3-way replication', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('a'))
+      t.same(data, Buffer.from('a'))
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('a'))
+        t.same(data, Buffer.from('a'))
         t.end()
       })
     })
@@ -185,13 +184,13 @@ tape('basic 3-way replication sparse and not sparse', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('a'))
+      t.same(data, Buffer.from('a'))
 
       replicate(clone1, clone2, {live: true})
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('a'))
+        t.same(data, Buffer.from('a'))
         var inflight = clone2.peers[0].inflightRequests
         if (inflight.length === 1 && inflight[0].index === 0) inflight = [] // just has not been cleared yet
         t.same(inflight, [], 'no additional requests')
@@ -211,7 +210,7 @@ tape('extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
       t.end()
     })
   })
@@ -229,11 +228,11 @@ tape('3-way another index', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -252,11 +251,11 @@ tape('3-way another index + extra data', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -275,11 +274,11 @@ tape('3-way another index + extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -299,11 +298,11 @@ tape('3-way another index + extra data + factor of two + static', function (t) {
 
       clone1.get(1, function (err, data) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
 
         clone2.get(1, function (err) {
           t.error(err, 'no error')
-          t.same(data, bufferFrom('b'))
+          t.same(data, Buffer.from('b'))
           t.end()
         })
       })
@@ -583,8 +582,7 @@ tape('replicate no download', function (t) {
       t.fail('Data was received')
     })
 
-    var stream = feed.replicate(true, {live: true})
-    stream.pipe(clone.replicate(false, {live: true, download: false})).pipe(stream)
+    replicate(feed, clone, { live: true }, { live: true, download: false })
 
     setTimeout(function () {
       t.pass('No data was received')
