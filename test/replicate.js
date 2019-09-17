@@ -1,6 +1,7 @@
 var create = require('./helpers/create')
 var replicate = require('./helpers/replicate')
 var tape = require('tape')
+var Protocol = require('hypercore-protocol')
 
 tape('replicate', function (t) {
   t.plan(10)
@@ -728,6 +729,40 @@ tape('destroy replication stream before handshake', function (t) {
         t.end()
       })
     })
+  })
+})
+
+tape('request timeouts', function (t) {
+  t.plan(4)
+
+  var feed = create()
+  var stream = new Protocol(false, {
+    timeout: 100
+  })
+
+  feed.ready(function () {
+    var ch = stream.open(feed.key, {
+      onwant (want) {
+        t.pass('got want')
+        ch.have({ start: 0, length: 1 })
+      },
+      onrequest (request) {
+        t.same(request.index, 0, 'got request for #0')
+      }
+    })
+
+    t.same(typeof stream.timeout.ms, 'number', 'can read timeout ms from protocol stream')
+
+    var timeout = setTimeout(() => t.fail('request should have timed out'), stream.timeout.ms * 2)
+    var feedStream = feed.replicate(true, { download: true, timeout: 100 })
+    stream.pipe(feedStream).pipe(stream)
+
+    feedStream.on('error', function (err) {
+      clearTimeout(timeout)
+      t.ok(err, 'stream had timeout error')
+    })
+
+    stream.on('error', () => {})
   })
 })
 
