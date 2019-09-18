@@ -25,7 +25,7 @@
     "sodium-universal": "^2.0.0",
     "sparse-bitfield": "^3.0.0",
     "thunky": "^1.0.1",
-    "timeout-refresh": "^1.0.0",
+    "timeout-refresh": "^1.0.1",
     "uint64be": "^2.0.1",
     "unordered-array-remove": "^1.0.2",
     "unordered-set": "^2.0.0"
