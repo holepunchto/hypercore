@@ -55,7 +55,7 @@ function Feed (createStorage, key, opts) {
   var secretKey = opts.secretKey || null
   if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
 
-  this.replicationKeyPair = opts.replicationKeyPair || Protocol.keyPair()
+  this.noiseKeyPair = opts.noiseKeyPair || Protocol.keyPair()
   this.live = opts.live !== false
   this.sparse = !!opts.sparse
   this.length = 0
