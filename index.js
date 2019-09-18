@@ -20,13 +20,13 @@ var inspect = require('inspect-custom-symbol')
 var pretty = require('pretty-hash')
 var Nanoguard = require('nanoguard')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
-var replicate = null
+var replicate = require('./lib/replicate')
+var Protocol = require('hypercore-protocol')
 
 var defaultCrypto = {
   sign (data, sk, cb) {
     return cb(null, crypto.sign(data, sk))
   },
-
   verify (sig, data, pk, cb) {
     return cb(null, crypto.verify(sig, data, pk))
   }
@@ -55,7 +55,7 @@ function Feed (createStorage, key, opts) {
   var secretKey = opts.secretKey || null
   if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
 
-  this.id = opts.id || crypto.randomBytes(32)
+  this.replicationKeyPair = opts.replicationKeyPair || Protocol.keyPair()
   this.live = opts.live !== false
   this.sparse = !!opts.sparse
   this.length = 0
@@ -191,10 +191,7 @@ Object.defineProperty(Feed.prototype, 'stats', {
   }
 })
 
-Feed.prototype.replicate = function (opts) {
-  // Lazy load replication deps
-  if (!replicate) replicate = require('./lib/replicate')
-
+Feed.prototype.replicate = function (initiator, opts) {
   if ((!this._selections.length || this._selections[0].end !== -1) && !this.sparse && !(opts && opts.live)) {
     // hack!! proper fix is to refactor ./replicate to *not* clear our non-sparse selection
     this.download({start: 0, end: -1})
@@ -205,7 +202,7 @@ Feed.prototype.replicate = function (opts) {
 
   if (!opts.extensions) opts.extensions = this.extensions
 
-  var stream = replicate(this, opts)
+  var stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)
   return stream
 }

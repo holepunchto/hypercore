@@ -1,5 +1,6 @@
 const tape = require('tape')
 const create = require('./helpers/create')
+const replicate = require('./helpers/replicate')
 
 tape('update', function (t) {
   const feed = create()
@@ -7,8 +8,7 @@ tape('update', function (t) {
   feed.ready(function () {
     const clone = create(feed.key, { sparse: true, eagerUpdate: true })
 
-    const s = clone.replicate({ live: true })
-    s.pipe(feed.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.once('append', function () {
       t.same(clone.length, 4, 'did an eager update')
@@ -25,8 +25,7 @@ tape('disable eager update', function (t) {
   feed.ready(function () {
     const clone = create(feed.key, { sparse: true, eagerUpdate: false })
 
-    const s = clone.replicate({ live: true })
-    s.pipe(feed.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.once('append', function () {
       t.fail('should not update')
@@ -44,8 +43,7 @@ tape('update if available', function (t) {
   feed.append([ 'a', 'b', 'c' ], function () {
     const clone = create(feed.key, { sparse: true })
 
-    const s = clone.replicate({ live: true })
-    s.pipe(feed.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.update({ ifAvailable: true }, function (err) {
       t.error(err, 'no error')
@@ -75,8 +73,7 @@ tape('update if available (no one has it)', function (t) {
   feed.append([ 'a', 'b', 'c' ], function () {
     const clone = create(feed.key, { sparse: true })
 
-    const s = clone.replicate({ live: true })
-    s.pipe(feed.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.update({ ifAvailable: true, minLength: 4 }, function (err) {
       t.ok(err)
@@ -92,8 +89,7 @@ tape('update with block data', function (t) {
   feed.append([ 'a', 'b', 'c', 'd' ], function () {
     const clone = create(feed.key, { sparse: true })
 
-    const s = clone.replicate({ live: true })
-    s.pipe(feed.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.update({ hash: false }, function () {
       t.ok(clone.has(0))

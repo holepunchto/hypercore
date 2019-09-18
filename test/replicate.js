@@ -1,7 +1,7 @@
 var create = require('./helpers/create')
 var replicate = require('./helpers/replicate')
 var tape = require('tape')
-var bufferFrom = require('buffer-from')
+var Protocol = require('hypercore-protocol')
 
 tape('replicate', function (t) {
   t.plan(10)
@@ -163,11 +163,11 @@ tape('basic 3-way replication', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('a'))
+      t.same(data, Buffer.from('a'))
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('a'))
+        t.same(data, Buffer.from('a'))
         t.end()
       })
     })
@@ -185,13 +185,13 @@ tape('basic 3-way replication sparse and not sparse', function (t) {
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('a'))
+      t.same(data, Buffer.from('a'))
 
       replicate(clone1, clone2, {live: true})
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('a'))
+        t.same(data, Buffer.from('a'))
         var inflight = clone2.peers[0].inflightRequests
         if (inflight.length === 1 && inflight[0].index === 0) inflight = [] // just has not been cleared yet
         t.same(inflight, [], 'no additional requests')
@@ -211,7 +211,7 @@ tape('extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
       t.end()
     })
   })
@@ -229,11 +229,11 @@ tape('3-way another index', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -252,11 +252,11 @@ tape('3-way another index + extra data', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -275,11 +275,11 @@ tape('3-way another index + extra data + factor of two', function (t) {
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
-      t.same(data, bufferFrom('b'))
+      t.same(data, Buffer.from('b'))
 
       clone2.get(1, function (err) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
         t.end()
       })
     })
@@ -299,11 +299,11 @@ tape('3-way another index + extra data + factor of two + static', function (t) {
 
       clone1.get(1, function (err, data) {
         t.error(err, 'no error')
-        t.same(data, bufferFrom('b'))
+        t.same(data, Buffer.from('b'))
 
         clone2.get(1, function (err) {
           t.error(err, 'no error')
-          t.same(data, bufferFrom('b'))
+          t.same(data, Buffer.from('b'))
           t.end()
         })
       })
@@ -376,7 +376,7 @@ tape('can wait for updates', function (t) {
       t.end()
     })
 
-    replicate(feed, clone, {live: true}).on('handshake', function () {
+    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -399,7 +399,7 @@ tape('replicate while clearing', function (t) {
       })
     })
 
-    replicate(feed, clone, {live: true}).on('handshake', function () {
+    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -469,11 +469,11 @@ tape('shared stream, non live', function (t) {
       var b1 = create(b.key)
 
       a1.ready(function () {
-        var s = a.replicate({expectedFeeds: 2})
-        b1.replicate({stream: s})
+        var s = a.replicate(true)
+        b1.replicate(s)
 
-        var s1 = a1.replicate({expectedFeeds: 2})
-        b.replicate({stream: s1})
+        var s1 = a1.replicate(false)
+        b.replicate(s1)
 
         s.pipe(s1).pipe(s)
 
@@ -583,8 +583,7 @@ tape('replicate no download', function (t) {
       t.fail('Data was received')
     })
 
-    var stream = feed.replicate({live: true})
-    stream.pipe(clone.replicate({live: true, download: false})).pipe(stream)
+    replicate(feed, clone, { live: true }, { live: true, download: false })
 
     setTimeout(function () {
       t.pass('No data was received')
@@ -713,6 +712,57 @@ tape('first get hash, then get block', function (t) {
         t.end()
       })
     })
+  })
+})
+
+tape('destroy replication stream before handshake', function (t) {
+  var feed = create()
+  feed.append([ 'a', 'b', 'c' ], function () {
+    var stream = feed.replicate(true)
+    stream.destroy()
+    var anotherStream = feed.replicate(true)
+    setImmediate(function () {
+      anotherStream.destroy()
+      feed.ifAvailable.ready(function () {
+        t.pass('ifAvailable still triggers')
+        t.same(feed.peers.length, 0)
+        t.end()
+      })
+    })
+  })
+})
+
+tape('request timeouts', function (t) {
+  t.plan(4)
+
+  var feed = create()
+  var stream = new Protocol(false, {
+    timeout: 100
+  })
+
+  feed.ready(function () {
+    var ch = stream.open(feed.key, {
+      onwant (want) {
+        t.pass('got want')
+        ch.have({ start: 0, length: 1 })
+      },
+      onrequest (request) {
+        t.same(request.index, 0, 'got request for #0')
+      }
+    })
+
+    t.same(typeof stream.timeout.ms, 'number', 'can read timeout ms from protocol stream')
+
+    var timeout = setTimeout(() => t.fail('request should have timed out'), stream.timeout.ms * 2)
+    var feedStream = feed.replicate(true, { download: true, timeout: 100 })
+    stream.pipe(feedStream).pipe(stream)
+
+    feedStream.on('error', function (err) {
+      clearTimeout(timeout)
+      t.ok(err, 'stream had timeout error')
+    })
+
+    stream.on('error', () => {})
   })
 })
 

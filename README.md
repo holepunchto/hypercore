@@ -20,6 +20,8 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 * **Secure.** Uses signed merkle trees to verify log integrity in real time.
 * **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
 
+Note that the latest release is Hypercore 8, which is not compatible with Hypercore 7 on the wire format, but storage compatible.
+
 ## Usage
 
 ``` js
@@ -283,21 +285,27 @@ Options include:
 
 Create a writable stream.
 
-#### `var stream = feed.replicate([options])`
+#### `var stream = feed.replicate(isInitiator, [options])`
 
 Create a replication stream. You should pipe this to another hypercore instance.
+
+The `isInitiator` argument is a boolean indicating whether you are the iniatior of the connection (ie the client)
+or if you are the passive part (ie the server).
+
+If you want to multiplex the replication over an existing hypercore replication stream you can pass
+another stream instance instead of the `isInitiator` boolean.
 
 ``` js
 // assuming we have two feeds, localFeed + remoteFeed, sharing the same key
 // on a server
 var net = require('net')
 var server = net.createServer(function (socket) {
-  socket.pipe(remoteFeed.replicate()).pipe(socket)
+  socket.pipe(remoteFeed.replicate(false)).pipe(socket)
 })
 
 // on a client
 var socket = net.connect(...)
-socket.pipe(localFeed.replicate()).pipe(socket)
+socket.pipe(localFeed.replicate(true)).pipe(socket)
 ```
 
 Options include:
@@ -307,7 +315,7 @@ Options include:
   live: false, // keep replicating after all remote data has been downloaded?
   ack: false, // set to true to get explicit acknowledgement when a peer has written a block
   download: true, // download data from peers?
-  encrypt: true // encrypt the data sent using the hypercore key pair
+  encrypted: true // encrypt the data sent using the hypercore key pair
 }
 ```
 

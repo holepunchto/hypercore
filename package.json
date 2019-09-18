@@ -13,7 +13,7 @@
     "flat-tree": "^1.6.0",
     "from2": "^2.3.0",
     "hypercore-crypto": "^1.0.0",
-    "hypercore-protocol": "^6.5.0",
+    "hypercore-protocol": "^7.0.0",
     "inherits": "^2.0.3",
     "inspect-custom-symbol": "^1.1.0",
     "last-one-wins": "^1.0.4",
@@ -25,6 +25,7 @@
     "sodium-universal": "^2.0.0",
     "sparse-bitfield": "^3.0.0",
     "thunky": "^1.0.1",
+    "timeout-refresh": "^1.0.1",
     "uint64be": "^2.0.1",
     "unordered-array-remove": "^1.0.2",
     "unordered-set": "^2.0.0"
@@ -45,7 +46,8 @@
     "fd-lock": false
   },
   "scripts": {
-    "test": "standard && nyc tape test/*.js",
+    "test": "standard && tape test/*.js",
+    "cov": "nyc tape test/*.js",
     "bench": "cd bench && ./all.sh"
   },
   "repository": {
