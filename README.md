@@ -36,6 +36,8 @@ feed.append('world', function (err) {
 })
 ```
 
+To get find other modules that help with building data structures, P2P networks etc on top of Hypercore see the [companion modules](#Companion-modules) list at the bottom of this page.
+
 ## Terminology
 
  - **feed**. This is what hypercores are: a data feed. Feeds are permanent data structures that can be shared on the dat network.
@@ -445,7 +447,7 @@ Emitted when the feed has been appended to (i.e. has a new length / byteLength).
 
 Emitted every time ALL data from `0` to `feed.length` has been downloaded.
 
-### `feed.on('extension', name, message, peer)`
+#### `feed.on('extension', name, message, peer)`
 
 Emitted when a peer sends an extension message. `name` is the name of the extension from the `extensions` list in the header, `message` is a Buffer containing the message data, and `peer` is the peer that sent the message.
 
@@ -458,6 +460,15 @@ peer.extension(name, message)
 #### `feed.on('close')`
 
 Emitted when the feed has been fully closed
+
+## Companion modules
+
+Hypercore works really well with a series of other modules. This in a non-exhaustive list of some of those:
+
+* [Hyperswarm](https://github.com/hyperswarm/hyperswarm) - P2P swarming module that can you share Hypercores over a network.
+* [Hyperswarm replicator](https://github.com/hyperswarm/replicator) - Wanna share a single Hypercore without any hastle over a network?
+* [Hyperdrive](https://github.com/mafintosh/hyperdrive) - Filesystem abstraction built on Hypercores
+* [Hypertrue](https://github.com/mafintosh/hypertrie) - Scalable key/value store built on Hypercores
 
 ## License
 
