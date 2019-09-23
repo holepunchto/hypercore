@@ -197,6 +197,11 @@ Feed.prototype.replicate = function (initiator, opts) {
     this.download({start: 0, end: -1})
   }
 
+  if (isOptions(initiator) && !opts) {
+    opts = initiator
+    initiator = opts.initiator
+  }
+
   opts = opts || {}
   opts.stats = !!this._stats
 
@@ -1562,4 +1567,11 @@ function createError (code, errno, msg) {
   err.code = code
   err.errno = errno
   return err
+}
+
+function isOptions (initiator) {
+  return !Protocol.isProtocolStream(initiator) &&
+    typeof initiator === 'object' &&
+    !!initiator &&
+    typeof initiator.initiator === 'boolean'
 }
