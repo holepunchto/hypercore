@@ -766,6 +766,34 @@ tape('request timeouts', function (t) {
   })
 })
 
+tape('double replicate', function (t) {
+  var feed = create()
+
+  feed.append('hi', function () {
+    var clone = create(feed.key)
+
+    var a = feed.replicate(true)
+    var b = clone.replicate(false)
+    var missing = 2
+
+    a.pipe(b).pipe(a)
+    feed.replicate(a) // replicate twice
+
+    b.on('end', done)
+    a.on('end', done)
+
+    function done () {
+      if (!--missing) return
+      feed.ifAvailable.ready(function () {
+        clone.ifAvailable.ready(function () {
+          t.pass('no lingering state')
+          t.end()
+        })
+      })
+    }
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
