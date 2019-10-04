@@ -470,7 +470,7 @@ Hypercore works really well with a series of other modules. This in a non-exhaus
 * [Hyperswarm](https://github.com/hyperswarm/hyperswarm) - P2P swarming module that can you share Hypercores over a network.
 * [Hyperswarm replicator](https://github.com/hyperswarm/replicator) - Wanna share a single Hypercore without any hastle over a network?
 * [Hyperdrive](https://github.com/mafintosh/hyperdrive) - Filesystem abstraction built on Hypercores
-* [Hypertrue](https://github.com/mafintosh/hypertrie) - Scalable key/value store built on Hypercores
+* [Hypertrie](https://github.com/mafintosh/hypertrie) - Scalable key/value store built on Hypercores
 
 ## License
 
