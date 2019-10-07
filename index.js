@@ -70,6 +70,8 @@ function Feed (createStorage, key, opts) {
   this.readable = true
   this.opened = false
   this.closed = false
+  this.downloading = opts.downloading !== false
+  this.uploading = opts.uploading !== false
   this.allowPush = !!opts.allowPush
   this.peers = []
   this.ifAvailable = new Nanoguard()
@@ -96,6 +98,7 @@ function Feed (createStorage, key, opts) {
   this._selections = []
   this._reserved = sparseBitfield()
   this._synced = null
+  this._downloadingSet = typeof opts.downloading === 'boolean'
 
   this._stats = (typeof opts.stats !== 'undefined' && !opts.stats) ? null : {
     downloadedBlocks: 0,
@@ -210,6 +213,23 @@ Feed.prototype.replicate = function (initiator, opts) {
   var stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)
   return stream
+}
+
+Feed.prototype.setDownloading = function (downloading) {
+  this.downloading = downloading
+  this._downloadingSet = true
+  this.ready((err) => {
+    if (err) return
+    for (const peer of this.peers) peer.setDownloading(this.downloading)
+  })
+}
+
+Feed.prototype.setUploading = function (uploading) {
+  this.uploading = uploading
+  this.ready((err) => {
+    if (err) return
+    for (const peer of this.peers) peer.setUploading(this.uploading)
+  })
 }
 
 Feed.prototype.ready = function (onready) {
@@ -390,6 +410,7 @@ Feed.prototype._open = function (cb) {
 
       if (!writable && self.writable) return self._forceCloseAndError(cb, new Error('Feed is not writable'))
       self.writable = writable
+      if (!self._downloadingSet) self.downloading = !writable
       self.discoveryKey = self.key && crypto.discoveryKey(self.key)
 
       if (self._storeSecretKey && !self.secretKey) {
