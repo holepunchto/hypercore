@@ -266,6 +266,14 @@ feed.update({ ifAvailable: true, minLength: 10 }, function (err) {
 })
 ```
 
+#### `feed.setDownloading(bool)`
+
+Call this with `false` to make the feed stop downloading from other peers.
+
+#### `feed.setUploading(bool)`
+
+Call this with `false` to make the feed stop uploading to other peers.
+
 #### `var stream = feed.createReadStream([options])`
 
 Create a readable stream of data.
