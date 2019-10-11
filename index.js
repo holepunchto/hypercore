@@ -217,8 +217,7 @@ class Extension {
     this.id = 0
     this.feed = feed
     this.handlers = handlers || {}
-    this.encoding = codecs(this.handlers.encoding)
-    if (this.encoding === codecs.binary) this.encoding = null
+    this.encoding = codecs(this.handlers.encoding || 'binary')
   }
 
   remoteSupports (peer) {
@@ -229,12 +228,6 @@ class Extension {
     if (!this.handlers.onmessage) return
 
     const encoding = this.encoding
-
-    if (!encoding) {
-      this.handlers.onmessage(buffer, peer)
-      return
-    }
-
     let message = null
 
     try {
@@ -247,16 +240,14 @@ class Extension {
   }
 
   broadcast (message) {
-    const encoding = this.encoding
-    const buf = encoding ? encoding.encode(message) : message
+    const buf = this.encoding.encode(message)
     for (const peer of this.feed.peers) {
       peer.extension(this.id, buf)
     }
   }
 
   send (message, peer) {
-    const encoding = this.encoding
-    peer.extension(this.id, encoding ? encoding.encode(message) : message)
+    peer.extension(this.id, this.encoding.encode(message))
   }
 
   destroy () {
