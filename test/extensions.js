@@ -5,44 +5,93 @@ var tape = require('tape')
 var EXAMPLE_TYPE = 'example'
 var EXAMPLE_MESSAGE = Buffer.from([4, 20])
 
-tape('sort extension names', function (t) {
-  t.plan(1)
-
-  var feed = create(null, {
-    extensions: ['b', 'a']
-  })
-
-  t.deepEquals(feed.extensions, ['a', 'b'], '')
-})
-
 tape('send and receive extension messages', function (t) {
-  t.plan(4)
+  t.plan(2)
 
-  var feed1 = create(null, {
-    extensions: [EXAMPLE_TYPE]
+  var feed1 = create(null)
+
+  const e1 = feed1.registerExtension(EXAMPLE_TYPE, {
+    onmessage (message, peer) {
+      t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
+    }
   })
 
   feed1.ready(function () {
-    var feed2 = create(feed1.key, {
-      extensions: [EXAMPLE_TYPE]
+    var feed2 = create(feed1.key)
+
+    const e2 = feed2.registerExtension(EXAMPLE_TYPE, {
+      onmessage (message, peer) {
+        t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
+        e2.send(EXAMPLE_MESSAGE, peer)
+      }
     })
 
-    feed2.on('extension', function (type, message, peer) {
-      t.equal(type, EXAMPLE_TYPE)
+    feed1.once('peer-open', function () {
+      e1.broadcast(EXAMPLE_MESSAGE)
+    })
+
+    replicate(feed1, feed2, { live: true })
+  })
+})
+
+tape('send and receive extension messages with encoding', function (t) {
+  t.plan(2)
+
+  const feed1 = create(null)
+
+  const e1 = feed1.registerExtension(EXAMPLE_TYPE, {
+    encoding: 'json',
+    onmessage (message, peer) {
+      t.same(message, { hi: 'e1' })
+    }
+  })
+
+  feed1.ready(function () {
+    const feed2 = create(feed1.key)
+
+    const e2 = feed2.registerExtension(EXAMPLE_TYPE, {
+      encoding: 'json',
+      onmessage (message, peer) {
+        t.same(message, { hi: 'e2' })
+        e2.send({ hi: 'e1' }, peer)
+      }
+    })
+
+    feed1.once('peer-open', function () {
+      e1.broadcast({ hi: 'e2' })
+    })
+
+    replicate(feed1, feed2, { live: true })
+  })
+})
+
+tape('send and receive extension messages with multiple extensions', function (t) {
+  t.plan(2)
+
+  var feed1 = create(null)
+
+  const e1 = feed1.registerExtension(EXAMPLE_TYPE, {
+    onmessage (message, peer) {
       t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
+    }
+  })
 
-      peer.extension(EXAMPLE_TYPE, EXAMPLE_MESSAGE)
+  feed1.registerExtension('aa')
+
+  feed1.ready(function () {
+    var feed2 = create(feed1.key)
+
+    feed2.registerExtension('bb')
+
+    const e2 = feed2.registerExtension(EXAMPLE_TYPE, {
+      onmessage (message, peer) {
+        t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
+        e2.send(EXAMPLE_MESSAGE, peer)
+      }
     })
 
-    feed1.on('extension', function (type, message, peer) {
-      t.equal(type, EXAMPLE_TYPE)
-      t.equal(message.toString('hex'), EXAMPLE_MESSAGE.toString('hex'))
-    })
-
-    feed1.once('peer-add', function () {
-      setImmediate(function () {
-        feed1.extension(EXAMPLE_TYPE, EXAMPLE_MESSAGE)
-      })
+    feed1.once('peer-open', function () {
+      e1.broadcast(EXAMPLE_MESSAGE)
     })
 
     replicate(feed1, feed2, { live: true })

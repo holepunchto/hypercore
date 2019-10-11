@@ -95,7 +95,6 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
     sign (data, secretKey, cb(err, signature)),
     verify (signature, data, key, cb(err, valid))
   }
-  extensions: [], // Optionally specify which extensions to use when replicating
   noiseKeyPair: { publicKey, secretKey } // set a static key pair to use for Noise authentication when replicating
 }
 ```
@@ -429,9 +428,27 @@ The returned object is of the form:
 
 Stats will be collected by default, but this can be disabled by setting `opts.stats` to false.
 
-#### `feed.extension(name, message)`
+#### `ext = feed.registerExtension(name, handlers)`
 
-Send an extension message to all connected peers. `name` should be in the list of `extensions` from the constructor. `message` should be a `Buffer`.
+Register a new replication extension. `name` should be the name of your extension and `handlers` should look like this:
+
+```js
+{
+  encoding: 'json' | 'binary' | 'utf-8' | anyAbstractEncoding
+  onmessage (message, peer) {
+    // called when a message is received from a peer
+    // will be decoded using the encoding you provide
+  }
+}
+```
+
+#### `ext.send(message, peer)`
+
+Send an extension message to a specific peer.
+
+#### `ext.broadcast(message)`
+
+Send a message to every peer you are connected to.
 
 #### `feed.on('ready')`
 
@@ -456,16 +473,6 @@ Emitted when the feed has been appended to (i.e. has a new length / byteLength).
 #### `feed.on('sync')`
 
 Emitted every time ALL data from `0` to `feed.length` has been downloaded.
-
-#### `feed.on('extension', name, message, peer)`
-
-Emitted when a peer sends an extension message. `name` is the name of the extension from the `extensions` list in the header, `message` is a Buffer containing the message data, and `peer` is the peer that sent the message.
-
-You can send a message back using:
-
-```js
-peer.extension(name, message)
-```
 
 #### `feed.on('close')`
 

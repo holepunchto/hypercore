@@ -75,9 +75,7 @@ function Feed (createStorage, key, opts) {
   this.allowPush = !!opts.allowPush
   this.peers = []
   this.ifAvailable = new Nanoguard()
-
-  // Extensions must be sorted for handshaking to work
-  this.extensions = (opts.extensions || []).sort()
+  this.extensions = []
 
   this.crypto = opts.crypto || defaultCrypto
 
@@ -208,11 +206,88 @@ Feed.prototype.replicate = function (initiator, opts) {
   opts = opts || {}
   opts.stats = !!this._stats
 
-  if (!opts.extensions) opts.extensions = this.extensions
-
   var stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)
   return stream
+}
+
+class Extension {
+  constructor (name, feed, handlers) {
+    this.name = name
+    this.id = 0
+    this.feed = feed
+    this.handlers = handlers || {}
+    this.encoding = codecs(this.handlers.encoding)
+    if (this.encoding === codecs.binary) this.encoding = null
+  }
+
+  remoteSupports (peer) {
+    return !!peer.remoteExtensions && peer.remoteExtensions.indexOf(this.name) > -1
+  }
+
+  onmessage (buffer, peer) {
+    if (!this.handlers.onmessage) return
+
+    const encoding = this.encoding
+
+    if (!encoding) {
+      this.handlers.onmessage(buffer, peer)
+      return
+    }
+
+    let message = null
+
+    try {
+      message = encoding.decode(buffer)
+    } catch (_) {
+      return
+    }
+
+    this.handlers.onmessage(message, peer)
+  }
+
+  broadcast (message) {
+    const encoding = this.encoding
+    const buf = encoding ? encoding.encode(message) : message
+    for (const peer of this.feed.peers) {
+      peer.extension(this.id, buf)
+    }
+  }
+
+  send (message, peer) {
+    const encoding = this.encoding
+    peer.extension(this.id, encoding ? encoding.encode(message) : message)
+  }
+
+  destroy () {
+    for (let i = 0; i < this.feed.extensions.length; i++) {
+      if (this.feed.extensions[i] === this) {
+        this.feed.extensions.splice(i, 1)
+        this.feed._updateExtensions()
+        return
+      }
+    }
+  }
+}
+
+Feed.prototype.registerExtension = function (name, handlers) {
+  const ext = new Extension(name, this, handlers)
+
+  this.extensions.push(ext)
+  this.extensions.sort(function (a, b) {
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+  })
+
+  this._updateExtensions()
+
+  return ext
+}
+
+Feed.prototype._updateExtensions = function () {
+  for (let i = 0; i < this.extensions.length; i++) {
+    this.extensions[i].id = i
+  }
+  for (const peer of this.peers) peer._updateOptions()
 }
 
 Feed.prototype.setDownloading = function (downloading) {
