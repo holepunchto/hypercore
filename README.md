@@ -428,16 +428,35 @@ The returned object is of the form:
 
 Stats will be collected by default, but this can be disabled by setting `opts.stats` to false.
 
+#### `feed.on('peer-add', peer)`
+
+Emitted when a peer is added.
+
+#### `feed.on('peer-remove', peer)`
+
+Emitted when a peer is removed.
+
+#### `feed.on('peer-open', peer)`
+
+Emitted when a peer channel has been fully opened.
+
+#### `feed.peers`
+
+A list of all peers you are connected with.
+
 #### `ext = feed.registerExtension(name, handlers)`
 
 Register a new replication extension. `name` should be the name of your extension and `handlers` should look like this:
 
 ```js
 {
-  encoding: 'json' | 'binary' | 'utf-8' | anyAbstractEncoding
+  encoding: 'json' | 'binary' | 'utf-8' | anyAbstractEncoding,
   onmessage (message, peer) {
     // called when a message is received from a peer
     // will be decoded using the encoding you provide
+  },
+  onerror (err) {
+    // called in case of an decoding error
   }
 }
 ```

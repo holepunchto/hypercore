@@ -232,7 +232,8 @@ class Extension {
 
     try {
       message = encoding.decode(buffer)
-    } catch (_) {
+    } catch (err) {
+      if (this.handlers.onerror) this.handlers.onerror(err)
       return
     }
 
