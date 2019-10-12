@@ -19,6 +19,7 @@
     "last-one-wins": "^1.0.4",
     "memory-pager": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
+    "message-pair": "^2.0.0",
     "nanoguard": "^1.2.0",
     "pretty-hash": "^1.0.1",
     "random-access-file": "^2.1.0",
