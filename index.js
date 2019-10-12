@@ -25,10 +25,6 @@ var Protocol = require('hypercore-protocol')
 var { Message } = require('message-pair')
 
 class Extension extends Message {
-  remoteSupports () {
-    return this.paired()
-  }
-
   broadcast (message) {
     const feed = this.pair.handlers
     const buf = this.encoding.encode(message)
