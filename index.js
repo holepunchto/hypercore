@@ -22,11 +22,11 @@ var Nanoguard = require('nanoguard')
 var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = require('./lib/replicate')
 var Protocol = require('hypercore-protocol')
-var { Message } = require('message-pair')
+var Message = require('abstract-extension')
 
 class Extension extends Message {
   broadcast (message) {
-    const feed = this.pair.handlers
+    const feed = this.local.handlers
     const buf = this.encoding.encode(message)
     for (const peer of feed.peers) {
       peer.extension(this.id, buf)
@@ -90,7 +90,7 @@ function Feed (createStorage, key, opts) {
   this.allowPush = !!opts.allowPush
   this.peers = []
   this.ifAvailable = new Nanoguard()
-  this.extensions = Extension.createMessagePair(this) // set Feed as the handlers
+  this.extensions = Extension.createLocal(this) // set Feed as the handlers
 
   this.crypto = opts.crypto || defaultCrypto
 
@@ -230,7 +230,7 @@ Feed.prototype.registerExtension = function (name, handlers) {
   return this.extensions.add(name, handlers)
 }
 
-Feed.prototype.onnamesupdate = function () {
+Feed.prototype.onextensionupdate = function () {
   for (const peer of this.peers) peer._updateOptions()
 }
 

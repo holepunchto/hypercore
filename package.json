@@ -4,6 +4,7 @@
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "dependencies": {
+    "abstract-extension": "^3.0.1",
     "array-lru": "^1.1.0",
     "atomic-batcher": "^1.0.2",
     "bitfield-rle": "^2.2.1",
@@ -19,7 +20,6 @@
     "last-one-wins": "^1.0.4",
     "memory-pager": "^1.0.2",
     "merkle-tree-stream": "^3.0.3",
-    "message-pair": "^2.0.1",
     "nanoguard": "^1.2.0",
     "pretty-hash": "^1.0.1",
     "random-access-file": "^2.1.0",
