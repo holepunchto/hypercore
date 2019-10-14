@@ -235,6 +235,7 @@ Feed.prototype.onextensionupdate = function () {
 }
 
 Feed.prototype.setDownloading = function (downloading) {
+  if (this.downloading === downloading && this._downloadingSet) return
   this.downloading = downloading
   this._downloadingSet = true
   this.ready((err) => {
@@ -244,6 +245,7 @@ Feed.prototype.setDownloading = function (downloading) {
 }
 
 Feed.prototype.setUploading = function (uploading) {
+  if (uploading === this.uploading) return
   this.uploading = uploading
   this.ready((err) => {
     if (err) return
