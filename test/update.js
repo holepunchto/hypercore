@@ -97,3 +97,20 @@ tape('update with block data', function (t) {
     })
   })
 })
+
+tape.only('update without hash option should not download block', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c' ], function () {
+    const clone = create(feed.key, { sparse: true })
+
+    replicate(feed, clone, { live: true })
+
+    clone.update({ ifAvailable: true }, function (err) {
+      t.error(err, 'no error')
+      t.same(clone.length, 3, 'was not updated')
+      t.same(clone.downloaded(), 0, 'block was not downloaded')
+      t.end()
+    })
+  })
+})
