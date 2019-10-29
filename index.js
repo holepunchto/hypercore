@@ -1426,7 +1426,9 @@ Feed.prototype._pollWaiting = function () {
   var len = this._waiting.length
   for (var i = 0; i < len; i++) {
     var next = this._waiting[i]
-    if (!next.bytes && !this.bitfield.get(next.index)) continue
+    if (!next.bytes && !this.bitfield.get(next.index) && (!next.hash || !this.tree.get(next.index * 2))) {
+      continue
+    }
 
     remove(this._waiting, i--)
     len--
