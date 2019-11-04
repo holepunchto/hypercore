@@ -6,10 +6,8 @@ var flat = require('flat-tree')
 var bulk = require('bulk-write-stream')
 var from = require('from2')
 var codecs = require('codecs')
-var thunky = require('thunky')
 var batcher = require('atomic-batcher')
 var inherits = require('inherits')
-var events = require('events')
 var raf = require('random-access-file')
 var bitfield = require('./lib/bitfield')
 var sparseBitfield = require('sparse-bitfield')
@@ -23,6 +21,7 @@ var safeBufferEquals = require('./lib/safe-buffer-equals')
 var replicate = require('./lib/replicate')
 var Protocol = require('hypercore-protocol')
 var Message = require('abstract-extension')
+var Nanoresource = require('nanoresource/emitter')
 
 class Extension extends Message {
   broadcast (message) {
@@ -51,7 +50,7 @@ module.exports = Feed
 
 function Feed (createStorage, key, opts) {
   if (!(this instanceof Feed)) return new Feed(createStorage, key, opts)
-  events.EventEmitter.call(this)
+  Nanoresource.call(this)
 
   if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
   if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
@@ -83,8 +82,6 @@ function Feed (createStorage, key, opts) {
   this.tree = null
   this.writable = !!opts.writable
   this.readable = true
-  this.opened = false
-  this.closed = false
   this.downloading = opts.downloading !== false
   this.uploading = opts.uploading !== false
   this.allowPush = !!opts.allowPush
@@ -97,7 +94,6 @@ function Feed (createStorage, key, opts) {
   // hooks
   this._onwrite = opts.onwrite || null
 
-  this._ready = thunky(open) // TODO: if open fails, do not reopen next time
   this._indexing = !!opts.indexing
   this._createIfMissing = opts.createIfMissing !== false
   this._overwrite = !!opts.overwrite
@@ -131,8 +127,8 @@ function Feed (createStorage, key, opts) {
     })
   }
 
-  // open it right away. TODO: do not reopen (i.e, set a flag not to retry)
-  this._ready(onerror)
+  // open it right away
+  this.open(onerror)
 
   function onerror (err) {
     if (err) self.emit('error', err)
@@ -151,13 +147,9 @@ function Feed (createStorage, key, opts) {
   function sync (_, cb) {
     self._syncBitfield(cb)
   }
-
-  function open (cb) {
-    self._open(cb)
-  }
 }
 
-inherits(Feed, events.EventEmitter)
+inherits(Feed, Nanoresource)
 
 Feed.discoveryKey = crypto.discoveryKey
 
@@ -253,11 +245,8 @@ Feed.prototype.setUploading = function (uploading) {
   })
 }
 
-Feed.prototype.ready = function (onready) {
-  this._ready(function (err) {
-    if (!err) onready()
-  })
-}
+// Alias the nanoresource open method
+Feed.prototype.ready = Feed.prototype.open
 
 Feed.prototype.update = function (opts, cb) {
   if (typeof opts === 'function') return this.update(-1, opts)
@@ -405,7 +394,7 @@ Feed.prototype._open = function (cb) {
     self._seq = self.length
 
     if (state.key && self.key && Buffer.compare(state.key, self.key) !== 0) {
-      return self._forceCloseAndError(cb, new Error('Another hypercore is stored here'))
+      return self._forceClose(cb, new Error('Another hypercore is stored here'))
     }
 
     if (state.key) self.key = state.key
@@ -418,7 +407,7 @@ Feed.prototype._open = function (cb) {
       if (self.length) self.live = !!sig
 
       if ((generatedKey || !self.key) && !self._createIfMissing) {
-        return self._forceCloseAndError(cb, new Error('No hypercore is stored here'))
+        return self._forceClose(cb, new Error('No hypercore is stored here'))
       }
 
       if (!self.key && self.live) {
@@ -429,7 +418,7 @@ Feed.prototype._open = function (cb) {
 
       var writable = !!self.secretKey || self.key === null
 
-      if (!writable && self.writable) return self._forceCloseAndError(cb, new Error('Feed is not writable'))
+      if (!writable && self.writable) return self._forceClose(cb, new Error('Feed is not writable'))
       self.writable = writable
       if (!self._downloadingSet) self.downloading = !writable
       self.discoveryKey = self.key && crypto.discoveryKey(self.key)
@@ -459,7 +448,7 @@ Feed.prototype._open = function (cb) {
       function done (err) {
         if (err) error = err
         if (--missing) return
-        if (error) return self._forceCloseAndError(cb, error)
+        if (error) return self._forceClose(cb, error)
         self._roots(self.length, onroots)
       }
 
@@ -471,11 +460,10 @@ Feed.prototype._open = function (cb) {
           return
         }
 
-        if (err) return self._forceCloseAndError(cb, err)
+        if (err) return self._forceClose(cb, err)
 
         self._merkle = merkle(crypto, roots)
         self.byteLength = roots.reduce(addSize, 0)
-        self.opened = true
         self.emit('ready')
 
         cb(null)
@@ -586,7 +574,7 @@ Feed.prototype.proof = function (index, opts, cb) {
 
 Feed.prototype._readyAndProof = function (index, opts, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self.proof(index, opts, cb)
   })
@@ -643,7 +631,7 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
   var byteOffset = start === 0 ? 0 : (typeof opts.byteOffset === 'number' ? opts.byteOffset : -1)
   var byteLength = typeof opts.byteLength === 'number' ? opts.byteLength : -1
 
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
 
     var modified = false
@@ -817,7 +805,7 @@ Feed.prototype._seek = function (offset, cb) {
 
 Feed.prototype._readyAndSeek = function (bytes, opts, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self.seek(bytes, opts, cb)
   })
@@ -889,7 +877,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
 
 Feed.prototype._readyAndPut = function (index, data, proof, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self.put(index, data, proof, cb)
   })
@@ -1101,7 +1089,7 @@ Feed.prototype.has = function (start, end) {
 Feed.prototype.head = function (opts, cb) {
   if (typeof opts === 'function') return this.head({}, opts)
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     if (opts && opts.update) self.update(opts, onupdate)
     else process.nextTick(onupdate)
@@ -1140,7 +1128,7 @@ Feed.prototype.get = function (index, opts, cb) {
 
 Feed.prototype._readyAndGet = function (index, opts, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self.get(index, opts, cb)
   })
@@ -1189,7 +1177,7 @@ Feed.prototype._getBatch = function (start, end, opts, cb) {
 
 Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self.getBatch(start, end, opts, cb)
   })
@@ -1250,7 +1238,7 @@ Feed.prototype.createReadStream = function (opts) {
   }
 
   function open (size, cb) {
-    self._ready(function (err) {
+    self.ready(function (err) {
       if (err) return cb(err)
       read(size, cb)
     })
@@ -1285,38 +1273,37 @@ Feed.prototype.flush = function (cb) {
   this.append([], cb)
 }
 
-Feed.prototype.close = function (cb) {
-  var self = this
+Feed.prototype._close = function (cb) {
+  const self = this
+  this._forceClose(onclose, null)
 
-  this._ready(function () {
-    self._forceCloseAndError(cb, null)
-  })
+  function onclose (err) {
+    if (!err) self.emit('close')
+    cb(err)
+  }
 }
 
-Feed.prototype._forceCloseAndError = function (cb, error) {
+Feed.prototype._forceClose = function (cb, error) {
   var self = this
 
   this.writable = false
   this.readable = false
   this._storage.close(function (err) {
     if (!err) err = error
-    if (!self.closed && !err) self._onclose()
-    if (cb) cb(err)
+    self._destroy(err || new Error('Feed is closed'))
+    cb(err)
   })
 }
 
-Feed.prototype._onclose = function () {
+Feed.prototype._destroy = function (err) {
   this.ifAvailable.destroy()
-  this.closed = true
 
   while (this._waiting.length) {
-    this._waiting.pop().callback(new Error('Feed is closed'))
+    this._waiting.pop().callback(err)
   }
   while (this._selections.length) {
-    this._selections.pop().callback(new Error('Feed is closed'))
+    this._selections.pop().callback(err)
   }
-
-  this.emit('close')
 }
 
 Feed.prototype._appendHook = function (batch, cb) {
@@ -1409,7 +1396,7 @@ Feed.prototype._append = function (batch, cb) {
 
 Feed.prototype._readyAndAppend = function (batch, cb) {
   var self = this
-  this._ready(function (err) {
+  this.ready(function (err) {
     if (err) return cb(err)
     self._append(batch, cb)
   })
