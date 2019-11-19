@@ -97,3 +97,41 @@ tape('send and receive extension messages with multiple extensions', function (t
     replicate(feed1, feed2, { live: true })
   })
 })
+
+tape('extension encoding', t => {
+  t.plan(3)
+
+  const f1 = create(null)
+
+  const dummyExt = {
+    encoding: {
+      encode () {
+        t.pass('encoder was invoked')
+        return Buffer.from('test')
+      },
+      decode () {
+        t.pass('decode was invoked')
+        return 'test'
+      }
+    },
+    onerror (err) {
+      t.error(err, 'no error')
+    },
+    onmessage () {
+      t.pass('got message')
+    }
+  }
+
+  const inst1 = f1.registerExtension('dummy', dummyExt)
+
+  f1.ready(function () {
+    const f2 = create(f1.key)
+    f2.ready(function () {
+      const inst2 = f2.registerExtension('dummy', dummyExt)
+      replicate(f1, f2, { live: true })
+      f1.once('peer-open', function () {
+        inst1.broadcast({ hello: 'world' })
+      })
+    })
+  })
+})
