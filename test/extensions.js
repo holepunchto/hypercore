@@ -127,7 +127,7 @@ tape('extension encoding', t => {
   f1.ready(function () {
     const f2 = create(f1.key)
     f2.ready(function () {
-      const inst2 = f2.registerExtension('dummy', dummyExt)
+      f2.registerExtension('dummy', dummyExt)
       replicate(f1, f2, { live: true })
       f1.once('peer-open', function () {
         inst1.broadcast({ hello: 'world' })
