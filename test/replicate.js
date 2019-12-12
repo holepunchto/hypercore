@@ -794,6 +794,24 @@ tape('double replicate', function (t) {
   })
 })
 
+tape('regression: replicate without timeout', function (t) {
+  t.plan(10)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    clone.get(0, same(t, 'a'))
+    clone.get(1, same(t, 'b'))
+    clone.get(2, same(t, 'c'))
+    clone.get(3, same(t, 'd'))
+    clone.get(4, same(t, 'e'))
+
+    replicate(feed, clone, {live: true, timeout: false})
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
