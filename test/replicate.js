@@ -592,6 +592,25 @@ tape('replicate no download', function (t) {
   })
 })
 
+tape('replicate no upload', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e'], function () {
+    var clone = create(feed.key)
+
+    clone.get(0, function () {
+      t.fail('Data was received')
+    })
+
+    replicate(feed, clone, { live: true, upload: false }, { live: true })
+
+    setTimeout(function () {
+      t.pass('No data was received')
+      t.end()
+    }, 300)
+  })
+})
+
 tape('sparse mode, two downloads', function (t) {
   var feed = create()
 
