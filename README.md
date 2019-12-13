@@ -327,6 +327,7 @@ Options include:
   live: false, // keep replicating after all remote data has been downloaded?
   ack: false, // set to true to get explicit acknowledgement when a peer has written a block
   download: true, // download data from peers?
+  upload: true, // upload data to peers?
   encrypted: true, // encrypt the data sent using the hypercore key pair
   keyPair: { publicKey, secretKey } // use this keypair for Noise authentication
 }
