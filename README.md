@@ -329,7 +329,9 @@ Options include:
   download: true, // download data from peers?
   upload: true, // upload data to peers?
   encrypted: true, // encrypt the data sent using the hypercore key pair
-  keyPair: { publicKey, secretKey } // use this keypair for Noise authentication
+  keyPair: { publicKey, secretKey }, // use this keypair for Noise authentication
+  onauthenticate (remotePublicKey, done) // hook that can be used to authenticate the remote peer.
+                                         // calling done with an error will disallow the peer from connecting to you.
 }
 ```
 
