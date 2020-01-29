@@ -329,7 +329,7 @@ Options include:
   download: true, // download data from peers?
   upload: true, // upload data to peers?
   encrypted: true, // encrypt the data sent using the hypercore key pair
-  noise: true, // set to false to disable the NOISE handshake completely. This implies encrypted = false, and also disables the capability verification
+  noise: true, // set to false to disable the NOISE handshake completely, and also disable the capability verification. works only together with encrypted = false.
   keyPair: { publicKey, secretKey }, // use this keypair for Noise authentication
   onauthenticate (remotePublicKey, done) // hook that can be used to authenticate the remote peer.
                                          // calling done with an error will disallow the peer from connecting to you.

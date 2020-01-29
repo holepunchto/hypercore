@@ -212,6 +212,7 @@ Feed.prototype.replicate = function (initiator, opts) {
 
   opts = opts || {}
   opts.stats = !!this._stats
+  opts.noise = !(opts.noise === false && opts.encrypted === false)
 
   var stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)

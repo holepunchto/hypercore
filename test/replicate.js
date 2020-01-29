@@ -831,11 +831,11 @@ tape('regression: replicate without timeout', function (t) {
   })
 })
 
-tape('replicate with NOISE disabled', function (t) {
+tape.only('replicate with NOISE disabled', function (t) {
   var feed = create()
   feed.append(['a', 'b', 'c'], function () {
     var clone = create(feed.key)
-    const stream = replicate(feed, clone, {live: false, noise: false})
+    const stream = replicate(feed, clone, {live: false, noise: false, encrypted: false})
     clone.get(2, (err, data) => {
       t.error(err, 'no error')
       t.same(data.toString(), 'c')
