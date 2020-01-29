@@ -190,7 +190,7 @@ Object.defineProperty(Feed.prototype, 'stats', {
     var peerStats = []
     for (var i = 0; i < this.peers.length; i++) {
       var peer = this.peers[i]
-      peerStats[i] = peer._stats
+      peerStats[i] = peer.stats
     }
     return {
       peers: peerStats,
