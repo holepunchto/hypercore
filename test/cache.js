@@ -38,3 +38,40 @@ tape('numeric data cache opt creates data cache', function (t) {
   })
 })
 
+tape('can use a custom cache object', function (t) {
+  var treeStorage = []
+  var dataStorage = []
+  var createCache = function (storage) {
+    return {
+      get: function (key) {
+        return storage[key]
+      },
+      set: function (key, value) {
+        storage[key] = value
+      }
+    }
+  }
+
+  var feed = create({
+    cache: {
+      tree: createCache(treeStorage),
+      data: createCache(dataStorage)
+    }
+  })
+  feed.append(['hello', 'world'], err => {
+    t.error(err, 'no error')
+    feed.get(0, function (err, block) {
+      t.error(err, 'no error')
+      t.same(dataStorage.length, 1)
+      t.same(treeStorage.length, 1)
+      feed.get(1, function (err, block) {
+        t.error(err, 'no error')
+        t.same(dataStorage.length, 2)
+        // tree storage should have entries at 0 and 2
+        t.same(treeStorage.length, 3)
+        t.end()
+      })
+    })
+  })
+})
+
