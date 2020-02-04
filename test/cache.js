@@ -7,11 +7,11 @@ tape('default options does not use data cache', function (t) {
     t.error(err, 'no error')
     feed.get(0, function (err, block) {
       t.error(err, 'no error')
-      t.same(feed._storage.cache.tree.byteSize, 40)
+      t.same(feed._storage.treeCache.byteSize, 40)
       feed.get(1, function (err, block) {
         t.error(err, 'no error')
-        t.same(feed._storage.cache.tree.byteSize, 80)
-        t.false(feed._storage.cache.data)
+        t.same(feed._storage.treeCache.byteSize, 80)
+        t.false(feed._storage.dataCache)
         t.end()
       })
     })
@@ -27,11 +27,11 @@ tape('numeric data cache opt creates data cache', function (t) {
     t.error(err, 'no error')
     feed.get(0, function (err, block) {
       t.error(err, 'no error')
-      t.true(feed._storage.cache.data)
-      t.same(feed._storage.cache.data.byteSize, firstLength)
+      t.true(feed._storage.dataCache)
+      t.same(feed._storage.dataCache.byteSize, firstLength)
       feed.get(1, function (err, block) {
         t.error(err, 'no error')
-        t.same(feed._storage.cache.data.byteSize, firstLength + secondLength)
+        t.same(feed._storage.dataCache.byteSize, firstLength + secondLength)
         t.end()
       })
     })
@@ -84,8 +84,8 @@ tape('can disable all caching', function (t) {
       t.error(err, 'no error')
       feed.get(1, function (err, block) {
         t.error(err, 'no error')
-        t.false(feed._storage.cache.data)
-        t.false(feed._storage.cache.tree)
+        t.false(feed._storage.dataCache)
+        t.false(feed._storage.treeCache)
         t.end()
       })
     })
