@@ -75,3 +75,19 @@ tape('can use a custom cache object', function (t) {
   })
 })
 
+tape('can disable all caching', function (t) {
+  var feed = create({ cache: { tree: false } })
+
+  feed.append(['hello', 'world'], err => {
+    t.error(err, 'no error')
+    feed.get(0, function (err, block) {
+      t.error(err, 'no error')
+      feed.get(1, function (err, block) {
+        t.error(err, 'no error')
+        t.false(feed._storage.cache.data)
+        t.false(feed._storage.cache.tree)
+        t.end()
+      })
+    })
+  })
+})
