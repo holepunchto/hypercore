@@ -20,8 +20,8 @@ tape('default options does not use data cache', function (t) {
 
 tape('numeric data cache opt creates data cache', function (t) {
   var feed = create({ cache: { data: 1024 } })
-  var firstLength = Buffer.from('hello').length
-  var secondLength = Buffer.from('world').length
+  var firstLength = Buffer.byteLength('hello')
+  var secondLength = Buffer.byteLength('world')
 
   feed.append(['hello', 'world'], err => {
     t.error(err, 'no error')
