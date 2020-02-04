@@ -831,7 +831,7 @@ tape('regression: replicate without timeout', function (t) {
   })
 })
 
-tape.only('replicate with NOISE disabled', function (t) {
+tape('replicate with NOISE disabled', function (t) {
   var feed = create()
   feed.append(['a', 'b', 'c'], function () {
     var clone = create(feed.key)
