@@ -276,7 +276,7 @@ Feed.prototype.update = function (opts, cb) {
     }
 
     self._waiting.push(w)
-    if (opts.ifAvailable || (self._alwaysIfAvailable && opts.ifAvailable !== false)) self._ifAvailable(w, len)
+    if (typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : self._alwaysIfAvailable) self._ifAvailable(w, len)
     self._updatePeers()
   })
 }
@@ -1116,7 +1116,7 @@ Feed.prototype.get = function (index, opts, cb) {
     var w = { bytes: 0, hash: false, index: index, options: opts, callback: cb }
     this._waiting.push(w)
 
-    if ((opts && opts.ifAvailable) || (this._alwaysIfAvailable && (!opts || opts.ifAvailable !== false))) this._ifAvailableGet(w)
+    if (opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : this._alwaysIfAvailable) this._ifAvailableGet(w)
 
     this._updatePeers()
     return
