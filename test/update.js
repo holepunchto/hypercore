@@ -83,6 +83,22 @@ tape('update if available (no one has it)', function (t) {
   })
 })
 
+tape('update if available through top-level option', function (t) {
+  const feed = create()
+
+  feed.append([ 'a', 'b', 'c' ], function () {
+    const clone = create(feed.key, { sparse: true, ifAvailable: true })
+
+    replicate(feed, clone, { live: true })
+
+    clone.update({ minLength: 4 }, function (err) {
+      t.ok(err)
+      t.same(clone.length, 0, 'was not updated')
+      t.end()
+    })
+  })
+})
+
 tape('update with block data', function (t) {
   const feed = create()
 

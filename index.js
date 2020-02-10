@@ -98,6 +98,7 @@ function Feed (createStorage, key, opts) {
   this._createIfMissing = opts.createIfMissing !== false
   this._overwrite = !!opts.overwrite
   this._storeSecretKey = opts.storeSecretKey !== false
+  this._alwaysIfAvailable = !!opts.ifAvailable
   this._merkle = null
   this._storage = storage(createStorage, opts)
   this._batch = batcher(this._onwrite ? workHook : work)
@@ -275,7 +276,7 @@ Feed.prototype.update = function (opts, cb) {
     }
 
     self._waiting.push(w)
-    if (opts.ifAvailable) self._ifAvailable(w, len)
+    if (opts.ifAvailable || self._alwaysIfAvailable) self._ifAvailable(w, len)
     self._updatePeers()
   })
 }
@@ -1115,7 +1116,7 @@ Feed.prototype.get = function (index, opts, cb) {
     var w = { bytes: 0, hash: false, index: index, options: opts, callback: cb }
     this._waiting.push(w)
 
-    if (opts && opts.ifAvailable) this._ifAvailableGet(w)
+    if ((opts && opts.ifAvailable) || this._alwaysIfAvailable) this._ifAvailableGet(w)
 
     this._updatePeers()
     return
