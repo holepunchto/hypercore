@@ -288,7 +288,7 @@ Feed.prototype._ifAvailable = function (w, minLength) {
 
   w.callback = done
 
-  this.ifAvailable.ready(function () {
+  process.nextTick(readyNT, this.ifAvailable, function () {
     if (self.closed) return done(new Error('Closed'))
     if (self.length >= minLength || self.remoteLength >= minLength) return
     done(new Error('No update available from peers'))
@@ -311,7 +311,7 @@ Feed.prototype._ifAvailableGet = function (w) {
 
   w.callback = done
 
-  this.ifAvailable.ready(function () {
+  process.nextTick(readyNT, this.ifAvailable, function () {
     if (self.closed) return done(new Error('Closed'))
     for (var i = 0; i < self.peers.length; i++) {
       var peer = self.peers[i]
@@ -760,7 +760,7 @@ Feed.prototype._ifAvailableSeek = function (w) {
   var self = this
   var cb = w.callback
 
-  this.ifAvailable.ready(function () {
+  process.nextTick(readyNT, this.ifAvailable, function () {
     if (self.closed) return done(new Error('Closed'))
     if (w.requested !== 0) return // inflight
     done('Seek not available from peers')
@@ -1131,12 +1131,12 @@ Feed.prototype.head = function (opts, cb) {
 Feed.prototype.get = function (index, opts, cb) {
   if (typeof opts === 'function') return this.get(index, null, opts)
   if (!this.opened) return this._readyAndGet(index, opts, cb)
-  if (!this.readable) return cb(new Error('Feed is closed'))
+  if (!this.readable) return process.nextTick(cb, new Error('Feed is closed'))
 
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
   if (!this.bitfield.get(index)) {
-    if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
+    if (opts && opts.wait === false) return process.nextTick(cb, new Error('Block not downloaded'))
 
     var w = { bytes: 0, hash: false, index: index, options: opts, requested: 0, callback: cb }
     this._waiting.push(w)
@@ -1169,7 +1169,7 @@ Feed.prototype.getBatch = function (start, end, opts, cb) {
   var wait = !opts || opts.wait !== false
 
   if (this.has(start, end)) return this._getBatch(start, end, opts, cb)
-  if (!wait) return cb(new Error('Block not downloaded'))
+  if (!wait) return process.nextTick(cb, new Error('Block not downloaded'))
 
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
@@ -1638,4 +1638,8 @@ function isOptions (initiator) {
     typeof initiator === 'object' &&
     !!initiator &&
     typeof initiator.initiator === 'boolean'
+}
+
+function readyNT (ifAvailable, fn) {
+  ifAvailable.ready(fn)
 }
