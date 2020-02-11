@@ -166,3 +166,47 @@ tape('seek to 0 and byteLength', function (t) {
     })
   })
 })
+
+tape('seek ifAvailable', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    var clone = create(feed.key, { sparse: true })
+
+    replicate(feed, clone, { live: true })
+
+    clone.seek(4, { ifAvailable: true }, function (err) {
+      t.ok(err, 'should error')
+      clone.seek(2, { ifAvailable: true }, function (err, index, offset) {
+        t.error(err, 'no error')
+        t.same(index, 2)
+        t.same(offset, 0)
+        t.end()
+      })
+    })
+  })
+})
+
+tape('seek ifAvailable multiple peers', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    var clone1 = create(feed.key, { sparse: true })
+    var clone2 = create(feed.key, { sparse: true })
+
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
+
+    clone2.seek(2, { ifAvailable: true }, function (err) {
+      t.ok(err, 'should error')
+      clone1.get(2, function () {
+        clone2.seek(2, { ifAvailable: true }, function (err, index, offset) {
+          t.error(err, 'no error')
+          t.same(index, 2)
+          t.same(offset, 0)
+          t.end()
+        })
+      })
+    })
+  })
+})

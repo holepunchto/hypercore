@@ -270,8 +270,8 @@ Feed.prototype.update = function (opts, cb) {
       hash: opts.hash !== false,
       bytes: 0,
       index: len - 1,
-      update: true,
       options: opts,
+      update: true,
       callback: cb
     }
 
@@ -299,7 +299,7 @@ Feed.prototype._ifAvailable = function (w, minLength) {
     called = true
 
     var i = self._waiting.indexOf(w)
-    if (i > -1) self._waiting.splice(i, 1)
+    if (i > -1) remove(self._waiting, i)
     cb(err)
   }
 }
@@ -325,7 +325,7 @@ Feed.prototype._ifAvailableGet = function (w) {
     called = true
 
     var i = self._waiting.indexOf(w)
-    if (i > -1) self._waiting.splice(i, 1)
+    if (i > -1) remove(self._waiting, i)
     cb(err, data)
   }
 }
@@ -492,6 +492,7 @@ Feed.prototype.download = function (range, cb) {
     end: range.end || -1,
     want: 0,
     linear: !!range.linear,
+    requested: 0,
     callback: cb
   }
 
@@ -730,17 +731,21 @@ Feed.prototype.seek = function (bytes, opts, cb) {
 
     if (end > -1 && end <= start) return cb(new Error('Unable to seek to this offset'))
 
-    self._waiting.push({
+    var w = {
       hash: opts.hash !== false,
       bytes: bytes,
       index: -1,
+      ifAvailable: opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : self._alwaysIfAvailable,
       start: start,
       end: end,
       want: toWantRange(start),
+      requested: 0,
       callback: cb || noop
-    })
+    }
 
+    self._waiting.push(w)
     self._updatePeers()
+    if (w.ifAvailable) self._ifAvailableSeek(w)
   })
 
   function done (index, offset) {
@@ -748,6 +753,26 @@ Feed.prototype.seek = function (bytes, opts, cb) {
       self.peers[i].haveBytes(bytes)
     }
     cb(null, index, offset)
+  }
+}
+
+Feed.prototype._ifAvailableSeek = function (w) {
+  var self = this
+  var cb = w.callback
+
+  this.ifAvailable.ready(function () {
+    if (self.closed) return done(new Error('Closed'))
+    if (w.requested !== 0) return // inflight
+    done('Seek not available from peers')
+  })
+
+  function done (err) {
+    var i = self._waiting.indexOf(w)
+    if (i > -1) {
+      remove(self._waiting, i)
+      w.callback = noop
+      cb(err)
+    }
   }
 }
 
@@ -1113,7 +1138,7 @@ Feed.prototype.get = function (index, opts, cb) {
   if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return cb(new Error('Block not downloaded'))
 
-    var w = { bytes: 0, hash: false, index: index, options: opts, callback: cb }
+    var w = { bytes: 0, hash: false, index: index, options: opts, requested: 0, callback: cb }
     this._waiting.push(w)
 
     if (opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : this._alwaysIfAvailable) this._ifAvailableGet(w)
@@ -1413,6 +1438,7 @@ Feed.prototype._readyAndCancel = function (start, end) {
 
 Feed.prototype._pollWaiting = function () {
   var len = this._waiting.length
+
   for (var i = 0; i < len; i++) {
     var next = this._waiting[i]
     if (!next.bytes && !this.bitfield.get(next.index) && (!next.hash || !this.tree.get(next.index * 2))) {
