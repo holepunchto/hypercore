@@ -211,7 +211,7 @@ tape('seek ifAvailable multiple peers', function (t) {
   })
 })
 
-tape.only('seek ifAvailable with many inflight requests, multiple peers', function (t) {
+tape.only('seek ifAvailable with many inflight requests', function (t) {
   var feed = create()
 
   var arr = new Array(100).fill('a')
