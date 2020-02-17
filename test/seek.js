@@ -210,3 +210,25 @@ tape('seek ifAvailable multiple peers', function (t) {
     })
   })
 })
+
+tape('seek ifAvailable with many inflight requests', function (t) {
+  var feed = create()
+
+  var arr = new Array(100).fill('a')
+
+  feed.append(arr, function () {
+    var clone = create(feed.key, { sparse: true })
+
+    replicate(feed, clone, { live: true })
+
+    // Create 100 inflight requests.
+    for (let i = 0; i < 100; i++) clone.get(i, () => {})
+
+    clone.seek(2, { ifAvailable: true }, function (err, index, offset) {
+      t.error(err, 'no error')
+      t.same(index, 2)
+      t.same(offset, 0)
+      t.end()
+    })
+  })
+})

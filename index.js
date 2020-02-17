@@ -762,8 +762,19 @@ Feed.prototype._ifAvailableSeek = function (w) {
 
   process.nextTick(readyNT, this.ifAvailable, function () {
     if (self.closed) return done(new Error('Closed'))
-    if (w.requested !== 0) return // inflight
-    done('Seek not available from peers')
+
+    let available = false
+    for (const peer of self.peers) {
+      const ite = peer._iterator
+      let i = ite.seek(w.start).next(true)
+      while (self.tree.get(i * 2) && i > -1) i = ite.next(true)
+      if (i > -1 && (w.end === -1 || i < w.end)) {
+        available = true
+        break
+      }
+    }
+
+    if (!available) done(new Error('Seek not available from peers'))
   })
 
   function done (err) {
