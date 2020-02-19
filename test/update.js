@@ -108,7 +108,7 @@ tape('update with block data', function (t) {
     replicate(feed, clone, { live: true })
 
     clone.update({ hash: false }, function () {
-      t.ok(clone.has(0))
+      t.ok(clone.has(3))
       t.end()
     })
   })
