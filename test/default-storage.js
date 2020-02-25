@@ -20,6 +20,29 @@ tape('default storage works', function (t) {
         feed2.ready(function (err) {
           t.error(err, 'no error')
           t.same(feed2.length, 1)
+          feed2.close(function () {
+            t.end()
+          })
+        })
+      })
+    })
+  })
+})
+
+tape('destroying storage works', function (t) {
+  const dir = path.join(__dirname, 'sandbox')
+  const feed = hypercore(dir, {overwrite: true})
+
+  feed.ready(function () {
+    const key = feed.key
+    t.ok(key, 'generated key')
+    feed.destroy(function () {
+      t.pass('destroyed feed')
+      const feed2 = hypercore(dir)
+
+      feed2.ready(function () {
+        t.notSame(feed2.key, key, 'data got destroyed')
+        feed2.close(function () {
           t.end()
         })
       })

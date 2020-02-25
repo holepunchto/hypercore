@@ -1311,6 +1311,15 @@ Feed.prototype.flush = function (cb) {
   this.append([], cb)
 }
 
+Feed.prototype.destroy = function (cb) {
+  const self = this
+
+  this.close(function (err) {
+    if (err) cb(err)
+    else self._storage.destroy(cb)
+  })
+}
+
 Feed.prototype._close = function (cb) {
   const self = this
   this._forceClose(onclose, null)
@@ -1326,6 +1335,7 @@ Feed.prototype._forceClose = function (cb, error) {
 
   this.writable = false
   this.readable = false
+
   this._storage.close(function (err) {
     if (!err) err = error
     self._destroy(err || new Error('Feed is closed'))

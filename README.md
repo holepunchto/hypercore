@@ -352,6 +352,12 @@ Fully close this feed.
 
 Calls the callback with `(err)` when all storage has been closed.
 
+#### `feed.destroy([callback])`
+
+Destroys all stored data and fully closes this feed.
+
+Calls the callback with `(err)` when all storage has been deleted and closed.
+
 #### `feed.audit([callback])`
 
 Audit all data in the feed. Will check that all current data stored
