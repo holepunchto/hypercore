@@ -477,6 +477,7 @@ Feed.prototype._open = function (cb) {
 Feed.prototype.download = function (range, cb) {
   if (typeof range === 'function') return this.download(null, range)
   if (typeof range === 'number') range = {start: range, end: range + 1}
+  if (Array.isArray(range)) range = {blocks: range}
   if (!range) range = {}
   if (!cb) cb = noop
   if (!this.readable) return cb(new Error('Feed is closed'))
