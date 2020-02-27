@@ -845,6 +845,32 @@ tape('replicate with NOISE disabled', function (t) {
   })
 })
 
+tape('download blocks', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'], function () {
+    var clone = create(feed.key, { sparse: true })
+
+    clone.download({ start: 0, end: 10, blocks: [0, 3, 4, 9] }, function (err) {
+      t.error(err, 'no error')
+      t.same(clone.length, 10)
+      t.ok(clone.has(0))
+      t.notOk(clone.has(1))
+      t.notOk(clone.has(2))
+      t.ok(clone.has(3))
+      t.ok(clone.has(4))
+      t.notOk(clone.has(5))
+      t.notOk(clone.has(6))
+      t.notOk(clone.has(7))
+      t.notOk(clone.has(8))
+      t.ok(clone.has(9))
+      t.end()
+    })
+
+    replicate(feed, clone, { live: true })
+  })
+})
+
 function same (t, val) {
   return function (err, data) {
     t.error(err, 'no error')
