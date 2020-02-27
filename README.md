@@ -173,6 +173,14 @@ If you do not mark a range the entire feed will be marked for download.
 If you have not enabled sparse mode (`sparse: true` in the feed constructor) then the entire
 feed will be marked for download when the feed is created.
 
+If you have an array of blocks you want to get downloaded you also also pass that
+
+``` js
+{
+  blocks: [0, 1, 4, 10] // will download those 4 blocks as fast as possible
+}
+```
+
 #### `feed.undownload(range)`
 
 Cancel a previous download request.

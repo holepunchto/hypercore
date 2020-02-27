@@ -484,6 +484,22 @@ Feed.prototype.download = function (range, cb) {
   // TODO: if no peers, check if range is already satisfied and nextTick(cb) if so
   // this._updatePeers does this for us when there is a peer though, so not critical
 
+  // We need range.start, end for the want messages so make sure to infer these
+  // when blocks are passed and start,end is not set
+  if (range.blocks && typeof range.start !== 'number') {
+    var min = -1
+    var max = 0
+
+    for (var i = 0; i < range.blocks.length; i++) {
+      const blk = range.blocks[i]
+      if (min === -1 || blk < min) min = blk
+      if (blk >= max) max = blk + 1
+    }
+
+    range.start = min === -1 ? 0 : min
+    range.end = max
+  }
+
   var sel = {
     _index: this._selections.length,
     hash: !!range.hash,
@@ -492,6 +508,8 @@ Feed.prototype.download = function (range, cb) {
     end: range.end || -1,
     want: 0,
     linear: !!range.linear,
+    blocks: range.blocks || null,
+    blocksDownloaded: 0,
     requested: 0,
     callback: cb
   }
