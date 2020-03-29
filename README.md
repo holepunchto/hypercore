@@ -487,6 +487,14 @@ Send an extension message to a specific peer.
 
 Send a message to every peer you are connected to.
 
+### `peer.close()`
+
+Close the peer's connection.
+
+### `peer.on('close')
+
+Emitted when the peer's connection has been closed.
+
 #### `peer.publicKey`
 
 Get the public key buffer for this peer. Useful for identifying a peer in the swarm.
