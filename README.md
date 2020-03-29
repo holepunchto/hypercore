@@ -487,9 +487,9 @@ Send an extension message to a specific peer.
 
 Send a message to every peer you are connected to.
 
-### `peer.close()`
+### `peer.end()`
 
-Close the peer's connection.
+End the peer's connection, closing it.
 
 ### `peer.on('close')
 
