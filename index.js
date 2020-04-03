@@ -94,6 +94,7 @@ function Feed (createStorage, key, opts) {
   // hooks
   this._onwrite = opts.onwrite || null
 
+  this._expectedLength = -1
   this._indexing = !!opts.indexing
   this._createIfMissing = opts.createIfMissing !== false
   this._overwrite = !!opts.overwrite
@@ -281,12 +282,35 @@ Feed.prototype.update = function (opts, cb) {
   })
 }
 
+// Used to hint to the update guard if it can bail early
+Feed.prototype.setExpectedLength = function (len) {
+  this._expectedLength = len
+  this.ready((err) => {
+    if (err) return
+
+    this.ifAvailable.ready(() => {
+      this._expectedLength = -1
+    })
+
+    if (this._expectedLength === -1 || this._expectedLength > this.length) return
+
+    for (const w of this._waiting) {
+      if (w.update && w.ifAvailable) w.callback(new Error('Expected length is less than current length'))
+    }
+  })
+}
+
 Feed.prototype._ifAvailable = function (w, minLength) {
   var cb = w.callback
   var called = false
   var self = this
 
   w.callback = done
+  w.ifAvailable = true
+
+  if (this._expectedLength > -1 && this._expectedLength <= this.length) {
+    return process.nextTick(w.callback, new Error('Expected length is less than current length'))
+  }
 
   process.nextTick(readyNT, this.ifAvailable, function () {
     if (self.closed) return done(new Error('Closed'))
