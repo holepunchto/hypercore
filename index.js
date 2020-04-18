@@ -124,7 +124,7 @@ function Feed (createStorage, key, opts) {
 
   if (this.sparse && opts.eagerUpdate) {
     this.update(function loop (err) {
-      if (err) this.emit('update-error', err)
+      if (err) self.emit('update-error', err)
       self.update(loop)
     })
   }
