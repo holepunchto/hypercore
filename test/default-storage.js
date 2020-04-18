@@ -36,7 +36,7 @@ tape('destroying storage works', function (t) {
   feed.ready(function () {
     const key = feed.key
     t.ok(key, 'generated key')
-    feed.destroy(function () {
+    feed.destroyStorage(function () {
       t.pass('destroyed feed')
       const feed2 = hypercore(dir)
 

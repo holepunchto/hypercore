@@ -1354,7 +1354,7 @@ Feed.prototype.flush = function (cb) {
   this.append([], cb)
 }
 
-Feed.prototype.destroy = function (cb) {
+Feed.prototype.destroyStorage = function (cb) {
   const self = this
 
   this.close(function (err) {
