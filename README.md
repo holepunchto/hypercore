@@ -360,7 +360,7 @@ Fully close this feed.
 
 Calls the callback with `(err)` when all storage has been closed.
 
-#### `feed.destroyData([callback])`
+#### `feed.destroyStorage([callback])`
 
 Destroys all stored data and fully closes this feed.
 

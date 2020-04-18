@@ -22,7 +22,6 @@ var replicate = require('./lib/replicate')
 var Protocol = require('hypercore-protocol')
 var Message = require('abstract-extension')
 var Nanoresource = require('nanoresource/emitter')
-var util = require('util')
 
 class Extension extends Message {
   broadcast (message) {
@@ -1355,7 +1354,7 @@ Feed.prototype.flush = function (cb) {
   this.append([], cb)
 }
 
-Feed.prototype.destroyData = function (cb) {
+Feed.prototype.destroyStorage = function (cb) {
   const self = this
 
   this.close(function (err) {
@@ -1363,10 +1362,6 @@ Feed.prototype.destroyData = function (cb) {
     else self._storage.destroy(cb)
   })
 }
-
-Feed.prototype.destroy = util.deprecate(function (cb) {
-  this.destroyData(cb)
-}, 'feed.destroy() is deprecated. Use feed.destroyData() instead.')
 
 Feed.prototype._close = function (cb) {
   const self = this
