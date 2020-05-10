@@ -104,6 +104,15 @@ function Feed (createStorage, key, opts) {
   this._storage = storage(createStorage, opts)
   this._batch = batcher(this._onwrite ? workHook : work)
 
+  this.timeouts = opts.timeouts || {
+    get (cb) {
+      cb(null)
+    },
+    update (cb) {
+      cb(null)
+    }
+  }
+
   this._seq = 0
   this._waiting = []
   this._selections = []
@@ -312,10 +321,14 @@ Feed.prototype._ifAvailable = function (w, minLength) {
     return process.nextTick(w.callback, new Error('Expected length is less than current length'))
   }
 
-  process.nextTick(readyNT, this.ifAvailable, function () {
+  this.timeouts.update(function () {
     if (self.closed) return done(new Error('Closed'))
-    if (self.length >= minLength || self.remoteLength >= minLength) return
-    done(new Error('No update available from peers'))
+
+    process.nextTick(readyNT, self.ifAvailable, function () {
+      if (self.closed) return done(new Error('Closed'))
+      if (self.length >= minLength || self.remoteLength >= minLength) return
+      done(new Error('No update available from peers'))
+    })
   })
 
   function done (err) {
@@ -335,13 +348,18 @@ Feed.prototype._ifAvailableGet = function (w) {
 
   w.callback = done
 
-  process.nextTick(readyNT, this.ifAvailable, function () {
+  self.timeouts.get(function () {
     if (self.closed) return done(new Error('Closed'))
-    for (var i = 0; i < self.peers.length; i++) {
-      var peer = self.peers[i]
-      if (peer.remoteBitfield.get(w.index)) return
-    }
-    done(new Error('Block not available from peers'))
+
+    process.nextTick(readyNT, self.ifAvailable, function () {
+      if (self.closed) return done(new Error('Closed'))
+
+      for (var i = 0; i < self.peers.length; i++) {
+        var peer = self.peers[i]
+        if (peer.remoteBitfield.get(w.index)) return
+      }
+      done(new Error('Block not available from peers'))
+    })
   })
 
   function done (err, data) {
@@ -803,21 +821,25 @@ Feed.prototype._ifAvailableSeek = function (w) {
   var self = this
   var cb = w.callback
 
-  process.nextTick(readyNT, this.ifAvailable, function () {
+  self.timeouts.get(function () {
     if (self.closed) return done(new Error('Closed'))
 
-    let available = false
-    for (const peer of self.peers) {
-      const ite = peer._iterator
-      let i = ite.seek(w.start).next(true)
-      while (self.tree.get(i * 2) && i > -1) i = ite.next(true)
-      if (i > -1 && (w.end === -1 || i < w.end)) {
-        available = true
-        break
-      }
-    }
+    process.nextTick(readyNT, self.ifAvailable, function () {
+      if (self.closed) return done(new Error('Closed'))
 
-    if (!available) done(new Error('Seek not available from peers'))
+      let available = false
+      for (const peer of self.peers) {
+        const ite = peer._iterator
+        let i = ite.seek(w.start).next(true)
+        while (self.tree.get(i * 2) && i > -1) i = ite.next(true)
+        if (i > -1 && (w.end === -1 || i < w.end)) {
+          available = true
+          break
+        }
+      }
+
+      if (!available) done(new Error('Seek not available from peers'))
+    })
   })
 
   function done (err) {
