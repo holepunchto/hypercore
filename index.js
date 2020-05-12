@@ -750,7 +750,7 @@ Feed.prototype.verify = function (index, signature, cb) {
   this.rootHashes(index, function (err, roots) {
     if (err) return cb(err)
 
-    var checksum = crypto.tree(roots, index + 1)
+    var checksum = crypto.signable(roots, index + 1)
 
     verifyCompat(self, checksum, signature, function (err, valid) {
       if (err) return cb(err)
@@ -1093,7 +1093,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
   this._getRootsToVerify(verifiedBy, top, remoteNodes, function (err, roots, extraNodes) {
     if (err) return cb(err)
 
-    var checksum = crypto.tree(roots, length)
+    var checksum = crypto.signable(roots, length)
     var signature = null
 
     if (self.length && self.live && !proof.signature) {
@@ -1351,7 +1351,7 @@ Feed.prototype.createReadStream = function (opts) {
 // TODO: when calling finalize on a live feed write an END_OF_FEED block (length === 0?)
 Feed.prototype.finalize = function (cb) {
   if (!this.key) {
-    this.key = crypto.tree(this._merkle.roots, this.length).slice(0, 32)
+    this.key = crypto.tree(this._merkle.roots)
     this.discoveryKey = crypto.discoveryKey(this.key)
   }
   this._storage.key.write(0, this.key, cb)
@@ -1471,7 +1471,7 @@ Feed.prototype._append = function (batch, cb) {
 
   if (this.live && batch.length) {
     pending++
-    this.crypto.sign(crypto.tree(this._merkle.roots, self.length + batch.length), this.secretKey, function (err, sig) {
+    this.crypto.sign(crypto.signable(this._merkle.roots, self.length + batch.length), this.secretKey, function (err, sig) {
       if (err) return done(err)
       self._storage.putSignature(self.length + batch.length - 1, sig, done)
     })
