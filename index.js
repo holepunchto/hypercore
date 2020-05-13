@@ -646,7 +646,7 @@ Feed.prototype._readyAndProof = function (index, opts, cb) {
 
 Feed.prototype.put = function (index, data, proof, cb) {
   if (!this.opened) return this._readyAndPut(index, data, proof, cb)
-  this._putBuffer(index, this._codec.encode(data), proof, null, cb)
+  this._putBuffer(index, data === null ? null : this._codec.encode(data), proof, null, cb)
 }
 
 Feed.prototype.cancel = function (start, end) { // TODO: use same argument scheme as download
