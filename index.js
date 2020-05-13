@@ -1307,6 +1307,12 @@ Feed.prototype.createReadStream = function (opts) {
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
+  var batch = typeof opts.batch === 'number' ? opts.batch : -1
+  var batchResults = null
+  var batchStart = start
+  var batchEnd = 0
+  var batchIndex = 0
+
   var first = true
   var range = this.download({start: start, end: end, linear: true})
 
@@ -1322,16 +1328,44 @@ Feed.prototype.createReadStream = function (opts) {
         else if (snapshot) end = self.length
         if (start > end) return cb(null, null)
       }
-      if (opts.tail) start = self.length
+
+      if (opts.tail) {
+        start = self.length
+        batch = -1
+      }
+
+      batchEnd = end === Infinity ? self.length : end
+      if (batch === Infinity) {
+        batch = batchEnd
+      }
+
       first = false
     }
 
-    if (start === end || (end === -1 && start === self.length)) return cb(null, null)
+    if (batchResults && batchIndex < batchResults.length) {
+      return cb(null, batchResults[batchIndex++])
+    }
 
-    range.start++
-    if (range.iterator) range.iterator.start++
+    if (start === end || (end === -1 && start === self.length)) {
+      return cb(null, null)
+    }
 
-    self.get(start++, opts, cb)
+    if (batch === -1) {
+      self.get(setStart(start + 1), opts, cb)
+      return
+    }
+
+    batchIndex = 0
+    batchStart = start + batch
+    if (batchStart >= batchEnd) {
+      batch = -1 // end batching
+      batchStart = batchEnd
+    }
+    self.getBatch(setStart(batchStart), batchStart, opts, (err, result) => {
+      if (err) return cb(err)
+      batchResults = result
+      cb(null, batchResults[batchIndex++])
+    })
   }
 
   function cleanup () {
@@ -1345,6 +1379,16 @@ Feed.prototype.createReadStream = function (opts) {
       if (err) return cb(err)
       read(size, cb)
     })
+  }
+
+  function setStart(value) {
+    var _start = start
+    start = value
+    range.start = start
+    if (range.iterator) {
+      range.iterator.start = start
+    }
+    return _start
   }
 }
 
