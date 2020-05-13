@@ -646,7 +646,7 @@ Feed.prototype._readyAndProof = function (index, opts, cb) {
 
 Feed.prototype.put = function (index, data, proof, cb) {
   if (!this.opened) return this._readyAndPut(index, data, proof, cb)
-  this._putBuffer(index, this._codec.encode(data), proof, null, cb)
+  this._putBuffer(index, data === null ? null : this._codec.encode(data), proof, null, cb)
 }
 
 Feed.prototype.cancel = function (start, end) { // TODO: use same argument scheme as download
@@ -750,9 +750,9 @@ Feed.prototype.verify = function (index, signature, cb) {
   this.rootHashes(index, function (err, roots) {
     if (err) return cb(err)
 
-    var checksum = crypto.tree(roots)
+    var checksum = crypto.signable(roots, index + 1)
 
-    self.crypto.verify(checksum, signature, self.key, function (err, valid) {
+    verifyCompat(self, checksum, signature, function (err, valid) {
       if (err) return cb(err)
 
       if (!valid) return cb(new Error('Signature verification failed'))
@@ -1087,12 +1087,13 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
   var remoteNodes = proof.nodes
   var lastNode = remoteNodes.length ? remoteNodes[remoteNodes.length - 1].index : top.index
   var verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
+  var length = verifiedBy / 2
   var self = this
 
   this._getRootsToVerify(verifiedBy, top, remoteNodes, function (err, roots, extraNodes) {
     if (err) return cb(err)
 
-    var checksum = crypto.tree(roots)
+    var checksum = crypto.signable(roots, length)
     var signature = null
 
     if (self.length && self.live && !proof.signature) {
@@ -1100,7 +1101,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
     }
 
     if (proof.signature) { // check signatures
-      self.crypto.verify(checksum, proof.signature, self.key, function (err, valid) {
+      verifyCompat(self, checksum, proof.signature, function (err, valid) {
         if (err) return cb(err)
         if (!valid) return cb(new Error('Remote signature could not be verified'))
 
@@ -1108,7 +1109,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
         write()
       })
     } else { // check tree root
-      if (Buffer.compare(checksum, self.key) !== 0) {
+      if (Buffer.compare(checksum.slice(0, 32), self.key) !== 0) {
         return cb(new Error('Remote checksum failed'))
       }
 
@@ -1118,7 +1119,6 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
     function write () {
       self.live = !!signature
 
-      var length = verifiedBy / 2
       if (length > self.length) {
         // TODO: only emit this after the info has been flushed to storage
         if (self.writable) self._merkle = null // We need to reload merkle state now
@@ -1471,7 +1471,7 @@ Feed.prototype._append = function (batch, cb) {
 
   if (this.live && batch.length) {
     pending++
-    this.crypto.sign(crypto.tree(this._merkle.roots), this.secretKey, function (err, sig) {
+    this.crypto.sign(crypto.signable(this._merkle.roots, self.length + batch.length), this.secretKey, function (err, sig) {
       if (err) return done(err)
       self._storage.putSignature(self.length + batch.length - 1, sig, done)
     })
@@ -1728,4 +1728,12 @@ function isOptions (initiator) {
 
 function readyNT (ifAvailable, fn) {
   ifAvailable.ready(fn)
+}
+
+function verifyCompat (self, checksum, signature, cb) {
+  self.crypto.verify(checksum, signature, self.key, function (err, valid) {
+    if (err || valid) return cb(err, valid)
+    // compat mode, will be removed in a later version
+    self.crypto.verify(checksum.slice(0, 32), signature, self.key, cb)
+  })
 }
