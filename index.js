@@ -1307,9 +1307,9 @@ Feed.prototype.createReadStream = function (opts) {
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
-  var batch = typeof opts.batch === 'number' ? opts.batch : -1
-  var batchResults = null
-  var batchStart = start
+  var batch = opts.batch || 1
+  var batchResults = []
+  var nextBatchStart = start
   var batchEnd = 0
   var batchIndex = 0
 
@@ -1328,21 +1328,11 @@ Feed.prototype.createReadStream = function (opts) {
         else if (snapshot) end = self.length
         if (start > end) return cb(null, null)
       }
-
-      if (opts.tail) {
-        start = self.length
-        batch = -1
-      }
-
-      batchEnd = end === Infinity ? self.length : end
-      if (batch === Infinity) {
-        batch = batchEnd
-      }
-
+      if (opts.tail) start = self.length
       first = false
     }
 
-    if (batchResults && batchIndex < batchResults.length) {
+    if (batchResults.length > 0 && batchIndex < batchResults.length) {
       return cb(null, batchResults[batchIndex++])
     }
 
@@ -1350,18 +1340,19 @@ Feed.prototype.createReadStream = function (opts) {
       return cb(null, null)
     }
 
-    if (batch === -1) {
+    if (batch === 1) {
       self.get(setStart(start + 1), opts, cb)
       return
     }
 
     batchIndex = 0
-    batchStart = start + batch
-    if (batchStart >= batchEnd) {
-      batch = -1 // end batching
-      batchStart = batchEnd
+    nextBatchStart += batch
+    batchEnd = end === Infinity ? self.length : end
+    if (nextBatchStart >= batchEnd) {
+      batch = 1
+      nextBatchStart = batchEnd
     }
-    self.getBatch(setStart(batchStart), batchStart, opts, (err, result) => {
+    self.getBatch(setStart(nextBatchStart), nextBatchStart, opts, (err, result) => {
       if (err) return cb(err)
       batchResults = result
       cb(null, batchResults[batchIndex++])
@@ -1381,7 +1372,7 @@ Feed.prototype.createReadStream = function (opts) {
     })
   }
 
-  function setStart(value) {
+  function setStart (value) {
     var _start = start
     start = value
     range.start = start
