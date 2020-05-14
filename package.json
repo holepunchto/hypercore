@@ -46,8 +46,8 @@
     "fd-lock": false
   },
   "scripts": {
-    "test": "standard && tape test/*.js",
-    "cov": "nyc tape test/*.js",
+    "test": "standard && tape test/streams.js",
+    "cov": "nyc tape test/streams.js",
     "bench": "cd bench && ./all.sh"
   },
   "repository": {

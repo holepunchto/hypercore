@@ -1309,8 +1309,9 @@ Feed.prototype.createReadStream = function (opts) {
   var snapshot = opts.snapshot !== false
   var batch = opts.batch || 1
   var batchResults = []
-  var nextBatchStart = start
+  var batchStart = 0
   var batchEnd = 0
+  var batchLimit = 0
   var batchIndex = 0
 
   var first = true
@@ -1346,14 +1347,24 @@ Feed.prototype.createReadStream = function (opts) {
     }
 
     batchIndex = 0
-    nextBatchStart = start + batch
-    batchEnd = end === Infinity ? self.length : end
-    if (nextBatchStart >= batchEnd) {
-      batch = 1
-      nextBatchStart = batchEnd
+    batchEnd = batchStart + batch
+    batchLimit = end === Infinity ? self.length : end
+    if (batchEnd > batchLimit) {
+      batchEnd = batchLimit
     }
-    self.getBatch(setStart(nextBatchStart), nextBatchStart, opts, (err, result) => {
-      if (err) return cb(err)
+    batchStart = setStart(batchEnd)
+
+    if (batchStart === batchEnd) {
+      self.get(setStart(batchStart + 1), opts, cb)
+      return
+    }
+
+    self.getBatch(batchStart, batchEnd, opts, (err, result) => {
+      if (err || result.length === 0) {
+        self.get(setStart(batchStart + 1), opts, cb)
+        return
+      }
+
       batchResults = result
       cb(null, batchResults[batchIndex++])
     })
