@@ -1,5 +1,7 @@
 # CHANGELOG
 
+See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream developers.
+
 ## Current
 
 ## v9.0.0
