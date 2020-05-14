@@ -1346,7 +1346,7 @@ Feed.prototype.createReadStream = function (opts) {
     }
 
     batchIndex = 0
-    nextBatchStart += batch
+    nextBatchStart = start + batch
     batchEnd = end === Infinity ? self.length : end
     if (nextBatchStart >= batchEnd) {
       batch = 1
