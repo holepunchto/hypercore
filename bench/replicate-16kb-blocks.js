@@ -14,6 +14,6 @@ source.ready(function () {
 })
 
 function replicate (a, b) {
-  var s = a.replicate()
-  return s.pipe(b.replicate()).pipe(s)
+  var s = a.replicate(false)
+  return s.pipe(b.replicate(true)).pipe(s)
 }
