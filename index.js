@@ -1308,10 +1308,8 @@ Feed.prototype.createReadStream = function (opts) {
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
   var batch = opts.batch || 1
-  var batchResults = []
   var batchEnd = 0
   var batchLimit = 0
-  var batchIndex = 0
 
   var first = true
   var range = this.download({start: start, end: end, linear: true})
@@ -1332,10 +1330,6 @@ Feed.prototype.createReadStream = function (opts) {
       first = false
     }
 
-    if (batchResults.length > 0 && batchIndex < batchResults.length) {
-      return cb(null, batchResults[batchIndex++])
-    }
-
     if (start === end || (end === -1 && start === self.length)) {
       return cb(null, null)
     }
@@ -1345,7 +1339,6 @@ Feed.prototype.createReadStream = function (opts) {
       return
     }
 
-    batchIndex = 0
     batchEnd = start + batch
     batchLimit = end === Infinity ? self.length : end
     if (batchEnd > batchLimit) {
@@ -1363,8 +1356,11 @@ Feed.prototype.createReadStream = function (opts) {
         return
       }
 
-      batchResults = result
-      cb(null, batchResults[batchIndex++])
+      var lastIdx = result.length - 1
+      for (var i = 0; i < lastIdx; i++) {
+        this.push(result[i])
+      }
+      cb(null, result[lastIdx])
     })
   }
 
