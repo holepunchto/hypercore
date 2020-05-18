@@ -1378,13 +1378,13 @@ Feed.prototype.createReadStream = function (opts) {
   }
 
   function setStart (value) {
-    var _start = start
+    var prevStart = start
     start = value
     range.start = start
     if (range.iterator) {
       range.iterator.start = start
     }
-    return _start
+    return prevStart
   }
 }
 
