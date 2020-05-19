@@ -1307,6 +1307,10 @@ Feed.prototype.createReadStream = function (opts) {
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
+  var batch = opts.batch || 1
+  var batchEnd = 0
+  var batchLimit = 0
+
   var first = true
   var range = this.download({start: start, end: end, linear: true})
 
@@ -1326,12 +1330,38 @@ Feed.prototype.createReadStream = function (opts) {
       first = false
     }
 
-    if (start === end || (end === -1 && start === self.length)) return cb(null, null)
+    if (start === end || (end === -1 && start === self.length)) {
+      return cb(null, null)
+    }
 
-    range.start++
-    if (range.iterator) range.iterator.start++
+    if (batch === 1) {
+      self.get(setStart(start + 1), opts, cb)
+      return
+    }
 
-    self.get(start++, opts, cb)
+    batchEnd = start + batch
+    batchLimit = end === Infinity ? self.length : end
+    if (batchEnd > batchLimit) {
+      batchEnd = batchLimit
+    }
+
+    if (!self.downloaded(start, batchEnd)) {
+      self.get(setStart(start + 1), opts, cb)
+      return
+    }
+
+    self.getBatch(setStart(batchEnd), batchEnd, opts, (err, result) => {
+      if (err || result.length === 0) {
+        cb(err)
+        return
+      }
+
+      var lastIdx = result.length - 1
+      for (var i = 0; i < lastIdx; i++) {
+        this.push(result[i])
+      }
+      cb(null, result[lastIdx])
+    })
   }
 
   function cleanup () {
@@ -1345,6 +1375,16 @@ Feed.prototype.createReadStream = function (opts) {
       if (err) return cb(err)
       read(size, cb)
     })
+  }
+
+  function setStart (value) {
+    var prevStart = start
+    start = value
+    range.start = start
+    if (range.iterator) {
+      range.iterator.start = start
+    }
+    return prevStart
   }
 }
 

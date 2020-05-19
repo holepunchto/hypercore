@@ -295,7 +295,8 @@ Options include:
   tail: false, // sets `start` to `feed.length`
   live: false, // set to true to keep reading forever
   timeout: 0, // timeout for each data event (0 means no timeout)
-  wait: true // wait for data to be downloaded
+  wait: true, // wait for data to be downloaded
+  batch: 1 // amount of messages to read in batch, increasing it (e.g. 100) can improve the performance reading
 }
 ```
 
