@@ -4,6 +4,12 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.0.1
+
+- Upgraded standard to v14 with subsequent formatting tweaks
+- createReadStream is up to 8x faster now! ([#261](https://github.com/hypercore-protocol/hypercore/pull/261) by [@tinchoz49](https://github.com/tinchoz49))
+- Fixed benchmarks ([#266](https://github.com/hypercore-protocol/hypercore/pull/266) by [@fwip](https://github.com/fwip))
+
 ## v9.0.0
 
 - Ease of use update to signatures, https://github.com/mafintosh/hypercore/issues/260
