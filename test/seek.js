@@ -128,7 +128,7 @@ tape('seek to sibling', function (t) {
 
   var feed = create()
 
-  feed.append([ 'aa', 'aa' ], function () {
+  feed.append(['aa', 'aa'], function () {
     feed.seek(2, function (err, index, offset) { // sibling seek
       t.error(err, 'no error')
       t.same(index, 1)

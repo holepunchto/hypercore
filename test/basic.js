@@ -9,7 +9,7 @@ var bufferAlloc = require('buffer-alloc-unsafe')
 tape('append', function (t) {
   t.plan(8)
 
-  var feed = create({valueEncoding: 'json'})
+  var feed = create({ valueEncoding: 'json' })
 
   feed.append({
     hello: 'world'
@@ -27,17 +27,17 @@ tape('append', function (t) {
 
     feed.get(0, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'world'})
+      t.same(value, { hello: 'world' })
     })
 
     feed.get(1, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'verden'})
+      t.same(value, { hello: 'verden' })
     })
 
     feed.get(2, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'welt'})
+      t.same(value, { hello: 'welt' })
     })
   })
 })
@@ -58,7 +58,7 @@ tape('verify', function (t) {
   t.plan(9)
 
   var feed = create()
-  var evilfeed = create(feed.key, {secretKey: feed.secretKey})
+  var evilfeed = create(feed.key, { secretKey: feed.secretKey })
 
   feed.append('test', function (err) {
     t.error(err, 'no error')
@@ -89,7 +89,7 @@ tape('rootHashes', function (t) {
   t.plan(9)
 
   var feed = create()
-  var evilfeed = create(feed.key, {secretKey: feed.secretKey})
+  var evilfeed = create(feed.key, { secretKey: feed.secretKey })
 
   feed.append('test', function (err) {
     t.error(err, 'no error')
@@ -120,7 +120,7 @@ tape('pass in secret key', function (t) {
   var secretKey = keyPair.secretKey
   var key = keyPair.publicKey
 
-  var feed = create(key, {secretKey: secretKey})
+  var feed = create(key, { secretKey: secretKey })
 
   feed.on('ready', function () {
     t.same(feed.key, key)
@@ -162,7 +162,7 @@ tape('create from existing keys', function (t) {
     var otherFeed = hypercore(storage2, feed.key, { secretKey: feed.secretKey })
     var store = otherFeed._storage
     otherFeed.ready(function () {
-      store.open({key: feed.key}, function (err, data) {
+      store.open({ key: feed.key }, function (err, data) {
         t.error(err)
         t.equals(data.key.toString('hex'), feed.key.toString('hex'))
         t.equals(data.secretKey.toString('hex'), feed.secretKey.toString('hex'))
@@ -181,7 +181,7 @@ tape('create from existing keys', function (t) {
 tape('head', function (t) {
   t.plan(8)
 
-  var feed = create({valueEncoding: 'json'})
+  var feed = create({ valueEncoding: 'json' })
 
   feed.head(function (err, head) {
     t.ok(!!err)
@@ -195,7 +195,7 @@ tape('head', function (t) {
     }, function () {
       feed.head(function (err, head) {
         t.error(err)
-        t.same(head, {hello: 'world'})
+        t.same(head, { hello: 'world' })
         step3()
       })
     })
@@ -209,7 +209,7 @@ tape('head', function (t) {
     }], function () {
       feed.head({}, function (err, head) {
         t.error(err)
-        t.same(head, {hello: 'welt'})
+        t.same(head, { hello: 'welt' })
         step4()
       })
     })
@@ -228,7 +228,7 @@ tape('head', function (t) {
 tape('append, no cache', function (t) {
   t.plan(8)
 
-  var feed = create({valueEncoding: 'json', storageCacheSize: 0})
+  var feed = create({ valueEncoding: 'json', storageCacheSize: 0 })
 
   feed.append({
     hello: 'world'
@@ -246,30 +246,30 @@ tape('append, no cache', function (t) {
 
     feed.get(0, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'world'})
+      t.same(value, { hello: 'world' })
     })
 
     feed.get(1, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'verden'})
+      t.same(value, { hello: 'verden' })
     })
 
     feed.get(2, function (err, value) {
       t.error(err, 'no error')
-      t.same(value, {hello: 'welt'})
+      t.same(value, { hello: 'welt' })
     })
   })
 })
 
 tape('onwrite', function (t) {
   var expected = [
-    {index: 0, data: 'hello', peer: null},
-    {index: 1, data: 'world', peer: null}
+    { index: 0, data: 'hello', peer: null },
+    { index: 1, data: 'world', peer: null }
   ]
 
   var feed = create({
     onwrite: function (index, data, peer, cb) {
-      t.same({index: index, data: data.toString(), peer: peer}, expected.shift())
+      t.same({ index: index, data: data.toString(), peer: peer }, expected.shift())
       cb()
     }
   })
@@ -304,7 +304,7 @@ tape('close calls pending callbacks', function (t) {
 
   var feed = create()
 
-  feed.createReadStream({live: true})
+  feed.createReadStream({ live: true })
     .once('error', function (err) {
       t.ok(err, 'read stream errors')
     })
@@ -320,7 +320,7 @@ tape('close calls pending callbacks', function (t) {
 
   feed.ready(function () {
     feed.close(function () {
-      feed.createReadStream({live: true})
+      feed.createReadStream({ live: true })
         .once('error', function (err) {
           t.ok(err, 'read stream still errors')
         })
@@ -336,7 +336,7 @@ tape('close calls pending callbacks', function (t) {
 tape('get batch', function (t) {
   t.plan(2 * 3)
 
-  var feed = create({valueEncoding: 'utf-8'})
+  var feed = create({ valueEncoding: 'utf-8' })
 
   feed.append(['a', 'be', 'cee', 'd'], function () {
     feed.getBatch(0, 4, function (err, batch) {
@@ -426,7 +426,7 @@ tape('closing all streams on close', function (t) {
     }
     return memory
   })
-  var expectedFiles = [ 'key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures' ]
+  var expectedFiles = ['key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures']
   feed.ready(function () {
     t.deepEquals(Object.keys(memories), expectedFiles, 'all files are open')
     feed.close(function () {
@@ -449,8 +449,8 @@ tape('writes are batched', function (t) {
   ws.write('ef')
   ws.end(function () {
     t.deepEquals(trackingRam.log.data, [
-      { write: [ 0, Buffer.from('ab') ] },
-      { write: [ 2, Buffer.from('cdef') ] }
+      { write: [0, Buffer.from('ab')] },
+      { write: [2, Buffer.from('cdef')] }
     ])
     feed.close(function () {
       t.end()
