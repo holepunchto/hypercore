@@ -4,6 +4,10 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.1.0
+
+- Make peer.remoteOpened public ([#268](https://github.com/hypercore-protocol/hypercore/pull/268))
+
 ## v9.0.1
 
 - Upgraded standard to v14 with subsequent formatting tweaks
