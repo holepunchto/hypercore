@@ -17,7 +17,7 @@ tape('replicate', function (t) {
     clone.get(3, same(t, 'd'))
     clone.get(4, same(t, 'e'))
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -57,7 +57,7 @@ tape('replicate live', function (t) {
   feed.ready(function () {
     var clone = create(feed.key)
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
 
     feed.append('a')
     feed.append('b')
@@ -78,7 +78,7 @@ tape('download while get', function (t) {
     var clone = create(feed.key)
 
     // add 5 so this never finished
-    clone.download({start: 0, end: 6}, function () {
+    clone.download({ start: 0, end: 6 }, function () {
       t.fail('should never happen')
     })
 
@@ -88,7 +88,7 @@ tape('download while get', function (t) {
     clone.get(3, same(t, 'd'))
     clone.get(4, same(t, 'e'))
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -158,8 +158,8 @@ tape('basic 3-way replication', function (t) {
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
-    replicate(clone1, clone2, {live: true})
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
@@ -181,13 +181,13 @@ tape('basic 3-way replication sparse and not sparse', function (t) {
     var clone1 = create(feed.key, { sparse: true })
     var clone2 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
+    replicate(feed, clone1, { live: true })
 
     clone1.get(0, function (err, data) {
       t.error(err, 'no error')
       t.same(data, Buffer.from('a'))
 
-      replicate(clone1, clone2, {live: true})
+      replicate(clone1, clone2, { live: true })
 
       clone2.get(0, function (err) {
         t.error(err, 'no error')
@@ -207,7 +207,7 @@ tape('extra data + factor of two', function (t) {
   feed.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], function () {
     var clone1 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
+    replicate(feed, clone1, { live: true })
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
@@ -224,8 +224,8 @@ tape('3-way another index', function (t) {
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
-    replicate(clone1, clone2, {live: true})
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
@@ -247,8 +247,8 @@ tape('3-way another index + extra data', function (t) {
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
-    replicate(clone1, clone2, {live: true})
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
@@ -270,8 +270,8 @@ tape('3-way another index + extra data + factor of two', function (t) {
     var clone1 = create(feed.key)
     var clone2 = create(feed.key)
 
-    replicate(feed, clone1, {live: true})
-    replicate(clone1, clone2, {live: true})
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
 
     clone1.get(1, function (err, data) {
       t.error(err, 'no error')
@@ -287,15 +287,15 @@ tape('3-way another index + extra data + factor of two', function (t) {
 })
 
 tape('3-way another index + extra data + factor of two + static', function (t) {
-  var feed = create({live: false})
+  var feed = create({ live: false })
 
   feed.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], function () {
     feed.finalize(function () {
       var clone1 = create(feed.key)
       var clone2 = create(feed.key)
 
-      replicate(feed, clone1, {live: true})
-      replicate(clone1, clone2, {live: true})
+      replicate(feed, clone1, { live: true })
+      replicate(clone1, clone2, { live: true })
 
       clone1.get(1, function (err, data) {
         t.error(err, 'no error')
@@ -333,7 +333,7 @@ tape('seek while replicating', function (t) {
 
     feed.append(['hello'], function () {
       feed.append(['how', 'are', 'you', 'doing', '?'], function () {
-        replicate(feed, clone, {live: true})
+        replicate(feed, clone, { live: true })
       })
     })
   })
@@ -359,7 +359,7 @@ tape('non spare live replication', function (t) {
         })
       })
 
-      replicate(feed, clone, {live: true})
+      replicate(feed, clone, { live: true })
     })
   })
 })
@@ -376,7 +376,7 @@ tape('can wait for updates', function (t) {
       t.end()
     })
 
-    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
+    replicate(feed, clone, { live: true }).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -386,20 +386,20 @@ tape('replicate while clearing', function (t) {
   var feed = create()
 
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
 
     clone.get(1, function (err) {
       t.error(err, 'no error')
       feed.clear(2, function (err) {
         t.error(err, 'no error')
-        clone.get(2, {timeout: 50}, function (err) {
+        clone.get(2, { timeout: 50 }, function (err) {
           t.ok(err, 'had timeout error')
           t.end()
         })
       })
     })
 
-    replicate(feed, clone, {live: true}).once('duplex-channel', function () {
+    replicate(feed, clone, { live: true }).once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
     })
   })
@@ -411,7 +411,7 @@ tape('replicate while cancelling', function (t) {
   var feed = create()
 
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
 
     clone.on('download', function () {
       t.fail('should not download')
@@ -428,7 +428,7 @@ tape('replicate while cancelling', function (t) {
 
     feed.append(['a', 'b', 'c'])
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -438,7 +438,7 @@ tape('allow push', function (t) {
   var feed = create()
 
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true, allowPush: true})
+    var clone = create(feed.key, { sparse: true, allowPush: true })
 
     clone.on('download', function () {
       t.pass('push allowed')
@@ -455,7 +455,7 @@ tape('allow push', function (t) {
 
     feed.append(['a', 'b', 'c'])
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -493,7 +493,7 @@ tape('get total downloaded chunks', function (t) {
   var feed = create()
   feed.append(['a', 'b', 'c', 'e'])
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
     clone.get(1, function (err) {
       t.error(err, 'no error')
       t.same(clone.downloaded(), 1)
@@ -511,7 +511,7 @@ tape('get total downloaded chunks', function (t) {
         t.end()
       })
     })
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -519,7 +519,7 @@ tape('feed has a range of chuncks', function (t) {
   var feed = create()
   feed.append(['a', 'b', 'c', 'e'])
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
     clone.get(0, function (err) {
       t.error(err, 'no error')
       clone.get(1, function (err) {
@@ -536,7 +536,7 @@ tape('feed has a range of chuncks', function (t) {
         })
       })
     })
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -546,7 +546,7 @@ tape('feed has a large range', function (t) {
   feed.append(['a', 'b', 'c', 'e', 'd', 'e', 'f', 'g'])
   feed.append(['a', 'b', 'c', 'e', 'd', 'e', 'f', 'g'])
   feed.on('ready', function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
     var count = 20
     var gotten = 20
     function got () {
@@ -569,7 +569,7 @@ tape('feed has a large range', function (t) {
     for (var i = 0; i < count; i++) {
       clone.get(i, got)
     }
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -615,11 +615,11 @@ tape('sparse mode, two downloads', function (t) {
   var feed = create()
 
   feed.append(['a', 'b', 'c', 'd', 'e'], function () {
-    var clone = create(feed.key, {sparse: true})
+    var clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone)
     clone.update(function () {
-      clone.download({start: 0, end: 4}, function (err) {
+      clone.download({ start: 0, end: 4 }, function (err) {
         t.error(err, 'no error')
         // next tick so selection is cleared
         process.nextTick(function () {
@@ -679,7 +679,7 @@ tape('replicate with onwrite', function (t) {
       t.end()
     })
 
-    replicate(feed, clone, {live: true})
+    replicate(feed, clone, { live: true })
   })
 })
 
@@ -696,12 +696,12 @@ tape('replicate from very sparse', function (t) {
     t.error(err, 'no error')
     t.pass('appended ' + arr.length + ' blocks')
 
-    var clone1 = create(feed.key, {sparse: true})
+    var clone1 = create(feed.key, { sparse: true })
     var clone2 = create(feed.key)
     var missing = 30
     var then = 0
 
-    replicate(feed, clone1, {live: true})
+    replicate(feed, clone1, { live: true })
 
     clone2.on('download', function () {
       if (--missing <= 0) {
@@ -709,18 +709,18 @@ tape('replicate from very sparse', function (t) {
       }
     })
 
-    clone1.download({start: feed.length - 30, end: feed.length}, function () {
+    clone1.download({ start: feed.length - 30, end: feed.length }, function () {
       then = Date.now()
-      replicate(clone2, clone1, {live: true})
+      replicate(clone2, clone1, { live: true })
     })
   })
 })
 
 tape('first get hash, then get block', function (t) {
   var feed = create()
-  feed.append([ 'a', 'b', 'c' ], function () {
-    var clone = create(feed.key, {sparse: true})
-    replicate(feed, clone, {live: true})
+  feed.append(['a', 'b', 'c'], function () {
+    var clone = create(feed.key, { sparse: true })
+    replicate(feed, clone, { live: true })
 
     // fetches the hash for block #2
     clone.seek(2, function (err) {
@@ -736,7 +736,7 @@ tape('first get hash, then get block', function (t) {
 
 tape('destroy replication stream before handshake', function (t) {
   var feed = create()
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     var stream = feed.replicate(true)
     stream.destroy()
     var anotherStream = feed.replicate(true)
@@ -827,7 +827,7 @@ tape('regression: replicate without timeout', function (t) {
     clone.get(3, same(t, 'd'))
     clone.get(4, same(t, 'e'))
 
-    replicate(feed, clone, {live: true, timeout: false})
+    replicate(feed, clone, { live: true, timeout: false })
   })
 })
 
@@ -835,7 +835,7 @@ tape('replicate with NOISE disabled', function (t) {
   var feed = create()
   feed.append(['a', 'b', 'c'], function () {
     var clone = create(feed.key)
-    const stream = replicate(feed, clone, {live: false, noise: false, encrypted: false})
+    const stream = replicate(feed, clone, { live: false, noise: false, encrypted: false })
     clone.get(2, (err, data) => {
       t.error(err, 'no error')
       t.same(data.toString(), 'c')

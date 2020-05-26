@@ -129,7 +129,7 @@ function Feed (createStorage, key, opts) {
 
   this._codec = toCodec(opts.valueEncoding)
   this._sync = low(sync)
-  if (!this.sparse) this.download({start: 0, end: -1})
+  if (!this.sparse) this.download({ start: 0, end: -1 })
 
   if (this.sparse && opts.eagerUpdate) {
     this.update(function loop (err) {
@@ -213,7 +213,7 @@ Object.defineProperty(Feed.prototype, 'stats', {
 Feed.prototype.replicate = function (initiator, opts) {
   if ((!this._selections.length || this._selections[0].end !== -1) && !this.sparse && !(opts && opts.live)) {
     // hack!! proper fix is to refactor ./replicate to *not* clear our non-sparse selection
-    this.download({start: 0, end: -1})
+    this.download({ start: 0, end: -1 })
   }
 
   if (isOptions(initiator) && !opts) {
@@ -416,7 +416,7 @@ Feed.prototype._open = function (cb) {
     }
 
     self.discoveryKey = self.key && crypto.discoveryKey(self.key)
-    self._storage.open({key: self.key, discoveryKey: self.discoveryKey}, onopen)
+    self._storage.open({ key: self.key, discoveryKey: self.discoveryKey }, onopen)
   })
 
   function onopen (err, state) {
@@ -518,8 +518,8 @@ Feed.prototype._open = function (cb) {
 
 Feed.prototype.download = function (range, cb) {
   if (typeof range === 'function') return this.download(null, range)
-  if (typeof range === 'number') range = {start: range, end: range + 1}
-  if (Array.isArray(range)) range = {blocks: range}
+  if (typeof range === 'number') range = { start: range, end: range + 1 }
+  if (Array.isArray(range)) range = { blocks: range }
   if (!range) range = {}
   if (!cb) cb = noop
   if (!this.readable) return cb(new Error('Feed is closed'))
@@ -566,7 +566,7 @@ Feed.prototype.download = function (range, cb) {
 }
 
 Feed.prototype.undownload = function (range) {
-  if (typeof range === 'number') range = {start: range, end: range + 1}
+  if (typeof range === 'number') range = { start: range, end: range + 1 }
   if (!range) range = {}
 
   if (range.callback && range._index > -1) {
@@ -609,7 +609,7 @@ Feed.prototype.proof = function (index, opts, cb) {
   var signature = null
   var nodes = new Array(proof.nodes.length)
 
-  if (!pending) return cb(null, {nodes: nodes, signature: null})
+  if (!pending) return cb(null, { nodes: nodes, signature: null })
 
   for (var i = 0; i < proof.nodes.length; i++) {
     this._storage.getNode(proof.nodes[i], onnode)
@@ -632,7 +632,7 @@ Feed.prototype.proof = function (index, opts, cb) {
 
     if (--pending) return
     if (error) return cb(error)
-    cb(null, {nodes: nodes, signature: signature})
+    cb(null, { nodes: nodes, signature: signature })
   }
 }
 
@@ -710,7 +710,7 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
 
     // TODO: write to a tmp/update file that we want to del this incase it crashes will del'ing
 
-    self._unannounce({start: start, length: end - start})
+    self._unannounce({ start: start, length: end - start })
     if (opts.delete === false || self._indexing) return sync()
     if (byteOffset > -1) return onstartbytes(null, byteOffset)
     self._storage.dataOffset(start, [], onstartbytes)
@@ -1028,7 +1028,7 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
       }
       this.emit('download', index, data, from)
     }
-    if (this.peers.length) this._announce({start: index}, from)
+    if (this.peers.length) this._announce({ start: index }, from)
 
     if (!this.writable) {
       if (!this._synced) this._synced = this.bitfield.iterator(0, this.length)
@@ -1105,7 +1105,7 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
         if (err) return cb(err)
         if (!valid) return cb(new Error('Remote signature could not be verified'))
 
-        signature = {index: verifiedBy / 2 - 1, signature: proof.signature}
+        signature = { index: verifiedBy / 2 - 1, signature: proof.signature }
         write()
       })
     } else { // check tree root
@@ -1249,7 +1249,7 @@ Feed.prototype.getBatch = function (start, end, opts, cb) {
 
   if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
-  this.download({start: start, end: end}, function (err) {
+  this.download({ start: start, end: end }, function (err) {
     if (err) return cb(err)
     self._getBatch(start, end, opts, cb)
   })
@@ -1307,8 +1307,12 @@ Feed.prototype.createReadStream = function (opts) {
   var end = typeof opts.end === 'number' ? opts.end : -1
   var live = !!opts.live
   var snapshot = opts.snapshot !== false
+  var batch = opts.batch || 1
+  var batchEnd = 0
+  var batchLimit = 0
+
   var first = true
-  var range = this.download({start: start, end: end, linear: true})
+  var range = this.download({ start: start, end: end, linear: true })
 
   return from.obj(read).on('end', cleanup).on('close', cleanup)
 
@@ -1326,12 +1330,38 @@ Feed.prototype.createReadStream = function (opts) {
       first = false
     }
 
-    if (start === end || (end === -1 && start === self.length)) return cb(null, null)
+    if (start === end || (end === -1 && start === self.length)) {
+      return cb(null, null)
+    }
 
-    range.start++
-    if (range.iterator) range.iterator.start++
+    if (batch === 1) {
+      self.get(setStart(start + 1), opts, cb)
+      return
+    }
 
-    self.get(start++, opts, cb)
+    batchEnd = start + batch
+    batchLimit = end === Infinity ? self.length : end
+    if (batchEnd > batchLimit) {
+      batchEnd = batchLimit
+    }
+
+    if (!self.downloaded(start, batchEnd)) {
+      self.get(setStart(start + 1), opts, cb)
+      return
+    }
+
+    self.getBatch(setStart(batchEnd), batchEnd, opts, (err, result) => {
+      if (err || result.length === 0) {
+        cb(err)
+        return
+      }
+
+      var lastIdx = result.length - 1
+      for (var i = 0; i < lastIdx; i++) {
+        this.push(result[i])
+      }
+      cb(null, result[lastIdx])
+    })
   }
 
   function cleanup () {
@@ -1345,6 +1375,16 @@ Feed.prototype.createReadStream = function (opts) {
       if (err) return cb(err)
       read(size, cb)
     })
+  }
+
+  function setStart (value) {
+    var prevStart = start
+    start = value
+    range.start = start
+    if (range.iterator) {
+      range.iterator.start = start
+    }
+    return prevStart
   }
 }
 
@@ -1500,7 +1540,7 @@ Feed.prototype._append = function (batch, cb) {
     }
     self.emit('append')
 
-    var message = self.length - start > 1 ? {start: start, length: self.length - start} : {start: start}
+    var message = self.length - start > 1 ? { start: start, length: self.length - start } : { start: start }
     if (self.peers.length) self._announce(message)
 
     self._sync(null, cb)
@@ -1667,7 +1707,7 @@ function defaultStorage (dir) {
     try {
       var lock = name === 'bitfield' ? require('fd-lock') : null
     } catch (err) {}
-    return raf(name, {directory: dir, lock: lock})
+    return raf(name, { directory: dir, lock: lock })
   }
 }
 

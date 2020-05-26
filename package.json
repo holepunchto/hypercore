@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "dependencies": {
@@ -35,7 +35,7 @@
     "random-access-memory": "^3.1.0",
     "shuffle-array": "^1.0.1",
     "speedometer": "^1.0.0",
-    "standard": "^8.6.0",
+    "standard": "^14.3.4",
     "stream-collector": "^1.0.1",
     "tape": "^4.6.3"
   },

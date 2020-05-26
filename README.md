@@ -8,7 +8,7 @@ Built for sharing large datasets and streams of real time data as part of the [D
 npm install hypercore
 ```
 
-[![Build Status](https://travis-ci.org/mafintosh/hypercore.svg?branch=master)](https://travis-ci.org/mafintosh/hypercore)
+[![Build Status](https://travis-ci.org/hypercore-protocol/hypercore.svg?branch=master)](https://travis-ci.org/hypercore-protocol/hypercore)
 
 To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datprotocol/whitepaper/blob/master/dat-paper.pdf).
 
@@ -295,7 +295,8 @@ Options include:
   tail: false, // sets `start` to `feed.length`
   live: false, // set to true to keep reading forever
   timeout: 0, // timeout for each data event (0 means no timeout)
-  wait: true // wait for data to be downloaded
+  wait: true, // wait for data to be downloaded
+  batch: 1 // amount of messages to read in batch, increasing it (e.g. 100) can improve the performance reading
 }
 ```
 

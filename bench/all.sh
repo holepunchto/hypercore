@@ -26,6 +26,9 @@ run () {
   echo '> node read-64kb-blocks-linear.js'
   node read-64kb-blocks-linear.js
   echo
+  echo '> node read-64kb-blocks-linear-batch.js'
+  node read-64kb-blocks-linear-batch.js
+  echo
   echo '> node read-64kb-blocks-proof.js'
   node read-64kb-blocks-proof.js
   echo

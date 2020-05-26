@@ -15,7 +15,7 @@ tape('update', function (t) {
       t.end()
     })
 
-    feed.append([ 'hi', 'ho', 'hi', 'ho' ])
+    feed.append(['hi', 'ho', 'hi', 'ho'])
   })
 })
 
@@ -31,7 +31,7 @@ tape('disable eager update', function (t) {
       t.fail('should not update')
     })
 
-    feed.append([ 'hi', 'ho', 'hi', 'ho' ], function () {
+    feed.append(['hi', 'ho', 'hi', 'ho'], function () {
       setTimeout(() => t.end(), 50)
     })
   })
@@ -40,7 +40,7 @@ tape('disable eager update', function (t) {
 tape('update if available', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
@@ -56,7 +56,7 @@ tape('update if available', function (t) {
 tape('update if available (no peers)', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     const clone = create(feed.key, { sparse: true })
 
     clone.update({ ifAvailable: true }, function (err) {
@@ -70,7 +70,7 @@ tape('update if available (no peers)', function (t) {
 tape('update if available (no one has it)', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
@@ -86,7 +86,7 @@ tape('update if available (no one has it)', function (t) {
 tape('update if available through top-level option', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     const clone = create(feed.key, { sparse: true, ifAvailable: true })
 
     replicate(feed, clone, { live: true })
@@ -102,7 +102,7 @@ tape('update if available through top-level option', function (t) {
 tape('update with block data', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c', 'd' ], function () {
+  feed.append(['a', 'b', 'c', 'd'], function () {
     const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
@@ -117,7 +117,7 @@ tape('update with block data', function (t) {
 tape('update without hash option should not download block', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c' ], function () {
+  feed.append(['a', 'b', 'c'], function () {
     const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
@@ -138,7 +138,7 @@ tape('update without hash option should not download block', function (t) {
 tape('update with block data', function (t) {
   const feed = create()
 
-  feed.append([ 'a', 'b', 'c', 'd' ], function () {
+  feed.append(['a', 'b', 'c', 'd'], function () {
     const clone1 = create(feed.key, { sparse: true })
     const clone2 = create(feed.key, { sparse: true })
 

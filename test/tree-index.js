@@ -95,13 +95,13 @@ tape('proof without a digest', function (t) {
   t.same(index.proof(0), null)
 
   index.set(0)
-  t.same(index.proof(0), {nodes: [], verifiedBy: 2})
+  t.same(index.proof(0), { nodes: [], verifiedBy: 2 })
   index.set(2)
-  t.same(index.proof(0), {nodes: [2], verifiedBy: 4})
+  t.same(index.proof(0), { nodes: [2], verifiedBy: 4 })
   index.set(5)
-  t.same(index.proof(0), {nodes: [2, 5], verifiedBy: 8})
+  t.same(index.proof(0), { nodes: [2, 5], verifiedBy: 8 })
   index.set(8)
-  t.same(index.proof(0), {nodes: [2, 5, 8], verifiedBy: 10})
+  t.same(index.proof(0), { nodes: [2, 5, 8], verifiedBy: 10 })
 
   index = tree()
   index.set(10)
@@ -109,7 +109,7 @@ tape('proof without a digest', function (t) {
   index.set(13)
   index.set(3)
   index.set(17)
-  t.same(index.proof(10), {nodes: [8, 13, 3, 17], verifiedBy: 20})
+  t.same(index.proof(10), { nodes: [8, 13, 3, 17], verifiedBy: 20 })
 
   index = tree()
   index.set(7)
@@ -118,9 +118,9 @@ tape('proof without a digest', function (t) {
   index.set(21)
   index.set(25)
   index.set(28)
-  t.same(index.proof(16), {nodes: [18, 21, 7, 25, 28], verifiedBy: 30})
-  t.same(index.proof(18), {nodes: [16, 21, 7, 25, 28], verifiedBy: 30})
-  t.same(index.proof(17), {nodes: [21, 7, 25, 28], verifiedBy: 30})
+  t.same(index.proof(16), { nodes: [18, 21, 7, 25, 28], verifiedBy: 30 })
+  t.same(index.proof(18), { nodes: [16, 21, 7, 25, 28], verifiedBy: 30 })
+  t.same(index.proof(17), { nodes: [21, 7, 25, 28], verifiedBy: 30 })
 
   t.end()
 })
@@ -131,13 +131,13 @@ tape('proof with a digest', function (t) {
 
   index.set(0)
   index.set(2)
-  t.same(index.proof(0, {digest: 1}), {nodes: [], verifiedBy: 0})
+  t.same(index.proof(0, { digest: 1 }), { nodes: [], verifiedBy: 0 })
   index.set(5)
-  t.same(index.proof(0, {digest: parseInt('10', 2)}), {nodes: [5], verifiedBy: 8})
-  t.same(index.proof(0, {digest: parseInt('110', 2)}), {nodes: [], verifiedBy: 8})
+  t.same(index.proof(0, { digest: parseInt('10', 2) }), { nodes: [5], verifiedBy: 8 })
+  t.same(index.proof(0, { digest: parseInt('110', 2) }), { nodes: [], verifiedBy: 8 })
   index.set(8)
-  t.same(index.proof(0, {digest: parseInt('101', 2)}), {nodes: [2], verifiedBy: 0})
-  t.same(index.proof(0, {digest: parseInt('10', 2)}), {nodes: [5, 8], verifiedBy: 10})
+  t.same(index.proof(0, { digest: parseInt('101', 2) }), { nodes: [2], verifiedBy: 0 })
+  t.same(index.proof(0, { digest: parseInt('10', 2) }), { nodes: [5, 8], verifiedBy: 10 })
 
   index = tree()
   index.set(10)
@@ -145,10 +145,10 @@ tape('proof with a digest', function (t) {
   index.set(13)
   index.set(3)
   index.set(17)
-  t.same(index.proof(10, {digest: parseInt('1000001', 2)}), {nodes: [8, 13, 3, 17], verifiedBy: 20})
-  t.same(index.proof(10, {digest: parseInt('10001', 2)}), {nodes: [8, 13, 3], verifiedBy: 0})
-  t.same(index.proof(10, {digest: parseInt('1001', 2)}), {nodes: [8, 13], verifiedBy: 0})
-  t.same(index.proof(10, {digest: parseInt('1000', 2)}), {nodes: [8, 13, 17], verifiedBy: 20})
+  t.same(index.proof(10, { digest: parseInt('1000001', 2) }), { nodes: [8, 13, 3, 17], verifiedBy: 20 })
+  t.same(index.proof(10, { digest: parseInt('10001', 2) }), { nodes: [8, 13, 3], verifiedBy: 0 })
+  t.same(index.proof(10, { digest: parseInt('1001', 2) }), { nodes: [8, 13], verifiedBy: 0 })
+  t.same(index.proof(10, { digest: parseInt('1000', 2) }), { nodes: [8, 13, 17], verifiedBy: 20 })
 
   index = tree()
   index.set(7)
@@ -157,10 +157,10 @@ tape('proof with a digest', function (t) {
   index.set(21)
   index.set(25)
   index.set(28)
-  t.same(index.proof(16, {digest: 1}), {nodes: [], verifiedBy: 0})
-  t.same(index.proof(18, {digest: parseInt('100', 2)}), {nodes: [16, 7, 25, 28], verifiedBy: 30})
-  t.same(index.proof(18, {digest: parseInt('10', 2)}), {nodes: [21, 7, 25, 28], verifiedBy: 30})
-  t.same(index.proof(17, {digest: parseInt('101', 2)}), {nodes: [21], verifiedBy: 0})
+  t.same(index.proof(16, { digest: 1 }), { nodes: [], verifiedBy: 0 })
+  t.same(index.proof(18, { digest: parseInt('100', 2) }), { nodes: [16, 7, 25, 28], verifiedBy: 30 })
+  t.same(index.proof(18, { digest: parseInt('10', 2) }), { nodes: [21, 7, 25, 28], verifiedBy: 30 })
+  t.same(index.proof(17, { digest: parseInt('101', 2) }), { nodes: [21], verifiedBy: 0 })
 
   t.end()
 })
@@ -168,7 +168,7 @@ tape('proof with a digest', function (t) {
 tape('digest sanity checks', function (t) {
   var index = tree()
   index.set(0)
-  index.proof(0, {digest: 999999999999999})
+  index.proof(0, { digest: 999999999999999 })
   t.pass('huge digest did not crash')
   t.end()
 })
@@ -804,7 +804,7 @@ tape('chaos monkey randomized', function (t) {
 })
 
 function copy (block, from, to, t) {
-  var proof = from.proof(2 * block, {digest: to.digest(2 * block)})
+  var proof = from.proof(2 * block, { digest: to.digest(2 * block) })
   var i = 0
 
   if (proof.roots) {

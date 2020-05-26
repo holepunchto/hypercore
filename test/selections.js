@@ -55,7 +55,7 @@ tape('get after cancel', function (t) {
 tape('cancel download', function (t) {
   var feed = create()
 
-  feed.download({start: 0, end: 10}, function (err) {
+  feed.download({ start: 0, end: 10 }, function (err) {
     t.ok(err, 'expected error')
     t.end()
   })
@@ -68,7 +68,7 @@ tape('cancel download and get', function (t) {
 
   var feed = create()
 
-  feed.download({start: 1, end: 9}, function (err) {
+  feed.download({ start: 1, end: 9 }, function (err) {
     t.ok(err, 'expected error')
   })
 
@@ -86,7 +86,7 @@ tape('cancel download and get', function (t) {
 tape('cancel seek', function (t) {
   var feed = create()
 
-  feed.seek(10, {start: 0, end: 10}, function (err) {
+  feed.seek(10, { start: 0, end: 10 }, function (err) {
     t.ok(err, 'expected error')
     t.end()
   })

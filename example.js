@@ -1,6 +1,6 @@
 var hypercore = require('./')
 
-var feed = hypercore('./tmp', {valueEncoding: 'json'})
+var feed = hypercore('./tmp', { valueEncoding: 'json' })
 
 feed.append({
   hello: 'world'

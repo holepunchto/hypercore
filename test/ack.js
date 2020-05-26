@@ -6,8 +6,8 @@ tape('replicate with ack', function (t) {
   feed.on('ready', function () {
     var clone = create(feed.key)
 
-    var stream = feed.replicate(true, {live: true, ack: true})
-    stream.pipe(clone.replicate(false, {live: true})).pipe(stream)
+    var stream = feed.replicate(true, { live: true, ack: true })
+    stream.pipe(clone.replicate(false, { live: true })).pipe(stream)
 
     stream.once('duplex-channel', function () {
       feed.append(['a', 'b', 'c'])
@@ -35,7 +35,7 @@ tape('ack only when something is downloaded', function (t) {
       stream1.pipe(feed.replicate(false)).pipe(stream1)
     })
     stream1.on('end', function () {
-      feed.append([ 'd', 'e' ])
+      feed.append(['d', 'e'])
       // add 2 more records. only these should be ACK'd
       var acks = []
       var stream2 = feed.replicate(true, { ack: true })
@@ -285,22 +285,22 @@ tape('larger gossip network acks', function (t) {
       acks[key].sort(function (a, b) { return a - b })
     })
     t.deepEqual(acks, {
-      '0,1': [ 0, 1, 2 ],
-      '1,2': [ 0 ],
-      '0,5': [ 0, 1, 2, 3, 4, 5 ],
-      '5,2': [ 1, 2, 3, 4, 5 ],
-      '5,6': [ 0, 1, 2, 3, 4, 5 ],
-      '6,1': [ 3, 4, 5 ],
-      '2,4': [ 0, 1, 2, 3, 4, 5 ],
-      '0,7': [ 0, 1, 2, 3, 4, 5, 6, 7 ],
-      '7,4': [ 6, 7 ],
-      '4,5': [ 6, 7 ],
-      '5,8': [ 0, 1, 2, 3, 4, 5, 6, 7 ],
-      '0,8': [ 8, 9, 10 ],
-      '5,9': [ 0, 1, 2, 3, 4, 5, 6, 7 ],
-      '8,4': [ 8, 9, 10 ],
-      '0,9': [ 8, 9, 10, 11, 12, 13, 14 ],
-      '9,2': [ 6, 7, 8, 9, 10, 11, 12, 13, 14 ]
+      '0,1': [0, 1, 2],
+      '1,2': [0],
+      '0,5': [0, 1, 2, 3, 4, 5],
+      '5,2': [1, 2, 3, 4, 5],
+      '5,6': [0, 1, 2, 3, 4, 5],
+      '6,1': [3, 4, 5],
+      '2,4': [0, 1, 2, 3, 4, 5],
+      '0,7': [0, 1, 2, 3, 4, 5, 6, 7],
+      '7,4': [6, 7],
+      '4,5': [6, 7],
+      '5,8': [0, 1, 2, 3, 4, 5, 6, 7],
+      '0,8': [8, 9, 10],
+      '5,9': [0, 1, 2, 3, 4, 5, 6, 7],
+      '8,4': [8, 9, 10],
+      '0,9': [8, 9, 10, 11, 12, 13, 14],
+      '9,2': [6, 7, 8, 9, 10, 11, 12, 13, 14]
     })
   }
 })

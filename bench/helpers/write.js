@@ -6,7 +6,7 @@ var path = require('path')
 var bufferAlloc = require('buffer-alloc-unsafe')
 
 module.exports = function (dir, blockSize, count, finalize) {
-  var feed = hypercore(path.join(__dirname, '../cores', dir), {live: !finalize, overwrite: true})
+  var feed = hypercore(path.join(__dirname, '../cores', dir), { live: !finalize, overwrite: true })
 
   var then = Date.now()
   var buf = bufferAlloc(blockSize)

@@ -41,11 +41,11 @@ tape('value encoding write-stream', function (t) {
   })
 
   var ws = feed.createWriteStream()
-  ws.write([ 1, 2, 3 ])
+  ws.write([1, 2, 3])
   ws.end(function () {
     feed.get(0, function (err, val) {
       t.error(err, 'no error')
-      t.same(val, [ 1, 2, 3 ])
+      t.same(val, [1, 2, 3])
       t.end()
     })
   })
