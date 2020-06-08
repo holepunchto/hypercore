@@ -1511,6 +1511,9 @@ Feed.prototype._append = function (batch, cb) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
 
+    // the replication stream rejects frames >8MB for DOS defense. Is configurable there, so
+    // we could bubble that up here. For now just hardcode it so you can't accidentally "brick" your core
+    // note: this is *only* for individual blocks and is just a sanity check. most blocks are <1MB
     if (data.length > 8388608) return cb(new Error('Individual blocks has be less than 8MB'))
 
     offset += data.length
