@@ -1330,7 +1330,8 @@ Feed.prototype.createReadStream = function (opts) {
   var first = true
   var range = this.download({ start: start, end: end, linear: true })
 
-  return from.obj(read).on('end', cleanup).on('close', cleanup)
+  var stream = from.obj(read).on('end', cleanup).on('close', cleanup)
+  return stream
 
   function read (size, cb) {
     if (!self.opened) return open(size, cb)
@@ -1374,7 +1375,7 @@ Feed.prototype.createReadStream = function (opts) {
 
       var lastIdx = result.length - 1
       for (var i = 0; i < lastIdx; i++) {
-        this.push(result[i])
+        stream.push(result[i])
       }
       cb(null, result[lastIdx])
     })
