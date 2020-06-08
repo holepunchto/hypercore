@@ -4,6 +4,10 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.2.0
+
+- Add `maxBlockSize` on write streams to auto chunk big blocks being written.
+
 ## v9.1.0
 
 - Make peer.remoteOpened public ([#268](https://github.com/hypercore-protocol/hypercore/pull/268))
