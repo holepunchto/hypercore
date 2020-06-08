@@ -1290,11 +1290,27 @@ Feed.prototype._updatePeers = function () {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
 }
 
-Feed.prototype.createWriteStream = function () {
+Feed.prototype.createWriteStream = function (opts) {
   var self = this
+  var maxBlockSize = (opts && opts.maxBlockSize) || 0
   return bulk.obj(write)
 
   function write (batch, cb) {
+    if (maxBlockSize) {
+      for (let i = 0; i < batch.length; i++) {
+        let blk = batch[i]
+        if (blk.length > maxBlockSize) {
+          const chunked = []
+          while (blk.length > maxBlockSize) {
+            chunked.push(blk.slice(0, maxBlockSize))
+            blk = blk.slice(maxBlockSize)
+          }
+          if (blk.length) chunked.push(blk)
+          batch.splice(i, 1, ...chunked)
+          i += chunked.length - 1
+        }
+      }
+    }
     self.append(batch, cb)
   }
 }
@@ -1494,6 +1510,11 @@ Feed.prototype._append = function (batch, cb) {
   for (var i = 0; i < batch.length; i++) {
     var data = this._codec.encode(batch[i])
     var nodes = this._merkle.next(data)
+
+    // the replication stream rejects frames >8MB for DOS defense. Is configurable there, so
+    // we could bubble that up here. For now just hardcode it so you can't accidentally "brick" your core
+    // note: this is *only* for individual blocks and is just a sanity check. most blocks are <1MB
+    if (data.length > 8388608) return cb(new Error('Individual blocks has be less than 8MB'))
 
     offset += data.length
     dataBatch[i] = data
