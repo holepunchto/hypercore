@@ -300,9 +300,16 @@ Options include:
 }
 ```
 
-#### `var stream = feed.createWriteStream()`
+#### `var stream = feed.createWriteStream(opts)`
 
 Create a writable stream.
+Options include:
+
+```
+{
+  maxBlockSize: Infinity // set this to auto chunk individual blocks if they are larger than this number
+}
+```
 
 #### `var stream = feed.replicate(isInitiator, [options])`
 
