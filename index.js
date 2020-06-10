@@ -1183,10 +1183,13 @@ Feed.prototype.downloaded = function (start, end) {
   return this.bitfield.total(start, end)
 }
 
-Feed.prototype.has = function (start, end) {
+Feed.prototype.has = function (start, end, cb) {
+  if (typeof end === 'function') return this.has(start, undefined, end)
   if (end === undefined) return this.bitfield.get(start)
   var total = end - start
-  return total === this.bitfield.total(start, end)
+  const res = total === this.bitfield.total(start, end)
+  if (cb) process.nextTick(cb, null, res)
+  return res
 }
 
 Feed.prototype.head = function (opts, cb) {
