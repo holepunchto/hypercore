@@ -677,6 +677,7 @@ Feed.prototype._cancel = function (start, end) {
         remove(this._waiting, i)
         this._reserved.set(w.index, false)
         if (w.callback) process.nextTick(w.callback, new Error('Request cancelled'))
+        this._updatePeers()
         return
       }
     }
