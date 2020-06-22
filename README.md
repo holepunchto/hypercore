@@ -119,7 +119,7 @@ Append a block of data to the feed.
 
 Callback is called with `(err, seq)` when all data has been written at the returned `seq` number or error will be not `null`.
 
-#### `feed.get(index, [options], callback)`
+#### `const id = feed.get(index, [options], callback)`
 
 Get a block of data.
 If the data is not available locally this method will prioritize and wait for the data to be downloaded before calling the callback.
@@ -148,6 +148,10 @@ Get a range of blocks efficiently. End index is non-inclusive. Options include
 }
 ```
 
+#### `feed.cancel(getId)`
+
+Cancel a pending get.
+
 #### `feed.head([options], callback)`
 
 Get the block of data at the tip of the feed. This will be the most recently
@@ -155,7 +159,7 @@ appended block.
 
 Accepts the same `options` as `feed.get()`.
 
-#### `feed.download([range], [callback])`
+#### `const id = feed.download([range], [callback])`
 
 Download a range of data. Callback is called when all data has been downloaded.
 A range can have the following properties:
@@ -181,7 +185,7 @@ If you have an array of blocks you want to get downloaded you also also pass tha
 }
 ```
 
-#### `feed.undownload(range)`
+#### `feed.undownload(downloadId)`
 
 Cancel a previous download request.
 

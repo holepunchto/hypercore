@@ -457,3 +457,19 @@ tape('writes are batched', function (t) {
     })
   })
 })
+
+tape('cancel get', function (t) {
+  var feed = create()
+  var cancelled = false
+
+  const get = feed.get(42, function (err) {
+    t.ok(cancelled, 'was cancelled')
+    t.ok(err, 'had error')
+    t.end()
+  })
+
+  setImmediate(function () {
+    cancelled = true
+    feed.cancel(get)
+  })
+})

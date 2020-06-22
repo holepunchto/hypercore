@@ -650,13 +650,15 @@ Feed.prototype.put = function (index, data, proof, cb) {
 }
 
 Feed.prototype.cancel = function (start, end) { // TODO: use same argument scheme as download
-  if (!end) end = start + 1
+  if (typeof start !== 'symbol') {
+    if (!end) end = start + 1
 
-  // cancel these right away as .download does not wait for ready
-  for (var i = this._selections.length - 1; i >= 0; i--) {
-    var sel = this._selections[i]
-    if (start <= sel.start && sel.end <= end) {
-      this.undownload(sel)
+    // cancel these right away as .download does not wait for ready
+    for (var i = this._selections.length - 1; i >= 0; i--) {
+      var sel = this._selections[i]
+      if (start <= sel.start && sel.end <= end) {
+        this.undownload(sel)
+      }
     }
   }
 
@@ -667,6 +669,19 @@ Feed.prototype.cancel = function (start, end) { // TODO: use same argument schem
 
 Feed.prototype._cancel = function (start, end) {
   var i = 0
+
+  if (typeof start === 'symbol') {
+    for (i = this._waiting.length - 1; i >= 0; i--) {
+      const w = this._waiting[i]
+      if (w.options.cancel === start) {
+        remove(this._waiting, i)
+        this._reserved.set(w.index, false)
+        if (w.callback) process.nextTick(w.callback, new Error('Request cancelled'))
+        return
+      }
+    }
+    return
+  }
 
   for (i = start; i < end; i++) {
     this._reserved.set(i, false) // TODO: send cancel message if set returns true
@@ -1213,10 +1228,18 @@ Feed.prototype.head = function (opts, cb) {
 
 Feed.prototype.get = function (index, opts, cb) {
   if (typeof opts === 'function') return this.get(index, null, opts)
-  if (!this.opened) return this._readyAndGet(index, opts, cb)
-  if (!this.readable) return process.nextTick(cb, new Error('Feed is closed'))
 
-  if (opts && opts.timeout) cb = timeoutCallback(cb, opts.timeout)
+  opts = { ...opts }
+  if (!opts.cancel) opts.cancel = Symbol('hypercore-get')
+
+  if (!this.opened) return this._readyAndGet(index, opts, cb)
+
+  if (!this.readable) {
+    process.nextTick(cb, new Error('Feed is closed'))
+    return opts.cancel
+  }
+
+  if (opts.timeout) cb = timeoutCallback(cb, opts.timeout)
 
   if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return process.nextTick(cb, new Error('Block not downloaded'))
@@ -1227,13 +1250,14 @@ Feed.prototype.get = function (index, opts, cb) {
     if (opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : this._alwaysIfAvailable) this._ifAvailableGet(w)
 
     this._updatePeers()
-    return
+    return opts.cancel
   }
 
   if (opts && opts.valueEncoding) cb = wrapCodec(toCodec(opts.valueEncoding), cb)
   else if (this._codec !== codecs.binary) cb = wrapCodec(this._codec, cb)
 
   this._getBuffer(index, cb)
+  return opts.cancel
 }
 
 Feed.prototype._readyAndGet = function (index, opts, cb) {
@@ -1242,6 +1266,7 @@ Feed.prototype._readyAndGet = function (index, opts, cb) {
     if (err) return cb(err)
     self.get(index, opts, cb)
   })
+  return opts.cancel
 }
 
 Feed.prototype.getBatch = function (start, end, opts, cb) {
