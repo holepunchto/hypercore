@@ -4,6 +4,10 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.3.0
+
+- feed.get returns an id, that can be used to cancel a pending get with feed.cancel(getId)
+
 ## v9.2.0
 
 - Add `maxBlockSize` on write streams to auto chunk big blocks being written.
