@@ -1251,6 +1251,11 @@ Feed.prototype.get = function (index, opts, cb) {
     if (opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : this._alwaysIfAvailable) this._ifAvailableGet(w)
 
     this._updatePeers()
+    if (opts.onwait) {
+      const onwait = opts.onwait
+      opts.onwait = null
+      onwait()
+    }
     return opts.cancel
   }
 

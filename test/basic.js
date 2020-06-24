@@ -473,3 +473,27 @@ tape('cancel get', function (t) {
     feed.cancel(get)
   })
 })
+
+tape('onwait', function (t) {
+  t.plan(2)
+
+  var feed = create()
+
+  feed.append('a', function () {
+    feed.get(0, {
+      onwait () {
+        t.fail('no onwait')
+      }
+    }, function () {
+      t.ok('should call cb')
+    })
+
+    feed.get(42, {
+      onwait () {
+        t.ok('should wait')
+      }
+    }, function () {
+      t.fail('no cb')
+    })
+  })
+})
