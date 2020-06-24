@@ -4,6 +4,10 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.4.0
+
+- feed.get accepts onwait hook, that is called if get is waiting for a network peer.
+
 ## v9.3.0
 
 - feed.get returns an id, that can be used to cancel a pending get with feed.cancel(getId)
