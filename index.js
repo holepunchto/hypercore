@@ -1254,7 +1254,7 @@ Feed.prototype.get = function (index, opts, cb) {
     if (opts.onwait) {
       const onwait = opts.onwait
       opts.onwait = null
-      onwait()
+      onwait(index)
     }
     return opts.cancel
   }
