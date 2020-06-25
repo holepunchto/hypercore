@@ -1195,8 +1195,10 @@ Feed.prototype._unannounce = function (message) {
   for (var i = 0; i < this.peers.length; i++) this.peers[i].unhave(message)
 }
 
-Feed.prototype.downloaded = function (start, end) {
-  return this.bitfield.total(start, end)
+Feed.prototype.downloaded = function (start, end, cb) {
+  const count = this.bitfield.total(start, end)
+  if (cb) process.nextTick(cb, null, count) // prepare async interface for this
+  return count
 }
 
 Feed.prototype.has = function (start, end, cb) {
