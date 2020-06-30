@@ -4,6 +4,10 @@ See [UPGRADE.md](UPGRADE.md) for notes on breaking changes for downstream develo
 
 ## Current
 
+## v9.5.0
+
+- Feed close makes the replication detach the channel used for this particular stream.
+
 ## v9.4.0
 
 - feed.get accepts onwait hook, that is called if get is waiting for a network peer.
