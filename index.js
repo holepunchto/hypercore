@@ -1484,6 +1484,11 @@ Feed.prototype.destroyStorage = function (cb) {
 
 Feed.prototype._close = function (cb) {
   const self = this
+
+  for (const peer of this.peers) {
+    if (!peer._destroyed) peer._close()
+  }
+
   this._forceClose(onclose, null)
 
   function onclose (err) {
