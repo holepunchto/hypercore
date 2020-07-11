@@ -163,6 +163,7 @@ function Feed (createStorage, key, opts) {
 inherits(Feed, Nanoresource)
 
 Feed.discoveryKey = crypto.discoveryKey
+Feed.codecs = toCodec
 
 Feed.prototype[inspect] = function (depth, opts) {
   var indent = ''

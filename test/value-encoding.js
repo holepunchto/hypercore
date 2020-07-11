@@ -1,5 +1,7 @@
 var tape = require('tape')
 var create = require('./helpers/create')
+var hypercore = require('../')
+var codecs = require('codecs')
 
 tape('basic value encoding', function (t) {
   var feed = create({
@@ -49,4 +51,9 @@ tape('value encoding write-stream', function (t) {
       t.end()
     })
   })
+})
+
+tape('value encoding is exposed', function (t) {
+  t.equals(hypercore.codecs('json'), codecs('ndjson'))
+  t.end()
 })

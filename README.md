@@ -101,6 +101,8 @@ Per default hypercore uses [random-access-file](https://github.com/mafintosh/ran
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) instance.
 
+Using `hypercore.codecs(codec)` you can manually lookup the `abstract-encoding` for a given input.
+
 __Note:__ The `[key]` and `secretKey` are _Node.js_ buffer instances, not browser-based ArrayBuffer instances. When creating hypercores in browser, if you pass an ArrayBuffer instance, you will get an error similar to `key must be at least 16, was given undefined`. Instead, create a Node.js Buffer instance using [Feross‘s](https://github.com/feross) [buffer](https://github.com/feross/buffer) module (`npm install buffer`). e.g.,
 
 ```javascript
