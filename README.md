@@ -2,7 +2,7 @@
 
 Hypercore is a secure, distributed append-only log.
 
-Built for sharing large datasets and streams of real time data as part of the [Dat project](https://datproject.org).
+Built for sharing large datasets and streams of real time data as part of the [Dat project](https://dat.foundation).
 
 ``` sh
 npm install hypercore
@@ -18,7 +18,7 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 * **Realtime.** Get the latest updates to the log fast and securely.
 * **Performant.** Uses a simple flat file structure to maximize I/O performance.
 * **Secure.** Uses signed merkle trees to verify log integrity in real time.
-* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
+* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/random-access-storage/random-access-memory)) that works in the browser
 
 Note that the latest release is Hypercore 8, which is not compatible with Hypercore 7 on the wire format, but storage compatible.
 
@@ -58,7 +58,7 @@ Create a new hypercore feed.
 var feed = hypercore('./directory') // store data in ./directory
 ```
 
-Alternatively you can pass a function instead that is called with every filename hypercore needs to function and return your own [random-access](https://github.com/juliangruber/abstract-random-access) instance that is used to store the data.
+Alternatively you can pass a function instead that is called with every filename hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
 
 ``` js
 var ram = require('random-access-memory')
@@ -71,7 +71,7 @@ var feed = hypercore(function (filename) {
 })
 ```
 
-Per default hypercore uses [random-access-file](https://github.com/mafintosh/random-access-file). This is also useful if you want to store specific files in other directories. For example you might want to store the secret key elsewhere.
+Per default hypercore uses [random-access-file](https://github.com/random-access-storage/random-access-file). This is also useful if you want to store specific files in other directories. For example you might want to store the secret key elsewhere.
 
 `key` can be set to a hypercore feed public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
 
@@ -538,8 +538,8 @@ Hypercore works really well with a series of other modules. This in a non-exhaus
 
 * [Hyperswarm](https://github.com/hyperswarm/hyperswarm) - P2P swarming module that can you share Hypercores over a network.
 * [Hyperswarm replicator](https://github.com/hyperswarm/replicator) - Wanna share a single Hypercore without any hastle over a network?
-* [Hyperdrive](https://github.com/mafintosh/hyperdrive) - Filesystem abstraction built on Hypercores
-* [Hypertrie](https://github.com/mafintosh/hypertrie) - Scalable key/value store built on Hypercores
+* [Hyperdrive](https://github.com/hypercore-protocol/hyperdrive) - Filesystem abstraction built on Hypercores
+* [Hypertrie](https://github.com/hypercore-protocol/hypertrie) - Scalable key/value store built on Hypercores
 
 ## License
 
