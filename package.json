@@ -14,7 +14,7 @@
     "from2": "^2.3.0",
     "hypercore-cache": "^1.0.1",
     "hypercore-crypto": "^2.0.0",
-    "hypercore-protocol": "^8.0.2",
+    "hypercore-protocol": "^8.0.3",
     "inherits": "^2.0.3",
     "inspect-custom-symbol": "^1.1.0",
     "last-one-wins": "^1.0.4",

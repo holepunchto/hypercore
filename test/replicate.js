@@ -852,7 +852,7 @@ tape('replicate and close through stream', function (t) {
 
   feed.append(['a', 'b', 'c'], function () {
     clone = create(feed.key)
-    streams = [feed.replicate(true, { live: true}), clone.replicate(false, { live: true })]
+    streams = [feed.replicate(true, { live: true }), clone.replicate(false, { live: true })]
     streams[0].pipe(streams[1]).pipe(streams[0])
     streams[0].on('error', () => {})
     streams[1].on('error', () => {})
