@@ -845,6 +845,29 @@ tape('replicate with NOISE disabled', function (t) {
   })
 })
 
+tape('replicate and close through stream', function (t) {
+  var feed = create()
+  var streams
+  var clone
+
+  feed.append(['a', 'b', 'c'], function () {
+    clone = create(feed.key)
+    streams = [feed.replicate(true, { live: true}), clone.replicate(false, { live: true })]
+    streams[0].pipe(streams[1]).pipe(streams[0])
+    streams[0].on('error', () => {})
+    streams[1].on('error', () => {})
+  })
+
+  feed.once('peer-open', function () {
+    streams[0].close(feed.discoveryKey)
+    streams[0].destroy()
+    streams[0].on('close', function () {
+      t.same(feed.peers.length, 0)
+      t.end()
+    })
+  })
+})
+
 tape('download blocks', function (t) {
   var feed = create()
 
