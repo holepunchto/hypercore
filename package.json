@@ -14,7 +14,7 @@
     "from2": "^2.3.0",
     "hypercore-cache": "^1.0.1",
     "hypercore-crypto": "^2.0.0",
-    "hypercore-protocol": "^8.0.4",
+    "hypercore-protocol": "^8.0.5",
     "inherits": "^2.0.3",
     "inspect-custom-symbol": "^1.1.0",
     "last-one-wins": "^1.0.4",
@@ -25,7 +25,7 @@
     "pretty-hash": "^1.0.1",
     "random-access-file": "^2.1.0",
     "sparse-bitfield": "^3.0.0",
-    "timeout-refresh": "^1.0.1",
+    "timeout-refresh": "^1.0.3",
     "uint64be": "^2.0.1",
     "unordered-array-remove": "^1.0.2",
     "unordered-set": "^2.0.0"
