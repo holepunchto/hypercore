@@ -309,6 +309,37 @@ Feed.prototype.setExpectedLength = function (len) {
   })
 }
 
+// Beware! This might break your core if you share forks with other people through replication
+Feed.prototype.truncate = function (newLength, cb) {
+  if (!cb) cb = noop
+  const self = this
+
+  this.ready(function (err) {
+    if (err) return cb(err)
+
+    self._roots(newLength, function (err, roots) {
+      if (err) return cb(err)
+
+      const oldLength = self.length
+      if (oldLength <= newLength) return cb(null)
+
+      let byteLength = 0
+      for (const { size } of roots) byteLength += size
+
+      for (let i = oldLength; i < newLength; i++) self.data.set(i, false)
+      self.byteLength = byteLength
+      self.length = newLength
+      self.tree.truncate(2 * newLength)
+      self._merkle = merkle(crypto, roots)
+
+      self._sync(null, function (err) {
+        if (err) return cb(err)
+        self._storage.deleteSignatures(newLength, oldLength, cb)
+      })
+    })
+  })
+}
+
 Feed.prototype._ifAvailable = function (w, minLength) {
   var cb = w.callback
   var called = false
