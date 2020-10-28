@@ -446,14 +446,17 @@ tape('writes are batched', function (t) {
 
   ws.write('ab')
   ws.write('cd')
-  ws.write('ef')
-  ws.end(function () {
-    t.deepEquals(trackingRam.log.data, [
-      { write: [0, Buffer.from('ab')] },
-      { write: [2, Buffer.from('cdef')] }
-    ])
-    feed.close(function () {
-      t.end()
+  setImmediate(function () {
+    ws.write('ef')
+    ws.write('gh')
+    ws.end(function () {
+      t.deepEquals(trackingRam.log.data, [
+        { write: [0, Buffer.from('abcd')] },
+        { write: [4, Buffer.from('efgh')] }
+      ])
+      feed.close(function () {
+        t.end()
+      })
     })
   })
 })
