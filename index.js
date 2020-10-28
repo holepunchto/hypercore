@@ -1,10 +1,8 @@
 var low = require('last-one-wins')
 var remove = require('unordered-array-remove')
 var set = require('unordered-set')
-var merkle = require('merkle-tree-stream/generator')
+var MerkleGenerator = require('merkle-tree-stream/generator')
 var flat = require('flat-tree')
-var bulk = require('bulk-write-stream')
-var from = require('from2')
 var codecs = require('codecs')
 var batcher = require('atomic-batcher')
 var inherits = require('inherits')
@@ -22,6 +20,7 @@ var replicate = require('./lib/replicate')
 var Protocol = require('hypercore-protocol')
 var Message = require('abstract-extension')
 var Nanoresource = require('nanoresource/emitter')
+var { WriteStream, ReadStream } = require('hypercore-streams')
 
 class Extension extends Message {
   broadcast (message) {
@@ -330,7 +329,7 @@ Feed.prototype.truncate = function (newLength, cb) {
       self.byteLength = byteLength
       self.length = newLength
       self.tree.truncate(2 * newLength)
-      self._merkle = merkle(crypto, roots)
+      self._merkle = new MerkleGenerator(crypto, roots)
 
       self._sync(null, function (err) {
         if (err) return cb(err)
@@ -417,7 +416,7 @@ Feed.prototype._reloadMerkleState = function (cb) {
 
   this._roots(self.length, function (err, roots) {
     if (err) return cb(err)
-    self._merkle = merkle(crypto, roots)
+    self._merkle = new MerkleGenerator(crypto, roots)
     cb(null)
   })
 }
@@ -537,7 +536,7 @@ Feed.prototype._open = function (cb) {
 
         if (err) return self._forceClose(cb, err)
 
-        self._merkle = merkle(crypto, roots)
+        self._merkle = new MerkleGenerator(crypto, roots)
         self.byteLength = roots.reduce(addSize, 0)
         self.emit('ready')
 
@@ -1362,118 +1361,11 @@ Feed.prototype._updatePeers = function () {
 }
 
 Feed.prototype.createWriteStream = function (opts) {
-  var self = this
-  var maxBlockSize = (opts && opts.maxBlockSize) || 0
-  return bulk.obj(write)
-
-  function write (batch, cb) {
-    if (maxBlockSize) {
-      for (let i = 0; i < batch.length; i++) {
-        let blk = batch[i]
-        if (blk.length > maxBlockSize) {
-          const chunked = []
-          while (blk.length > maxBlockSize) {
-            chunked.push(blk.slice(0, maxBlockSize))
-            blk = blk.slice(maxBlockSize)
-          }
-          if (blk.length) chunked.push(blk)
-          batch.splice(i, 1, ...chunked)
-          i += chunked.length - 1
-        }
-      }
-    }
-    self.append(batch, cb)
-  }
+  return new WriteStream(this, opts)
 }
 
 Feed.prototype.createReadStream = function (opts) {
-  if (!opts) opts = {}
-
-  var self = this
-  var start = opts.start || 0
-  var end = typeof opts.end === 'number' ? opts.end : -1
-  var live = !!opts.live
-  var snapshot = opts.snapshot !== false
-  var batch = opts.batch || 1
-  var batchEnd = 0
-  var batchLimit = 0
-
-  var first = true
-  var range = this.download({ start: start, end: end, linear: true })
-
-  var stream = from.obj(read).on('end', cleanup).on('close', cleanup)
-  return stream
-
-  function read (size, cb) {
-    if (!self.opened) return open(size, cb)
-    if (!self.readable) return cb(new Error('Feed is closed'))
-
-    if (first) {
-      if (end === -1) {
-        if (live) end = Infinity
-        else if (snapshot) end = self.length
-        if (start > end) return cb(null, null)
-      }
-      if (opts.tail) start = self.length
-      first = false
-    }
-
-    if (start === end || (end === -1 && start === self.length)) {
-      return cb(null, null)
-    }
-
-    if (batch === 1) {
-      self.get(setStart(start + 1), opts, cb)
-      return
-    }
-
-    batchEnd = start + batch
-    batchLimit = end === Infinity ? self.length : end
-    if (batchEnd > batchLimit) {
-      batchEnd = batchLimit
-    }
-
-    if (!self.downloaded(start, batchEnd)) {
-      self.get(setStart(start + 1), opts, cb)
-      return
-    }
-
-    self.getBatch(setStart(batchEnd), batchEnd, opts, (err, result) => {
-      if (err || result.length === 0) {
-        cb(err)
-        return
-      }
-
-      var lastIdx = result.length - 1
-      for (var i = 0; i < lastIdx; i++) {
-        stream.push(result[i])
-      }
-      cb(null, result[lastIdx])
-    })
-  }
-
-  function cleanup () {
-    if (!range) return
-    self.undownload(range)
-    range = null
-  }
-
-  function open (size, cb) {
-    self.ready(function (err) {
-      if (err) return cb(err)
-      read(size, cb)
-    })
-  }
-
-  function setStart (value) {
-    var prevStart = start
-    start = value
-    range.start = start
-    if (range.iterator) {
-      range.iterator.start = start
-    }
-    return prevStart
-  }
+  return new ReadStream(this, opts)
 }
 
 // TODO: when calling finalize on a live feed write an END_OF_FEED block (length === 0?)

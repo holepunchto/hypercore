@@ -119,7 +119,9 @@ function test (batch = 1) {
         t.fail('should never end')
       })
 
-      feed.append(['c', 'd', 'e'])
+      setImmediate(function () {
+        feed.append(['c', 'd', 'e'])
+      })
     })
   })
 }
