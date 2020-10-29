@@ -8,7 +8,7 @@ Built for sharing large datasets and streams of real time data as part of the [D
 npm install hypercore
 ```
 
-[![Build Status](https://travis-ci.org/hypercore-protocol/hypercore.svg?branch=master)](https://travis-ci.org/hypercore-protocol/hypercore)
+[![Build Status](https://github.com/hypercore-protocol/hypercore/workflows/Build%20Status/badge.svg)](https://github.com/hypercore-protocol/hypercore/actions?query=workflow%3A%22Build+Status%22)
 
 To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datprotocol/whitepaper/blob/master/dat-paper.pdf).
 
