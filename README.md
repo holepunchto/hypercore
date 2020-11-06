@@ -288,33 +288,11 @@ Call this with `false` to make the feed stop uploading to other peers.
 
 #### `var stream = feed.createReadStream([options])`
 
-Create a readable stream of data.
-
-Options include:
-
-``` js
-{
-  start: 0, // read from this index
-  end: feed.length, // read until this index
-  snapshot: true, // if set to false it will update `end` to `feed.length` on every read
-  tail: false, // sets `start` to `feed.length`
-  live: false, // set to true to keep reading forever
-  timeout: 0, // timeout for each data event (0 means no timeout)
-  wait: true, // wait for data to be downloaded
-  batch: 1 // amount of messages to read in batch, increasing it (e.g. 100) can improve the performance reading
-}
-```
+Shortcut for `var stream = new require('hypercore-streams').Readable(feed, opts)`, see [usage](https://github.com/hypercore-protocol/hypercore-streams#usage).
 
 #### `var stream = feed.createWriteStream(opts)`
 
-Create a writable stream.
-Options include:
-
-```
-{
-  maxBlockSize: Infinity // set this to auto chunk individual blocks if they are larger than this number
-}
-```
+Shortcut for `var stream = new require('hypercore-streams').Writable(feed, opts)`, see [usage](https://github.com/hypercore-protocol/hypercore-streams#usage).
 
 #### `var stream = feed.replicate(isInitiator, [options])`
 
