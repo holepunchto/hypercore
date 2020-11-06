@@ -36,7 +36,6 @@
     "shuffle-array": "^1.0.1",
     "speedometer": "^1.0.0",
     "standard": "^14.3.4",
-    "stream-collector": "^1.0.1",
     "tape": "^4.6.3"
   },
   "optionalDependencies": {

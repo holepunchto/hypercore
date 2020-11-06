@@ -1,5 +1,4 @@
 var create = require('./helpers/create')
-var createTrackingRam = require('./helpers/create-tracking-ram')
 var crypto = require('hypercore-crypto')
 var tape = require('tape')
 var hypercore = require('../')
@@ -299,40 +298,6 @@ tape('close, emitter and callback', function (t) {
   })
 })
 
-tape('close calls pending callbacks', function (t) {
-  t.plan(5)
-
-  var feed = create()
-
-  feed.createReadStream({ live: true })
-    .once('error', function (err) {
-      t.ok(err, 'read stream errors')
-    })
-    .resume()
-
-  feed.get(0, function (err) {
-    t.ok(err, 'get errors')
-  })
-
-  feed.once('close', function () {
-    t.pass('close emitted')
-  })
-
-  feed.ready(function () {
-    feed.close(function () {
-      feed.createReadStream({ live: true })
-        .once('error', function (err) {
-          t.ok(err, 'read stream still errors')
-        })
-        .resume()
-
-      feed.get(0, function (err) {
-        t.ok(err, 'get still errors')
-      })
-    })
-  })
-})
-
 tape('get batch', function (t) {
   t.plan(2 * 3)
 
@@ -383,82 +348,6 @@ tape('append returns the seq', function (t) {
     storage[name] = ram()
     return storage[name]
   }
-})
-
-tape('append and createWriteStreams preserve seq', function (t) {
-  var feed = create()
-
-  var ws = feed.createWriteStream()
-
-  ws.write('a')
-  ws.write('b')
-  ws.write('c')
-  ws.end(function () {
-    t.same(feed.length, 3)
-    feed.append('d', function (err, seq) {
-      t.error(err)
-      t.same(seq, 3)
-      t.same(feed.length, 4)
-
-      var ws1 = feed.createWriteStream()
-
-      ws1.write('e')
-      ws1.write('f')
-      ws1.end(function () {
-        feed.append('g', function (err, seq) {
-          t.error(err)
-          t.same(seq, 6)
-          t.same(feed.length, 7)
-          t.end()
-        })
-      })
-    })
-  })
-})
-
-tape('closing all streams on close', function (t) {
-  var memories = {}
-  var feed = hypercore(function (filename) {
-    var memory = memories[filename]
-    if (!memory) {
-      memory = ram()
-      memories[filename] = memory
-    }
-    return memory
-  })
-  var expectedFiles = ['key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures']
-  feed.ready(function () {
-    t.deepEquals(Object.keys(memories), expectedFiles, 'all files are open')
-    feed.close(function () {
-      expectedFiles.forEach(function (filename) {
-        var memory = memories[filename]
-        t.ok(memory.closed, filename + ' is closed')
-      })
-      t.end()
-    })
-  })
-})
-
-tape('writes are batched', function (t) {
-  var trackingRam = createTrackingRam()
-  var feed = hypercore(trackingRam)
-  var ws = feed.createWriteStream()
-
-  ws.write('ab')
-  ws.write('cd')
-  setImmediate(function () {
-    ws.write('ef')
-    ws.write('gh')
-    ws.end(function () {
-      t.deepEquals(trackingRam.log.data, [
-        { write: [0, Buffer.from('abcd')] },
-        { write: [4, Buffer.from('efgh')] }
-      ])
-      feed.close(function () {
-        t.end()
-      })
-    })
-  })
 })
 
 tape('cancel get', function (t) {
