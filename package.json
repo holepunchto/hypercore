@@ -22,5 +22,8 @@
   "dependencies": {
     "binary-message-stream": "^1.0.2",
     "flat-tree": "^1.7.0"
+  },
+  "devDependencies": {
+    "@hyperswarm/replicator": "^1.8.0"
   }
 }
