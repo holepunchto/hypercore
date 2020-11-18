@@ -1,0 +1,26 @@
+{
+  "name": "omega",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mafintosh/omega.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/mafintosh/omega/issues"
+  },
+  "homepage": "https://github.com/mafintosh/omega#readme",
+  "dependencies": {
+    "binary-message-stream": "^1.0.2",
+    "flat-tree": "^1.7.0"
+  }
+}
