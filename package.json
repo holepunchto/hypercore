@@ -21,7 +21,10 @@
   "homepage": "https://github.com/mafintosh/omega#readme",
   "dependencies": {
     "binary-message-stream": "^1.0.2",
-    "flat-tree": "^1.7.0"
+    "flat-tree": "^1.7.0",
+    "hypercore-crypto": "^2.1.1",
+    "random-access-file": "^2.1.4",
+    "uint64le": "^1.0.0"
   },
   "devDependencies": {
     "@hyperswarm/replicator": "^1.8.0"
