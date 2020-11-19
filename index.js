@@ -95,6 +95,18 @@ module.exports = class Omega {
     this.opened = true
   }
 
+  async update () {
+
+  }
+
+  async seek (bytes) {
+    if (this.opened === false) await this.opening
+
+    const s = this.tree.seek(bytes)
+
+    return (await s.update()) || this.replicator.seek(s)
+  }
+
   async get (index) {
     if (this.opened === false) await this.opening
 
@@ -105,6 +117,7 @@ module.exports = class Omega {
     if (this.opened === false) await this.opening
 
     if (!Array.isArray(datas)) datas = [datas]
+    if (!datas.length) return
 
     const b = this.tree.batch()
     const all = []
