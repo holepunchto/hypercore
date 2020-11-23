@@ -107,6 +107,11 @@ module.exports = class Omega {
     return (await s.update()) || this.replicator.seek(s)
   }
 
+  async has (index) {
+    if (this.opened === false) await this.opening
+    return this.bitfield.get(index)
+  }
+
   async get (index) {
     if (this.opened === false) await this.opening
 
