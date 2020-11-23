@@ -1,13 +1,10 @@
 {
   "name": "omega",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.0",
+  "description": "The Omega",
   "main": "index.js",
-  "directories": {
-    "lib": "lib"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "standard && tape test/*.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +24,8 @@
     "uint64le": "^1.0.0"
   },
   "devDependencies": {
-    "@hyperswarm/replicator": "^1.8.0"
+    "@hyperswarm/replicator": "^1.8.0",
+    "standard": "^16.0.3",
+    "tape": "^5.0.1"
   }
 }
