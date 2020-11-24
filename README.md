@@ -512,11 +512,11 @@ Emitted when the feed is ready and all properties have been populated.
 
 Emitted when the feed experiences a critical error.
 
-#### `feed.on('download', index, data)`
+#### `feed.on('download', index, data, byteLength)`
 
 Emitted when a data block has been downloaded.
 
-#### `feed.on('upload', index, data)`
+#### `feed.on('upload', index, data, byteLength)`
 
 Emitted when a data block is going to be uploaded.
 

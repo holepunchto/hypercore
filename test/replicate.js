@@ -459,6 +459,35 @@ tape('allow push', function (t) {
   })
 })
 
+tape('download/upload event params', function (t) {
+  t.plan(13)
+
+  var feed = create()
+
+  feed.on('ready', function () {
+    var clone = create(feed.key)
+
+    var items = ['a', 'b', 'c']
+
+    clone.on('download', function (seq, data, byteLength) {
+      t.same(items[seq], data.toString('utf8'), 'expected data')
+      t.same(byteLength, 1, 'expected byte length')
+    })
+
+    feed.on('upload', function (seq, data, byteLength) {
+      t.same(items[seq], data.toString('utf8'), 'expected data')
+      t.same(byteLength, 1, 'expected byte length')
+    })
+
+    feed.append(items)
+
+    replicate(feed, clone, { live: true })
+    clone.download({ start: 0, end: 3 }, function (err) {
+      t.ok(!err, 'no error')
+    })
+  })
+})
+
 tape('shared stream, non live', function (t) {
   var a = create()
   var b = create()

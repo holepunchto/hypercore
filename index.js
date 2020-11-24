@@ -1072,7 +1072,7 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
         this._stats.downloadedBlocks += 1
         this._stats.downloadedBytes += data.length
       }
-      this.emit('download', index, data, from)
+      this.emit('download', index, data, data.length)
     }
     if (this.peers.length) this._announce({ start: index }, from)
 
