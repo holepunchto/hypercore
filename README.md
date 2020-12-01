@@ -2,7 +2,7 @@
 
 Hypercore is a secure, distributed append-only log.
 
-Built for sharing large datasets and streams of real time data as part of the [Dat project](https://dat.foundation).
+Built for sharing large datasets and streams of real time data as part of the [Hypercore Protocol](https://hypercore-protocol.org).
 
 ``` sh
 npm install hypercore
