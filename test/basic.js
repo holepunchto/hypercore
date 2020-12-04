@@ -26,7 +26,7 @@ tape('basic clone', async function (t) {
   await core.append('a')
   await core.append('world')
 
-  const p = await core.proof({ block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 3 }})
+  const p = await core.proof({ block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 3 } })
 
   await clone.verify(p)
 
