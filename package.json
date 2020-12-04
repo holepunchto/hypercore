@@ -17,10 +17,12 @@
   },
   "homepage": "https://github.com/mafintosh/omega#readme",
   "dependencies": {
+    "big-sparse-array": "^1.0.2",
     "binary-message-stream": "^1.0.2",
     "flat-tree": "^1.7.0",
     "hypercore-crypto": "^2.1.1",
     "random-access-file": "^2.1.4",
+    "random-array-iterator": "^1.0.0",
     "uint64le": "^1.0.0"
   },
   "devDependencies": {

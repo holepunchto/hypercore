@@ -117,18 +117,23 @@ module.exports = class Omega extends EventEmitter {
 
     const s = this.tree.seek(bytes)
 
-    return (await s.update()) || this.replicator.seek(s)
+    return (await s.update()) || this.replicator.requestSeek(s)
   }
 
   async has (index) {
     if (this.opened === false) await this.opening
+
     return this.bitfield.get(index)
   }
 
   async get (index) {
     if (this.opened === false) await this.opening
 
-    return this.bitfield.get(index) ? this.blocks.get(index) : this.replicator.get(index)
+    return this.bitfield.get(index) ? this.blocks.get(index) : this.replicator.requestBlock(index)
+  }
+
+  download (range) {
+    return this.replicator.requestRange(range.start, range.end, !!range.linear)
   }
 
   async append (datas) {
@@ -158,7 +163,10 @@ module.exports = class Omega extends EventEmitter {
 
     await this.bitfield.flush()
 
-    this.replicator.update()
+    // TODO: should just be one broadcast
+    for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
+      this.replicator.broadcastBlock(i)
+    }
   }
 }
 
