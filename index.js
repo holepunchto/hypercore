@@ -129,7 +129,6 @@ module.exports = class Omega {
 
     for (const data of datas) {
       const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
-      this.bitfield.set()
       b.append(buf)
       all.push(buf)
     }
