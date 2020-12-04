@@ -218,6 +218,47 @@ tape('proof seek with upgrade', async function (t) {
   t.end()
 })
 
+tape('verify proof #1', async function (t) {
+  const tree = await create(10)
+  const clone = await create()
+
+  const p = await tree.proof({
+    block: { index: 3 },
+    upgrade: { start: 0, length: 10 }
+  })
+
+  const b = clone.batch()
+  await b.verify(p)
+  b.commit()
+
+  t.same(clone.length, tree.length)
+  t.same(clone.byteLength, tree.byteLength)
+  t.same(await clone.byteOffset(6), await tree.byteOffset(6))
+  t.same(await clone.get(6), await tree.get(6))
+
+  t.end()
+})
+
+tape('verify proof #2', async function (t) {
+  const tree = await create(10)
+  const clone = await create()
+
+  const p = await tree.proof({
+    seek: { bytes: 10 },
+    upgrade: { start: 0, length: 10 }
+  })
+
+  const b = clone.batch()
+  await b.verify(p)
+  b.commit()
+
+  t.same(clone.length, tree.length)
+  t.same(clone.byteLength, tree.byteLength)
+  t.same(await clone.byteRange(10), await tree.byteRange(10))
+
+  t.end()
+})
+
 async function create (length = 0) {
   const tree = await Tree.open(ram())
   const b = tree.batch()
