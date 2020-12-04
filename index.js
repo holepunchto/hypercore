@@ -1492,8 +1492,7 @@ Feed.prototype._append = function (batch, cb) {
 
   if (!this._indexing) {
     pending++
-    if (dataBatch.length === 1) this._storage.data.write(this.byteLength, dataBatch[0], done)
-    else this._storage.data.write(this.byteLength, Buffer.concat(dataBatch), done)
+    this._storage.putDataBatch(self.length, dataBatch, { byteOffset: this.byteLength }, done)
   }
 
   this._storage.putNodeBatch(nodeOffset, nodeBatch, done)
