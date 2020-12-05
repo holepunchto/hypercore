@@ -6,7 +6,6 @@ var flat = require('flat-tree')
 var codecs = require('codecs')
 var batcher = require('atomic-batcher')
 var inherits = require('inherits')
-var raf = require('random-access-file')
 var bitfield = require('./lib/bitfield')
 var sparseBitfield = require('sparse-bitfield')
 var treeIndex = require('./lib/tree-index')
@@ -50,9 +49,6 @@ module.exports = Feed
 function Feed (createStorage, key, opts) {
   if (!(this instanceof Feed)) return new Feed(createStorage, key, opts)
   Nanoresource.call(this)
-
-  if (typeof createStorage === 'string') createStorage = defaultStorage(createStorage)
-  if (typeof createStorage !== 'function') throw new Error('Storage should be a function or string')
 
   if (typeof key === 'string') key = Buffer.from(key, 'hex')
 
@@ -1672,15 +1668,6 @@ function addSize (size, node) {
 
 function isBlock (index) {
   return (index & 1) === 0
-}
-
-function defaultStorage (dir) {
-  return function (name) {
-    try {
-      var lock = name === 'bitfield' ? require('fd-lock') : null
-    } catch (err) {}
-    return raf(name, { directory: dir, lock: lock })
-  }
 }
 
 function toCodec (enc) {
