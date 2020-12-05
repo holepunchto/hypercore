@@ -738,8 +738,6 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
   // so internally we should make sure to only do that. We should use the merkle tree for this
 
   var self = this
-  var byteOffset = start === 0 ? 0 : (typeof opts.byteOffset === 'number' ? opts.byteOffset : -1)
-  var byteLength = typeof opts.byteLength === 'number' ? opts.byteLength : -1
 
   this.ready(function (err) {
     if (err) return cb(err)
@@ -758,26 +756,11 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
 
     self._unannounce({ start: start, length: end - start })
     if (opts.delete === false || self._indexing) return sync()
-    if (byteOffset > -1) return onstartbytes(null, byteOffset)
-    self._storage.dataOffset(start, [], onstartbytes)
+    self._storage.clearData(start, end, opts, sync)
 
     function sync () {
       self.emit('clear', start, end)
       self._sync(null, cb)
-    }
-
-    function onstartbytes (err, offset) {
-      if (err) return cb(err)
-      byteOffset = offset
-      if (byteLength > -1) return onendbytes(null, byteLength + byteOffset)
-      if (end === self.length) return onendbytes(null, self.byteLength)
-      self._storage.dataOffset(end, [], onendbytes)
-    }
-
-    function onendbytes (err, end) {
-      if (err) return cb(err)
-      if (!self._storage.data.del) return sync() // Not all data storage impls del
-      self._storage.data.del(byteOffset, end - byteOffset, sync)
     }
   })
 }
