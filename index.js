@@ -96,7 +96,7 @@ function Feed (createStorage, key, opts) {
   this._storeSecretKey = opts.storeSecretKey !== false
   this._alwaysIfAvailable = !!opts.ifAvailable
   this._merkle = null
-  this._storage = storage(createStorage, opts)
+  this._storage = opts.storage || storage(createStorage, opts)
   this._batch = batcher(this._onwrite ? workHook : work)
 
   this.timeouts = opts.timeouts || {
