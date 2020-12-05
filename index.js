@@ -1,3 +1,4 @@
+const { EventEmitter } = require('events')
 const raf = require('random-access-file')
 const MerkleTree = require('./lib/merkle-tree')
 const BlockStore = require('./lib/block-store')
@@ -6,8 +7,10 @@ const Replicator = require('./lib/replicator')
 
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
-module.exports = class Omega {
+module.exports = class Omega extends EventEmitter {
   constructor (storage) {
+    super()
+
     this.storage = defaultStorage(storage)
     this.tree = null
     this.blocks = null
@@ -61,8 +64,11 @@ module.exports = class Omega {
     return p
   }
 
-  async verify (response) {
+  async verify (response, peer) {
     if (this.opened === false) await this.opening
+
+    const len = this.tree.length
+    let downloaded = false
 
     const b = this.tree.batch()
     await b.verify(response)
@@ -72,7 +78,8 @@ module.exports = class Omega {
     b.commit()
 
     const { block } = response
-    if (block && block.value) {
+    if (block && block.value && !this.bitfield.get(block.index)) {
+      downloaded = true
       await this.blocks.put(block.index, block.value)
     }
 
@@ -83,7 +90,13 @@ module.exports = class Omega {
       await this.bitfield.flush()
     }
 
-    this.replicator.update()
+    if (downloaded) {
+      this.emit('download', block.index, block.value, peer)
+    }
+
+    if (this.tree.length !== len) {
+      this.emit('append')
+    }
   }
 
   async ready () {
