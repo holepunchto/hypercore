@@ -31,6 +31,8 @@
   },
   "devDependencies": {
     "buffer-from": "^1.1.1",
+    "d3-format": "^2.0.0",
+    "globby": "^11.0.1",
     "nyc": "^14.1.1",
     "random-access-memory": "^3.1.0",
     "shuffle-array": "^1.0.1",
