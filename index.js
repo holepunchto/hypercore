@@ -510,8 +510,8 @@ Feed.prototype._open = function (cb) {
         (self._overwrite ? 1 : 0)
       var error = null
 
-      if (shouldWriteKey) self._storage.key.write(0, self.key, done)
       if (shouldWriteSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
+      if (shouldWriteKey) self._storage.writeKey(self.key, done)
 
       if (self._overwrite) {
         self._storage.bitfield.del(32, Infinity, done)
@@ -1374,7 +1374,7 @@ Feed.prototype.finalize = function (cb) {
     this.key = crypto.tree(this._merkle.roots)
     this.discoveryKey = crypto.discoveryKey(this.key)
   }
-  this._storage.key.write(0, this.key, cb)
+  this._storage.writeKey(this.key, cb)
 }
 
 Feed.prototype.append = function (batch, cb) {
