@@ -136,6 +136,10 @@ module.exports = class Omega extends EventEmitter {
     return this.replicator.requestRange(range.start, range.end, !!range.linear)
   }
 
+  undownload (range) {
+    range.destroy(null)
+  }
+
   async append (datas) {
     if (this.opened === false) await this.opening
 
