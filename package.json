@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@hyperswarm/replicator": "^1.8.0",
+    "range-parser": "^1.2.1",
     "standard": "^16.0.3",
     "tape": "^5.0.1"
   }
