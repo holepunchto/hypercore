@@ -5,12 +5,14 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 
+const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
 module.exports = class Omega extends EventEmitter {
   constructor (storage) {
     super()
 
+    this[promises] = true
     this.storage = defaultStorage(storage)
     this.tree = null
     this.blocks = null
