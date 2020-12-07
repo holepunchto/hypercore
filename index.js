@@ -111,7 +111,8 @@ module.exports = class Omega extends EventEmitter {
   }
 
   async update () {
-
+    if (this.opened === false) await this.opening
+    return this.replicator.requestUpgrade()
   }
 
   async seek (bytes) {
