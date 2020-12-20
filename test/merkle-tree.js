@@ -259,6 +259,38 @@ tape('verify proof #2', async function (t) {
   t.end()
 })
 
+tape('upgrade edgecase when no roots need upgrade', async function (t) {
+  const tree = await create(4)
+  const clone = await create()
+
+  {
+    const proof = await tree.proof({
+      upgrade: { start: 0, length: 4 }
+    })
+
+    const b = clone.batch()
+    await b.verify(proof)
+    b.commit()
+  }
+
+  const b = tree.batch()
+  await b.append(Buffer.from('#5'))
+  b.commit()
+
+  {
+    const proof = await tree.proof({
+      upgrade: { start: 4, length: 1 }
+    })
+
+    const b = clone.batch()
+    await b.verify(proof)
+    b.commit()
+  }
+
+  t.same(tree.length, 5)
+  t.end()
+})
+
 async function create (length = 0) {
   const tree = await Tree.open(ram())
   const b = tree.batch()
