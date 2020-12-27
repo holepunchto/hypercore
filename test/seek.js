@@ -1,9 +1,9 @@
-var create = require('./helpers/create')
-var tape = require('tape')
-var replicate = require('./helpers/replicate')
+const create = require('./helpers/create')
+const tape = require('tape')
+const replicate = require('./helpers/replicate')
 
 tape('seek to byte offset', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append(['hello', 'how', 'are', 'you', 'doing', '?'])
 
@@ -20,7 +20,7 @@ tape('seek to byte offset', function (t) {
 tape('seek twice', function (t) {
   t.plan(6)
 
-  var feed = create()
+  const feed = create()
 
   feed.append(['hello', 'how', 'are', 'you', 'doing', '?'])
 
@@ -42,7 +42,7 @@ tape('seek twice', function (t) {
 tape('seek many times', function (t) {
   t.plan(12)
 
-  var feed = create()
+  const feed = create()
 
   feed.append(['foo', 'b', 'ar', 'baz'], function () {
     feed.seek(0, function (err, index, offset) {
@@ -74,7 +74,7 @@ tape('seek many times', function (t) {
 tape('seek waits', function (t) {
   t.plan(6)
 
-  var feed = create()
+  const feed = create()
 
   feed.seek(9, function (err, index, offset) {
     t.error(err, 'no error')
@@ -94,10 +94,10 @@ tape('seek waits', function (t) {
 })
 
 tape('seek works for sparse trees', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append('aa', function () {
-    var clone = create(feed.key, { sparse: true })
+    const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
 
@@ -126,7 +126,7 @@ tape('seek works for sparse trees', function (t) {
 tape('seek to sibling', function (t) {
   t.plan(9)
 
-  var feed = create()
+  const feed = create()
 
   feed.append(['aa', 'aa'], function () {
     feed.seek(2, function (err, index, offset) { // sibling seek
@@ -150,7 +150,7 @@ tape('seek to sibling', function (t) {
 tape('seek to 0 and byteLength', function (t) {
   t.plan(6)
 
-  var feed = create()
+  const feed = create()
 
   feed.append(['a', 'b', 'c'], function () {
     feed.seek(0, function (err, index, offset) {
@@ -168,10 +168,10 @@ tape('seek to 0 and byteLength', function (t) {
 })
 
 tape('seek ifAvailable', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append(['a', 'b', 'c'], function () {
-    var clone = create(feed.key, { sparse: true })
+    const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
 
@@ -188,11 +188,11 @@ tape('seek ifAvailable', function (t) {
 })
 
 tape('seek ifAvailable multiple peers', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append(['a', 'b', 'c'], function () {
-    var clone1 = create(feed.key, { sparse: true })
-    var clone2 = create(feed.key, { sparse: true })
+    const clone1 = create(feed.key, { sparse: true })
+    const clone2 = create(feed.key, { sparse: true })
 
     replicate(feed, clone1, { live: true })
     replicate(clone1, clone2, { live: true })
@@ -212,12 +212,12 @@ tape('seek ifAvailable multiple peers', function (t) {
 })
 
 tape('seek ifAvailable with many inflight requests', function (t) {
-  var feed = create()
+  const feed = create()
 
-  var arr = new Array(100).fill('a')
+  const arr = new Array(100).fill('a')
 
   feed.append(arr, function () {
-    var clone = create(feed.key, { sparse: true })
+    const clone = create(feed.key, { sparse: true })
 
     replicate(feed, clone, { live: true })
 

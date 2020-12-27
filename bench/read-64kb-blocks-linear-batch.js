@@ -1,11 +1,11 @@
-var path = require('path')
-var hypercore = require('../')
+const path = require('path')
+const hypercore = require('../')
 
-var feed = hypercore(path.join(__dirname, 'cores/64kb'))
+const feed = hypercore(path.join(__dirname, 'cores/64kb'))
 
-var then = Date.now()
-var size = 0
-var cnt = 0
+const then = Date.now()
+let size = 0
+let cnt = 0
 
 feed.createReadStream({ batch: 100 })
   .on('data', function (data) {

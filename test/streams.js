@@ -1,16 +1,16 @@
-var tape = require('tape')
-var collect = require('stream-collector')
-var create = require('./helpers/create')
-var bufferFrom = require('buffer-from')
+const tape = require('tape')
+const collect = require('stream-collector')
+const create = require('./helpers/create')
+const bufferFrom = require('buffer-from')
 
 function test (batch = 1) {
   tape('createReadStream to createWriteStream', function (t) {
-    var feed1 = create()
-    var feed2 = create()
+    const feed1 = create()
+    const feed2 = create()
 
     feed1.append(['hello', 'world'], function () {
-      var r = feed1.createReadStream({ batch })
-      var w = feed2.createWriteStream()
+      const r = feed1.createReadStream({ batch })
+      const w = feed2.createWriteStream()
 
       r.pipe(w).on('finish', function () {
         collect(feed2.createReadStream({ batch }), function (err, data) {
@@ -23,7 +23,7 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with start, end', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
+    const feed = create({ valueEncoding: 'utf-8' })
 
     feed.append(['hello', 'multiple', 'worlds'], function () {
       collect(feed.createReadStream({ start: 1, end: 2, batch }), function (err, data) {
@@ -35,7 +35,7 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with start, no end', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
+    const feed = create({ valueEncoding: 'utf-8' })
 
     feed.append(['hello', 'multiple', 'worlds'], function () {
       collect(feed.createReadStream({ start: 1, batch }), function (err, data) {
@@ -47,7 +47,7 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with no start, end', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
+    const feed = create({ valueEncoding: 'utf-8' })
 
     feed.append(['hello', 'multiple', 'worlds'], function () {
       collect(feed.createReadStream({ end: 2, batch }), function (err, data) {
@@ -59,12 +59,12 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with live: true', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
-    var expected = ['a', 'b', 'c', 'd', 'e']
+    const feed = create({ valueEncoding: 'utf-8' })
+    const expected = ['a', 'b', 'c', 'd', 'e']
 
     t.plan(expected.length)
 
-    var rs = feed.createReadStream({ live: true, batch })
+    const rs = feed.createReadStream({ live: true, batch })
 
     rs.on('data', function (data) {
       t.same(data, expected.shift())
@@ -82,13 +82,13 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with live: true after append', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
-    var expected = ['a', 'b', 'c', 'd', 'e']
+    const feed = create({ valueEncoding: 'utf-8' })
+    const expected = ['a', 'b', 'c', 'd', 'e']
 
     t.plan(expected.length)
 
     feed.append(['a', 'b'], function () {
-      var rs = feed.createReadStream({ live: true, batch })
+      const rs = feed.createReadStream({ live: true, batch })
 
       rs.on('data', function (data) {
         t.same(data, expected.shift())
@@ -103,13 +103,13 @@ function test (batch = 1) {
   })
 
   tape('createReadStream with live: true and tail: true', function (t) {
-    var feed = create({ valueEncoding: 'utf-8' })
-    var expected = ['c', 'd', 'e']
+    const feed = create({ valueEncoding: 'utf-8' })
+    const expected = ['c', 'd', 'e']
 
     t.plan(expected.length)
 
     feed.append(['a', 'b'], function () {
-      var rs = feed.createReadStream({ live: true, tail: true, batch })
+      const rs = feed.createReadStream({ live: true, tail: true, batch })
 
       rs.on('data', function (data) {
         t.same(data, expected.shift())
@@ -129,9 +129,9 @@ function test (batch = 1) {
 tape('createWriteStream with maxBlockSize', function (t) {
   t.plan(11 * 2 + 1)
 
-  var feed = create()
+  const feed = create()
 
-  var ws = feed.createWriteStream({ maxBlockSize: 100 * 1024 })
+  const ws = feed.createWriteStream({ maxBlockSize: 100 * 1024 })
 
   ws.write(Buffer.alloc(1024 * 1024))
   ws.end(function () {

@@ -1,26 +1,26 @@
-var low = require('last-one-wins')
-var remove = require('unordered-array-remove')
-var set = require('unordered-set')
-var MerkleGenerator = require('merkle-tree-stream/generator')
-var flat = require('flat-tree')
-var codecs = require('codecs')
-var batcher = require('atomic-batcher')
-var inherits = require('inherits')
-var raf = require('random-access-file')
-var bitfield = require('./lib/bitfield')
-var sparseBitfield = require('sparse-bitfield')
-var treeIndex = require('./lib/tree-index')
-var storage = require('./lib/storage')
-var crypto = require('hypercore-crypto')
-var inspect = require('inspect-custom-symbol')
-var pretty = require('pretty-hash')
-var Nanoguard = require('nanoguard')
-var safeBufferEquals = require('./lib/safe-buffer-equals')
-var replicate = require('./lib/replicate')
-var Protocol = require('hypercore-protocol')
-var Message = require('abstract-extension')
-var Nanoresource = require('nanoresource/emitter')
-var { WriteStream, ReadStream } = require('hypercore-streams')
+const low = require('last-one-wins')
+const remove = require('unordered-array-remove')
+const set = require('unordered-set')
+const MerkleGenerator = require('merkle-tree-stream/generator')
+const flat = require('flat-tree')
+const codecs = require('codecs')
+const batcher = require('atomic-batcher')
+const inherits = require('inherits')
+const raf = require('random-access-file')
+const bitfield = require('./lib/bitfield')
+const sparseBitfield = require('sparse-bitfield')
+const treeIndex = require('./lib/tree-index')
+const storage = require('./lib/storage')
+const crypto = require('hypercore-crypto')
+const inspect = require('inspect-custom-symbol')
+const pretty = require('pretty-hash')
+const Nanoguard = require('nanoguard')
+const safeBufferEquals = require('./lib/safe-buffer-equals')
+const replicate = require('./lib/replicate')
+const Protocol = require('hypercore-protocol')
+const Message = require('abstract-extension')
+const Nanoresource = require('nanoresource/emitter')
+const { WriteStream, ReadStream } = require('hypercore-streams')
 
 class Extension extends Message {
   broadcast (message) {
@@ -36,7 +36,7 @@ class Extension extends Message {
   }
 }
 
-var defaultCrypto = {
+const defaultCrypto = {
   keyPair: crypto.keyPair,
   sign (data, sk, cb) {
     return cb(null, crypto.sign(data, sk))
@@ -64,9 +64,9 @@ function Feed (createStorage, key, opts) {
 
   if (!opts) opts = {}
 
-  var self = this
+  const self = this
 
-  var secretKey = opts.secretKey || null
+  let secretKey = opts.secretKey || null
   if (typeof secretKey === 'string') secretKey = Buffer.from(secretKey, 'hex')
 
   this.noiseKeyPair = opts.noiseKeyPair || Protocol.keyPair()
@@ -164,7 +164,7 @@ inherits(Feed, Nanoresource)
 Feed.discoveryKey = crypto.discoveryKey
 
 Feed.prototype[inspect] = function (depth, opts) {
-  var indent = ''
+  let indent = ''
   if (typeof opts.indentationLvl === 'number') {
     while (indent.length < opts.indentationLvl) indent += ' '
   }
@@ -184,9 +184,9 @@ Feed.prototype[inspect] = function (depth, opts) {
 Object.defineProperty(Feed.prototype, 'remoteLength', {
   enumerable: true,
   get: function () {
-    var len = 0
-    for (var i = 0; i < this.peers.length; i++) {
-      var remoteLength = this.peers[i].remoteLength
+    let len = 0
+    for (let i = 0; i < this.peers.length; i++) {
+      const remoteLength = this.peers[i].remoteLength
       if (remoteLength > len) len = remoteLength
     }
     return len
@@ -197,9 +197,9 @@ Object.defineProperty(Feed.prototype, 'stats', {
   enumerable: true,
   get: function () {
     if (!this._stats) return null
-    var peerStats = []
-    for (var i = 0; i < this.peers.length; i++) {
-      var peer = this.peers[i]
+    const peerStats = []
+    for (let i = 0; i < this.peers.length; i++) {
+      const peer = this.peers[i]
       peerStats[i] = peer.stats
     }
     return {
@@ -224,7 +224,7 @@ Feed.prototype.replicate = function (initiator, opts) {
   opts.stats = !!this._stats
   opts.noise = !(opts.noise === false && opts.encrypted === false)
 
-  var stream = replicate(this, initiator, opts)
+  const stream = replicate(this, initiator, opts)
   this.emit('replicating', stream)
   return stream
 }
@@ -265,8 +265,8 @@ Feed.prototype.update = function (opts, cb) {
   if (!opts) opts = {}
   if (!cb) cb = noop
 
-  var self = this
-  var len = typeof opts.minLength === 'number' ? opts.minLength : -1
+  const self = this
+  let len = typeof opts.minLength === 'number' ? opts.minLength : -1
 
   this.ready(function (err) {
     if (err) return cb(err)
@@ -275,7 +275,7 @@ Feed.prototype.update = function (opts, cb) {
 
     if (self.writable) cb = self._writeStateReloader(cb)
 
-    var w = {
+    const w = {
       hash: opts.hash !== false,
       bytes: 0,
       index: len - 1,
@@ -340,9 +340,9 @@ Feed.prototype.truncate = function (newLength, cb) {
 }
 
 Feed.prototype._ifAvailable = function (w, minLength) {
-  var cb = w.callback
-  var called = false
-  var self = this
+  const cb = w.callback
+  let called = false
+  const self = this
 
   w.callback = done
   w.ifAvailable = true
@@ -365,16 +365,16 @@ Feed.prototype._ifAvailable = function (w, minLength) {
     if (called) return
     called = true
 
-    var i = self._waiting.indexOf(w)
+    const i = self._waiting.indexOf(w)
     if (i > -1) remove(self._waiting, i)
     cb(err)
   }
 }
 
 Feed.prototype._ifAvailableGet = function (w) {
-  var cb = w.callback
-  var called = false
-  var self = this
+  const cb = w.callback
+  let called = false
+  const self = this
 
   w.callback = done
 
@@ -384,8 +384,8 @@ Feed.prototype._ifAvailableGet = function (w) {
     process.nextTick(readyNT, self.ifAvailable, function () {
       if (self.closed) return done(new Error('Closed'))
 
-      for (var i = 0; i < self.peers.length; i++) {
-        var peer = self.peers[i]
+      for (let i = 0; i < self.peers.length; i++) {
+        const peer = self.peers[i]
         if (peer.remoteBitfield.get(w.index)) return
       }
       done(new Error('Block not available from peers'))
@@ -396,7 +396,7 @@ Feed.prototype._ifAvailableGet = function (w) {
     if (called) return
     called = true
 
-    var i = self._waiting.indexOf(w)
+    const i = self._waiting.indexOf(w)
     if (i > -1) remove(self._waiting, i)
     cb(err, data)
   }
@@ -404,7 +404,7 @@ Feed.prototype._ifAvailableGet = function (w) {
 
 // will reload the writable state. used by .update on a writable peer
 Feed.prototype._writeStateReloader = function (cb) {
-  var self = this
+  const self = this
   return function (err) {
     if (err) return cb(err)
     self._reloadMerkleState(cb)
@@ -412,7 +412,7 @@ Feed.prototype._writeStateReloader = function (cb) {
 }
 
 Feed.prototype._reloadMerkleState = function (cb) {
-  var self = this
+  const self = this
 
   this._roots(self.length, function (err, roots) {
     if (err) return cb(err)
@@ -429,9 +429,9 @@ Feed.prototype._reloadMerkleStateBeforeAppend = function (work, values, cb) {
 }
 
 Feed.prototype._open = function (cb) {
-  var self = this
-  var generatedKey = false
-  var retryOpen = true
+  const self = this
+  let generatedKey = false
+  let retryOpen = true
 
   // TODO: clean up the duplicate code below ...
 
@@ -439,7 +439,7 @@ Feed.prototype._open = function (cb) {
     if (key && !self._overwrite && !self.key) self.key = key
 
     if (!self.key && self.live) {
-      var keyPair = self.crypto.keyPair()
+      const keyPair = self.crypto.keyPair()
       self.secretKey = keyPair.secretKey
       self.key = keyPair.publicKey
       generatedKey = true
@@ -485,12 +485,12 @@ Feed.prototype._open = function (cb) {
       }
 
       if (!self.key && self.live) {
-        var keyPair = self.crypto.keyPair()
+        const keyPair = self.crypto.keyPair()
         self.secretKey = keyPair.secretKey
         self.key = keyPair.publicKey
       }
 
-      var writable = !!self.secretKey || self.key === null
+      const writable = !!self.secretKey || self.key === null
 
       if (!writable && self.writable) return self._forceClose(cb, new Error('Feed is not writable'))
       self.writable = writable
@@ -501,14 +501,14 @@ Feed.prototype._open = function (cb) {
         self._storeSecretKey = false
       }
 
-      var shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
-      var shouldWriteSecretKey = self._storeSecretKey && (generatedKey || !safeBufferEquals(self.secretKey, state.secretKey))
+      const shouldWriteKey = generatedKey || !safeBufferEquals(self.key, state.key)
+      const shouldWriteSecretKey = self._storeSecretKey && (generatedKey || !safeBufferEquals(self.secretKey, state.secretKey))
 
-      var missing = 1 +
+      let missing = 1 +
         (shouldWriteKey ? 1 : 0) +
         (shouldWriteSecretKey ? 1 : 0) +
         (self._overwrite ? 1 : 0)
-      var error = null
+      let error = null
 
       if (shouldWriteKey) self._storage.key.write(0, self.key, done)
       if (shouldWriteSecretKey) self._storage.secretKey.write(0, self.secretKey, done)
@@ -560,10 +560,10 @@ Feed.prototype.download = function (range, cb) {
   // We need range.start, end for the want messages so make sure to infer these
   // when blocks are passed and start,end is not set
   if (range.blocks && typeof range.start !== 'number') {
-    var min = -1
-    var max = 0
+    let min = -1
+    let max = 0
 
-    for (var i = 0; i < range.blocks.length; i++) {
+    for (let i = 0; i < range.blocks.length; i++) {
       const blk = range.blocks[i]
       if (min === -1 || blk < min) min = blk
       if (blk >= max) max = blk + 1
@@ -573,7 +573,7 @@ Feed.prototype.download = function (range, cb) {
     range.end = max
   }
 
-  var sel = {
+  const sel = {
     _index: this._selections.length,
     hash: !!range.hash,
     iterator: null,
@@ -605,13 +605,13 @@ Feed.prototype.undownload = function (range) {
     return
   }
 
-  var start = range.start || 0
-  var end = range.end || -1
-  var hash = !!range.hash
-  var linear = !!range.linear
+  const start = range.start || 0
+  const end = range.end || -1
+  const hash = !!range.hash
+  const linear = !!range.linear
 
-  for (var i = 0; i < this._selections.length; i++) {
-    var s = this._selections[i]
+  for (let i = 0; i < this._selections.length; i++) {
+    const s = this._selections[i]
 
     if (s.start === start && s.end === end && s.hash === hash && s.linear === linear) {
       set.remove(this._selections, s)
@@ -630,18 +630,18 @@ Feed.prototype.proof = function (index, opts, cb) {
   if (!this.opened) return this._readyAndProof(index, opts, cb)
   if (!opts) opts = {}
 
-  var proof = this.tree.proof(2 * index, opts)
+  const proof = this.tree.proof(2 * index, opts)
   if (!proof) return cb(new Error('No proof available for this index'))
 
-  var needsSig = this.live && !!proof.verifiedBy
-  var pending = proof.nodes.length + (needsSig ? 1 : 0)
-  var error = null
-  var signature = null
-  var nodes = new Array(proof.nodes.length)
+  const needsSig = this.live && !!proof.verifiedBy
+  let pending = proof.nodes.length + (needsSig ? 1 : 0)
+  let error = null
+  let signature = null
+  const nodes = new Array(proof.nodes.length)
 
   if (!pending) return cb(null, { nodes: nodes, signature: null })
 
-  for (var i = 0; i < proof.nodes.length; i++) {
+  for (let i = 0; i < proof.nodes.length; i++) {
     this._storage.getNode(proof.nodes[i], onnode)
   }
   if (needsSig) {
@@ -667,7 +667,7 @@ Feed.prototype.proof = function (index, opts, cb) {
 }
 
 Feed.prototype._readyAndProof = function (index, opts, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self.proof(index, opts, cb)
@@ -684,8 +684,8 @@ Feed.prototype.cancel = function (start, end) { // TODO: use same argument schem
     if (!end) end = start + 1
 
     // cancel these right away as .download does not wait for ready
-    for (var i = this._selections.length - 1; i >= 0; i--) {
-      var sel = this._selections[i]
+    for (let i = this._selections.length - 1; i >= 0; i--) {
+      const sel = this._selections[i]
       if (start <= sel.start && sel.end <= end) {
         this.undownload(sel)
       }
@@ -698,7 +698,7 @@ Feed.prototype.cancel = function (start, end) { // TODO: use same argument schem
 }
 
 Feed.prototype._cancel = function (start, end) {
-  var i = 0
+  let i = 0
 
   if (typeof start === 'symbol') {
     for (i = this._waiting.length - 1; i >= 0; i--) {
@@ -719,7 +719,7 @@ Feed.prototype._cancel = function (start, end) {
   }
 
   for (i = this._waiting.length - 1; i >= 0; i--) {
-    var w = this._waiting[i]
+    const w = this._waiting[i]
     if ((start <= w.start && w.end <= end) || (start <= w.index && w.index < end)) {
       remove(this._waiting, i)
       if (w.callback) process.nextTick(w.callback, new Error('Request cancelled'))
@@ -737,18 +737,18 @@ Feed.prototype.clear = function (start, end, opts, cb) { // TODO: use same argum
   // TODO: this needs some work. fx we can only calc byte offset for blocks we know about
   // so internally we should make sure to only do that. We should use the merkle tree for this
 
-  var self = this
-  var byteOffset = start === 0 ? 0 : (typeof opts.byteOffset === 'number' ? opts.byteOffset : -1)
-  var byteLength = typeof opts.byteLength === 'number' ? opts.byteLength : -1
+  const self = this
+  let byteOffset = start === 0 ? 0 : (typeof opts.byteOffset === 'number' ? opts.byteOffset : -1)
+  const byteLength = typeof opts.byteLength === 'number' ? opts.byteLength : -1
 
   this.ready(function (err) {
     if (err) return cb(err)
 
-    var modified = false
+    let modified = false
 
     // TODO: use a buffer.fill thing here to speed this up!
 
-    for (var i = start; i < end; i++) {
+    for (let i = start; i < end; i++) {
       if (self.bitfield.set(i, false)) modified = true
     }
 
@@ -791,12 +791,12 @@ Feed.prototype.signature = function (index, cb) {
 }
 
 Feed.prototype.verify = function (index, signature, cb) {
-  var self = this
+  const self = this
 
   this.rootHashes(index, function (err, roots) {
     if (err) return cb(err)
 
-    var checksum = crypto.signable(roots, index + 1)
+    const checksum = crypto.signable(roots, index + 1)
 
     verifyCompat(self, checksum, signature, function (err, valid) {
       if (err) return cb(err)
@@ -817,7 +817,7 @@ Feed.prototype.seek = function (bytes, opts, cb) {
   if (!opts) opts = {}
   if (!this.opened) return this._readyAndSeek(bytes, opts, cb)
 
-  var self = this
+  const self = this
 
   if (bytes === this.byteLength) return process.nextTick(cb, null, this.length, 0)
 
@@ -825,12 +825,12 @@ Feed.prototype.seek = function (bytes, opts, cb) {
     if (!err && isBlock(index)) return done(index / 2, offset)
     if (opts.wait === false) return cb(err || new Error('Unable to seek to this offset'))
 
-    var start = opts.start || 0
-    var end = opts.end || -1
+    let start = opts.start || 0
+    let end = opts.end || -1
 
     if (!err) {
-      var left = flat.leftSpan(index) / 2
-      var right = flat.rightSpan(index) / 2 + 1
+      const left = flat.leftSpan(index) / 2
+      const right = flat.rightSpan(index) / 2 + 1
 
       if (left > start) start = left
       if (right < end || end === -1) end = right
@@ -838,7 +838,7 @@ Feed.prototype.seek = function (bytes, opts, cb) {
 
     if (end > -1 && end <= start) return cb(new Error('Unable to seek to this offset'))
 
-    var w = {
+    const w = {
       hash: opts.hash !== false,
       bytes: bytes,
       index: -1,
@@ -856,7 +856,7 @@ Feed.prototype.seek = function (bytes, opts, cb) {
   })
 
   function done (index, offset) {
-    for (var i = 0; i < self.peers.length; i++) {
+    for (let i = 0; i < self.peers.length; i++) {
       self.peers[i].haveBytes(bytes)
     }
     cb(null, index, offset)
@@ -864,8 +864,8 @@ Feed.prototype.seek = function (bytes, opts, cb) {
 }
 
 Feed.prototype._ifAvailableSeek = function (w) {
-  var self = this
-  var cb = w.callback
+  const self = this
+  const cb = w.callback
 
   self.timeouts.get(function () {
     if (self.closed) return done(new Error('Closed'))
@@ -889,7 +889,7 @@ Feed.prototype._ifAvailableSeek = function (w) {
   })
 
   function done (err) {
-    var i = self._waiting.indexOf(w)
+    const i = self._waiting.indexOf(w)
     if (i > -1) {
       remove(self._waiting, i)
       w.callback = noop
@@ -901,16 +901,16 @@ Feed.prototype._ifAvailableSeek = function (w) {
 Feed.prototype._seek = function (offset, cb) {
   if (offset === 0) return cb(null, 0, 0)
 
-  var self = this
-  var roots = flat.fullRoots(this.length * 2)
-  var nearestRoot = 0
+  const self = this
+  const roots = flat.fullRoots(this.length * 2)
+  let nearestRoot = 0
 
   loop(null, null)
 
   function onroot (top) {
     if (isBlock(top)) return cb(null, nearestRoot, offset)
 
-    var left = flat.leftChild(top)
+    let left = flat.leftChild(top)
     while (!self.tree.get(left)) {
       if (isBlock(left)) return cb(null, nearestRoot, offset)
       left = flat.leftChild(left)
@@ -953,7 +953,7 @@ Feed.prototype._seek = function (offset, cb) {
 }
 
 Feed.prototype._readyAndSeek = function (bytes, opts, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self.seek(bytes, opts, cb)
@@ -971,11 +971,11 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
   // TODO: if the proof contains a valid signature BUT fails, emit a critical error
   // --> feed should be considered dead
 
-  var self = this
-  var trusted = -1
-  var missing = []
-  var next = 2 * index
-  var i = data ? 0 : 1
+  const self = this
+  let trusted = -1
+  const missing = []
+  let next = 2 * index
+  let i = data ? 0 : 1
 
   while (true) {
     if (this.tree.get(next)) {
@@ -983,7 +983,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
       break
     }
 
-    var sib = flat.sibling(next)
+    const sib = flat.sibling(next)
     next = flat.parent(next)
 
     if (i < proof.nodes.length && proof.nodes[i].index === sib) {
@@ -997,10 +997,10 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
 
   if (trusted === -1 && this.tree.get(next)) trusted = next
 
-  var error = null
-  var trustedNode = null
-  var missingNodes = new Array(missing.length)
-  var pending = missing.length + (trusted > -1 ? 1 : 0)
+  let error = null
+  let trustedNode = null
+  const missingNodes = new Array(missing.length)
+  let pending = missing.length + (trusted > -1 ? 1 : 0)
 
   for (i = 0; i < missing.length; i++) this._storage.getNode(missing[i], onmissing)
   if (trusted > -1) this._storage.getNode(trusted, ontrusted)
@@ -1025,7 +1025,7 @@ Feed.prototype._putBuffer = function (index, data, proof, from, cb) {
 }
 
 Feed.prototype._readyAndPut = function (index, data, proof, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self.put(index, data, proof, cb)
@@ -1045,11 +1045,11 @@ function writeHookDone (self, index, data, nodes, sig, from, cb) {
 }
 
 Feed.prototype._writeAfterHook = function (index, data, nodes, sig, from, cb) {
-  var self = this
-  var pending = nodes.length + 1 + (sig ? 1 : 0)
-  var error = null
+  const self = this
+  let pending = nodes.length + 1 + (sig ? 1 : 0)
+  let error = null
 
-  for (var i = 0; i < nodes.length; i++) this._storage.putNode(nodes[i].index, nodes[i], ondone)
+  for (let i = 0; i < nodes.length; i++) this._storage.putNode(nodes[i].index, nodes[i], ondone)
   if (data) this._storage.putData(index, data, nodes, ondone)
   else ondone()
   if (sig) this._storage.putSignature(sig.index, sig.signature, ondone)
@@ -1063,7 +1063,7 @@ Feed.prototype._writeAfterHook = function (index, data, nodes, sig, from, cb) {
 }
 
 Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
-  for (var i = 0; i < nodes.length; i++) this.tree.set(nodes[i].index)
+  for (let i = 0; i < nodes.length; i++) this.tree.set(nodes[i].index)
   this.tree.set(2 * index)
 
   if (data) {
@@ -1092,9 +1092,9 @@ Feed.prototype._writeDone = function (index, data, nodes, from, cb) {
 }
 
 Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trustedNode, from, cb) {
-  var visited = []
-  var remoteNodes = proof.nodes
-  var top = data ? new storage.Node(2 * index, crypto.data(data), data.length) : remoteNodes.shift()
+  const visited = []
+  const remoteNodes = proof.nodes
+  let top = data ? new storage.Node(2 * index, crypto.data(data), data.length) : remoteNodes.shift()
 
   // check if we already have the hash for this node
   if (verifyNode(trustedNode, top)) {
@@ -1104,8 +1104,8 @@ Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trust
 
   // keep hashing with siblings until we reach or trusted node
   while (true) {
-    var node = null
-    var next = flat.sibling(top.index)
+    let node = null
+    const next = flat.sibling(top.index)
 
     if (remoteNodes.length && remoteNodes[0].index === next) {
       node = remoteNodes.shift()
@@ -1130,17 +1130,17 @@ Feed.prototype._verifyAndWrite = function (index, data, proof, localNodes, trust
 }
 
 Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, from, cb) {
-  var remoteNodes = proof.nodes
-  var lastNode = remoteNodes.length ? remoteNodes[remoteNodes.length - 1].index : top.index
-  var verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
-  var length = verifiedBy / 2
-  var self = this
+  const remoteNodes = proof.nodes
+  const lastNode = remoteNodes.length ? remoteNodes[remoteNodes.length - 1].index : top.index
+  const verifiedBy = Math.max(flat.rightSpan(top.index), flat.rightSpan(lastNode)) + 2
+  const length = verifiedBy / 2
+  const self = this
 
   this._getRootsToVerify(verifiedBy, top, remoteNodes, function (err, roots, extraNodes) {
     if (err) return cb(err)
 
-    var checksum = crypto.signable(roots, length)
-    var signature = null
+    const checksum = crypto.signable(roots, length)
+    let signature = null
 
     if (self.length && self.live && !proof.signature) {
       return cb(new Error('Remote did not include a signature'))
@@ -1181,13 +1181,13 @@ Feed.prototype._verifyRootsAndWrite = function (index, data, top, proof, nodes, 
 }
 
 Feed.prototype._getRootsToVerify = function (verifiedBy, top, remoteNodes, cb) {
-  var indexes = flat.fullRoots(verifiedBy)
-  var roots = new Array(indexes.length)
-  var nodes = []
-  var error = null
-  var pending = roots.length
+  const indexes = flat.fullRoots(verifiedBy)
+  const roots = new Array(indexes.length)
+  const nodes = []
+  let error = null
+  let pending = roots.length
 
-  for (var i = 0; i < indexes.length; i++) {
+  for (let i = 0; i < indexes.length; i++) {
     if (indexes[i] === top.index) {
       nodes.push(top)
       onnode(null, top)
@@ -1215,14 +1215,14 @@ Feed.prototype._getRootsToVerify = function (verifiedBy, top, remoteNodes, cb) {
 }
 
 Feed.prototype._announce = function (message, from) {
-  for (var i = 0; i < this.peers.length; i++) {
-    var peer = this.peers[i]
+  for (let i = 0; i < this.peers.length; i++) {
+    const peer = this.peers[i]
     if (peer !== from) peer.have(message)
   }
 }
 
 Feed.prototype._unannounce = function (message) {
-  for (var i = 0; i < this.peers.length; i++) this.peers[i].unhave(message)
+  for (let i = 0; i < this.peers.length; i++) this.peers[i].unhave(message)
 }
 
 Feed.prototype.downloaded = function (start, end, cb) {
@@ -1246,7 +1246,7 @@ Feed.prototype.has = function (start, end, cb) {
 
 Feed.prototype.head = function (opts, cb) {
   if (typeof opts === 'function') return this.head({}, opts)
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     if (opts && opts.update) self.update(opts, onupdate)
@@ -1277,7 +1277,7 @@ Feed.prototype.get = function (index, opts, cb) {
   if (!this.bitfield.get(index)) {
     if (opts && opts.wait === false) return process.nextTick(cb, new Error('Block not downloaded'))
 
-    var w = { bytes: 0, hash: false, index: index, options: opts, requested: 0, callback: cb }
+    const w = { bytes: 0, hash: false, index: index, options: opts, requested: 0, callback: cb }
     this._waiting.push(w)
 
     if (opts && typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : this._alwaysIfAvailable) this._ifAvailableGet(w)
@@ -1299,7 +1299,7 @@ Feed.prototype.get = function (index, opts, cb) {
 }
 
 Feed.prototype._readyAndGet = function (index, opts, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self.get(index, opts, cb)
@@ -1311,8 +1311,8 @@ Feed.prototype.getBatch = function (start, end, opts, cb) {
   if (typeof opts === 'function') return this.getBatch(start, end, null, opts)
   if (!this.opened) return this._readyAndGetBatch(start, end, opts, cb)
 
-  var self = this
-  var wait = !opts || opts.wait !== false
+  const self = this
+  const wait = !opts || opts.wait !== false
 
   if (this.has(start, end)) return this._getBatch(start, end, opts, cb)
   if (!wait) return process.nextTick(cb, new Error('Block not downloaded'))
@@ -1326,17 +1326,17 @@ Feed.prototype.getBatch = function (start, end, opts, cb) {
 }
 
 Feed.prototype._getBatch = function (start, end, opts, cb) {
-  var enc = opts && opts.valueEncoding
-  var codec = enc ? toCodec(enc) : this._codec
+  const enc = opts && opts.valueEncoding
+  const codec = enc ? toCodec(enc) : this._codec
 
   this._storage.getDataBatch(start, end - start, onbatch)
 
   function onbatch (err, buffers) {
     if (err) return cb(err)
 
-    var batch = new Array(buffers.length)
+    const batch = new Array(buffers.length)
 
-    for (var i = 0; i < buffers.length; i++) {
+    for (let i = 0; i < buffers.length; i++) {
       try {
         batch[i] = codec ? codec.decode(buffers[i]) : buffers[i]
       } catch (err) {
@@ -1349,7 +1349,7 @@ Feed.prototype._getBatch = function (start, end, opts, cb) {
 }
 
 Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self.getBatch(start, end, opts, cb)
@@ -1357,7 +1357,7 @@ Feed.prototype._readyAndGetBatch = function (start, end, opts, cb) {
 }
 
 Feed.prototype._updatePeers = function () {
-  for (var i = 0; i < this.peers.length; i++) this.peers[i].update()
+  for (let i = 0; i < this.peers.length; i++) this.peers[i].update()
 }
 
 Feed.prototype.createWriteStream = function (opts) {
@@ -1380,13 +1380,13 @@ Feed.prototype.finalize = function (cb) {
 Feed.prototype.append = function (batch, cb) {
   if (!cb) cb = noop
 
-  var self = this
-  var list = Array.isArray(batch) ? batch : [batch]
+  const self = this
+  const list = Array.isArray(batch) ? batch : [batch]
   this._batch(list, onappend)
 
   function onappend (err) {
     if (err) return cb(err)
-    var seq = self._seq
+    const seq = self._seq
     self._seq += list.length
     cb(null, seq)
   }
@@ -1421,7 +1421,7 @@ Feed.prototype._close = function (cb) {
 }
 
 Feed.prototype._forceClose = function (cb, error) {
-  var self = this
+  const self = this
 
   this.writable = false
   this.readable = false
@@ -1445,12 +1445,12 @@ Feed.prototype._destroy = function (err) {
 }
 
 Feed.prototype._appendHook = function (batch, cb) {
-  var self = this
-  var missing = batch.length
-  var error = null
+  const self = this
+  let missing = batch.length
+  let error = null
 
   if (!missing) return this._append(batch, cb)
-  for (var i = 0; i < batch.length; i++) {
+  for (let i = 0; i < batch.length; i++) {
     this._onwrite(i + this.length, batch[i], null, done)
   }
 
@@ -1466,19 +1466,19 @@ Feed.prototype._append = function (batch, cb) {
   if (!this.opened) return this._readyAndAppend(batch, cb)
   if (!this.writable) return cb(new Error('This feed is not writable. Did you create it?'))
 
-  var self = this
-  var pending = 1
-  var offset = 0
-  var error = null
-  var nodeBatch = new Array(batch.length ? batch.length * 2 - 1 : 0)
-  var nodeOffset = this.length * 2
-  var dataBatch = new Array(batch.length)
+  const self = this
+  let pending = 1
+  let offset = 0
+  let error = null
+  const nodeBatch = new Array(batch.length ? batch.length * 2 - 1 : 0)
+  const nodeOffset = this.length * 2
+  const dataBatch = new Array(batch.length)
 
   if (!pending) return cb()
 
-  for (var i = 0; i < batch.length; i++) {
-    var data = this._codec.encode(batch[i])
-    var nodes = this._merkle.next(data)
+  for (let i = 0; i < batch.length; i++) {
+    const data = this._codec.encode(batch[i])
+    const nodes = this._merkle.next(data)
 
     // the replication stream rejects frames >8MB for DOS defense. Is configurable there, so
     // we could bubble that up here. For now just hardcode it so you can't accidentally "brick" your core
@@ -1488,8 +1488,8 @@ Feed.prototype._append = function (batch, cb) {
     offset += data.length
     dataBatch[i] = data
 
-    for (var j = 0; j < nodes.length; j++) {
-      var node = nodes[j]
+    for (let j = 0; j < nodes.length; j++) {
+      const node = nodes[j]
       if (node.index >= nodeOffset && node.index - nodeOffset < nodeBatch.length) {
         nodeBatch[node.index - nodeOffset] = node
       } else {
@@ -1520,17 +1520,17 @@ Feed.prototype._append = function (batch, cb) {
     if (--pending) return
     if (error) return cb(error)
 
-    var start = self.length
+    const start = self.length
 
     // TODO: only emit append and update length / byteLength after the info has been flushed to storage
     self.byteLength += offset
-    for (var i = 0; i < batch.length; i++) {
+    for (let i = 0; i < batch.length; i++) {
       self.bitfield.set(self.length, true)
       self.tree.set(2 * self.length++)
     }
     self.emit('append')
 
-    var message = self.length - start > 1 ? { start: start, length: self.length - start } : { start: start }
+    const message = self.length - start > 1 ? { start: start, length: self.length - start } : { start: start }
     if (self.peers.length) self._announce(message)
 
     self._sync(null, cb)
@@ -1538,7 +1538,7 @@ Feed.prototype._append = function (batch, cb) {
 }
 
 Feed.prototype._readyAndAppend = function (batch, cb) {
-  var self = this
+  const self = this
   this.ready(function (err) {
     if (err) return cb(err)
     self._append(batch, cb)
@@ -1546,17 +1546,17 @@ Feed.prototype._readyAndAppend = function (batch, cb) {
 }
 
 Feed.prototype._readyAndCancel = function (start, end) {
-  var self = this
+  const self = this
   this.ready(function () {
     self._cancel(start, end)
   })
 }
 
 Feed.prototype._pollWaiting = function () {
-  var len = this._waiting.length
+  let len = this._waiting.length
 
-  for (var i = 0; i < len; i++) {
-    var next = this._waiting[i]
+  for (let i = 0; i < len; i++) {
+    const next = this._waiting[i]
     if (!next.bytes && !this.bitfield.get(next.index) && (!next.hash || !this.tree.get(next.index * 2))) {
       continue
     }
@@ -1571,9 +1571,9 @@ Feed.prototype._pollWaiting = function () {
 }
 
 Feed.prototype._syncBitfield = function (cb) {
-  var missing = this.bitfield.pages.updates.length
-  var next = null
-  var error = null
+  let missing = this.bitfield.pages.updates.length
+  let next = null
+  let error = null
 
   // All data / nodes have been written now. We still need to update the bitfields though
 
@@ -1604,14 +1604,14 @@ Feed.prototype._syncBitfield = function (cb) {
 }
 
 Feed.prototype._roots = function (index, cb) {
-  var roots = flat.fullRoots(2 * index)
-  var result = new Array(roots.length)
-  var pending = roots.length
-  var error = null
+  const roots = flat.fullRoots(2 * index)
+  const result = new Array(roots.length)
+  let pending = roots.length
+  let error = null
 
   if (!pending) return cb(null, result)
 
-  for (var i = 0; i < roots.length; i++) {
+  for (let i = 0; i < roots.length; i++) {
     this._storage.getNode(roots[i], onnode)
   }
 
@@ -1627,8 +1627,8 @@ Feed.prototype._roots = function (index, cb) {
 Feed.prototype.audit = function (cb) {
   if (!cb) cb = noop
 
-  var self = this
-  var report = {
+  const self = this
+  const report = {
     valid: 0,
     invalid: 0
   }
@@ -1636,8 +1636,8 @@ Feed.prototype.audit = function (cb) {
   this.ready(function (err) {
     if (err) return cb(err)
 
-    var block = 0
-    var max = self.length
+    let block = 0
+    const max = self.length
 
     next()
 
@@ -1646,7 +1646,7 @@ Feed.prototype.audit = function (cb) {
       self._storage.getData(block, ondata)
 
       function ondata (_, data) {
-        var verified = data && crypto.data(data).equals(node.hash)
+        const verified = data && crypto.data(data).equals(node.hash)
         if (verified) report.valid++
         else report.invalid++
         self.bitfield.set(block, verified)
@@ -1671,9 +1671,9 @@ Feed.prototype.audit = function (cb) {
 }
 
 Feed.prototype.extension = function (name, message) {
-  var peers = this.peers
+  const peers = this.peers
 
-  for (var i = 0; i < peers.length; i++) {
+  for (let i = 0; i < peers.length; i++) {
     peers[i].extension(name, message)
   }
 }
@@ -1719,14 +1719,14 @@ function wrapCodec (enc, cb) {
 }
 
 function timeoutCallback (cb, timeout) {
-  var failed = false
-  var id = setTimeout(ontimeout, timeout)
+  let failed = false
+  const id = setTimeout(ontimeout, timeout)
   return done
 
   function ontimeout () {
     failed = true
     // TODO: make libs/errors for all this stuff
-    var err = new Error('ETIMEDOUT')
+    const err = new Error('ETIMEDOUT')
     err.code = 'ETIMEDOUT'
     cb(err)
   }
@@ -1743,7 +1743,7 @@ function toWantRange (i) {
 }
 
 function createError (code, errno, msg) {
-  var err = new Error(msg)
+  const err = new Error(msg)
   err.code = code
   err.errno = errno
   return err

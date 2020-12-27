@@ -1,10 +1,10 @@
-var create = require('./helpers/create')
-var replicate = require('./helpers/replicate')
-var tape = require('tape')
+const create = require('./helpers/create')
+const replicate = require('./helpers/replicate')
+const tape = require('tape')
 
 tape('head without update does not update', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -17,8 +17,8 @@ tape('head without update does not update', t => {
 })
 
 tape('head with update waits for an update', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -34,8 +34,8 @@ tape('head with update waits for an update', t => {
 })
 
 tape('head with update/ifAvailable will wait only if an update is available', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -49,8 +49,8 @@ tape('head with update/ifAvailable will wait only if an update is available', t 
 })
 
 tape('head with update/ifAvailable will not wait forever', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)

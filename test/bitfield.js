@@ -1,8 +1,8 @@
-var tape = require('tape')
-var bitfield = require('../lib/bitfield')
+const tape = require('tape')
+const bitfield = require('../lib/bitfield')
 
 tape('set and get', function (t) {
-  var b = bitfield()
+  const b = bitfield()
 
   t.same(b.get(0), false)
   t.same(b.set(0, true), true)
@@ -18,8 +18,8 @@ tape('set and get', function (t) {
 })
 
 tape('set and get (tree)', function (t) {
-  var b = bitfield()
-  var tree = b.tree
+  const b = bitfield()
+  const tree = b.tree
 
   t.same(tree.get(0), false)
   t.same(tree.set(0, true), true)
@@ -38,9 +38,9 @@ tape('set and get (tree)', function (t) {
 })
 
 tape('set and index', function (t) {
-  var b = bitfield()
-  var ite = b.iterator(0, 100000000)
-  var i = 0
+  const b = bitfield()
+  const ite = b.iterator(0, 100000000)
+  let i = 0
 
   t.same(ite.next(), 0)
 
@@ -75,9 +75,9 @@ tape('set and index', function (t) {
 })
 
 tape('set and index (random)', function (t) {
-  var b = bitfield()
+  const b = bitfield()
 
-  for (var i = 0; i < 100; i++) {
+  for (let i = 0; i < 100; i++) {
     t.ok(check(), 'index validates')
     set(Math.round(Math.random() * 2000), Math.round(Math.random() * 8))
   }
@@ -86,9 +86,9 @@ tape('set and index (random)', function (t) {
   t.end()
 
   function check () {
-    var all = []
-    var ite = b.iterator()
-    var i = 0
+    const all = []
+    const ite = b.iterator()
+    let i = 0
 
     for (i = 0; i < b.length; i++) {
       all[i] = true
@@ -118,7 +118,7 @@ tape('set and index (random)', function (t) {
 })
 
 tape('get total positive bits', function (t) {
-  var b = bitfield()
+  const b = bitfield()
 
   t.same(b.set(1, true), true)
   t.same(b.set(2, true), true)
@@ -137,13 +137,13 @@ tape('get total positive bits', function (t) {
 })
 
 tape('bitfield dedup', function (t) {
-  var b = bitfield()
+  const b = bitfield()
 
-  for (var i = 0; i < 32 * 1024; i++) {
+  for (let i = 0; i < 32 * 1024; i++) {
     b.set(i, true)
   }
 
-  for (var j = 0; j < 64 * 1024; j++) {
+  for (let j = 0; j < 64 * 1024; j++) {
     b.tree.set(j, true)
   }
 

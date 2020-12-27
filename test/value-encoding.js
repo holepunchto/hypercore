@@ -1,8 +1,8 @@
-var tape = require('tape')
-var create = require('./helpers/create')
+const tape = require('tape')
+const create = require('./helpers/create')
 
 tape('basic value encoding', function (t) {
-  var feed = create({
+  const feed = create({
     valueEncoding: 'json'
   })
 
@@ -16,7 +16,7 @@ tape('basic value encoding', function (t) {
 })
 
 tape('value encoding read-stream', function (t) {
-  var feed = create({
+  const feed = create({
     valueEncoding: 'json'
   })
 
@@ -36,11 +36,11 @@ tape('value encoding read-stream', function (t) {
 })
 
 tape('value encoding write-stream', function (t) {
-  var feed = create({
+  const feed = create({
     valueEncoding: 'json'
   })
 
-  var ws = feed.createWriteStream()
+  const ws = feed.createWriteStream()
   ws.write([1, 2, 3])
   ws.end(function () {
     feed.get(0, function (err, val) {

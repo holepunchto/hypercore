@@ -1,16 +1,16 @@
-var create = require('./helpers/create')
-var replicate = require('./helpers/replicate')
-var tape = require('tape')
+const create = require('./helpers/create')
+const replicate = require('./helpers/replicate')
+const tape = require('tape')
 
 tape('accurate stat totals', function (t) {
   t.plan(4)
 
-  var feed = create()
+  const feed = create()
   feed.append(['aa', 'bb', 'cc', 'dd', 'ee'], function () {
-    var clone = create(feed.key)
+    const clone = create(feed.key)
     replicate(feed, clone).on('end', function () {
-      var feedStats = feed.stats
-      var cloneStats = clone.stats
+      const feedStats = feed.stats
+      const cloneStats = clone.stats
 
       t.same(feedStats.totals.uploadedBlocks, 5)
       t.same(feedStats.totals.uploadedBytes, 10)
@@ -23,11 +23,11 @@ tape('accurate stat totals', function (t) {
 tape('accurate per-peer stats', function (t) {
   t.plan(13)
 
-  var feed = create()
+  const feed = create()
 
   feed.append(['aa', 'bb', 'cc', 'dd', 'ee'], function () {
-    var clone1 = create(feed.key)
-    var clone2 = create(feed.key)
+    const clone1 = create(feed.key)
+    const clone2 = create(feed.key)
 
     replicate(feed, clone1, { live: true })
     replicate(feed, clone2, { live: true })
@@ -38,9 +38,9 @@ tape('accurate per-peer stats', function (t) {
   })
 
   function onreplicate (clone1, clone2) {
-    var feedStats = feed.stats
-    var clone1Stats = clone1.stats
-    var clone2Stats = clone2.stats
+    const feedStats = feed.stats
+    const clone1Stats = clone1.stats
+    const clone2Stats = clone2.stats
 
     t.same(feedStats.totals.uploadedBlocks, 10)
     t.same(feedStats.totals.uploadedBytes, 20)
@@ -63,12 +63,12 @@ tape('accurate per-peer stats', function (t) {
 tape('should not collect stats when stats option is false', function (t) {
   t.plan(2)
 
-  var feed = create({ stats: false })
+  const feed = create({ stats: false })
   feed.append(['aa', 'bb', 'cc', 'dd', 'ee'], function () {
-    var clone = create(feed.key, { stats: false })
+    const clone = create(feed.key, { stats: false })
     replicate(feed, clone).on('end', function () {
-      var feedStats = feed.stats
-      var cloneStats = clone.stats
+      const feedStats = feed.stats
+      const cloneStats = clone.stats
 
       t.false(feedStats)
       t.false(cloneStats)

@@ -1,10 +1,10 @@
-var create = require('./helpers/create')
-var tape = require('tape')
+const create = require('./helpers/create')
+const tape = require('tape')
 
 tape('cancel', function (t) {
   t.plan(2)
 
-  var feed = create()
+  const feed = create()
 
   feed.get(0, function (err) {
     t.ok(err, 'expected error')
@@ -20,7 +20,7 @@ tape('cancel', function (t) {
 tape('cancel range', function (t) {
   t.plan(2)
 
-  var feed = create()
+  const feed = create()
 
   feed.get(0, function (err) {
     t.ok(err, 'expected error')
@@ -40,7 +40,7 @@ tape('cancel range', function (t) {
 tape('get after cancel', function (t) {
   t.plan(1)
 
-  var feed = create()
+  const feed = create()
 
   feed.get(0, function (err) {
     t.ok(err, 'expected error')
@@ -53,7 +53,7 @@ tape('get after cancel', function (t) {
 })
 
 tape('cancel download', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.download({ start: 0, end: 10 }, function (err) {
     t.ok(err, 'expected error')
@@ -66,7 +66,7 @@ tape('cancel download', function (t) {
 tape('cancel download and get', function (t) {
   t.plan(3)
 
-  var feed = create()
+  const feed = create()
 
   feed.download({ start: 1, end: 9 }, function (err) {
     t.ok(err, 'expected error')
@@ -84,7 +84,7 @@ tape('cancel download and get', function (t) {
 })
 
 tape('cancel seek', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.seek(10, { start: 0, end: 10 }, function (err) {
     t.ok(err, 'expected error')

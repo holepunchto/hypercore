@@ -1,18 +1,18 @@
 // NOTES: rerunning this benchmark is *a lot* faster on the 2nd
 // run. Can we gain massive perf by preallocating files?
 
-var hypercore = require('../../')
-var path = require('path')
-var bufferAlloc = require('buffer-alloc-unsafe')
+const hypercore = require('../../')
+const path = require('path')
+const bufferAlloc = require('buffer-alloc-unsafe')
 
 module.exports = function (dir, blockSize, count, finalize) {
-  var feed = hypercore(path.join(__dirname, '../cores', dir), { live: !finalize, overwrite: true })
+  const feed = hypercore(path.join(__dirname, '../cores', dir), { live: !finalize, overwrite: true })
 
-  var then = Date.now()
-  var buf = bufferAlloc(blockSize)
+  const then = Date.now()
+  const buf = bufferAlloc(blockSize)
   buf.fill(0)
 
-  var blocks = []
+  const blocks = []
   while (blocks.length < 128) blocks.push(buf)
 
   feed.append(blocks, function loop (err) {

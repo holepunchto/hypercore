@@ -1,23 +1,23 @@
-var hypercore = require('../')
-var shuffle = require('shuffle-array')
-var path = require('path')
+const hypercore = require('../')
+const shuffle = require('shuffle-array')
+const path = require('path')
 
-var source = hypercore(path.join(__dirname, 'cores/64kb'))
+const source = hypercore(path.join(__dirname, 'cores/64kb'))
 
 source.ready(function () {
-  var dest = hypercore(path.join(__dirname, 'cores/64kb-copy'), source.key, { overwrite: true })
+  const dest = hypercore(path.join(__dirname, 'cores/64kb-copy'), source.key, { overwrite: true })
 
-  var then = Date.now()
-  var missing = []
-  var active = 0
-  var size = 0
-  var cnt = 0
+  const then = Date.now()
+  const missing = []
+  let active = 0
+  let size = 0
+  let cnt = 0
 
-  for (var i = 0; i < source.length; i++) missing.push(i)
+  for (let i = 0; i < source.length; i++) missing.push(i)
 
   shuffle(missing)
 
-  for (var j = 0; j < 16; j++) {
+  for (let j = 0; j < 16; j++) {
     active++
     copy(null, null)
   }
@@ -35,7 +35,7 @@ source.ready(function () {
       return
     }
 
-    var block = missing.shift()
+    const block = missing.shift()
 
     active++
     source.proof(block, function (err, proof) {

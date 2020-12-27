@@ -1,8 +1,8 @@
-var tape = require('tape')
-var create = require('./helpers/create')
+const tape = require('tape')
+const create = require('./helpers/create')
 
 tape('basic audit', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append('hello')
   feed.append('world', function () {
@@ -15,7 +15,7 @@ tape('basic audit', function (t) {
 })
 
 tape('basic audit with bad data', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append('hello')
   feed.append('world', function () {

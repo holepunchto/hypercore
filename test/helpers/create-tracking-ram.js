@@ -1,10 +1,10 @@
-var ram = require('random-access-memory')
+const ram = require('random-access-memory')
 
 module.exports = function () {
-  var logByFilename = {}
-  var factory = function (filename) {
-    var memory = ram()
-    var log = []
+  const logByFilename = {}
+  const factory = function (filename) {
+    const memory = ram()
+    const log = []
     logByFilename[filename] = log
     return {
       read: logAndForward('read'),
@@ -14,7 +14,7 @@ module.exports = function () {
 
     function logAndForward (op) {
       return function () {
-        var statement = {}
+        const statement = {}
         statement[op] = [].slice.apply(arguments)
         statement[op].pop()
         log.push(statement)

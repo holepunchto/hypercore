@@ -1,14 +1,14 @@
-var create = require('./helpers/create')
-var replicate = require('./helpers/replicate')
-var tape = require('tape')
+const create = require('./helpers/create')
+const replicate = require('./helpers/replicate')
+const tape = require('tape')
 
-var EXAMPLE_TYPE = 'example'
-var EXAMPLE_MESSAGE = Buffer.from([4, 20])
+const EXAMPLE_TYPE = 'example'
+const EXAMPLE_MESSAGE = Buffer.from([4, 20])
 
 tape('send and receive extension messages', function (t) {
   t.plan(2)
 
-  var feed1 = create(null)
+  const feed1 = create(null)
 
   const e1 = feed1.registerExtension(EXAMPLE_TYPE, {
     onmessage (message, peer) {
@@ -17,7 +17,7 @@ tape('send and receive extension messages', function (t) {
   })
 
   feed1.ready(function () {
-    var feed2 = create(feed1.key)
+    const feed2 = create(feed1.key)
 
     const e2 = feed2.registerExtension(EXAMPLE_TYPE, {
       onmessage (message, peer) {
@@ -68,7 +68,7 @@ tape('send and receive extension messages with encoding', function (t) {
 tape('send and receive extension messages with multiple extensions', function (t) {
   t.plan(2)
 
-  var feed1 = create(null)
+  const feed1 = create(null)
 
   const e1 = feed1.registerExtension(EXAMPLE_TYPE, {
     onmessage (message, peer) {
@@ -79,7 +79,7 @@ tape('send and receive extension messages with multiple extensions', function (t
   feed1.registerExtension('aa')
 
   feed1.ready(function () {
-    var feed2 = create(feed1.key)
+    const feed2 = create(feed1.key)
 
     feed2.registerExtension('bb')
 

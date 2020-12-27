@@ -1,18 +1,18 @@
-var path = require('path')
-var hypercore = require('../../')
+const path = require('path')
+const hypercore = require('../../')
 
 module.exports = function (dir, proof) {
-  var feed = hypercore(path.join(__dirname, '../cores', dir))
+  const feed = hypercore(path.join(__dirname, '../cores', dir))
 
-  var then = Date.now()
-  var size = 0
-  var cnt = 0
+  const then = Date.now()
+  let size = 0
+  let cnt = 0
 
   feed.ready(function () {
-    var missing = feed.length
-    var reading = 0
+    let missing = feed.length
+    let reading = 0
 
-    for (var i = 0; i < 16; i++) read(null, null)
+    for (let i = 0; i < 16; i++) read(null, null)
 
     function read (err, data) {
       if (err) throw err
@@ -34,7 +34,7 @@ module.exports = function (dir, proof) {
       missing--
       reading++
 
-      var block = Math.floor(Math.random() * feed.length)
+      const block = Math.floor(Math.random() * feed.length)
 
       if (proof) feed.proof(block, onproof)
       else onproof()

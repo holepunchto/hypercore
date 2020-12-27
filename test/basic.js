@@ -1,15 +1,15 @@
-var create = require('./helpers/create')
-var createTrackingRam = require('./helpers/create-tracking-ram')
-var crypto = require('hypercore-crypto')
-var tape = require('tape')
-var hypercore = require('../')
-var ram = require('random-access-memory')
-var bufferAlloc = require('buffer-alloc-unsafe')
+const create = require('./helpers/create')
+const createTrackingRam = require('./helpers/create-tracking-ram')
+const crypto = require('hypercore-crypto')
+const tape = require('tape')
+const hypercore = require('../')
+const ram = require('random-access-memory')
+const bufferAlloc = require('buffer-alloc-unsafe')
 
 tape('append', function (t) {
   t.plan(8)
 
-  var feed = create({ valueEncoding: 'json' })
+  const feed = create({ valueEncoding: 'json' })
 
   feed.append({
     hello: 'world'
@@ -43,7 +43,7 @@ tape('append', function (t) {
 })
 
 tape('flush', function (t) {
-  var feed = create()
+  const feed = create()
 
   feed.append('hello')
 
@@ -57,8 +57,8 @@ tape('flush', function (t) {
 tape('verify', function (t) {
   t.plan(9)
 
-  var feed = create()
-  var evilfeed = create(feed.key, { secretKey: feed.secretKey })
+  const feed = create()
+  const evilfeed = create(feed.key, { secretKey: feed.secretKey })
 
   feed.append('test', function (err) {
     t.error(err, 'no error')
@@ -88,8 +88,8 @@ tape('verify', function (t) {
 tape('rootHashes', function (t) {
   t.plan(9)
 
-  var feed = create()
-  var evilfeed = create(feed.key, { secretKey: feed.secretKey })
+  const feed = create()
+  const evilfeed = create(feed.key, { secretKey: feed.secretKey })
 
   feed.append('test', function (err) {
     t.error(err, 'no error')
@@ -97,7 +97,7 @@ tape('rootHashes', function (t) {
     evilfeed.append('t\0st', function (err) {
       t.error(err, 'no error')
 
-      var result = []
+      const result = []
 
       feed.rootHashes(0, onroots)
       evilfeed.rootHashes(0, onroots)
@@ -116,11 +116,11 @@ tape('rootHashes', function (t) {
 })
 
 tape('pass in secret key', function (t) {
-  var keyPair = crypto.keyPair()
-  var secretKey = keyPair.secretKey
-  var key = keyPair.publicKey
+  const keyPair = crypto.keyPair()
+  const secretKey = keyPair.secretKey
+  const key = keyPair.publicKey
 
-  var feed = create(key, { secretKey: secretKey })
+  const feed = create(key, { secretKey: secretKey })
 
   feed.on('ready', function () {
     t.same(feed.key, key)
@@ -131,12 +131,12 @@ tape('pass in secret key', function (t) {
 })
 
 tape('check existing key', function (t) {
-  var feed = hypercore(storage)
+  const feed = hypercore(storage)
 
   feed.append('hi', function () {
-    var key = bufferAlloc(32)
+    const key = bufferAlloc(32)
     key.fill(0)
-    var otherFeed = hypercore(storage, key)
+    const otherFeed = hypercore(storage, key)
     otherFeed.on('error', function () {
       t.pass('should error')
       t.end()
@@ -153,14 +153,14 @@ tape('check existing key', function (t) {
 tape('create from existing keys', function (t) {
   t.plan(3)
 
-  var storage1 = storage.bind(null, '1')
-  var storage2 = storage.bind(null, '2')
+  const storage1 = storage.bind(null, '1')
+  const storage2 = storage.bind(null, '2')
 
-  var feed = hypercore(storage1)
+  const feed = hypercore(storage1)
 
   feed.append('hi', function () {
-    var otherFeed = hypercore(storage2, feed.key, { secretKey: feed.secretKey })
-    var store = otherFeed._storage
+    const otherFeed = hypercore(storage2, feed.key, { secretKey: feed.secretKey })
+    const store = otherFeed._storage
     otherFeed.ready(function () {
       store.open({ key: feed.key }, function (err, data) {
         t.error(err)
@@ -171,7 +171,7 @@ tape('create from existing keys', function (t) {
   })
 
   function storage (prefix, name) {
-    var fullname = prefix + '_' + name
+    const fullname = prefix + '_' + name
     if (storage[fullname]) return storage[fullname]
     storage[fullname] = ram()
     return storage[fullname]
@@ -181,7 +181,7 @@ tape('create from existing keys', function (t) {
 tape('head', function (t) {
   t.plan(8)
 
-  var feed = create({ valueEncoding: 'json' })
+  const feed = create({ valueEncoding: 'json' })
 
   feed.head(function (err, head) {
     t.ok(!!err)
@@ -228,7 +228,7 @@ tape('head', function (t) {
 tape('append, no cache', function (t) {
   t.plan(8)
 
-  var feed = create({ valueEncoding: 'json', storageCacheSize: 0 })
+  const feed = create({ valueEncoding: 'json', storageCacheSize: 0 })
 
   feed.append({
     hello: 'world'
@@ -262,12 +262,12 @@ tape('append, no cache', function (t) {
 })
 
 tape('onwrite', function (t) {
-  var expected = [
+  const expected = [
     { index: 0, data: 'hello', peer: null },
     { index: 1, data: 'world', peer: null }
   ]
 
-  var feed = create({
+  const feed = create({
     onwrite: function (index, data, peer, cb) {
       t.same({ index: index, data: data.toString(), peer: peer }, expected.shift())
       cb()
@@ -283,7 +283,7 @@ tape('onwrite', function (t) {
 
 tape('close, emitter and callback', function (t) {
   t.plan(3)
-  var feed = create()
+  const feed = create()
 
   feed.on('close', function () {
     t.pass('close emitted')
@@ -302,7 +302,7 @@ tape('close, emitter and callback', function (t) {
 tape('close calls pending callbacks', function (t) {
   t.plan(5)
 
-  var feed = create()
+  const feed = create()
 
   feed.createReadStream({ live: true })
     .once('error', function (err) {
@@ -336,7 +336,7 @@ tape('close calls pending callbacks', function (t) {
 tape('get batch', function (t) {
   t.plan(2 * 3)
 
-  var feed = create({ valueEncoding: 'utf-8' })
+  const feed = create({ valueEncoding: 'utf-8' })
 
   feed.append(['a', 'be', 'cee', 'd'], function () {
     feed.getBatch(0, 4, function (err, batch) {
@@ -355,7 +355,7 @@ tape('get batch', function (t) {
 })
 
 tape('append returns the seq', function (t) {
-  var feed = hypercore(storage)
+  const feed = hypercore(storage)
 
   feed.append('a', function (err, seq) {
     t.error(err)
@@ -367,7 +367,7 @@ tape('append returns the seq', function (t) {
         t.error(err)
         t.same(seq, 3)
 
-        var reloaded = hypercore(storage)
+        const reloaded = hypercore(storage)
         reloaded.append(['e'], function (err, seq) {
           t.error(err)
           t.same(seq, 4)
@@ -386,9 +386,9 @@ tape('append returns the seq', function (t) {
 })
 
 tape('append and createWriteStreams preserve seq', function (t) {
-  var feed = create()
+  const feed = create()
 
-  var ws = feed.createWriteStream()
+  const ws = feed.createWriteStream()
 
   ws.write('a')
   ws.write('b')
@@ -400,7 +400,7 @@ tape('append and createWriteStreams preserve seq', function (t) {
       t.same(seq, 3)
       t.same(feed.length, 4)
 
-      var ws1 = feed.createWriteStream()
+      const ws1 = feed.createWriteStream()
 
       ws1.write('e')
       ws1.write('f')
@@ -417,21 +417,21 @@ tape('append and createWriteStreams preserve seq', function (t) {
 })
 
 tape('closing all streams on close', function (t) {
-  var memories = {}
-  var feed = hypercore(function (filename) {
-    var memory = memories[filename]
+  const memories = {}
+  const feed = hypercore(function (filename) {
+    let memory = memories[filename]
     if (!memory) {
       memory = ram()
       memories[filename] = memory
     }
     return memory
   })
-  var expectedFiles = ['key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures']
+  const expectedFiles = ['key', 'secret_key', 'tree', 'data', 'bitfield', 'signatures']
   feed.ready(function () {
     t.deepEquals(Object.keys(memories), expectedFiles, 'all files are open')
     feed.close(function () {
       expectedFiles.forEach(function (filename) {
-        var memory = memories[filename]
+        const memory = memories[filename]
         t.ok(memory.closed, filename + ' is closed')
       })
       t.end()
@@ -440,9 +440,9 @@ tape('closing all streams on close', function (t) {
 })
 
 tape('writes are batched', function (t) {
-  var trackingRam = createTrackingRam()
-  var feed = hypercore(trackingRam)
-  var ws = feed.createWriteStream()
+  const trackingRam = createTrackingRam()
+  const feed = hypercore(trackingRam)
+  const ws = feed.createWriteStream()
 
   ws.write('ab')
   ws.write('cd')
@@ -462,8 +462,8 @@ tape('writes are batched', function (t) {
 })
 
 tape('cancel get', function (t) {
-  var feed = create()
-  var cancelled = false
+  const feed = create()
+  let cancelled = false
 
   const get = feed.get(42, function (err) {
     t.ok(cancelled, 'was cancelled')
@@ -480,7 +480,7 @@ tape('cancel get', function (t) {
 tape('onwait', function (t) {
   t.plan(2)
 
-  var feed = create()
+  const feed = create()
 
   feed.append('a', function () {
     feed.get(0, {

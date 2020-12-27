@@ -1,8 +1,8 @@
-var tape = require('tape')
-var create = require('./helpers/create')
+const tape = require('tape')
+const create = require('./helpers/create')
 
 tape('default options does not use data cache', function (t) {
-  var feed = create()
+  const feed = create()
   feed.append(['hello', 'world'], err => {
     t.error(err, 'no error')
     feed.get(0, function (err, block) {
@@ -19,9 +19,9 @@ tape('default options does not use data cache', function (t) {
 })
 
 tape('numeric data cache opt creates data cache', function (t) {
-  var feed = create({ cache: { data: 1024 } })
-  var firstLength = Buffer.byteLength('hello')
-  var secondLength = Buffer.byteLength('world')
+  const feed = create({ cache: { data: 1024 } })
+  const firstLength = Buffer.byteLength('hello')
+  const secondLength = Buffer.byteLength('world')
 
   feed.append(['hello', 'world'], err => {
     t.error(err, 'no error')
@@ -39,9 +39,9 @@ tape('numeric data cache opt creates data cache', function (t) {
 })
 
 tape('can use a custom cache object', function (t) {
-  var treeStorage = []
-  var dataStorage = []
-  var createCache = function (storage) {
+  const treeStorage = []
+  const dataStorage = []
+  const createCache = function (storage) {
     return {
       get: function (key) {
         return storage[key]
@@ -52,7 +52,7 @@ tape('can use a custom cache object', function (t) {
     }
   }
 
-  var feed = create({
+  const feed = create({
     cache: {
       tree: createCache(treeStorage),
       data: createCache(dataStorage)
@@ -76,7 +76,7 @@ tape('can use a custom cache object', function (t) {
 })
 
 tape('can disable all caching', function (t) {
-  var feed = create({ cache: { tree: false } })
+  const feed = create({ cache: { tree: false } })
 
   feed.append(['hello', 'world'], err => {
     t.error(err, 'no error')

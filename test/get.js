@@ -1,10 +1,10 @@
-var create = require('./helpers/create')
-var replicate = require('./helpers/replicate')
-var tape = require('tape')
+const create = require('./helpers/create')
+const replicate = require('./helpers/replicate')
+const tape = require('tape')
 
 tape('get with ifAvailable waits correctly', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -18,8 +18,8 @@ tape('get with ifAvailable waits correctly', t => {
 })
 
 tape('get with ifAvailable returns null for unavilable index', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -32,8 +32,8 @@ tape('get with ifAvailable returns null for unavilable index', t => {
 })
 
 tape('get with ifAvailable does not wait forever', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key)
@@ -48,8 +48,8 @@ tape('get with ifAvailable does not wait forever', t => {
 })
 
 tape('get with top-level ifAvailable option does not wait forever', t => {
-  var feed1 = create()
-  var feed2 = null
+  const feed1 = create()
+  let feed2 = null
 
   feed1.append('hello', () => {
     feed2 = create(feed1.key, { ifAvailable: true })
