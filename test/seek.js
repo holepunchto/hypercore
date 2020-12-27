@@ -1,5 +1,6 @@
 var create = require('./helpers/create')
 var tape = require('tape')
+var replicate = require('./helpers/replicate')
 
 tape('seek to byte offset', function (t) {
   var feed = create()
@@ -98,8 +99,7 @@ tape('seek works for sparse trees', function (t) {
   feed.append('aa', function () {
     var clone = create(feed.key, { sparse: true })
 
-    var s = feed.replicate({ live: true })
-    s.pipe(clone.replicate({ live: true })).pipe(s)
+    replicate(feed, clone, { live: true })
 
     clone.get(0, function () { // make sure we have a tree rooted at 0
       const chunks = Array(15)
@@ -128,7 +128,7 @@ tape('seek to sibling', function (t) {
 
   var feed = create()
 
-  feed.append([ 'aa', 'aa' ], function () {
+  feed.append(['aa', 'aa'], function () {
     feed.seek(2, function (err, index, offset) { // sibling seek
       t.error(err, 'no error')
       t.same(index, 1)
@@ -143,6 +143,92 @@ tape('seek to sibling', function (t) {
       t.error(err, 'no error')
       t.same(index, 0)
       t.same(offset, 1)
+    })
+  })
+})
+
+tape('seek to 0 and byteLength', function (t) {
+  t.plan(6)
+
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    feed.seek(0, function (err, index, offset) {
+      t.same(err, null)
+      t.same(index, 0)
+      t.same(offset, 0)
+    })
+
+    feed.seek(feed.byteLength, function (err, index, offset) {
+      t.same(err, null)
+      t.same(index, feed.length)
+      t.same(offset, 0)
+    })
+  })
+})
+
+tape('seek ifAvailable', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    var clone = create(feed.key, { sparse: true })
+
+    replicate(feed, clone, { live: true })
+
+    clone.seek(4, { ifAvailable: true }, function (err) {
+      t.ok(err, 'should error')
+      clone.seek(2, { ifAvailable: true }, function (err, index, offset) {
+        t.error(err, 'no error')
+        t.same(index, 2)
+        t.same(offset, 0)
+        t.end()
+      })
+    })
+  })
+})
+
+tape('seek ifAvailable multiple peers', function (t) {
+  var feed = create()
+
+  feed.append(['a', 'b', 'c'], function () {
+    var clone1 = create(feed.key, { sparse: true })
+    var clone2 = create(feed.key, { sparse: true })
+
+    replicate(feed, clone1, { live: true })
+    replicate(clone1, clone2, { live: true })
+
+    clone2.seek(2, { ifAvailable: true }, function (err) {
+      t.ok(err, 'should error')
+      clone1.get(2, function () {
+        clone2.seek(2, { ifAvailable: true }, function (err, index, offset) {
+          t.error(err, 'no error')
+          t.same(index, 2)
+          t.same(offset, 0)
+          t.end()
+        })
+      })
+    })
+  })
+})
+
+tape('seek ifAvailable with many inflight requests', function (t) {
+  var feed = create()
+
+  var arr = new Array(100).fill('a')
+
+  feed.append(arr, function () {
+    var clone = create(feed.key, { sparse: true })
+
+    replicate(feed, clone, { live: true })
+
+    // Create 100 inflight requests.
+    for (let i = 0; i < 100; i++) clone.get(i, () => {})
+
+    clone.seek(2, { ifAvailable: true }, function (err, index, offset) {
+      t.error(err, 'no error')
+      t.same(index, 2)
+      t.same(offset, 0)
+      t.end()
     })
   })
 })

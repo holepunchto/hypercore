@@ -1,12 +1,12 @@
 var tape = require('tape')
 var hypercore = require('../')
 var ram = require('random-access-memory')
-var bufferFrom = require('buffer-from')
+var replicate = require('./helpers/replicate')
 
 tape('deterministic data and tree', function (t) {
   t.plan(10)
 
-  var expectedTree = bufferFrom(
+  var expectedTree = Buffer.from(
     '0502570200002807424c414b4532620000000000000000000000000000000000ab27d45f509274' +
     'ce0d08f4f09ba2d0e0d8df61a0c2a78932e81b5ef26ef398df0000000000000001064321a8413b' +
     'e8c604599689e2c7a59367b031b598bceeeb16556a8f3252e0de000000000000000294c1705400' +
@@ -39,7 +39,7 @@ tape('deterministic data and tree', function (t) {
 tape('deterministic data and tree after replication', function (t) {
   t.plan(10)
 
-  var expectedTree = bufferFrom(
+  var expectedTree = Buffer.from(
     '0502570200002807424c414b4532620000000000000000000000000000000000ab27d45f509274' +
     'ce0d08f4f09ba2d0e0d8df61a0c2a78932e81b5ef26ef398df0000000000000001064321a8413b' +
     'e8c604599689e2c7a59367b031b598bceeeb16556a8f3252e0de000000000000000294c1705400' +
@@ -64,9 +64,8 @@ tape('deterministic data and tree after replication', function (t) {
     feed.append(['a', 'b', 'c', 'd', 'e', 'f'], function () {
       var st = storage()
       var clone = hypercore(st, feed.key)
-      var stream = clone.replicate()
 
-      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
+      replicate(feed, clone).on('end', function () {
         t.same(st.data.toBuffer().toString(), 'abcdef')
         t.same(st.tree.toBuffer(), expectedTree)
       })
@@ -75,22 +74,28 @@ tape('deterministic data and tree after replication', function (t) {
 })
 
 tape('deterministic signatures', function (t) {
-  t.plan(10)
+  t.plan(20)
 
-  var key = bufferFrom('9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238', 'hex')
-  var secretKey = bufferFrom(
+  var key = Buffer.from('9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238', 'hex')
+  var secretKey = Buffer.from(
     '53729c0311846cca9cc0eded07aaf9e6689705b6a0b1bb8c3a2a839b72fda383' +
     '9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238',
     'hex'
   )
 
-  var expectedSignatures = bufferFrom(
+  var compatExpectedSignatures = Buffer.from(
     '050257010000400745643235353139000000000000000000000000000000000084684e8dd76c339' +
     'd6f5754e813204906ee818e6c6cdc6a816a2ac785a3e0d926ac08641a904013194fe6121847b7da' +
     'd4e361965d47715428eb0a0ededbdd5909d037ff3c3614fa0100ed9264a712d3b77cbe7a4f6eadd' +
     '8f342809be99dfb9154a19e278d7a5de7d2b4d890f7701a38b006469f6bab1aff66ac6125d48baf' +
     'dc0711057675ed57d445ce7ed4613881be37ebc56bb40556b822e431bb4dc3517421f9a5e3ed124' +
     'eb5c4db8367386d9ce12b2408613b9fec2837022772a635ffd807',
+    'hex'
+  )
+
+  var expectedSignature = Buffer.from(
+    '42e057f2c225b4c5b97876a15959324931ad84646a8bf2e4d14487c0f117966a585edcdda54670d' +
+    'd5def829ca85924ce44ae307835e57d5729aef8cd91678b06',
     'hex'
   )
 
@@ -104,7 +109,11 @@ tape('deterministic signatures', function (t) {
 
     feed.append(['a', 'b', 'c'], function () {
       t.same(st.data.toBuffer().toString(), 'abc')
-      t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
+      feed.verify(feed.length - 1, compatExpectedSignatures.slice(-64), function (err, valid) {
+        t.error(err, 'no error')
+        t.ok(valid, 'compat sigs still valid')
+      })
+      t.same(st.signatures.toBuffer().slice(-64), expectedSignature, 'only needs last sig')
     })
   }
 })
@@ -112,20 +121,16 @@ tape('deterministic signatures', function (t) {
 tape('deterministic signatures after replication', function (t) {
   t.plan(10)
 
-  var key = bufferFrom('9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238', 'hex')
-  var secretKey = bufferFrom(
+  var key = Buffer.from('9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238', 'hex')
+  var secretKey = Buffer.from(
     '53729c0311846cca9cc0eded07aaf9e6689705b6a0b1bb8c3a2a839b72fda383' +
     '9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238',
     'hex'
   )
 
-  var expectedSignatures = bufferFrom(
-    '050257010000400745643235353139000000000000000000000000000000000084684e8dd76c339' +
-    'd6f5754e813204906ee818e6c6cdc6a816a2ac785a3e0d926ac08641a904013194fe6121847b7da' +
-    'd4e361965d47715428eb0a0ededbdd5909d037ff3c3614fa0100ed9264a712d3b77cbe7a4f6eadd' +
-    '8f342809be99dfb9154a19e278d7a5de7d2b4d890f7701a38b006469f6bab1aff66ac6125d48baf' +
-    'dc0711057675ed57d445ce7ed4613881be37ebc56bb40556b822e431bb4dc3517421f9a5e3ed124' +
-    'eb5c4db8367386d9ce12b2408613b9fec2837022772a635ffd807',
+  var expectedSignature = Buffer.from(
+    '42e057f2c225b4c5b97876a15959324931ad84646a8bf2e4d14487c0f117966a585edcdda54670d' +
+    'd5def829ca85924ce44ae307835e57d5729aef8cd91678b06',
     'hex'
   )
 
@@ -139,14 +144,59 @@ tape('deterministic signatures after replication', function (t) {
     feed.append(['a', 'b', 'c'], function () {
       var st = storage()
       var clone = hypercore(st, feed.key)
-      var stream = clone.replicate()
 
-      stream.pipe(feed.replicate()).pipe(stream).on('end', function () {
+      replicate(feed, clone).on('end', function () {
         t.same(st.data.toBuffer().toString(), 'abc')
-        t.same(st.signatures.toBuffer().slice(-64), expectedSignatures.slice(-64), 'only needs last sig')
+        t.same(st.signatures.toBuffer().slice(-64), expectedSignature, 'only needs last sig')
       })
     })
   }
+})
+
+tape('compat signatures work', function (t) {
+  var key = Buffer.from('9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238', 'hex')
+  var secretKey = Buffer.from(
+    '53729c0311846cca9cc0eded07aaf9e6689705b6a0b1bb8c3a2a839b72fda383' +
+    '9718a1ff1c4ca79feac551c0c7212a65e4091278ec886b88be01ee4039682238',
+    'hex'
+  )
+
+  var compatExpectedSignatures = Buffer.from(
+    '050257010000400745643235353139000000000000000000000000000000000084684e8dd76c339' +
+    'd6f5754e813204906ee818e6c6cdc6a816a2ac785a3e0d926ac08641a904013194fe6121847b7da' +
+    'd4e361965d47715428eb0a0ededbdd5909d037ff3c3614fa0100ed9264a712d3b77cbe7a4f6eadd' +
+    '8f342809be99dfb9154a19e278d7a5de7d2b4d890f7701a38b006469f6bab1aff66ac6125d48baf' +
+    'dc0711057675ed57d445ce7ed4613881be37ebc56bb40556b822e431bb4dc3517421f9a5e3ed124' +
+    'eb5c4db8367386d9ce12b2408613b9fec2837022772a635ffd807',
+    'hex'
+  )
+
+  var st = storage()
+
+  var feed = hypercore(st, key, {
+    secretKey
+  })
+
+  feed.append(['a', 'b', 'c'], function () {
+    st.signatures.write(0, compatExpectedSignatures, function () {
+      var clone = hypercore(ram, key)
+
+      replicate(feed, clone).on('end', function () {
+        t.same(clone.length, 3)
+        clone.proof(2, function (err, proof) {
+          t.error(err)
+          t.same(proof.signature, compatExpectedSignatures.slice(-64))
+
+          feed.append('d', function () {
+            replicate(feed, clone).on('end', function () {
+              t.same(clone.length, 4)
+              t.end()
+            })
+          })
+        })
+      })
+    })
+  })
 })
 
 function storage () {

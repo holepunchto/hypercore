@@ -4,7 +4,7 @@ var path = require('path')
 var source = hypercore(path.join(__dirname, 'cores/16kb'))
 
 source.ready(function () {
-  var dest = hypercore(path.join(__dirname, 'cores/16kb-copy'), source.key, {overwrite: true})
+  var dest = hypercore(path.join(__dirname, 'cores/16kb-copy'), source.key, { overwrite: true })
   var then = Date.now()
 
   replicate(source, dest).on('end', function () {
@@ -14,6 +14,6 @@ source.ready(function () {
 })
 
 function replicate (a, b) {
-  var s = a.replicate()
-  return s.pipe(b.replicate()).pipe(s)
+  var s = a.replicate(false)
+  return s.pipe(b.replicate(true)).pipe(s)
 }
