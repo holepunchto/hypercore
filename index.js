@@ -22,6 +22,7 @@ module.exports = class Omega extends EventEmitter {
     this.key = null
     this.discoveryKey = null
     this.opened = false
+    this.fork = 0
 
     this.opening = this.ready()
     this.opening.catch(noop)
@@ -39,6 +40,7 @@ module.exports = class Omega extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
+      indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
       indent + ')'
   }
 
@@ -98,6 +100,14 @@ module.exports = class Omega extends EventEmitter {
 
     if (this.tree.length !== len) {
       this.emit('append')
+    }
+
+    if (downloaded) {
+      this.replicator.broadcastBlock(block.index)
+    }
+
+    if (b.upgraded) {
+      this.replicator.broadcastInfo()
     }
   }
 
@@ -174,6 +184,9 @@ module.exports = class Omega extends EventEmitter {
     for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
       this.replicator.broadcastBlock(i)
     }
+
+    // TODO: all these broadcasts should be one
+    this.replicator.broadcastInfo()
   }
 }
 
