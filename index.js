@@ -26,9 +26,12 @@ class Extension extends Message {
   broadcast (message) {
     const feed = this.local.handlers
     const buf = this.encoding.encode(message)
+    let broadcasted = false
     for (const peer of feed.peers) {
+      broadcasted = true
       peer.extension(this.id, buf)
     }
+    return broadcasted
   }
 
   send (message, peer) {
