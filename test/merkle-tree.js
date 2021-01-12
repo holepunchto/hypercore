@@ -379,6 +379,35 @@ tape('lowest common ancestor - long fork', async function (t) {
   t.end()
 })
 
+tape('tree hash', async function (t) {
+  const a = await create(5)
+  const b = await create(5)
+
+  t.same(a.hash(), b.hash())
+
+  {
+    const b = a.batch()
+    t.same(b.hash(), a.hash())
+    await b.append(Buffer.from('hi'))
+    const h = b.hash()
+    t.notEqual(h, a.hash())
+    b.commit()
+    t.same(h, a.hash())
+  }
+
+  {
+    const ba = b.batch()
+    await ba.append(Buffer.from('hi'))
+    const h = ba.hash()
+    t.notEqual(h, b.hash())
+    t.same(h, a.hash())
+    ba.commit()
+    t.same(h, b.hash())
+  }
+
+  t.end()
+})
+
 async function runLCA (local, remote) {
   const lca = local.lca()
   let done = await lca.verify(await remote.proof({ upgrade: { start: 0, length: remote.length } }))
