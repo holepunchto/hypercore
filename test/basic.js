@@ -2,9 +2,7 @@ const tape = require('tape')
 const { create } = require('./helpers')
 
 tape('basic', async function (t) {
-  const core = create()
-
-  await core.ready()
+  const core = await create()
 
   t.same(core.length, 0)
   t.same(core.byteLength, 0)
@@ -19,8 +17,8 @@ tape('basic', async function (t) {
 })
 
 tape('basic clone', async function (t) {
-  const core = create()
-  const clone = create()
+  const core = await create()
+  const clone = await create(core.key)
 
   await core.append('hello')
   await core.append('a')

@@ -1,25 +1,29 @@
 const { EventEmitter } = require('events')
 const raf = require('random-access-file')
+const crypto = require('hypercore-crypto')
 const MerkleTree = require('./lib/merkle-tree')
 const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
+const Info = require('./lib/info')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
 module.exports = class Omega extends EventEmitter {
-  constructor (storage) {
+  constructor (storage, key) {
     super()
 
     this[promises] = true
+    this.crypto = crypto
     this.storage = defaultStorage(storage)
     this.tree = null
     this.blocks = null
     this.bitfield = null
+    this.info = null
     this.replicator = new Replicator(this)
 
-    this.key = null
+    this.key = key || null
     this.discoveryKey = null
     this.opened = false
     this.fork = 0
@@ -40,7 +44,6 @@ module.exports = class Omega extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
-      indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
       indent + ')'
   }
 
@@ -59,13 +62,18 @@ module.exports = class Omega extends EventEmitter {
   async proof (request) {
     if (this.opened === false) await this.opening
 
-    const p = await this.tree.proof(request)
+    const signature = this.info.signature
+    const p = await this.tree.proof(request, signature)
 
     if (request.block) {
       p.block.value = request.block.value ? await this.blocks.get(request.block.index) : null
     }
 
     return p
+  }
+
+  verifySignature (message, signature) {
+    return this.crypto.verify(message, signature, this.key)
   }
 
   async verify (response, peer) {
@@ -77,9 +85,12 @@ module.exports = class Omega extends EventEmitter {
     const b = this.tree.batch()
     await b.verify(response)
 
-    // TODO: if upgrade, check sigs...
+    if (b.upgraded && !this.verifySignature(b.signable(), response.upgrade.signature, this.key)) {
+      throw new Error('Remote signature does not match')
+    }
 
     b.commit()
+    this.info.fork = this.fork = this.tree.fork
 
     const { block } = response
     if (block && block.value && !this.bitfield.get(block.index)) {
@@ -114,9 +125,34 @@ module.exports = class Omega extends EventEmitter {
   async ready () {
     if (this.opening) return this.opening
 
-    this.tree = await MerkleTree.open(this.storage('tree'))
+    this.info = await Info.open(this.storage('info'))
+
+    // TODO: move to info.keygen or something?
+    if (!this.info.publicKey) {
+      if (this.key) {
+        this.info.publicKey = this.key
+      } else {
+        const keys = this.crypto.keyPair()
+        this.info.publicKey = this.key = keys.publicKey
+        this.info.secretKey = keys.secretKey
+      }
+      await this.info.flush()
+    } else {
+      this.key = this.info.publicKey
+    }
+
+    if (this.key && this.info.publicKey) {
+      if (!this.key.equals(this.info.publicKey)) {
+        throw new Error('Another hypercore is stored here')
+      }
+    }
+
+    this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
+
+    this.fork = this.info.fork // TODO: get rid of this alias, unneeded
+    this.discoveryKey = this.crypto.discoveryKey(this.key)
     this.opened = true
   }
 
@@ -153,6 +189,35 @@ module.exports = class Omega extends EventEmitter {
     range.destroy(null)
   }
 
+  async truncate (len = 0, fork = -1) {
+    if (this.opened === false) await this.opening
+
+    if (fork === -1) fork = this.info.fork + 1
+
+    const b = this.tree.batch()
+
+    await b.truncate(len, { fork })
+    const signature = this.writable
+      ? await this.crypto.sign(b.signable(), this.info.secretKey)
+      : null
+
+    this.fork = this.info.fork = fork
+    this.info.signature = signature
+
+    const length = this.length
+    b.commit()
+
+    for (let i = len; i < length; i++) {
+      this.bitfield.set(i, false)
+    }
+
+    await this.tree.flush()
+    await this.info.flush()
+    await this.bitfield.flush()
+
+    this.replicator.broadcastInfo()
+  }
+
   async append (datas) {
     if (this.opened === false) await this.opening
 
@@ -169,8 +234,10 @@ module.exports = class Omega extends EventEmitter {
     }
 
     await this.blocks.putBatch(this.tree.length, all)
+    const signature = await this.crypto.sign(b.signable(), this.info.secretKey)
 
     b.commit()
+    this.info.signature = signature
 
     await this.tree.flush()
 
@@ -179,6 +246,7 @@ module.exports = class Omega extends EventEmitter {
     }
 
     await this.bitfield.flush()
+    await this.info.flush()
 
     // TODO: should just be one broadcast
     for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
