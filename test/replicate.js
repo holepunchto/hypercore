@@ -17,8 +17,7 @@ tape('basic replication', async function (t) {
 
   await r.downloaded()
 
-  // TODO: this is only needed for testing atm, as the event is triggered in some tick after the above
-  await new Promise(resolve => setImmediate(resolve))
+  await downloadEventWorkAround()
 
   t.same(d, 5)
 })
@@ -41,15 +40,34 @@ tape('basic replication from fork', async function (t) {
 
   const r = b.download({ start: 0, end: a.length })
 
-  setTimeout(async () => {
-    t.same(d, 0)
-    await b.verify(await a.proof({ upgrade: { start: 0, length: a.length } }))
-  }, 10)
+  await r.downloaded()
+
+  await downloadEventWorkAround()
+
+  t.same(d, 5)
+  t.same(a.info.fork, b.info.fork)
+})
+
+tape('eager replication from bigger fork', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b)
+
+  await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
+  await a.truncate(4)
+  await a.append('FORKED', 'g', 'h', 'i', 'j', 'k')
+
+  t.same(a.info.fork, 1)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  const r = b.download({ start: 0, end: a.length })
 
   await r.downloaded()
 
-  // TODO: this is only needed for testing atm, as the event is triggered in some tick after the above
-  await new Promise(resolve => setImmediate(resolve))
+  await downloadEventWorkAround()
 
   t.same(d, 5)
   t.same(a.info.fork, b.info.fork)
@@ -73,3 +91,9 @@ tape('invalid signature fails', async function (t) {
 
   await b.update()
 })
+
+function downloadEventWorkAround () {
+  // TODO: this is only needed for testing atm, as the event is triggered in some tick after range.downloaded()
+  // this is due to the bitfield being update before it is flushed, this should be fixed and this workaround removed.
+  return new Promise(resolve => setImmediate(resolve))
+}
