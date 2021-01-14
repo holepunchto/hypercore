@@ -113,12 +113,12 @@ module.exports = class Omega extends EventEmitter {
       this.emit('append')
     }
 
-    if (downloaded) {
-      this.replicator.broadcastBlock(block.index)
-    }
-
     if (b.upgraded) {
       this.replicator.broadcastInfo()
+    }
+
+    if (downloaded) {
+      this.replicator.broadcastBlock(block.index)
     }
   }
 
@@ -248,13 +248,13 @@ module.exports = class Omega extends EventEmitter {
     await this.bitfield.flush()
     await this.info.flush()
 
+    // TODO: all these broadcasts should be one
+    this.replicator.broadcastInfo()
+
     // TODO: should just be one broadcast
     for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
       this.replicator.broadcastBlock(i)
     }
-
-    // TODO: all these broadcasts should be one
-    this.replicator.broadcastInfo()
   }
 }
 
