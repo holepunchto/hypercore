@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/mafintosh/omega#readme",
   "dependencies": {
+    "abstract-extension": "^3.1.1",
     "big-sparse-array": "^1.0.2",
     "binary-message-stream": "^1.0.2",
     "flat-tree": "^1.7.0",

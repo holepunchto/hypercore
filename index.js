@@ -6,6 +6,7 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
+const Extension = require('./lib/extension')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -22,6 +23,7 @@ module.exports = class Omega extends EventEmitter {
     this.bitfield = null
     this.info = null
     this.replicator = new Replicator(this)
+    this.extensions = Extension.createLocal(this)
 
     this.key = key || null
     this.discoveryKey = null
@@ -57,6 +59,10 @@ module.exports = class Omega extends EventEmitter {
 
   get byteLength () {
     return this.tree === null ? 0 : this.tree.byteLength
+  }
+
+  get peers () {
+    return this.replicator.peers
   }
 
   async proof (request) {
@@ -296,6 +302,12 @@ module.exports = class Omega extends EventEmitter {
     for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
       this.replicator.broadcastBlock(i)
     }
+  }
+
+  registerExtension (name, handlers) {
+    const ext = this.extensions.add(name, handlers)
+    this.replicator.broadcastOptions()
+    return ext
   }
 }
 
