@@ -189,7 +189,7 @@ module.exports = class Omega extends EventEmitter {
 
     if (this.bitfield.get(index)) return this.blocks.get(index)
     if (opts && opts.onwait) opts.onwait(index)
-    this.replicator.requestBlock(index)
+    return this.replicator.requestBlock(index)
   }
 
   download (range) {
