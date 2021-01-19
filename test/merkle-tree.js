@@ -274,7 +274,7 @@ tape('upgrade edgecase when no roots need upgrade', async function (t) {
   }
 
   const b = tree.batch()
-  await b.append(Buffer.from('#5'))
+  b.append(Buffer.from('#5'))
   b.commit()
 
   {
@@ -327,13 +327,13 @@ tape('lowest common ancestor - simple fork', async function (t) {
 
   {
     const b = tree.batch()
-    await b.append(Buffer.from('fork #1'))
+    b.append(Buffer.from('fork #1'))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    await b.append(Buffer.from('fork #2'))
+    b.append(Buffer.from('fork #2'))
     b.commit()
   }
 
@@ -350,25 +350,25 @@ tape('lowest common ancestor - long fork', async function (t) {
 
   {
     const b = tree.batch()
-    await b.append(Buffer.from('fork #1'))
+    b.append(Buffer.from('fork #1'))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    await b.append(Buffer.from('fork #2'))
+    b.append(Buffer.from('fork #2'))
     b.commit()
   }
 
   {
     const b = tree.batch()
-    for (let i = 0; i < 100; i++) await b.append(Buffer.from('#' + i))
+    for (let i = 0; i < 100; i++) b.append(Buffer.from('#' + i))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    for (let i = 0; i < 100; i++) await b.append(Buffer.from('#' + i))
+    for (let i = 0; i < 100; i++) b.append(Buffer.from('#' + i))
     b.commit()
   }
 
@@ -376,6 +376,11 @@ tape('lowest common ancestor - long fork', async function (t) {
 
   t.same(ancestors, 5)
   t.same(clone.length, tree.length)
+
+  t.ok(await audit(tree))
+  await tree.flush()
+  t.ok(await audit(tree))
+
   t.end()
 })
 
@@ -388,7 +393,7 @@ tape('tree hash', async function (t) {
   {
     const b = a.batch()
     t.same(b.hash(), a.hash())
-    await b.append(Buffer.from('hi'))
+    b.append(Buffer.from('hi'))
     const h = b.hash()
     t.notEqual(h, a.hash())
     b.commit()
@@ -397,7 +402,7 @@ tape('tree hash', async function (t) {
 
   {
     const ba = b.batch()
-    await ba.append(Buffer.from('hi'))
+    ba.append(Buffer.from('hi'))
     const h = ba.hash()
     t.notEqual(h, b.hash())
     t.same(h, a.hash())
@@ -407,6 +412,89 @@ tape('tree hash', async function (t) {
 
   t.end()
 })
+
+tape('atomic truncate and append', async function (t) {
+  const tree = await create(10)
+
+  const batch = tree.batch()
+
+  await batch.truncate(5)
+  batch.append(Buffer.from('hello'))
+  batch.append(Buffer.from(' '))
+  batch.append(Buffer.from('world'))
+
+  batch.commit()
+
+  t.same(tree.length, 8)
+  t.same(tree.byteLength, 10 + 5 + 1 + 5)
+
+  t.ok(await audit(tree))
+  await tree.flush()
+  t.ok(await audit(tree))
+
+  t.end()
+})
+
+tape('atomic truncate and verify', async function (t) {
+  const tree = await create(10)
+  const other = await create(5)
+
+  {
+    const b = other.batch()
+
+    b.append(Buffer.from('other #5'))
+    b.append(Buffer.from('other #6'))
+    b.append(Buffer.from('other #7'))
+    b.append(Buffer.from('other #8'))
+
+    b.commit()
+  }
+
+  {
+    const b = tree.batch()
+
+    await b.truncate(5)
+    const proof = await other.proof({ upgrade: { start: 5, length: 4 } })
+    await b.verify(proof)
+
+    b.commit()
+  }
+
+  t.ok(await audit(other))
+  t.ok(await audit(tree))
+
+  await other.flush()
+  await tree.flush()
+
+  t.ok(await audit(other))
+  t.ok(await audit(tree))
+})
+
+async function audit (tree) {
+  const flat = require('flat-tree')
+  const expectedRoots = flat.fullRoots(tree.length * 2)
+
+  for (const root of tree.roots) {
+    if (expectedRoots.shift() !== root.index) return false
+    if (!(await check(root))) return false
+  }
+
+  if (expectedRoots.length) return false
+
+  return true
+
+  async function check (node) {
+    if ((node.index & 1) === 0) return true
+
+    const [l, r] = flat.children(node.index)
+    const nl = await tree.get(l, false)
+    const nr = await tree.get(r, false)
+
+    if (!nl && !nr) return true
+
+    return tree.crypto.parent(nl, nr).equals(node.hash) && await check(nl) && await check(nr)
+  }
+}
 
 async function runLCA (local, remote) {
   const lca = local.lca()
