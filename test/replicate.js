@@ -92,6 +92,18 @@ tape('invalid signature fails', async function (t) {
   await b.update()
 })
 
+tape('update with zero length', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b)
+
+  await b.update() // should not hang
+  t.same(b.length, 0)
+
+  t.end()
+})
+
 function downloadEventWorkAround () {
   // TODO: this is only needed for testing atm, as the event is triggered in some tick after range.downloaded()
   // this is due to the bitfield being update before it is flushed, this should be fixed and this workaround removed.
