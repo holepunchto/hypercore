@@ -227,8 +227,7 @@ tape('verify proof #1', async function (t) {
     upgrade: { start: 0, length: 10 }
   })
 
-  const b = clone.batch()
-  await b.verify(p)
+  const b = await clone.verify(p)
   b.commit()
 
   t.same(clone.length, tree.length)
@@ -248,8 +247,7 @@ tape('verify proof #2', async function (t) {
     upgrade: { start: 0, length: 10 }
   })
 
-  const b = clone.batch()
-  await b.verify(p)
+  const b = await clone.verify(p)
   b.commit()
 
   t.same(clone.length, tree.length)
@@ -268,8 +266,7 @@ tape('upgrade edgecase when no roots need upgrade', async function (t) {
       upgrade: { start: 0, length: 4 }
     })
 
-    const b = clone.batch()
-    await b.verify(proof)
+    const b = await clone.verify(proof)
     b.commit()
   }
 
@@ -282,8 +279,7 @@ tape('upgrade edgecase when no roots need upgrade', async function (t) {
       upgrade: { start: 4, length: 1 }
     })
 
-    const b = clone.batch()
-    await b.verify(proof)
+    const b = await clone.verify(proof)
     b.commit()
   }
 
@@ -294,7 +290,7 @@ tape('upgrade edgecase when no roots need upgrade', async function (t) {
 tape('lowest common ancestor - small gap', async function (t) {
   const tree = await create(10)
   const clone = await create(8)
-  const ancestors = await runLCA(clone, tree)
+  const ancestors = await reorg(clone, tree)
 
   t.same(ancestors, 8)
   t.same(clone.length, tree.length)
@@ -304,7 +300,7 @@ tape('lowest common ancestor - small gap', async function (t) {
 tape('lowest common ancestor - bigger gap', async function (t) {
   const tree = await create(20)
   const clone = await create(1)
-  const ancestors = await runLCA(clone, tree)
+  const ancestors = await reorg(clone, tree)
 
   t.same(ancestors, 1)
   t.same(clone.length, tree.length)
@@ -314,7 +310,7 @@ tape('lowest common ancestor - bigger gap', async function (t) {
 tape('lowest common ancestor - remote is shorter than local', async function (t) {
   const tree = await create(5)
   const clone = await create(10)
-  const ancestors = await runLCA(clone, tree)
+  const ancestors = await reorg(clone, tree)
 
   t.same(ancestors, 5)
   t.same(clone.length, tree.length)
@@ -337,7 +333,7 @@ tape('lowest common ancestor - simple fork', async function (t) {
     b.commit()
   }
 
-  const ancestors = await runLCA(clone, tree)
+  const ancestors = await reorg(clone, tree)
 
   t.same(ancestors, 5)
   t.same(clone.length, tree.length)
@@ -372,7 +368,7 @@ tape('lowest common ancestor - long fork', async function (t) {
     b.commit()
   }
 
-  const ancestors = await runLCA(clone, tree)
+  const ancestors = await reorg(clone, tree)
 
   t.same(ancestors, 5)
   t.same(clone.length, tree.length)
@@ -413,63 +409,6 @@ tape('tree hash', async function (t) {
   t.end()
 })
 
-tape('atomic truncate and append', async function (t) {
-  const tree = await create(10)
-
-  const batch = tree.batch()
-
-  await batch.truncate(5)
-  batch.append(Buffer.from('hello'))
-  batch.append(Buffer.from(' '))
-  batch.append(Buffer.from('world'))
-
-  batch.commit()
-
-  t.same(tree.length, 8)
-  t.same(tree.byteLength, 10 + 5 + 1 + 5)
-
-  t.ok(await audit(tree))
-  await tree.flush()
-  t.ok(await audit(tree))
-
-  t.end()
-})
-
-tape('atomic truncate and verify', async function (t) {
-  const tree = await create(10)
-  const other = await create(5)
-
-  {
-    const b = other.batch()
-
-    b.append(Buffer.from('other #5'))
-    b.append(Buffer.from('other #6'))
-    b.append(Buffer.from('other #7'))
-    b.append(Buffer.from('other #8'))
-
-    b.commit()
-  }
-
-  {
-    const b = tree.batch()
-
-    await b.truncate(5)
-    const proof = await other.proof({ upgrade: { start: 5, length: 4 } })
-    await b.verify(proof)
-
-    b.commit()
-  }
-
-  t.ok(await audit(other))
-  t.ok(await audit(tree))
-
-  await other.flush()
-  await tree.flush()
-
-  t.ok(await audit(other))
-  t.ok(await audit(tree))
-})
-
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
@@ -496,28 +435,19 @@ async function audit (tree) {
   }
 }
 
-async function runLCA (local, remote) {
-  const lca = local.lca()
-  let done = await lca.verify(await remote.proof({ upgrade: { start: 0, length: remote.length } }))
+async function reorg (local, remote) {
+  const upgrade = { start: 0, length: remote.length }
+  const r = await local.reorg(await remote.proof({ upgrade }))
 
-  while (!done) {
-    done = await lca.verify(await remote.proof({ block: { index: lca.end - 1, nodes: lca.nodes } }))
+  while (!r.finished) {
+    const index = r.want.end - 1
+    const nodes = r.want.nodes
+
+    await r.update(await remote.proof({ block: { index, nodes } }))
   }
 
-  const proof = lca.proof()
-
-  // TODO: rename lca.end and allow batches to support BOTH truncs and verifications in one go
-  if (lca.end !== local.length) {
-    const b = local.batch()
-    await b.truncate(lca.end)
-    b.commit()
-  }
-
-  const b = local.batch()
-  await b.verify(proof)
-  b.commit()
-
-  return proof.upgrade.start
+  r.commit()
+  return r.ancestors
 }
 
 async function create (length = 0) {

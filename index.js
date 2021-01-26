@@ -91,8 +91,7 @@ module.exports = class Omega extends EventEmitter {
     const len = this.tree.length
     let downloaded = false
 
-    const b = this.tree.batch()
-    await b.verify(response)
+    const b = await this.tree.verify(response)
 
     if (b.upgraded && !this.verifySignature(b.signable(), response.upgrade.signature, this.key)) {
       throw new Error('Remote signature does not match')
@@ -200,31 +199,15 @@ module.exports = class Omega extends EventEmitter {
     range.destroy(null)
   }
 
-  async verifyFork (ancestors, proof) {
+  async verifyFork (reorg) {
     if (this.opened === false) await this.opening
 
-    const { fork, signature } = proof.upgrade
-
-    // TODO: should be the same batch
-
+    const { fork, signature } = reorg
     const oldLength = this.length
 
-    if (ancestors !== this.length) {
-      const b = this.tree.batch()
-      await b.truncate(ancestors, { fork })
-      b.commit()
-    }
+    reorg.commit()
 
     const newLength = this.length
-
-    {
-      const b = this.tree.batch()
-      await b.verify(proof)
-      if (!this.verifySignature(b.signable(), proof.upgrade.signature)) {
-        throw new Error('Remote signature does not match')
-      }
-      b.commit()
-    }
 
     this.fork = this.info.fork = fork
     this.info.signature = signature
@@ -246,9 +229,8 @@ module.exports = class Omega extends EventEmitter {
 
     if (fork === -1) fork = this.info.fork + 1
 
-    const b = this.tree.batch()
+    const b = await this.tree.truncate(len, { fork })
 
-    await b.truncate(len, { fork })
     const signature = this.info.secretKey
       ? await this.crypto.sign(b.signable(), this.info.secretKey)
       : null
@@ -289,6 +271,7 @@ module.exports = class Omega extends EventEmitter {
     const signature = await this.crypto.sign(b.signable(), this.info.secretKey)
 
     b.commit()
+
     this.info.signature = signature
 
     await this.tree.flush()
