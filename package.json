@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@hyperswarm/replicator": "^1.8.0",
+    "random-access-memory": "^3.1.2",
     "range-parser": "^1.2.1",
     "standard": "^16.0.3",
     "tape": "^5.0.1"
