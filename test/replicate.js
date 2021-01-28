@@ -73,6 +73,47 @@ tape('eager replication from bigger fork', async function (t) {
   t.same(a.info.fork, b.info.fork)
 })
 
+tape('high latency reorg', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  const s = replicate(a, b)
+
+  for (let i = 0; i < 50; i++) await a.append('data')
+
+  {
+    const r = b.download({ start: 0, end: a.length })
+    await r.downloaded()
+  }
+
+  s[0].destroy()
+  s[1].destroy()
+
+  await a.truncate(30)
+
+  for (let i = 0; i < 50; i++) await a.append('fork')
+
+  replicate(a, b)
+
+  {
+    const r = b.download({ start: 0, end: a.length })
+    await r.downloaded()
+  }
+
+  let same = 0
+
+  for (let i = 0; i < a.length; i++) {
+    const ba = await a.get(i)
+    const bb = await b.get(i)
+    if (ba.equals(bb)) same++
+  }
+
+  t.same(a.fork, 1)
+  t.same(a.fork, b.fork)
+  t.same(same, 80)
+  t.end()
+})
+
 tape('invalid signature fails', async function (t) {
   const a = await create()
   const b = await create() // not the same key

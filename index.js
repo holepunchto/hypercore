@@ -188,6 +188,7 @@ module.exports = class Omega extends EventEmitter {
 
     if (this.bitfield.get(index)) return this.blocks.get(index)
     if (opts && opts.onwait) opts.onwait(index)
+
     return this.replicator.requestBlock(index)
   }
 
@@ -207,7 +208,9 @@ module.exports = class Omega extends EventEmitter {
 
     reorg.commit()
 
-    const newLength = this.length
+    const newLength = reorg.ancestors
+    // TODO: we have to broadcast this truncation length also
+    // so the other side can truncate their bitfields
 
     this.fork = this.info.fork = fork
     this.info.signature = signature
