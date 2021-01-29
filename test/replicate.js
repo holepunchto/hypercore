@@ -73,6 +73,22 @@ tape('eager replication from bigger fork', async function (t) {
   t.same(a.info.fork, b.info.fork)
 })
 
+tape('eager replication of updates per default', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b)
+
+  await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
+
+  return new Promise(resolve => {
+    b.on('append', function () {
+      t.pass('appended')
+      resolve()
+    })
+  })
+})
+
 tape('high latency reorg', async function (t) {
   const a = await create()
   const b = await create(a.key)
