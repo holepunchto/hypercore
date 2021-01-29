@@ -275,6 +275,7 @@ Feed.prototype.update = function (opts, cb) {
     if (err) return cb(err)
     if (len === -1) len = self.length + 1
     if (self.length >= len) return cb(null)
+    if (self.writable && !opts.force) return cb(null)
 
     if (self.writable) cb = self._writeStateReloader(cb)
 
