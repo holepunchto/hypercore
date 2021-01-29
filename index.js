@@ -293,6 +293,8 @@ module.exports = class Omega extends EventEmitter {
     for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
       this.replicator.broadcastBlock(i)
     }
+
+    this.emit('append')
   }
 
   registerExtension (name, handlers) {
