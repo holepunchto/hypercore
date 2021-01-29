@@ -275,8 +275,12 @@ Feed.prototype.update = function (opts, cb) {
     if (err) return cb(err)
     if (len === -1) len = self.length + 1
     if (self.length >= len) return cb(null)
-    if (self.writable && !opts.force) return cb(null)
 
+    const ifAvailable = typeof opts.ifAvailable === 'boolean'
+      ? opts.ifAvailable
+      : self._alwaysIfAvailable
+
+    if (ifAvailable && self.writable && !opts.force) return cb(null)
     if (self.writable) cb = self._writeStateReloader(cb)
 
     var w = {
@@ -289,7 +293,7 @@ Feed.prototype.update = function (opts, cb) {
     }
 
     self._waiting.push(w)
-    if (typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : self._alwaysIfAvailable) self._ifAvailable(w, len)
+    if (ifAvailable) self._ifAvailable(w, len)
     self._updatePeers()
   })
 }
