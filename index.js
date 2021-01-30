@@ -280,7 +280,7 @@ Feed.prototype.update = function (opts, cb) {
       ? opts.ifAvailable
       : self._alwaysIfAvailable
 
-    if (ifAvailable && self.writable && !opts.force) return cb(null)
+    if (ifAvailable && self.writable && !opts.force) return cb(new Error('No update available from peers'))
     if (self.writable) cb = self._writeStateReloader(cb)
 
     var w = {
