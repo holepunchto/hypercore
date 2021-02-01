@@ -65,9 +65,12 @@ module.exports = class Omega extends EventEmitter {
     return Replicator.createStream()
   }
 
-  replicate (stream) {
-    if (!stream) stream = Replicator.createStream()
-    return this.replicator.joinStream(stream)
+  replicate (isInitiator, opts = {}) {
+    const stream = isStream(isInitiator)
+      ? isInitiator
+      : opts.stream
+
+    return this.replicator.joinStream(stream || Replicator.createStream())
   }
 
   get length () {
@@ -334,4 +337,8 @@ function defaultStorage (storage) {
 
 function decode (enc, buf) {
   return enc ? enc.decode(buf) : buf
+}
+
+function isStream (s) {
+  return typeof s === 'object' && s && typeof s.pipe === 'function'
 }
