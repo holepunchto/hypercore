@@ -1,5 +1,7 @@
 const { EventEmitter } = require('events')
 const raf = require('random-access-file')
+const isOptions = require('is-options')
+const codecs = require('codecs')
 const crypto = require('hypercore-crypto')
 const MerkleTree = require('./lib/merkle-tree')
 const BlockStore = require('./lib/block-store')
@@ -12,8 +14,14 @@ const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
 module.exports = class Omega extends EventEmitter {
-  constructor (storage, key) {
+  constructor (storage, key, opts) {
     super()
+
+    if (isOptions(key)) {
+      opts = key
+      key = null
+    }
+    if (!opts) opts = {}
 
     this[promises] = true
     this.crypto = crypto
@@ -25,6 +33,7 @@ module.exports = class Omega extends EventEmitter {
     this.replicator = new Replicator(this)
     this.extensions = Extension.createLocal(this)
 
+    this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
     this.discoveryKey = null
     this.opened = false
@@ -188,10 +197,10 @@ module.exports = class Omega extends EventEmitter {
   async get (index, opts) {
     if (this.opened === false) await this.opening
 
-    if (this.bitfield.get(index)) return this.blocks.get(index)
+    if (this.bitfield.get(index)) return decode(this.valueEncoding, await this.blocks.get(index))
     if (opts && opts.onwait) opts.onwait(index)
 
-    return this.replicator.requestBlock(index)
+    return decode(this.valueEncoding, await this.replicator.requestBlock(index))
   }
 
   download (range) {
@@ -267,7 +276,12 @@ module.exports = class Omega extends EventEmitter {
     const all = []
 
     for (const data of datas) {
-      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
+      const buf = Buffer.isBuffer(data)
+        ? data
+        : this.valueEncoding
+          ? this.valueEncoding.encode(data)
+          : Buffer.from(data)
+
       b.append(buf)
       all.push(buf)
     }
@@ -311,4 +325,8 @@ function noop () {}
 function defaultStorage (storage) {
   if (typeof storage === 'string') return name => raf(name, { directory: storage })
   return storage
+}
+
+function decode (enc, buf) {
+  return enc ? enc.decode(buf) : buf
 }
