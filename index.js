@@ -204,11 +204,12 @@ module.exports = class Omega extends EventEmitter {
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
+    const encoding = (opts && opts.valueEncoding) || this.valueEncoding
 
-    if (this.bitfield.get(index)) return decode(this.valueEncoding, await this.blocks.get(index))
+    if (this.bitfield.get(index)) return decode(encoding, await this.blocks.get(index))
     if (opts && opts.onwait) opts.onwait(index)
 
-    return decode(this.valueEncoding, await this.replicator.requestBlock(index))
+    return decode(encoding, await this.replicator.requestBlock(index))
   }
 
   download (range) {
