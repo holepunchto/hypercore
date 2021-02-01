@@ -61,8 +61,13 @@ module.exports = class Omega extends EventEmitter {
       indent + ')'
   }
 
-  replicate () {
-    return this.replicator.createStream()
+  static createProtocolStream () {
+    return Replicator.createStream()
+  }
+
+  replicate (stream) {
+    if (!stream) stream = Replicator.createStream()
+    return this.replicator.joinStream(stream)
   }
 
   get length () {

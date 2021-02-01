@@ -127,12 +127,13 @@ tape('high latency reorg', async function (t) {
   t.same(a.fork, 1)
   t.same(a.fork, b.fork)
   t.same(same, 80)
-  t.end()
 })
 
 tape('invalid signature fails', async function (t) {
   const a = await create()
   const b = await create() // not the same key
+
+  b.discoveryKey = a.discoveryKey // haxx to make them swarm
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -157,8 +158,25 @@ tape('update with zero length', async function (t) {
 
   await b.update() // should not hang
   t.same(b.length, 0)
+})
 
-  t.end()
+tape('basic multiplexing', async function (t) {
+  const a1 = await create()
+  const a2 = await create()
+
+  const b1 = await create(a1.key)
+  const b2 = await create(a2.key)
+
+  const a = a1.replicate(a2.replicate())
+  const b = b1.replicate(b2.replicate())
+
+  a.pipe(b).pipe(a)
+
+  await a1.append('hi')
+  t.same(await b1.get(0), Buffer.from('hi'))
+
+  await a2.append('ho')
+  t.same(await b2.get(0), Buffer.from('ho'))
 })
 
 function downloadEventWorkAround () {
