@@ -65,6 +65,14 @@ module.exports = class Omega extends EventEmitter {
     return Replicator.createStream()
   }
 
+  session () {
+    return this
+  }
+
+  close () {
+    // TODO: impl me
+  }
+
   replicate (isInitiator, opts = {}) {
     const stream = isStream(isInitiator)
       ? isInitiator
