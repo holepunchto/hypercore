@@ -38,12 +38,15 @@ module.exports = class Omega extends EventEmitter {
     this.discoveryKey = null
     this.opened = false
     this.fork = 0
+    this.readable = true // TODO: set to false when closing
 
     this.opening = this.ready()
     this.opening.catch(noop)
 
     this.replicator.on('peer-add', peer => this.emit('peer-add', peer))
     this.replicator.on('peer-remove', peer => this.emit('peer-remove', peer))
+
+    this._externalSecretKey = opts.secretKey || null
   }
 
   [inspect] (depth, opts) {
@@ -79,6 +82,10 @@ module.exports = class Omega extends EventEmitter {
       : opts.stream
 
     return this.replicator.joinStream(stream || Replicator.createStream())
+  }
+
+  get writable () {
+    return this.info.secretKey !== null
   }
 
   get length () {
@@ -164,6 +171,7 @@ module.exports = class Omega extends EventEmitter {
     if (!this.info.publicKey) {
       if (this.key) {
         this.info.publicKey = this.key
+        this.info.secretKey = this._externalSecretKey
       } else {
         const keys = this.crypto.keyPair()
         this.info.publicKey = this.key = keys.publicKey
