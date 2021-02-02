@@ -252,7 +252,7 @@ module.exports = class Omega extends EventEmitter {
     await this.bitfield.flush()
 
     this.replicator.broadcastInfo()
-    this.emit('fork', this.info.fork)
+    this.emit('reorg', this.info.fork)
   }
 
   async truncate (len = 0, fork = -1) {
