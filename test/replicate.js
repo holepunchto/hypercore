@@ -179,6 +179,29 @@ tape('basic multiplexing', async function (t) {
   t.same(await b2.get(0), Buffer.from('ho'))
 })
 
+tape('async multiplexing', async function (t) {
+  const a1 = await create()
+  const b1 = await create(a1.key)
+
+  const a = a1.replicate()
+  const b = b1.replicate()
+
+  a.pipe(b).pipe(a)
+
+  const a2 = await create()
+  await a2.append('ho')
+
+  const b2 = await create(a2.key)
+
+  // b2 doesn't replicate immediately.
+  a2.replicate(a)
+  await new Promise(resolve => setImmediate(resolve))
+  b2.replicate(b)
+
+  t.same(b2.peers.length, 1)
+  t.same(await b2.get(0), Buffer.from('ho'))
+})
+
 function downloadEventWorkAround () {
   // TODO: this is only needed for testing atm, as the event is triggered in some tick after range.downloaded()
   // this is due to the bitfield being update before it is flushed, this should be fixed and this workaround removed.
