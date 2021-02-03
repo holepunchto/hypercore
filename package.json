@@ -34,5 +34,8 @@
     "range-parser": "^1.2.1",
     "standard": "^16.0.3",
     "tape": "^5.0.1"
+  },
+  "optionalDependencies": {
+    "fd-lock": "^1.2.0"
   }
 }

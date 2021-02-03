@@ -9,6 +9,7 @@ const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
 const Extension = require('./lib/extension')
+const lock = requireMaybe('fd-lock')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -72,8 +73,15 @@ module.exports = class Omega extends EventEmitter {
     return this
   }
 
-  close () {
-    // TODO: impl me
+  async close () {
+    await this.opening
+
+    await Promise.all([
+      this.bitfield.close(),
+      this.info.close(),
+      this.tree.close(),
+      this.blocks.close()
+    ])
   }
 
   replicate (isInitiator, opts = {}) {
@@ -348,7 +356,10 @@ module.exports = class Omega extends EventEmitter {
 function noop () {}
 
 function defaultStorage (storage) {
-  if (typeof storage === 'string') return name => raf(name, { directory: storage })
+  if (typeof storage === 'string') {
+    const directory = storage
+    return name => raf(name, { directory, lock: name === 'info' ? lock : null })
+  }
   return storage
 }
 
@@ -358,4 +369,12 @@ function decode (enc, buf) {
 
 function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
+}
+
+function requireMaybe (name) {
+  try {
+    return require(name)
+  } catch (_) {
+    return null
+  }
 }
