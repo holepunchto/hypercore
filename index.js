@@ -216,8 +216,8 @@ module.exports = class Omega extends EventEmitter {
 
   async update () {
     if (this.opened === false) await this.opening
-    // TODO: if writable, return immediately if not forced
-    // add this when we have a good readable/writable story
+    // TODO: add an option where a writer can bootstrap it's state from the network also
+    if (this.writer !== null) return false
     return this.replicator.requestUpgrade()
   }
 
