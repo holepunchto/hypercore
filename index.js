@@ -45,9 +45,6 @@ module.exports = class Omega extends EventEmitter {
     this.opening = this.ready()
     this.opening.catch(noop)
 
-    this.replicator.on('peer-add', peer => this.emit('peer-add', peer))
-    this.replicator.on('peer-remove', peer => this.emit('peer-remove', peer))
-
     this._externalSecretKey = opts.secretKey || null
   }
 
@@ -112,64 +109,6 @@ module.exports = class Omega extends EventEmitter {
 
   get peers () {
     return this.replicator.peers
-  }
-
-  async proof (request) {
-    if (this.opened === false) await this.opening
-
-    const signature = this.info.signature
-    const p = await this.tree.proof(request, signature)
-
-    if (request.block) {
-      p.block.value = request.block.value ? await this.blocks.get(request.block.index) : null
-    }
-
-    return p
-  }
-
-  async verify (response, peer) {
-    if (this.opened === false) await this.opening
-
-    const len = this.tree.length
-    let downloaded = false
-
-    const b = await this.tree.verify(response)
-
-    if (b.upgraded && !b.signedBy(this.key)) {
-      throw new Error('Remote signature does not match')
-    }
-
-    b.commit()
-    this.info.fork = this.tree.fork
-
-    const { block } = response
-    if (block && block.value && !this.bitfield.get(block.index)) {
-      downloaded = true
-      await this.blocks.put(block.index, block.value)
-    }
-
-    await this.tree.flush()
-
-    if (block && block.value) {
-      this.bitfield.set(block.index, true)
-      await this.bitfield.flush()
-    }
-
-    if (downloaded) {
-      this.emit('download', block.index, block.value, peer)
-    }
-
-    if (this.tree.length !== len) {
-      this.emit('append')
-    }
-
-    if (b.upgraded) {
-      this.replicator.broadcastInfo()
-    }
-
-    if (downloaded) {
-      this.replicator.broadcastBlock(block.index)
-    }
   }
 
   async ready () {
@@ -249,33 +188,6 @@ module.exports = class Omega extends EventEmitter {
     range.destroy(null)
   }
 
-  async verifyFork (reorg) {
-    if (this.opened === false) await this.opening
-
-    const { fork, signature } = reorg
-    const oldLength = this.length
-
-    reorg.commit()
-
-    const newLength = reorg.ancestors
-    // TODO: we have to broadcast this truncation length also
-    // so the other side can truncate their bitfields
-
-    this.info.fork = fork
-    this.info.signature = signature
-
-    for (let i = newLength; i < oldLength; i++) {
-      this.bitfield.set(i, false)
-    }
-
-    await this.tree.flush()
-    await this.info.flush()
-    await this.bitfield.flush()
-
-    this.replicator.broadcastInfo()
-    this.emit('reorg', this.info.fork)
-  }
-
   async truncate (len = 0, fork = -1) {
     if (this.opened === false) await this.opening
     return this.writer.truncate(len, fork)
@@ -294,20 +206,35 @@ module.exports = class Omega extends EventEmitter {
 
   // called by the writer
   ontruncate () {
-    this.replicator.broadcastInfo()
     this.emit('truncate')
   }
 
   // called by the writer
-  onappend (oldLength, newLength) {
-    // TODO: all these broadcasts should be one
-    this.replicator.broadcastInfo()
-
-    for (let i = oldLength; i < newLength; i++) {
-      this.replicator.broadcastBlock(i)
-    }
-
+  onappend () {
     this.emit('append')
+  }
+
+  // called by the replicator
+  ondownload (block, upgraded, peer) {
+    if (block) {
+      this.emit('download', block.index, block.value, peer)
+    }
+    if (upgraded) {
+      this.emit('append')
+    }
+  }
+
+  // called by the replicator
+  onreorg () {
+    this.emit('reorg', this.info.fork)
+  }
+
+  onpeeradd (peer) {
+    this.emit('peer-add', peer)
+  }
+
+  onpeerremove (peer) {
+    this.emit('peer-remove', peer)
   }
 }
 

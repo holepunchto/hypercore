@@ -17,8 +17,6 @@ tape('basic replication', async function (t) {
 
   await r.downloaded()
 
-  await downloadEventWorkAround()
-
   t.same(d, 5)
 })
 
@@ -42,8 +40,6 @@ tape('basic replication from fork', async function (t) {
 
   await r.downloaded()
 
-  await downloadEventWorkAround()
-
   t.same(d, 5)
   t.same(a.info.fork, b.info.fork)
 })
@@ -66,8 +62,6 @@ tape('eager replication from bigger fork', async function (t) {
   const r = b.download({ start: 0, end: a.length })
 
   await r.downloaded()
-
-  await downloadEventWorkAround()
 
   t.same(d, 5)
   t.same(a.info.fork, b.info.fork)
@@ -212,9 +206,3 @@ tape('async multiplexing', async function (t) {
   t.same(b2.peers.length, 1)
   t.same(await b2.get(0), Buffer.from('ho'))
 })
-
-function downloadEventWorkAround () {
-  // TODO: this is only needed for testing atm, as the event is triggered in some tick after range.downloaded()
-  // this is due to the bitfield being update before it is flushed, this should be fixed and this workaround removed.
-  return new Promise(resolve => setImmediate(resolve))
-}
