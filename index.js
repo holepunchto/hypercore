@@ -93,7 +93,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   get writable () {
-    return this.info.secretKey !== null
+    return this.info !== null && this.info.secretKey !== null
   }
 
   get length () {
