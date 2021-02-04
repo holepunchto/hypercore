@@ -58,9 +58,10 @@ module.exports = class Omega extends EventEmitter {
     }
 
     return 'Omega(\n' +
-      indent + '  key: ' + opts.stylize((this.key && this.key.toString('hex')), 'string') + '\n' +
-      indent + '  discoveryKey: ' + opts.stylize((this.discoveryKey && this.discoveryKey.toString('hex')), 'string') + '\n' +
+      indent + '  key: ' + opts.stylize((toHex(this.key)), 'string') + '\n' +
+      indent + '  discoveryKey: ' + opts.stylize(toHex(this.discoveryKey), 'string') + '\n' +
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
+      indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
       indent + ')'
@@ -297,11 +298,19 @@ module.exports = class Omega extends EventEmitter {
 
   // called by the writer
   ontruncate () {
+    this.replicator.broadcastInfo()
     this.emit('truncate')
   }
 
   // called by the writer
-  onappend () {
+  onappend (oldLength, newLength) {
+    // TODO: all these broadcasts should be one
+    this.replicator.broadcastInfo()
+
+    for (let i = oldLength; i < newLength; i++) {
+      this.replicator.broadcastBlock(i)
+    }
+
     this.emit('append')
   }
 }
@@ -330,4 +339,8 @@ function requireMaybe (name) {
   } catch (_) {
     return null
   }
+}
+
+function toHex (buf) {
+  return buf && buf.toString('hex')
 }
