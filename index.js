@@ -34,15 +34,16 @@ module.exports = class Omega extends EventEmitter {
     this.info = null
     this.writer = null
     this.replicator = null
-    this.extensions = Extension.createLocal(this)
+    this.extensions = opts.extensions || Extension.createLocal()
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
     this.discoveryKey = null
     this.opened = false
-    this.readable = true // TODO: set to false when closing
+    this.readable = true
+    this.sessions = opts._sessions || [this]
 
-    this.opening = this.ready()
+    this.opening = opts._opening || this.ready()
     this.opening.catch(noop)
 
     this._externalSecretKey = opts.secretKey || null
@@ -54,11 +55,12 @@ module.exports = class Omega extends EventEmitter {
       while (indent.length < opts.indentationLvl) indent += ' '
     }
 
-    return 'Omega(\n' +
+    return this.constructor.name + '(\n' +
       indent + '  key: ' + opts.stylize((toHex(this.key)), 'string') + '\n' +
       indent + '  discoveryKey: ' + opts.stylize(toHex(this.discoveryKey), 'string') + '\n' +
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
+      indent + '  sessions: ' + opts.stylize(this.sessions.length, 'number') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
       indent + ')'
@@ -69,11 +71,41 @@ module.exports = class Omega extends EventEmitter {
   }
 
   session () {
-    return this
+    const s = new Omega(this.key, this.storage, {
+      valueEncoding: this.valueEncoding,
+      secretKey: this._externalSecretKey,
+      extensions: this.extensions,
+      _opening: this.opening,
+      _sessions: this.sessions
+    })
+
+    s._initSession(this)
+    this.sessions.push(s)
+
+    return s
+  }
+
+  _initSession (o) {
+    this.opened = o.opened
+    this.key = o.key
+    this.discoveryKey = o.discoveryKey
+    this.info = o.info
+    this.replicator = o.replicator
+    this.tree = o.tree
+    this.blocks = o.blocks
+    this.bitfield = o.bitfield
   }
 
   async close () {
     await this.opening
+
+    const i = this.sessions.indexOf(this)
+    if (i === -1) return
+
+    this.sessions.splice(i, 1)
+    this.readable = false
+
+    if (this.sessions.length) return
 
     await Promise.all([
       this.bitfield.close(),
@@ -81,6 +113,8 @@ module.exports = class Omega extends EventEmitter {
       this.tree.close(),
       this.blocks.close()
     ])
+
+    this.emit('close')
   }
 
   replicate (isInitiator, opts = {}) {
@@ -117,7 +151,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   get peers () {
-    return this.replicator.peers
+    return this.replicator === null ? [] : this.replicator.peers
   }
 
   async ready () {
@@ -157,6 +191,12 @@ module.exports = class Omega extends EventEmitter {
 
     this.discoveryKey = this.crypto.discoveryKey(this.key)
     this.opened = true
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      const s = this.sessions[i]
+      if (s !== this) s._initSession(this)
+      s.emit('ready')
+    }
   }
 
   async update () {
@@ -216,35 +256,50 @@ module.exports = class Omega extends EventEmitter {
 
   // called by the writer
   ontruncate () {
-    this.emit('truncate')
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('truncate')
+    }
   }
 
   // called by the writer
   onappend () {
-    this.emit('append')
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('append')
+    }
   }
 
   // called by the replicator
   ondownload (block, upgraded, peer) {
     if (block) {
-      this.emit('download', block.index, block.value, peer)
+      for (let i = 0; i < this.sessions.length; i++) {
+        this.sessions[i].emit('download', block.index, block.value, peer)
+      }
     }
+
     if (upgraded) {
-      this.emit('append')
+      for (let i = 0; i < this.sessions.length; i++) {
+        this.sessions[i].emit('append')
+      }
     }
   }
 
   // called by the replicator
   onreorg () {
-    this.emit('reorg', this.info.fork)
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('reorg', this.info.fork)
+    }
   }
 
   onpeeradd (peer) {
-    this.emit('peer-add', peer)
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('peer-add', peer)
+    }
   }
 
   onpeerremove (peer) {
-    this.emit('peer-remove', peer)
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('peer-remove', peer)
+    }
   }
 }
 
