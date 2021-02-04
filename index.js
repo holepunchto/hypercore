@@ -8,6 +8,7 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
+const Writer = require('./lib/writer')
 const Extension = require('./lib/extension')
 const lock = requireMaybe('fd-lock')
 
@@ -31,6 +32,7 @@ module.exports = class Omega extends EventEmitter {
     this.blocks = null
     this.bitfield = null
     this.info = null
+    this.writer = null
     this.replicator = new Replicator(this)
     this.extensions = Extension.createLocal(this)
 
@@ -38,7 +40,6 @@ module.exports = class Omega extends EventEmitter {
     this.key = key || null
     this.discoveryKey = null
     this.opened = false
-    this.fork = 0
     this.readable = true // TODO: set to false when closing
 
     this.opening = this.ready()
@@ -93,7 +94,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   get writable () {
-    return this.info !== null && this.info.secretKey !== null
+    return this.writer !== null
   }
 
   get length () {
@@ -102,6 +103,10 @@ module.exports = class Omega extends EventEmitter {
 
   get byteLength () {
     return this.tree === null ? 0 : this.tree.byteLength
+  }
+
+  get fork () {
+    return this.tree === null ? 0 : this.tree.fork
   }
 
   get peers () {
@@ -138,7 +143,7 @@ module.exports = class Omega extends EventEmitter {
     }
 
     b.commit()
-    this.info.fork = this.fork = this.tree.fork
+    this.info.fork = this.tree.fork
 
     const { block } = response
     if (block && block.value && !this.bitfield.get(block.index)) {
@@ -190,17 +195,20 @@ module.exports = class Omega extends EventEmitter {
       this.key = this.info.publicKey
     }
 
+    // TODO: allow this to not be persisted
+    const { secretKey } = this.info
+
     if (this.key && this.info.publicKey) {
       if (!this.key.equals(this.info.publicKey)) {
         throw new Error('Another hypercore is stored here')
       }
     }
 
-    this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto })
+    this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork: this.info.fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
+    if (secretKey) this.writer = new Writer(secretKey, this)
 
-    this.fork = this.info.fork // TODO: get rid of this alias, unneeded
     this.discoveryKey = this.crypto.discoveryKey(this.key)
     this.opened = true
   }
@@ -256,7 +264,7 @@ module.exports = class Omega extends EventEmitter {
     // TODO: we have to broadcast this truncation length also
     // so the other side can truncate their bitfields
 
-    this.fork = this.info.fork = fork
+    this.info.fork = fork
     this.info.signature = signature
 
     for (let i = newLength; i < oldLength; i++) {
@@ -273,83 +281,28 @@ module.exports = class Omega extends EventEmitter {
 
   async truncate (len = 0, fork = -1) {
     if (this.opened === false) await this.opening
-
-    if (fork === -1) fork = this.info.fork + 1
-
-    const b = await this.tree.truncate(len, { fork })
-
-    const signature = this.info.secretKey
-      ? await this.crypto.sign(b.signable(), this.info.secretKey)
-      : null
-
-    this.fork = this.info.fork = fork
-    this.info.signature = signature
-
-    const length = this.length
-    b.commit()
-
-    for (let i = len; i < length; i++) {
-      this.bitfield.set(i, false)
-    }
-
-    await this.tree.flush()
-    await this.info.flush()
-    await this.bitfield.flush()
-
-    this.replicator.broadcastInfo()
+    return this.writer.truncate(len, fork)
   }
 
   async append (datas) {
     if (this.opened === false) await this.opening
-
-    if (!Array.isArray(datas)) datas = [datas]
-    if (!datas.length) return
-
-    const b = this.tree.batch()
-    const all = []
-
-    for (const data of datas) {
-      const buf = Buffer.isBuffer(data)
-        ? data
-        : this.valueEncoding
-          ? this.valueEncoding.encode(data)
-          : Buffer.from(data)
-
-      b.append(buf)
-      all.push(buf)
-    }
-
-    await this.blocks.putBatch(this.tree.length, all)
-    const signature = await this.crypto.sign(b.signable(), this.info.secretKey)
-
-    b.commit()
-
-    this.info.signature = signature
-
-    await this.tree.flush()
-
-    for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
-      this.bitfield.set(i, true)
-    }
-
-    await this.bitfield.flush()
-    await this.info.flush()
-
-    // TODO: all these broadcasts should be one
-    this.replicator.broadcastInfo()
-
-    // TODO: should just be one broadcast
-    for (let i = this.tree.length - datas.length; i < this.tree.length; i++) {
-      this.replicator.broadcastBlock(i)
-    }
-
-    this.emit('append')
+    return this.writer.append(Array.isArray(datas) ? datas : [datas])
   }
 
   registerExtension (name, handlers) {
     const ext = this.extensions.add(name, handlers)
     this.replicator.broadcastOptions()
     return ext
+  }
+
+  // called by the writer
+  ontruncate () {
+    this.emit('truncate')
+  }
+
+  // called by the writer
+  onappend () {
+    this.emit('append')
   }
 }
 
