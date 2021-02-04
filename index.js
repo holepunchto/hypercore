@@ -39,8 +39,9 @@ module.exports = class Omega extends EventEmitter {
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
     this.discoveryKey = null
+    this.readable = false
     this.opened = false
-    this.readable = true
+    this.closed = false
     this.sessions = opts._sessions || [this]
 
     this.opening = opts._opening || this.ready()
@@ -104,8 +105,15 @@ module.exports = class Omega extends EventEmitter {
 
     this.sessions.splice(i, 1)
     this.readable = false
+    this.closed = true
 
-    if (this.sessions.length) return
+    if (this.sessions.length) {
+      // wait a tick
+      await Promise.resolve()
+      // emit "fake" close as this is a session
+      this.emit('close', false)
+      return
+    }
 
     await Promise.all([
       this.bitfield.close(),
@@ -114,7 +122,7 @@ module.exports = class Omega extends EventEmitter {
       this.blocks.close()
     ])
 
-    this.emit('close')
+    this.emit('close', true)
   }
 
   replicate (isInitiator, opts = {}) {
@@ -135,7 +143,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   get writable () {
-    return this.writer !== null
+    return this.readable && this.writer !== null
   }
 
   get length () {
