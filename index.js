@@ -127,10 +127,6 @@ module.exports = class Omega extends EventEmitter {
     return p
   }
 
-  verifySignature (message, signature) {
-    return this.crypto.verify(message, signature, this.key)
-  }
-
   async verify (response, peer) {
     if (this.opened === false) await this.opening
 
@@ -139,7 +135,7 @@ module.exports = class Omega extends EventEmitter {
 
     const b = await this.tree.verify(response)
 
-    if (b.upgraded && !this.verifySignature(b.signable(), response.upgrade.signature, this.key)) {
+    if (b.upgraded && !b.signedBy(this.key)) {
       throw new Error('Remote signature does not match')
     }
 

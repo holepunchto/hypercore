@@ -130,6 +130,8 @@ tape('high latency reorg', async function (t) {
 })
 
 tape('invalid signature fails', async function (t) {
+  t.plan(2)
+
   const a = await create()
   const b = await create() // not the same key
 
@@ -147,7 +149,16 @@ tape('invalid signature fails', async function (t) {
     t.same(err.message, 'Remote signature does not match')
   })
 
-  await b.update()
+  return new Promise((resolve) => {
+    let missing = 2
+
+    s1.on('close', onclose)
+    s2.on('close', onclose)
+
+    function onclose () {
+      if (--missing === 0) resolve()
+    }
+  })
 })
 
 tape('update with zero length', async function (t) {
