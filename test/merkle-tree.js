@@ -409,6 +409,46 @@ tape('tree hash', async function (t) {
   t.end()
 })
 
+tape('basic tree seeks', async function (t) {
+  const a = await create(5)
+
+  {
+    const b = a.batch()
+    b.append(Buffer.from('bigger'))
+    b.append(Buffer.from('block'))
+    b.append(Buffer.from('tiny'))
+    b.append(Buffer.from('s'))
+    b.append(Buffer.from('another'))
+    b.commit()
+  }
+
+  t.same(a.length, 10)
+  t.same(a.byteLength, 33)
+
+  for (let i = 0; i < a.byteLength; i++) {
+    const s = a.seek(i)
+
+    const actual = await s.update()
+    const expected = await linearSeek(a, i)
+
+    if (actual[0] !== expected[0] || actual[1] !== expected[1]) {
+      t.same(actual, expected, 'bad seek at ' + i)
+      return
+    }
+  }
+
+  t.pass('checked all byte seeks')
+
+  async function linearSeek (tree, bytes) {
+    for (let i = 0; i < tree.length * 2; i += 2) {
+      const node = await tree.get(i)
+      if (node.size > bytes) return [i / 2, bytes]
+      bytes -= node.size
+    }
+    return [tree.length, bytes]
+  }
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
