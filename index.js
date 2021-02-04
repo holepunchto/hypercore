@@ -33,7 +33,7 @@ module.exports = class Omega extends EventEmitter {
     this.bitfield = null
     this.info = null
     this.writer = null
-    this.replicator = new Replicator(this)
+    this.replicator = null
     this.extensions = Extension.createLocal(this)
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
@@ -84,11 +84,20 @@ module.exports = class Omega extends EventEmitter {
   }
 
   replicate (isInitiator, opts = {}) {
-    const stream = isStream(isInitiator)
+    let stream = isStream(isInitiator)
       ? isInitiator
       : opts.stream
 
-    return this.replicator.joinStream(stream || Replicator.createStream())
+    if (!stream) stream = Replicator.createStream()
+
+    if (this.opened) {
+      this.replicator.joinStream(stream)
+    } else {
+      const join = this.replicator.joinStream.bind(this.replicator, stream)
+      this.opening.then(join, stream.destroy.bind(stream))
+    }
+
+    return stream
   }
 
   get writable () {
@@ -140,6 +149,7 @@ module.exports = class Omega extends EventEmitter {
       }
     }
 
+    this.replicator = new Replicator(this)
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork: this.info.fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
