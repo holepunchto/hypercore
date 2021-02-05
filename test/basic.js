@@ -21,3 +21,14 @@ tape('basic', async function (t) {
 
   t.end()
 })
+
+tape('session', async function (t) {
+  const core = await create()
+
+  const session = core.session()
+
+  await session.append('test')
+  t.same(await core.get(0), Buffer.from('test'))
+  t.same(await session.get(0), Buffer.from('test'))
+  t.end()
+})

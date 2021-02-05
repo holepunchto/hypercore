@@ -90,6 +90,7 @@ module.exports = class Omega extends EventEmitter {
     this.opened = o.opened
     this.key = o.key
     this.discoveryKey = o.discoveryKey
+    this.writer = o.writer
     this.info = o.info
     this.replicator = o.replicator
     this.tree = o.tree
