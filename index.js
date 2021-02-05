@@ -26,6 +26,8 @@ module.exports = class Omega extends EventEmitter {
     if (!opts) opts = {}
 
     this[promises] = true
+    this.options = opts
+
     this.crypto = crypto
     this.storage = defaultStorage(storage)
     this.tree = null
@@ -46,8 +48,6 @@ module.exports = class Omega extends EventEmitter {
 
     this.opening = opts._opening || this.ready()
     this.opening.catch(noop)
-
-    this._externalSecretKey = opts.secretKey || null
   }
 
   [inspect] (depth, opts) {
@@ -166,25 +166,36 @@ module.exports = class Omega extends EventEmitter {
   async ready () {
     if (this.opening) return this.opening
 
+    if (this.options.preload) {
+      this.options = { ...this.options, ...(await this.options.preload()) }
+    }
+
+    let secretKey = null
+
+    if (this.options.keyPair) {
+      this.key = this.options.keyPair.publicKey
+      secretKey = this.options.keyPair.secretKey
+    }
+
     this.info = await Info.open(this.storage('info'))
+
+    const { fork } = this.info
+    secretKey = this.info.secretKey
 
     // TODO: move to info.keygen or something?
     if (!this.info.publicKey) {
       if (this.key) {
         this.info.publicKey = this.key
-        this.info.secretKey = this._externalSecretKey
+        this.info.secretKey = secretKey
       } else {
         const keys = this.crypto.keyPair()
         this.info.publicKey = this.key = keys.publicKey
-        this.info.secretKey = keys.secretKey
+        this.info.secretKey = secretKey = keys.secretKey
       }
       await this.info.flush()
     } else {
       this.key = this.info.publicKey
     }
-
-    // TODO: allow this to not be persisted
-    const { secretKey, fork } = this.info
 
     if (this.key && this.info.publicKey) {
       if (!this.key.equals(this.info.publicKey)) {
