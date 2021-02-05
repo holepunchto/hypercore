@@ -7,6 +7,8 @@ tape('basic', async function (t) {
 
   t.same(core.length, 0)
   t.same(core.byteLength, 0)
+  t.same(core.writable, true)
+  t.same(core.readable, true)
 
   core.on('append', function () {
     appends++
