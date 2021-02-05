@@ -34,7 +34,7 @@ module.exports = class Omega extends EventEmitter {
     this.info = null
     this.writer = null
     this.replicator = null
-    this.extensions = opts.extensions || Extension.createLocal()
+    this.extensions = opts.extensions || Extension.createLocal(this)
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
@@ -183,7 +183,7 @@ module.exports = class Omega extends EventEmitter {
     }
 
     // TODO: allow this to not be persisted
-    const { secretKey } = this.info
+    const { secretKey, fork } = this.info
 
     if (this.key && this.info.publicKey) {
       if (!this.key.equals(this.info.publicKey)) {
@@ -192,7 +192,7 @@ module.exports = class Omega extends EventEmitter {
     }
 
     this.replicator = new Replicator(this)
-    this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork: this.info.fork })
+    this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
     if (secretKey) this.writer = new Writer(secretKey, this)
@@ -257,9 +257,12 @@ module.exports = class Omega extends EventEmitter {
   }
 
   registerExtension (name, handlers) {
-    const ext = this.extensions.add(name, handlers)
-    this.replicator.broadcastOptions()
-    return ext
+    return this.extensions.add(name, handlers)
+  }
+
+  // called by the extensions
+  onextensionupdate () {
+    if (this.replicator !== null) this.replicator.broadcastOptions()
   }
 
   // called by the writer
