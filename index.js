@@ -170,44 +170,20 @@ module.exports = class Omega extends EventEmitter {
       this.options = { ...this.options, ...(await this.options.preload()) }
     }
 
-    let secretKey = null
-
-    if (this.options.keyPair) {
-      this.key = this.options.keyPair.publicKey
-      secretKey = this.options.keyPair.secretKey
-    }
-
-    this.info = await Info.open(this.storage('info'))
-
-    const { fork } = this.info
-    secretKey = this.info.secretKey
-
-    // TODO: move to info.keygen or something?
-    if (!this.info.publicKey) {
-      if (this.key) {
-        this.info.publicKey = this.key
-        this.info.secretKey = secretKey
-      } else {
-        const keys = this.crypto.keyPair()
-        this.info.publicKey = this.key = keys.publicKey
-        this.info.secretKey = secretKey = keys.secretKey
-      }
-      await this.info.flush()
-    } else {
-      this.key = this.info.publicKey
-    }
-
-    if (this.key && this.info.publicKey) {
-      if (!this.key.equals(this.info.publicKey)) {
-        throw new Error('Another hypercore is stored here')
-      }
-    }
+    this.info = await Info.open(this.storage('info'), {
+      crypto: this.crypto,
+      publicKey: this.key,
+      ...this.options.keyPair
+    })
+    this.key = this.info.publicKey
+    const secretKey = this.info.secretKey
+    const fork = this.info.fork
 
     this.replicator = new Replicator(this)
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
-    if (secretKey) this.writer = new Writer(secretKey, this)
+    if (this.info.secretKey) this.writer = new Writer(secretKey, this)
 
     this.discoveryKey = this.crypto.discoveryKey(this.key)
     this.opened = true
