@@ -446,14 +446,57 @@ tape('writes are batched', function (t) {
 
   ws.write('ab')
   ws.write('cd')
-  ws.write('ef')
-  ws.end(function () {
-    t.deepEquals(trackingRam.log.data, [
-      { write: [0, Buffer.from('ab')] },
-      { write: [2, Buffer.from('cdef')] }
-    ])
-    feed.close(function () {
-      t.end()
+  setImmediate(function () {
+    ws.write('ef')
+    ws.write('gh')
+    ws.end(function () {
+      t.deepEquals(trackingRam.log.data, [
+        { write: [0, Buffer.from('abcd')] },
+        { write: [4, Buffer.from('efgh')] }
+      ])
+      feed.close(function () {
+        t.end()
+      })
+    })
+  })
+})
+
+tape('cancel get', function (t) {
+  var feed = create()
+  var cancelled = false
+
+  const get = feed.get(42, function (err) {
+    t.ok(cancelled, 'was cancelled')
+    t.ok(err, 'had error')
+    t.end()
+  })
+
+  setImmediate(function () {
+    cancelled = true
+    feed.cancel(get)
+  })
+})
+
+tape('onwait', function (t) {
+  t.plan(2)
+
+  var feed = create()
+
+  feed.append('a', function () {
+    feed.get(0, {
+      onwait () {
+        t.fail('no onwait')
+      }
+    }, function () {
+      t.ok('should call cb')
+    })
+
+    feed.get(42, {
+      onwait () {
+        t.ok('should wait')
+      }
+    }, function () {
+      t.fail('no cb')
     })
   })
 })

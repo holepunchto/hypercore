@@ -2,13 +2,13 @@
 
 Hypercore is a secure, distributed append-only log.
 
-Built for sharing large datasets and streams of real time data as part of the [Dat project](https://datproject.org).
+Built for sharing large datasets and streams of real time data as part of the [Hypercore Protocol](https://hypercore-protocol.org).
 
 ``` sh
 npm install hypercore
 ```
 
-[![Build Status](https://travis-ci.org/hypercore-protocol/hypercore.svg?branch=master)](https://travis-ci.org/hypercore-protocol/hypercore)
+[![Build Status](https://github.com/hypercore-protocol/hypercore/workflows/Build%20Status/badge.svg)](https://github.com/hypercore-protocol/hypercore/actions?query=workflow%3A%22Build+Status%22)
 
 To learn more about how hypercore works on a technical level read the [Dat paper](https://github.com/datprotocol/whitepaper/blob/master/dat-paper.pdf).
 
@@ -18,7 +18,7 @@ To learn more about how hypercore works on a technical level read the [Dat paper
 * **Realtime.** Get the latest updates to the log fast and securely.
 * **Performant.** Uses a simple flat file structure to maximize I/O performance.
 * **Secure.** Uses signed merkle trees to verify log integrity in real time.
-* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/mafintosh/random-access-memory)) that works in the browser
+* **Browser support.** Simply pick a storage provider (like [random-access-memory](https://github.com/random-access-storage/random-access-memory)) that works in the browser
 
 Note that the latest release is Hypercore 8, which is not compatible with Hypercore 7 on the wire format, but storage compatible.
 
@@ -58,7 +58,7 @@ Create a new hypercore feed.
 var feed = hypercore('./directory') // store data in ./directory
 ```
 
-Alternatively you can pass a function instead that is called with every filename hypercore needs to function and return your own [random-access](https://github.com/juliangruber/abstract-random-access) instance that is used to store the data.
+Alternatively you can pass a function instead that is called with every filename hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
 
 ``` js
 var ram = require('random-access-memory')
@@ -71,7 +71,7 @@ var feed = hypercore(function (filename) {
 })
 ```
 
-Per default hypercore uses [random-access-file](https://github.com/mafintosh/random-access-file). This is also useful if you want to store specific files in other directories. For example you might want to store the secret key elsewhere.
+Per default hypercore uses [random-access-file](https://github.com/random-access-storage/random-access-file). This is also useful if you want to store specific files in other directories. For example you might want to store the secret key elsewhere.
 
 `key` can be set to a hypercore feed public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
 
@@ -119,7 +119,7 @@ Append a block of data to the feed.
 
 Callback is called with `(err, seq)` when all data has been written at the returned `seq` number or error will be not `null`.
 
-#### `feed.get(index, [options], callback)`
+#### `const id = feed.get(index, [options], callback)`
 
 Get a block of data.
 If the data is not available locally this method will prioritize and wait for the data to be downloaded before calling the callback.
@@ -129,6 +129,7 @@ Options include
 ``` js
 {
   wait: true, // wait for index to be downloaded
+  onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the feed's valueEncoding
 }
@@ -148,6 +149,10 @@ Get a range of blocks efficiently. End index is non-inclusive. Options include
 }
 ```
 
+#### `feed.cancel(getId)`
+
+Cancel a pending get.
+
 #### `feed.head([options], callback)`
 
 Get the block of data at the tip of the feed. This will be the most recently
@@ -155,7 +160,7 @@ appended block.
 
 Accepts the same `options` as `feed.get()`.
 
-#### `feed.download([range], [callback])`
+#### `const id = feed.download([range], [callback])`
 
 Download a range of data. Callback is called when all data has been downloaded.
 A range can have the following properties:
@@ -181,7 +186,7 @@ If you have an array of blocks you want to get downloaded you also also pass tha
 }
 ```
 
-#### `feed.undownload(range)`
+#### `feed.undownload(downloadId)`
 
 Cancel a previous download request.
 
@@ -300,9 +305,16 @@ Options include:
 }
 ```
 
-#### `var stream = feed.createWriteStream()`
+#### `var stream = feed.createWriteStream(opts)`
 
 Create a writable stream.
+Options include:
+
+```
+{
+  maxBlockSize: Infinity // set this to auto chunk individual blocks if they are larger than this number
+}
+```
 
 #### `var stream = feed.replicate(isInitiator, [options])`
 
@@ -526,8 +538,8 @@ Hypercore works really well with a series of other modules. This in a non-exhaus
 
 * [Hyperswarm](https://github.com/hyperswarm/hyperswarm) - P2P swarming module that can you share Hypercores over a network.
 * [Hyperswarm replicator](https://github.com/hyperswarm/replicator) - Wanna share a single Hypercore without any hastle over a network?
-* [Hyperdrive](https://github.com/mafintosh/hyperdrive) - Filesystem abstraction built on Hypercores
-* [Hypertrie](https://github.com/mafintosh/hypertrie) - Scalable key/value store built on Hypercores
+* [Hyperdrive](https://github.com/hypercore-protocol/hyperdrive) - Filesystem abstraction built on Hypercores
+* [Hypertrie](https://github.com/hypercore-protocol/hypertrie) - Scalable key/value store built on Hypercores
 
 ## License
 

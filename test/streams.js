@@ -119,10 +119,44 @@ function test (batch = 1) {
         t.fail('should never end')
       })
 
-      feed.append(['c', 'd', 'e'])
+      setImmediate(function () {
+        feed.append(['c', 'd', 'e'])
+      })
     })
   })
 }
+
+tape('createWriteStream with maxBlockSize', function (t) {
+  t.plan(11 * 2 + 1)
+
+  var feed = create()
+
+  var ws = feed.createWriteStream({ maxBlockSize: 100 * 1024 })
+
+  ws.write(Buffer.alloc(1024 * 1024))
+  ws.end(function () {
+    t.same(feed.length, 11)
+
+    sameSize(0, 100 * 1024)
+    sameSize(1, 100 * 1024)
+    sameSize(2, 100 * 1024)
+    sameSize(3, 100 * 1024)
+    sameSize(4, 100 * 1024)
+    sameSize(5, 100 * 1024)
+    sameSize(6, 100 * 1024)
+    sameSize(7, 100 * 1024)
+    sameSize(8, 100 * 1024)
+    sameSize(9, 100 * 1024)
+    sameSize(10, 1024 * 1024 - 10 * 100 * 1024)
+
+    function sameSize (idx, size) {
+      feed.get(idx, function (err, blk) {
+        t.error(err, 'no error')
+        t.same(blk.length, size)
+      })
+    }
+  })
+})
 
 test()
 test(10)
