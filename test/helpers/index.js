@@ -9,8 +9,8 @@ module.exports = {
   },
 
   replicate (a, b) {
-    const s1 = a.replicate()
-    const s2 = b.replicate()
+    const s1 = a.replicate(true)
+    const s2 = b.replicate(false)
     s1.pipe(s2).pipe(s1)
     return [s1, s2]
   }

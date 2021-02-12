@@ -172,8 +172,8 @@ tape('basic multiplexing', async function (t) {
   const b1 = await create(a1.key)
   const b2 = await create(a2.key)
 
-  const a = a1.replicate(a2.replicate())
-  const b = b1.replicate(b2.replicate())
+  const a = a1.replicate(a2.replicate(true))
+  const b = b1.replicate(b2.replicate(false))
 
   a.pipe(b).pipe(a)
 
@@ -188,8 +188,8 @@ tape('async multiplexing', async function (t) {
   const a1 = await create()
   const b1 = await create(a1.key)
 
-  const a = a1.replicate()
-  const b = b1.replicate()
+  const a = a1.replicate(true)
+  const b = b1.replicate(false)
 
   a.pipe(b).pipe(a)
 

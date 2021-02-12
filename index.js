@@ -67,8 +67,8 @@ module.exports = class Omega extends EventEmitter {
       indent + ')'
   }
 
-  static createProtocolStream () {
-    return Replicator.createStream()
+  static createProtocolStream (...args) {
+    return Replicator.createStream(...args)
   }
 
   session () {
@@ -131,7 +131,7 @@ module.exports = class Omega extends EventEmitter {
       ? isInitiator
       : opts.stream
 
-    if (!stream) stream = Replicator.createStream()
+    if (!stream) stream = Replicator.createStream(isInitiator)
 
     if (this.opened) {
       this.replicator.joinStream(stream)

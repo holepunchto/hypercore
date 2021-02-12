@@ -19,14 +19,18 @@
   "dependencies": {
     "abstract-extension": "^3.1.1",
     "big-sparse-array": "^1.0.2",
-    "binary-message-stream": "^1.0.2",
+    "borc": "^2.1.2",
     "codecs": "^2.2.0",
     "flat-tree": "^1.7.0",
     "hypercore-crypto": "^2.1.1",
     "is-options": "^1.0.1",
     "mutexify": "^1.3.1",
+    "noise-protocol": "^3.0.1",
     "random-access-file": "^2.1.4",
     "random-array-iterator": "^1.0.0",
+    "sodium-secretstream": "^1.0.0",
+    "sodium-universal": "^3.0.4",
+    "streamx": "^2.10.1",
     "uint64le": "^1.0.0"
   },
   "devDependencies": {
