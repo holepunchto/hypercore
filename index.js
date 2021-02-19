@@ -71,10 +71,10 @@ module.exports = class Omega extends EventEmitter {
     return Replicator.createStream(...args)
   }
 
-  session () {
-    const s = new Omega(this.storage, this.key, {
+  session (opts) {
+    const Clz = (opts && opts.class) || Omega
+    const s = new Clz(this.storage, this.key, {
       valueEncoding: this.valueEncoding,
-      secretKey: this._externalSecretKey,
       extensions: this.extensions,
       _opening: this.opening,
       _sessions: this.sessions
