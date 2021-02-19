@@ -72,7 +72,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   session () {
-    const s = new Omega(this.key, this.storage, {
+    const s = new Omega(this.storage, this.key, {
       valueEncoding: this.valueEncoding,
       secretKey: this._externalSecretKey,
       extensions: this.extensions,
