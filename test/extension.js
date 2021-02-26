@@ -17,7 +17,7 @@ tape('basic extension', async function (t) {
     encoding: 'utf-8'
   })
 
-  replicate(a, b, { live: true })
+  replicate(a, b)
 
   await new Promise(resolve => setImmediate(resolve))
   t.same(b.peers.length, 1)

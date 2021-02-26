@@ -9,7 +9,7 @@ const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
 const Writer = require('./lib/writer')
-const Extension = require('./lib/extension')
+const Extensions = require('./lib/extensions')
 const lock = requireMaybe('fd-lock')
 
 const promises = Symbol.for('hypercore.promises')
@@ -36,7 +36,7 @@ module.exports = class Omega extends EventEmitter {
     this.info = null
     this.writer = null
     this.replicator = null
-    this.extensions = opts.extensions || Extension.createLocal(this)
+    this.extensions = opts.extensions || new Extensions(this)
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
@@ -245,7 +245,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   registerExtension (name, handlers) {
-    return this.extensions.add(name, handlers)
+    return this.extensions.register(name, handlers)
   }
 
   // called by the extensions
@@ -290,6 +290,8 @@ module.exports = class Omega extends EventEmitter {
   }
 
   onpeeradd (peer) {
+    this.extensions.update(peer)
+
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('peer-add', peer)
     }

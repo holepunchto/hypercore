@@ -203,6 +203,8 @@ tape('async multiplexing', async function (t) {
   await new Promise(resolve => setImmediate(resolve))
   b2.replicate(b)
 
+  await new Promise(resolve => b2.once('peer-add', resolve))
+
   t.same(b2.peers.length, 1)
   t.same(await b2.get(0), Buffer.from('ho'))
 })
