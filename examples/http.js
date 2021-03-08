@@ -1,8 +1,8 @@
-const Omega = require('../')
+const Hypercore = require('../')
 const streamx = require('streamx')
 const replicator = require('@hyperswarm/replicator')
 
-const o = new Omega('/tmp/movie')
+const core = new Hypercore('/tmp/movie')
 
 if (process.argv[2] === 'bench') bench()
 else if (process.argv[2]) importData()
@@ -28,14 +28,14 @@ class ByteStream extends streamx.Readable {
     }
 
     if (this.byteOffset > 0) {
-      const [block, byteOffset] = await o.seek(this.byteOffset)
+      const [block, byteOffset] = await core.seek(this.byteOffset)
       this.byteOffset = 0
       this.index = block + 1
       this._select(this.index)
-      data = (await o.get(block)).slice(byteOffset)
+      data = (await core.get(block)).slice(byteOffset)
     } else {
       this._select(this.index + 1)
-      data = await o.get(this.index++)
+      data = await core.get(this.index++)
     }
 
     if (data.length >= this.byteLength) {
@@ -63,11 +63,11 @@ class ByteStream extends streamx.Readable {
 }
 
 async function bench () {
-  await o.ready()
+  await core.ready()
 
   console.time()
-  for (let i = 0; i < o.length; i++) {
-    await o.get(i)
+  for (let i = 0; i < core.length; i++) {
+    await core.get(i)
   }
   console.timeEnd()
 }
@@ -76,15 +76,15 @@ async function start () {
   const http = require('http')
   const parse = require('range-parser')
 
-  await o.ready()
+  await core.ready()
 
-  o.on('download', (index) => console.log('Downloaded block #' + index))
-  o.download({ start: 0, end: 1 })
+  core.on('download', (index) => console.log('Downloaded block #' + index))
+  core.download({ start: 0, end: 1 })
 
   // hack until we update the replicator
-  o.ready = (cb) => cb(null)
+  core.ready = (cb) => cb(null)
 
-  replicator(o, {
+  replicator(core, {
     discoveryKey: require('crypto').createHash('sha256').update('http').digest(),
     announce: true,
     lookup: true
@@ -97,13 +97,13 @@ async function start () {
     let s
 
     if (req.headers.range) {
-      const range = parse(o.byteLength, req.headers.range)[0]
+      const range = parse(core.byteLength, req.headers.range)[0]
       const byteLength = range.end - range.start + 1
       res.statusCode = 206
-      res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + o.byteLength)
-      s = new ByteStream(o, range.start, byteLength)
+      res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + core.byteLength)
+      s = new ByteStream(core, range.start, byteLength)
     } else {
-      s = new ByteStream(o, 0, o.byteLength)
+      s = new ByteStream(core, 0, core.byteLength)
     }
 
     res.setHeader('Content-Length', s.byteLength)
@@ -116,8 +116,8 @@ async function importData () {
   const rs = fs.createReadStream(process.argv[2])
 
   for await (const data of rs) {
-    await o.append(data)
+    await core.append(data)
   }
 
-  console.log('done!', o)
+  console.log('done!', core)
 }

@@ -15,7 +15,7 @@ const lock = requireMaybe('fd-lock')
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
-module.exports = class Omega extends EventEmitter {
+module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
 
@@ -72,7 +72,7 @@ module.exports = class Omega extends EventEmitter {
   }
 
   session (opts) {
-    const Clz = (opts && opts.class) || Omega
+    const Clz = (opts && opts.class) || Hypercore
     const s = new Clz(this.storage, this.key, {
       valueEncoding: this.valueEncoding,
       extensions: this.extensions,

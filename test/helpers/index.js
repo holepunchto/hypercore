@@ -1,11 +1,11 @@
-const Omega = require('../../')
+const Hypercore = require('../../')
 const ram = require('random-access-memory')
 
 module.exports = {
   async create (...args) {
-    const o = new Omega(ram, ...args)
-    await o.ready()
-    return o
+    const core = new Hypercore(ram, ...args)
+    await core.ready()
+    return core
   },
 
   replicate (a, b) {

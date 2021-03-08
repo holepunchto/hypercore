@@ -1,6 +1,6 @@
-const Omega = require('../')
+const Hypercore = require('../')
 
-const core = new Omega('./source')
+const core = new Hypercore('./source')
 
 start()
 

@@ -1,21 +1,21 @@
 {
-  "name": "omega",
+  "name": "hypercorex",
   "version": "0.0.0",
-  "description": "The Omega",
+  "description": "Hypercore 10",
   "main": "index.js",
   "scripts": {
     "test": "standard && tape test/*.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mafintosh/omega.git"
+    "url": "git+https://github.com/mafintosh/hypercorex.git"
   },
   "author": "Mathias Buus (@mafintosh)",
   "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/mafintosh/omega/issues"
+    "url": "https://github.com/mafintosh/hypercorex/issues"
   },
-  "homepage": "https://github.com/mafintosh/omega#readme",
+  "homepage": "https://github.com/mafintosh/hypercorex#readme",
   "dependencies": {
     "big-sparse-array": "^1.0.2",
     "codecs": "^2.2.0",

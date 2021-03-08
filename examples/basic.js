@@ -1,12 +1,12 @@
-const Omega = require('omega')
+const Hypercore = require('../')
 
 start()
 
 async function start () {
-  const o = new Omega('/tmp/basic')
+  const core = new Hypercore('/tmp/basic')
 
-  await o.ready()
-  console.log(o)
-  await o.append(['Hello', 'World'])
-  await o.close()
+  await core.ready()
+  console.log(core)
+  await core.append(['Hello', 'World'])
+  await core.close()
 }
