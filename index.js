@@ -10,7 +10,7 @@ const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
 const Writer = require('./lib/writer')
 const Extensions = require('./lib/extensions')
-const lock = requireMaybe('fd-lock')
+const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -307,11 +307,13 @@ module.exports = class Hypercore extends EventEmitter {
 function noop () {}
 
 function defaultStorage (storage) {
-  if (typeof storage === 'string') {
-    const directory = storage
-    return name => raf(name, { directory, lock: name === 'info' ? lock : null })
+  if (typeof storage !== 'string') return storage
+  const directory = storage
+  return function createFile (name) {
+    const lock = name === 'info' ? fsctl.lock : null
+    const sparse = name !== 'info' ? fsctl.sparse : null
+    return raf(name, { directory, lock, sparse })
   }
-  return storage
 }
 
 function decode (enc, buf) {

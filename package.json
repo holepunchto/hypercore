@@ -37,6 +37,6 @@
     "tape": "^5.0.1"
   },
   "optionalDependencies": {
-    "fd-lock": "^1.2.0"
+    "fsctl": "^1.0.0"
   }
 }
