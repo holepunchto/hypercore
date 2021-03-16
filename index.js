@@ -136,8 +136,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened) {
       this.replicator.joinStream(stream)
     } else {
-      const join = this.replicator.joinStream.bind(this.replicator, stream)
-      this.opening.then(join, stream.destroy.bind(stream))
+      this.opening.then(() => this.replicator.joinStream(stream), stream.destroy.bind(stream))
     }
 
     return stream
