@@ -165,6 +165,9 @@ module.exports = class Hypercore extends EventEmitter {
   async ready () {
     if (this.opening) return this.opening
 
+    // We need to set this pre any async ticks so that range objects can be returned
+    this.replicator = new Replicator(this)
+
     if (this.options.preload) {
       this.options = { ...this.options, ...(await this.options.preload()) }
     }
@@ -178,13 +181,14 @@ module.exports = class Hypercore extends EventEmitter {
     const secretKey = this.info.secretKey
     const fork = this.info.fork
 
-    this.replicator = new Replicator(this)
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
     if (this.info.secretKey) this.writer = new Writer(secretKey, this)
 
     this.discoveryKey = this.crypto.discoveryKey(this.key)
+
+    this.replicator.checkRanges()
     this.opened = true
 
     for (let i = 0; i < this.sessions.length; i++) {
