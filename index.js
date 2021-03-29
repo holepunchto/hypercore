@@ -8,8 +8,8 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const Info = require('./lib/info')
-const Writer = require('./lib/writer')
 const Extensions = require('./lib/extensions')
+const mutexify = require('mutexify/promise')
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
 
 const promises = Symbol.for('hypercore.promises')
@@ -30,13 +30,19 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.crypto = crypto
     this.storage = defaultStorage(storage)
+    this.lock = mutexify()
+
     this.tree = null
     this.blocks = null
     this.bitfield = null
     this.info = null
-    this.writer = null
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
+
+    this.sign = opts.sign || null
+    if (this.sign === null && opts.keyPair && opts.keyPair.secretKey) {
+      this.sign = defaultSign(this.crypto, opts.keyPair.secretKey)
+    }
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
     this.key = key || null
@@ -71,9 +77,11 @@ module.exports = class Hypercore extends EventEmitter {
     return Replicator.createStream(...args)
   }
 
-  session (opts) {
-    const Clz = (opts && opts.class) || Hypercore
+  session (opts = {}) {
+    const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
+      ...opts,
+      sign: opts.sign || this.sign,
       valueEncoding: this.valueEncoding,
       extensions: this.extensions,
       _opening: this.opening,
@@ -88,9 +96,9 @@ module.exports = class Hypercore extends EventEmitter {
 
   _initSession (o) {
     this.opened = o.opened
+    this.lock = o.lock
     this.key = o.key
     this.discoveryKey = o.discoveryKey
-    this.writer = o.writer
     this.info = o.info
     this.replicator = o.replicator
     this.tree = o.tree
@@ -143,7 +151,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get writable () {
-    return this.readable && this.writer !== null
+    return this.readable && this.sign !== null
   }
 
   get length () {
@@ -178,13 +186,18 @@ module.exports = class Hypercore extends EventEmitter {
       ...this.options.keyPair
     })
     this.key = this.info.publicKey
-    const secretKey = this.info.secretKey
     const fork = this.info.fork
+    const secretKey = this.info.secretKey
 
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
     this.bitfield = await Bitfield.open(this.storage('bitfield'))
-    if (this.info.secretKey) this.writer = new Writer(secretKey, this)
+
+    // TODO: If both a secretKey and a sign option are provided, sign takes precedence.
+    // In the future we can try to determine if they're equivalent, and error otherwise.
+    if (secretKey && this.sign === null) {
+      this.sign = defaultSign(this.crypto, secretKey)
+    }
 
     this.discoveryKey = this.crypto.discoveryKey(this.key)
 
@@ -201,7 +214,7 @@ module.exports = class Hypercore extends EventEmitter {
   async update () {
     if (this.opened === false) await this.opening
     // TODO: add an option where a writer can bootstrap it's state from the network also
-    if (this.writer !== null) return false
+    if (this.sign !== null) return false
     return this.replicator.requestUpgrade()
   }
 
@@ -237,14 +250,113 @@ module.exports = class Hypercore extends EventEmitter {
     range.destroy(null)
   }
 
-  async truncate (len = 0, fork = -1) {
+  async truncate (newLength = 0, fork = -1) {
     if (this.opened === false) await this.opening
-    return this.writer.truncate(len, fork)
+    if (this.sign === null) throw new Error('Core is not writable')
+
+    const release = await this.lock()
+    let oldLength = 0
+
+    try {
+      if (fork === -1) fork = this.info.fork + 1
+
+      const batch = await this.tree.truncate(newLength, { fork })
+
+      const signature = await this.sign(batch.signable())
+
+      this.info.fork = fork
+      this.info.signature = signature
+
+      oldLength = this.tree.length
+
+      // TODO: same thing as in append
+      await this.info.flush()
+
+      for (let i = newLength; i < oldLength; i++) {
+        this.bitfield.set(i, false)
+      }
+      batch.commit()
+    } finally {
+      release()
+    }
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('truncate')
+    }
+    this.replicator.broadcastInfo()
+
+    // Same note about background processing as below in append
+    await this.tree.flush()
+    await this.bitfield.flush()
   }
 
-  async append (datas) {
+  async append (blocks) {
     if (this.opened === false) await this.opening
-    return this.writer.append(Array.isArray(datas) ? datas : [datas])
+    if (this.sign === null) throw new Error('Core is not writable')
+    blocks = Array.isArray(blocks) ? blocks : [blocks]
+
+    const release = await this.lock()
+    let oldLength = 0
+    let newLength = 0
+
+    try {
+      const batch = this.tree.batch()
+      const buffers = new Array(blocks.length)
+
+      for (let i = 0; i < blocks.length; i++) {
+        const blk = blocks[i]
+
+        const buf = Buffer.isBuffer(blk)
+          ? blk
+          : this.valueEncoding
+            ? this.valueEncoding.encode(blk)
+            : Buffer.from(blk)
+
+        buffers[i] = buf
+        batch.append(buf)
+      }
+
+      // write the blocks, if this fails, we'll just overwrite them later
+      await this.blocks.putBatch(this.tree.length, buffers)
+
+      const signature = await this.sign(batch.signable())
+
+      // TODO: needs to written first, then updated
+      this.info.signature = signature
+
+      oldLength = this.tree.length
+      newLength = oldLength + buffers.length
+
+      // TODO: atomically persist that we wanna write these blocks now
+      // to the info file, so we can recover if the post-commit stuff fails
+      await this.info.flush()
+
+      for (let i = oldLength; i < newLength; i++) {
+        this.bitfield.set(i, true)
+      }
+      batch.commit()
+    } finally {
+      release()
+    }
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('append')
+    }
+
+    // TODO: all these broadcasts should be one
+    this.replicator.broadcastInfo()
+    for (let i = oldLength; i < newLength; i++) {
+      this.replicator.broadcastBlock(i)
+    }
+
+    // technically we could run these in the background for more perf
+    // as soon as we persist more stuff to the info as the writes here
+    // are recoverable from the above blocks
+
+    await this.tree.flush()
+    await this.bitfield.flush()
+
+    return oldLength
   }
 
   registerExtension (name, handlers) {
@@ -254,20 +366,6 @@ module.exports = class Hypercore extends EventEmitter {
   // called by the extensions
   onextensionupdate () {
     if (this.replicator !== null) this.replicator.broadcastOptions()
-  }
-
-  // called by the writer
-  ontruncate () {
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('truncate')
-    }
-  }
-
-  // called by the writer
-  onappend () {
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('append')
-    }
   }
 
   // called by the replicator
@@ -317,6 +415,10 @@ function defaultStorage (storage) {
     const sparse = name !== 'info' ? fsctl.sparse : null
     return raf(name, { directory, lock, sparse })
   }
+}
+
+function defaultSign (crypto, secretKey) {
+  return signable => crypto.sign(signable, secretKey)
 }
 
 function decode (enc, buf) {
