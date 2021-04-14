@@ -65,3 +65,25 @@ tape('writable session with custom sign function', async function (t) {
   t.same(core.length, 1)
   t.end()
 })
+
+tape('writable session with invalid keypair throws', async function (t) {
+  t.plan(2)
+
+  const keyPair1 = crypto.keyPair()
+  const keyPair2 = crypto.keyPair()
+
+  try {
+    const core = new Hypercore(ram, keyPair2.publicKey) // Create a new core in read-only mode.
+    core.session({ keyPair: keyPair1 })
+    t.fail('invalid keypair did not throw')
+  } catch {
+    t.pass('invalid keypair threw')
+  }
+
+  try {
+    new Hypercore(ram, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
+    t.fail('invalid keypair did not throw')
+  } catch {
+    t.pass('invalid keypair threw')
+  }
+})

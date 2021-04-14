@@ -41,7 +41,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.sign = opts.sign || null
     if (this.sign === null && opts.keyPair && opts.keyPair.secretKey) {
-      this.sign = defaultSign(this.crypto, opts.keyPair.secretKey)
+      this.sign = defaultSign(this.crypto, key, opts.keyPair.secretKey)
     }
 
     this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
@@ -196,7 +196,7 @@ module.exports = class Hypercore extends EventEmitter {
     // TODO: If both a secretKey and a sign option are provided, sign takes precedence.
     // In the future we can try to determine if they're equivalent, and error otherwise.
     if (secretKey && this.sign === null) {
-      this.sign = defaultSign(this.crypto, secretKey)
+      this.sign = defaultSign(this.crypto, this.key, secretKey)
     }
 
     this.discoveryKey = this.crypto.discoveryKey(this.key)
@@ -417,7 +417,8 @@ function defaultStorage (storage) {
   }
 }
 
-function defaultSign (crypto, secretKey) {
+function defaultSign (crypto, publicKey, secretKey) {
+  if (!crypto.validateKeyPair({ publicKey, secretKey })) throw new Error('Invalid key pair')
   return signable => crypto.sign(signable, secretKey)
 }
 
