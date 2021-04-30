@@ -813,6 +813,43 @@ tape('double replicate', function (t) {
   })
 })
 
+tape('events: replicating events fired (normal)', function (t) {
+  var feed = create()
+  t.plan(1)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  feed.replicate(true).on('end', function () {
+    t.end()
+  })
+})
+
+tape('events: replicating events once for multiple feeds', function (t) {
+  var feed = create()
+  var stream = new Protocol(true)
+  t.plan(1)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  feed.replicate(stream)
+  feed.replicate(stream)
+  feed.on('end', function () {
+    t.end()
+  })
+})
+
+tape('events: replicating events not fired if canceled before ready', function (t) {
+  var feed = create()
+  var stream = new Protocol(true)
+  t.plan(0)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  stream.destroy()
+  feed.replicate(stream, { live: true })
+  t.end()
+})
+
 tape('regression: replicate without timeout', function (t) {
   t.plan(10)
 
