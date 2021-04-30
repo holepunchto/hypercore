@@ -882,6 +882,36 @@ tape('replicate with NOISE disabled', function (t) {
   })
 })
 
+tape('replicate with feed authentication', function (t) {
+  var feed = create()
+  const keysA = Protocol.keyPair()
+  const keysB = Protocol.keyPair()
+  t.plan(5)
+  feed.ready(function (err) {
+    t.error(err)
+    var clone = create(feed.key)
+    const stream = feed.replicate(true, {
+      keyPair: keysA,
+      onfeedauthenticate: function (authFeed, publicKey, cb) {
+        t.equals(authFeed, feed)
+        t.same(publicKey, keysB.publicKey)
+        cb()
+      }
+    })
+    stream.pipe(clone.replicate(false, {
+      keyPair: keysB,
+      onfeedauthenticate: function (authFeed, publicKey, cb) {
+        t.equals(authFeed, clone)
+        t.same(publicKey, keysA.publicKey)
+        cb()
+      }
+    })).pipe(stream)
+      .on('end', function () {
+        t.end()
+      })
+  })
+})
+
 tape('replicate and close through stream', function (t) {
   var feed = create()
   var streams

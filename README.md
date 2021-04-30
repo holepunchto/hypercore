@@ -354,6 +354,9 @@ Options include:
   keyPair: { publicKey, secretKey }, // use this keypair for Noise authentication
   onauthenticate (remotePublicKey, done) // hook that can be used to authenticate the remote peer.
                                          // calling done with an error will disallow the peer from connecting to you.
+  onfeedauthenticate (feed, remotePublicKey, done) // hook similar to onauthenticate but called per feed to replicate over a stream of feeds.
+                                                   // calling done with an error will disallow the peer from syncing this particular feed, but the
+                                                   // stream will stay open.
 }
 ```
 
