@@ -343,14 +343,15 @@ module.exports = class Hypercore extends EventEmitter {
       oldLength = this.tree.length
       newLength = oldLength + buffers.length
 
-      // TODO: atomically persist that we wanna write these blocks now
-      // to the info file, so we can recover if the post-commit stuff fails
-      await this.info.flush()
-
       for (let i = oldLength; i < newLength; i++) {
         this.bitfield.set(i, true)
       }
       batch.commit()
+
+      // TODO: atomically persist that we wanna write these blocks now
+      // to the info file, so we can recover if the post-commit stuff fails
+      // TODO: move this up after we make info updates flushable precommit
+      await this.info.flush()
     } finally {
       release()
     }
