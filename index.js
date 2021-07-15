@@ -69,6 +69,7 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  sessions: ' + opts.stylize(this.sessions.length, 'number') + '\n' +
+      indent + '  peers: [ ' + opts.stylize(this.peers.length, 'number') + ' ]\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
       indent + ')'
