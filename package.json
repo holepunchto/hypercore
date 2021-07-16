@@ -27,6 +27,7 @@
     "noise-secret-stream": "^3.0.2",
     "random-access-file": "^2.1.4",
     "random-array-iterator": "^1.0.0",
+    "safety-catch": "^1.0.1",
     "uint64le": "^1.0.0"
   },
   "devDependencies": {
