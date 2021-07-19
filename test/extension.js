@@ -8,6 +8,7 @@ tape('basic extension', async function (t) {
   a.registerExtension('test-extension', {
     encoding: 'utf-8',
     onmessage: (message, peer) => {
+      t.ok(peer === a.peers[0])
       t.same(message, messages.pop())
     }
   })
