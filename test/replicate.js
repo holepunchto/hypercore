@@ -232,3 +232,14 @@ tape('multiplexing with external noise stream', async function (t) {
   await a2.append('ho')
   t.same(await b2.get(0), Buffer.from('ho'))
 })
+
+tape('seeking while replicating', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b)
+
+  await a.append(['hello', 'this', 'is', 'test', 'data'])
+
+  t.same(await b.seek(6), [1, 1])
+})
