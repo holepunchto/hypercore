@@ -4,10 +4,12 @@ const test = require('tape')
 const fsctl = require('fsctl')
 const raf = require('random-access-file')
 const c = require('compact-encoding')
+const crypto = require('hypercore-crypto')
 
 const OpLog = require('../lib/oplog')
 
 const STORAGE_FILE_NAME = 'test-storage'
+const SHOULD_ERROR = Symbol('hypercore-oplog-should-error')
 
 test('oplog - basic append', async function (t) {
   const storage = testStorage()
@@ -213,8 +215,96 @@ test('oplog - concurrent appends throw', async function (t) {
   t.end()
 })
 
+test('oplog - another hypercore is stored here', async function (t) {
+  let storage = testStorage()
+  const kp1 = crypto.keyPair()
+  const kp2 = crypto.keyPair()
+
+  const log = await OpLog.open(storage, { ...kp1 })
+
+  t.same(log.publicKey, kp1.publicKey)
+  t.same(log.secretKey, kp1.secretKey)
+
+  await log.close()
+  storage = testStorage()
+
+  try {
+    await OpLog.open(storage, { ...kp2 })
+    t.fail('should have thrown keypair error')
+  } catch (err) {
+    t.same(err.message, 'Another hypercore is stored here')
+  }
+
+  await cleanup(storage)
+  t.end()
+})
+
+test('oplog - log not truncated when header write fails', async function (t) {
+  const storage = failingHeaderStorage()
+
+  const log = await OpLog.open(storage)
+
+  // Make subsequent header writes fail
+  storage[SHOULD_ERROR](true)
+
+  await log.append({ flags: 1 })
+  await log.append({ flags: 2 })
+
+  // The flush should fail because the header can't be updated -- log should still have entries after this
+  try {
+    await log.flush()
+  } catch (err) {
+    t.true(err.synthetic)
+  }
+
+  {
+    const entries = []
+    for await (const entry of log) {
+      entries.push(entry)
+    }
+    t.same(entries.length, 2)
+    t.same(entries[0].flags, 1)
+    t.same(entries[1].flags, 2)
+  }
+
+  // Re-enable header writes
+  storage[SHOULD_ERROR](false)
+  await log.flush() // Should correctly truncate the oplog now
+
+  {
+    const entries = []
+    for await (const entry of log) {
+      entries.push(entry)
+    }
+    t.same(entries.length, 0)
+  }
+
+  await cleanup(storage)
+  t.end()
+})
+
 function testStorage () {
   return raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
+}
+
+function failingHeaderStorage () {
+  let shouldError = false
+  const storage = raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
+  const write = storage.write.bind(storage)
+
+  storage.write = (offset, data, cb) => {
+    if ((offset < 4096 * 2 + 32) && shouldError) {
+      const err = new Error('Header write failed')
+      err.synthetic = true
+      return cb(err)
+    }
+    return write(offset, data, cb)
+  }
+  storage[SHOULD_ERROR] = s => {
+    shouldError = s
+  }
+
+  return storage
 }
 
 function cleanup (storage) {
