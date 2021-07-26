@@ -155,7 +155,7 @@ test('oplog - header invalid checksum', async function (t) {
 
   // Invalidate the second header's checksum -- first header should win now (flushes = 2)
   await new Promise((resolve, reject) => {
-    storage.write(4096 + 1 + 4 , c.encode(badHeaderEncoding, { test: 1 }), err => {
+    storage.write(4096 + 1 + 4, c.encode(badHeaderEncoding, { test: 1 }), err => {
       if (err) return reject(err)
       return resolve()
     })
@@ -239,8 +239,58 @@ test('oplog - another hypercore is stored here', async function (t) {
   t.end()
 })
 
+test('oplog - malformed log entry gets overwritten', async function (t) {
+  let storage = testStorage()
+  let log = await OpLog.open(storage)
+
+  await log.append({ flags: 1 })
+  await log.append({ flags: 2 })
+
+  await log.close()
+
+  storage = testStorage()
+  log = await OpLog.open(storage)
+
+  // Write a bad oplog message at the end (simulates a failed append)
+  await new Promise((resolve, reject) => {
+    storage.write(log._logLength + 4096 * 2 + 32, Buffer.from('hello world'), err => {
+      if (err) return reject(err)
+      return resolve()
+    })
+  })
+
+  {
+    const entries = []
+    for await (const entry of log) {
+      entries.push(entry)
+    }
+
+    t.same(entries.length, 2) // The partial entry should not be present
+    t.same(entries[0].flags, 1)
+    t.same(entries[1].flags, 2)
+  }
+
+  // Write a valid oplog message now
+  await log.append({ flags: 3 })
+
+  {
+    const entries = []
+    for await (const entry of log) {
+      entries.push(entry)
+    }
+
+    t.same(entries.length, 3) // The partial entry should be overwritten
+    t.same(entries[0].flags, 1)
+    t.same(entries[1].flags, 2)
+    t.same(entries[2].flags, 3)
+  }
+
+  await cleanup(storage)
+  t.end()
+})
+
 test('oplog - log not truncated when header write fails', async function (t) {
-  const storage = failingHeaderStorage()
+  const storage = failingOffsetStorage(4096 * 2 + 32)
 
   const log = await OpLog.open(storage)
 
@@ -287,18 +337,18 @@ function testStorage () {
   return raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
 }
 
-function failingHeaderStorage () {
+function failingOffsetStorage (offset) {
   let shouldError = false
   const storage = raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
   const write = storage.write.bind(storage)
 
-  storage.write = (offset, data, cb) => {
-    if ((offset < 4096 * 2 + 32) && shouldError) {
-      const err = new Error('Header write failed')
+  storage.write = (off, data, cb) => {
+    if (off < offset && shouldError) {
+      const err = new Error('Synthetic write failure')
       err.synthetic = true
       return cb(err)
     }
-    return write(offset, data, cb)
+    return write(off, data, cb)
   }
   storage[SHOULD_ERROR] = s => {
     shouldError = s
