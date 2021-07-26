@@ -87,15 +87,16 @@ Per default hypercore uses [random-access-file](https://github.com/random-access
   secretKey: buffer, // optionally pass the corresponding secret key yourself
   storeSecretKey: true, // if false, will not save the secret key
   storageCacheSize: 65536, // the # of entries to keep in the storage system's LRU cache (false or 0 to disable)
-  onwrite: (index, data, peer, cb) // optional hook called before data is written after being verified
+  onwrite: (index, data, peer, cb), // optional hook called before data is written after being verified
                                    // (remember to call cb() at the end of your handler)
-  stats: true // collect network-related statistics,
+  stats: true, // collect network-related statistics,
   // Optionally use custom cryptography for signatures
   crypto: {
     sign (data, secretKey, cb(err, signature)),
     verify (signature, data, key, cb(err, valid))
-  }
-  noiseKeyPair: { publicKey, secretKey } // set a static key pair to use for Noise authentication when replicating
+  },
+  noiseKeyPair: { publicKey, secretKey }, // set a static key pair to use for Noise authentication when replicating
+  storage: new Storage() // optional storage instance with the same API as [`lib/storage.js`](lib/storage.js). Used for implementing a custom storage such as leveldb. Defaults to an instance of [`lib/storage.js`](lib/storage.js), instantiated with the `createStorage` argument.
 }
 ```
 
