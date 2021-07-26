@@ -813,6 +813,43 @@ tape('double replicate', function (t) {
   })
 })
 
+tape('events: replicating events fired (normal)', function (t) {
+  var feed = create()
+  t.plan(1)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  feed.replicate(true).on('end', function () {
+    t.end()
+  })
+})
+
+tape('events: replicating events once for multiple feeds', function (t) {
+  var feed = create()
+  var stream = new Protocol(true)
+  t.plan(1)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  feed.replicate(stream)
+  feed.replicate(stream)
+  feed.on('end', function () {
+    t.end()
+  })
+})
+
+tape('events: replicating events not fired if canceled before ready', function (t) {
+  var feed = create()
+  var stream = new Protocol(true)
+  t.plan(0)
+  feed.on('replicating', () => {
+    t.pass('replicating')
+  })
+  stream.destroy()
+  feed.replicate(stream, { live: true })
+  t.end()
+})
+
 tape('regression: replicate without timeout', function (t) {
   t.plan(10)
 
@@ -842,6 +879,36 @@ tape('replicate with NOISE disabled', function (t) {
       t.same(stream.remoteVerified(feed.key), false, 'remote is not verified')
       t.end()
     })
+  })
+})
+
+tape('replicate with feed authentication', function (t) {
+  var feed = create()
+  const keysA = Protocol.keyPair()
+  const keysB = Protocol.keyPair()
+  t.plan(5)
+  feed.ready(function (err) {
+    t.error(err)
+    var clone = create(feed.key)
+    const stream = feed.replicate(true, {
+      keyPair: keysA,
+      onfeedauthenticate: function (authFeed, publicKey, cb) {
+        t.equals(authFeed, feed)
+        t.same(publicKey, keysB.publicKey)
+        cb()
+      }
+    })
+    stream.pipe(clone.replicate(false, {
+      keyPair: keysB,
+      onfeedauthenticate: function (authFeed, publicKey, cb) {
+        t.equals(authFeed, clone)
+        t.same(publicKey, keysA.publicKey)
+        cb()
+      }
+    })).pipe(stream)
+      .on('end', function () {
+        t.end()
+      })
   })
 })
 

@@ -25,9 +25,12 @@ class Extension extends Message {
   broadcast (message) {
     const feed = this.local.handlers
     const buf = this.encoding.encode(message)
+    let broadcasted = false
     for (const peer of feed.peers) {
+      broadcasted = true
       peer.extension(this.id, buf)
     }
+    return broadcasted
   }
 
   send (message, peer) {
@@ -220,9 +223,7 @@ Feed.prototype.replicate = function (initiator, opts) {
   opts.stats = !!this._stats
   opts.noise = !(opts.noise === false && opts.encrypted === false)
 
-  var stream = replicate(this, initiator, opts)
-  this.emit('replicating', stream)
-  return stream
+  return replicate(this, initiator, opts)
 }
 
 Feed.prototype.registerExtension = function (name, handlers) {
@@ -269,6 +270,11 @@ Feed.prototype.update = function (opts, cb) {
     if (len === -1) len = self.length + 1
     if (self.length >= len) return cb(null)
 
+    const ifAvailable = typeof opts.ifAvailable === 'boolean'
+      ? opts.ifAvailable
+      : self._alwaysIfAvailable
+
+    if (ifAvailable && self.writable && !opts.force) return cb(new Error('No update available from peers'))
     if (self.writable) cb = self._writeStateReloader(cb)
 
     var w = {
@@ -281,7 +287,7 @@ Feed.prototype.update = function (opts, cb) {
     }
 
     self._waiting.push(w)
-    if (typeof opts.ifAvailable === 'boolean' ? opts.ifAvailable : self._alwaysIfAvailable) self._ifAvailable(w, len)
+    if (ifAvailable) self._ifAvailable(w, len)
     self._updatePeers()
   })
 }
