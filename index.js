@@ -7,7 +7,7 @@ const MerkleTree = require('./lib/merkle-tree')
 const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
-const Info = require('./lib/info')
+const OpLog = require('./lib/oplog')
 const Extensions = require('./lib/extensions')
 const mutexify = require('mutexify/promise')
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
@@ -36,7 +36,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.tree = null
     this.blocks = null
     this.bitfield = null
-    this.info = null
+    this.oplog = null
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
 
@@ -102,7 +102,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.lock = o.lock
     this.key = o.key
     this.discoveryKey = o.discoveryKey
-    this.info = o.info
+    this.oplog = o.oplog
     this.replicator = o.replicator
     this.tree = o.tree
     this.blocks = o.blocks
@@ -197,14 +197,14 @@ module.exports = class Hypercore extends EventEmitter {
       this.options = { ...this.options, ...(await this.options.preload()) }
     }
 
-    this.info = await Info.open(this.storage('info'), {
+    this.oplog = await OpLog.open(this.storage('oplog'), {
       crypto: this.crypto,
       publicKey: this.key,
       ...this.options.keyPair
     })
-    this.key = this.info.publicKey
-    const fork = this.info.fork
-    const secretKey = this.info.secretKey
+    this.key = this.oplog.publicKey
+    const fork = this.oplog.fork
+    const secretKey = this.oplog.secretKey
 
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
@@ -275,14 +275,14 @@ module.exports = class Hypercore extends EventEmitter {
     let oldLength = 0
 
     try {
-      if (fork === -1) fork = this.info.fork + 1
+      if (fork === -1) fork = this.oplog.fork + 1
 
       const batch = await this.tree.truncate(newLength, { fork })
 
       const signature = await this.sign(batch.signable())
 
-      this.info.fork = fork
-      this.info.signature = signature
+      this.oplog.fork = fork
+      this.oplog.signature = signature
 
       oldLength = this.tree.length
 
