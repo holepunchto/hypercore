@@ -8,6 +8,7 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const OpLog = require('./lib/oplog')
+const Info = require('./lib/info') // TODO: Remove
 const Extensions = require('./lib/extensions')
 const mutexify = require('mutexify/promise')
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
@@ -37,6 +38,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.blocks = null
     this.bitfield = null
     this.oplog = null
+    this.info = null // TODO: Remove
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
 
@@ -103,6 +105,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.key = o.key
     this.discoveryKey = o.discoveryKey
     this.oplog = o.oplog
+    this.info = o.info // TODO: Remove
     this.replicator = o.replicator
     this.tree = o.tree
     this.blocks = o.blocks
@@ -202,9 +205,14 @@ module.exports = class Hypercore extends EventEmitter {
       publicKey: this.key,
       ...this.options.keyPair
     })
-    this.key = this.oplog.publicKey
-    const fork = this.oplog.fork
-    const secretKey = this.oplog.secretKey
+    this.info = await Info.open(this.storage('info'), { // TODO: Remove
+      crypto: this.crypto,
+      publicKey: this.key,
+      ...this.options.keyPair
+    })
+    this.key = this.info.publicKey // TODO: Remove
+    const fork = this.info.fork // TODO: Remove
+    const secretKey = this.info.secretKey // TODO: Remove
 
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
@@ -275,14 +283,14 @@ module.exports = class Hypercore extends EventEmitter {
     let oldLength = 0
 
     try {
-      if (fork === -1) fork = this.oplog.fork + 1
+      if (fork === -1) fork = this.info.fork + 1 // TODO: Remove
 
       const batch = await this.tree.truncate(newLength, { fork })
 
       const signature = await this.sign(batch.signable())
 
-      this.oplog.fork = fork
-      this.oplog.signature = signature
+      this.info.fork = fork // TODO: Remove
+      this.info.signature = signature // TODO: Remove
 
       oldLength = this.tree.length
 
@@ -339,7 +347,7 @@ module.exports = class Hypercore extends EventEmitter {
       const signature = await this.sign(batch.signable())
 
       // TODO: needs to written first, then updated
-      this.info.signature = signature
+      this.info.signature = signature // TODO: Remove
 
       oldLength = this.tree.length
       newLength = oldLength + buffers.length
