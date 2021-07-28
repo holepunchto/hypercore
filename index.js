@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events')
 const raf = require('random-access-file')
 const isOptions = require('is-options')
+
 const codecs = require('codecs')
 const crypto = require('hypercore-crypto')
 const MerkleTree = require('./lib/merkle-tree')
@@ -200,7 +201,7 @@ module.exports = class Hypercore extends EventEmitter {
       this.options = { ...this.options, ...(await this.options.preload()) }
     }
 
-    this.oplog = await OpLog.open(this.storage('oplog'), {
+    this.oplog = await OpLog.open(this.storage('oplog'), this, {
       crypto: this.crypto,
       publicKey: this.key,
       ...this.options.keyPair
@@ -210,9 +211,9 @@ module.exports = class Hypercore extends EventEmitter {
       publicKey: this.key,
       ...this.options.keyPair
     })
-    this.key = this.info.publicKey // TODO: Remove
-    const fork = this.info.fork // TODO: Remove
-    const secretKey = this.info.secretKey // TODO: Remove
+    this.key = this.oplog.publicKey
+    const fork = this.oplog.fork
+    const secretKey = this.oplog.secretKey
 
     this.tree = await MerkleTree.open(this.storage('tree'), { crypto: this.crypto, fork })
     this.blocks = new BlockStore(this.storage('data'), this.tree)
@@ -280,27 +281,14 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.sign === null) throw new Error('Core is not writable')
 
     const release = await this.lock()
-    let oldLength = 0
 
     try {
-      if (fork === -1) fork = this.info.fork + 1 // TODO: Remove
+      if (fork === -1) fork = this.oplog.fork + 1
 
       const batch = await this.tree.truncate(newLength, { fork })
+      batch.signature = await this.sign(batch.signable())
 
-      const signature = await this.sign(batch.signable())
-
-      this.info.fork = fork // TODO: Remove
-      this.info.signature = signature // TODO: Remove
-
-      oldLength = this.tree.length
-
-      // TODO: same thing as in append
-      await this.info.flush()
-
-      for (let i = newLength; i < oldLength; i++) {
-        this.bitfield.set(i, false)
-      }
-      batch.commit()
+      await this.oplog.truncate(batch)
     } finally {
       release()
     }
@@ -308,11 +296,9 @@ module.exports = class Hypercore extends EventEmitter {
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('truncate')
     }
-    this.replicator.broadcastInfo()
 
-    // Same note about background processing as below in append
-    await this.tree.flush()
-    await this.bitfield.flush()
+    // TODO: Should propagate from an event triggered by the oplog
+    this.replicator.broadcastInfo()
   }
 
   async append (blocks) {
@@ -321,8 +307,9 @@ module.exports = class Hypercore extends EventEmitter {
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const release = await this.lock()
-    let oldLength = 0
-    let newLength = 0
+
+    const oldLength = this.length
+    const newLength = this.length + blocks.length
 
     try {
       const batch = this.tree.batch()
@@ -341,26 +328,8 @@ module.exports = class Hypercore extends EventEmitter {
         batch.append(buf)
       }
 
-      // write the blocks, if this fails, we'll just overwrite them later
-      await this.blocks.putBatch(this.tree.length, buffers)
-
-      const signature = await this.sign(batch.signable())
-
-      // TODO: needs to written first, then updated
-      this.info.signature = signature // TODO: Remove
-
-      oldLength = this.tree.length
-      newLength = oldLength + buffers.length
-
-      for (let i = oldLength; i < newLength; i++) {
-        this.bitfield.set(i, true)
-      }
-      batch.commit()
-
-      // TODO: atomically persist that we wanna write these blocks now
-      // to the info file, so we can recover if the post-commit stuff fails
-      // TODO: move this up after we make info updates flushable precommit
-      await this.info.flush()
+      batch.signature = await this.sign(batch.signable())
+      await this.oplog.append(batch, buffers)
     } finally {
       release()
     }
@@ -369,18 +338,12 @@ module.exports = class Hypercore extends EventEmitter {
       this.sessions[i].emit('append')
     }
 
+    // TODO: this should be event-based based on the oplog
     // TODO: all these broadcasts should be one
     this.replicator.broadcastInfo()
     for (let i = oldLength; i < newLength; i++) {
       this.replicator.broadcastBlock(i)
     }
-
-    // technically we could run these in the background for more perf
-    // as soon as we persist more stuff to the info as the writes here
-    // are recoverable from the above blocks
-
-    await this.tree.flush()
-    await this.bitfield.flush()
 
     return oldLength
   }
