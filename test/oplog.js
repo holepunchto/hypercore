@@ -15,18 +15,22 @@ test('oplog - basic append', async function (t) {
   const storage = testStorage()
 
   const log = await OpLog.open(storage)
-  await log.append({ flags: 1 })
-  await log.append({ flags: 2 })
+  await log.append(userData('a'))
+  await log.append(userData('b'))
+
+  console.log('before entries')
 
   let entries = []
   for await (const entry of log) {
     entries.push(entry)
   }
 
+  console.log('after entries')
+
   t.same(entries.length, 2)
-  t.same(entries[0].flags, 1)
+  t.same(entries[0].userData, Buffer.from('a'))
   t.same(entries[0].flushes, 0)
-  t.same(entries[1].flags, 2)
+  t.same(entries[1].userData, Buffer.from('b'))
   t.same(entries[1].flushes, 0)
 
   await log.flush()
@@ -38,7 +42,7 @@ test('oplog - basic append', async function (t) {
 
   t.same(entries.length, 0)
 
-  await log.append({ flags: 3 })
+  await log.append(userData('c'))
 
   entries = []
   for await (const entry of log) {
@@ -46,7 +50,7 @@ test('oplog - basic append', async function (t) {
   }
 
   t.same(entries.length, 1)
-  t.same(entries[0].flags, 3)
+  t.same(entries[0].userData, Buffer.from('c'))
   t.same(entries[0].flushes, 1)
 
   await cleanup(storage)
@@ -193,14 +197,14 @@ test('oplog - concurrent appends throw', async function (t) {
   const log = await OpLog.open(storage)
 
   const appends = []
-  appends.push(log.append({ flags: 1 }))
-  appends.push(log.append({ flags: 2 }))
+  appends.push(log.append(userData('a')))
+  appends.push(log.append(userData('b')))
 
   const res = await Promise.allSettled(appends)
   t.same(res[0].status, 'fulfilled')
   t.same(res[1].status, 'rejected')
 
-  await log.append({ flags: 3 })
+  await log.append(userData('c'))
 
   const entries = []
   for await (const entry of log) {
@@ -208,8 +212,8 @@ test('oplog - concurrent appends throw', async function (t) {
   }
 
   t.same(entries.length, 2)
-  t.same(entries[0].flags, 1)
-  t.same(entries[1].flags, 3)
+  t.same(entries[0].userData, Buffer.from('a'))
+  t.same(entries[1].userData, Buffer.from('c'))
 
   await cleanup(storage)
   t.end()
@@ -243,8 +247,8 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   let storage = testStorage()
   let log = await OpLog.open(storage)
 
-  await log.append({ flags: 1 })
-  await log.append({ flags: 2 })
+  await log.append(userData('a'))
+  await log.append(userData('b'))
 
   await log.close()
 
@@ -266,12 +270,12 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
     }
 
     t.same(entries.length, 2) // The partial entry should not be present
-    t.same(entries[0].flags, 1)
-    t.same(entries[1].flags, 2)
+    t.same(entries[0].userData, Buffer.from('a'))
+    t.same(entries[1].userData, Buffer.from('b'))
   }
 
   // Write a valid oplog message now
-  await log.append({ flags: 3 })
+  await log.append(userData('c'))
 
   {
     const entries = []
@@ -280,9 +284,9 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
     }
 
     t.same(entries.length, 3) // The partial entry should be overwritten
-    t.same(entries[0].flags, 1)
-    t.same(entries[1].flags, 2)
-    t.same(entries[2].flags, 3)
+    t.same(entries[0].userData, Buffer.from('a'))
+    t.same(entries[1].userData, Buffer.from('b'))
+    t.same(entries[2].userData, Buffer.from('c'))
   }
 
   await cleanup(storage)
@@ -297,8 +301,8 @@ test('oplog - log not truncated when header write fails', async function (t) {
   // Make subsequent header writes fail
   storage[SHOULD_ERROR](true)
 
-  await log.append({ flags: 1 })
-  await log.append({ flags: 2 })
+  await log.append(userData('a'))
+  await log.append(userData('b'))
 
   // The flush should fail because the header can't be updated -- log should still have entries after this
   try {
@@ -313,8 +317,8 @@ test('oplog - log not truncated when header write fails', async function (t) {
       entries.push(entry)
     }
     t.same(entries.length, 2)
-    t.same(entries[0].flags, 1)
-    t.same(entries[1].flags, 2)
+    t.same(entries[0].userData, Buffer.from('a'))
+    t.same(entries[1].userData, Buffer.from('b'))
   }
 
   // Re-enable header writes
@@ -332,6 +336,10 @@ test('oplog - log not truncated when header write fails', async function (t) {
   await cleanup(storage)
   t.end()
 })
+
+function userData (s) {
+  return { userData: Buffer.from(s) }
+}
 
 function testStorage () {
   return raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
