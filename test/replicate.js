@@ -64,6 +64,7 @@ tape.skip('eager replication from bigger fork', async function (t) {
   const r = b.download({ start: 0, end: a.length })
 
   await r.downloaded()
+  console.log('bitfield:', b.bitfield)
 
   t.same(d, 5)
   t.same(a.oplog.fork, b.oplog.fork)

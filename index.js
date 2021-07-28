@@ -9,7 +9,6 @@ const BlockStore = require('./lib/block-store')
 const Bitfield = require('./lib/bitfield')
 const Replicator = require('./lib/replicator')
 const OpLog = require('./lib/oplog')
-const Info = require('./lib/info') // TODO: Remove
 const Extensions = require('./lib/extensions')
 const mutexify = require('mutexify/promise')
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
@@ -39,7 +38,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.blocks = null
     this.bitfield = null
     this.oplog = null
-    this.info = null // TODO: Remove
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
 
@@ -106,7 +104,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.key = o.key
     this.discoveryKey = o.discoveryKey
     this.oplog = o.oplog
-    this.info = o.info // TODO: Remove
     this.replicator = o.replicator
     this.tree = o.tree
     this.blocks = o.blocks
@@ -133,7 +130,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     await Promise.all([
       this.bitfield.close(),
-      this.info.close(),
+      this.oplog.close(),
       this.tree.close(),
       this.blocks.close()
     ])
@@ -202,11 +199,6 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     this.oplog = await OpLog.open(this.storage('oplog'), this, {
-      crypto: this.crypto,
-      publicKey: this.key,
-      ...this.options.keyPair
-    })
-    this.info = await Info.open(this.storage('info'), { // TODO: Remove
       crypto: this.crypto,
       publicKey: this.key,
       ...this.options.keyPair
@@ -375,7 +367,7 @@ module.exports = class Hypercore extends EventEmitter {
   // called by the replicator
   onreorg () {
     for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('reorg', this.info.fork)
+      this.sessions[i].emit('reorg', this.oplog.fork)
     }
   }
 
@@ -400,8 +392,8 @@ function defaultStorage (storage) {
   if (typeof storage !== 'string') return storage
   const directory = storage
   return function createFile (name) {
-    const lock = name === 'info' ? fsctl.lock : null
-    const sparse = name !== 'info' ? fsctl.sparse : null
+    const lock = name === 'oplog' ? fsctl.lock : null
+    const sparse = name !== 'oplog' ? fsctl.sparse : null
     return raf(name, { directory, lock, sparse })
   }
 }
