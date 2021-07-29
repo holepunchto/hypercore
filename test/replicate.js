@@ -86,6 +86,29 @@ tape('eager replication of updates per default', async function (t) {
   })
 })
 
+tape('bigger download range', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b)
+
+  for (let i = 0; i < 20; i++) await a.append('data')
+
+  const downloaded = new Set()
+
+  b.on('download', function (index) {
+    downloaded.add(index)
+  })
+
+  const r = b.download({ start: 0, end: a.length })
+  await r.downloaded()
+
+  t.same(b.length, a.length, 'same length')
+  t.same(downloaded.size, a.length, 'downloaded all')
+
+  t.end()
+})
+
 tape('high latency reorg', async function (t) {
   const a = await create()
   const b = await create(a.key)
