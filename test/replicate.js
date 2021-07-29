@@ -45,8 +45,7 @@ tape('basic replication from fork', async function (t) {
   t.same(a.oplog.fork, b.oplog.fork)
 })
 
-// TODO: this flush timing fix broke this test, so something more sinister is going on
-tape.skip('eager replication from bigger fork', async function (t) {
+tape('eager replication from bigger fork', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -54,19 +53,20 @@ tape.skip('eager replication from bigger fork', async function (t) {
 
   await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
   await a.truncate(4)
-  await a.append('FORKED', 'g', 'h', 'i', 'j', 'k')
+  await a.append(['FORKED', 'g', 'h', 'i', 'j', 'k'])
 
   t.same(a.oplog.fork, 1)
 
   let d = 0
-  b.on('download', () => d++)
+  b.on('download', (index) => {
+    d++
+  })
 
   const r = b.download({ start: 0, end: a.length })
 
   await r.downloaded()
-  console.log('bitfield:', b.bitfield)
 
-  t.same(d, 5)
+  t.same(d, a.length)
   t.same(a.oplog.fork, b.oplog.fork)
 })
 
