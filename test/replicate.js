@@ -268,3 +268,28 @@ tape('seeking while replicating', async function (t) {
 
   t.same(await b.seek(6), [1, 1])
 })
+
+tape('multiplexing multiple times over the same stream', async function (t) {
+  const a1 = await create()
+
+  await a1.append('hi')
+
+  const b1 = await create(a1.key)
+
+  const n1 = new NoiseSecretStream(true)
+  const n2 = new NoiseSecretStream(false)
+
+  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+
+  a1.replicate(n1)
+
+  b1.replicate(n2)
+  b1.replicate(n2)
+
+  t.ok(await b1.update(), 'update once')
+  t.notOk(await a1.update(), 'writer up to date')
+  t.notOk(await b1.update(), 'update again')
+
+  t.same(b1.length, a1.length, 'same length')
+  t.end()
+})
