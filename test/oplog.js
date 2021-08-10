@@ -4,114 +4,146 @@ const test = require('tape')
 const fsctl = require('fsctl')
 const raf = require('random-access-file')
 const c = require('compact-encoding')
-const crypto = require('hypercore-crypto')
 
-const OpLog = require('../lib/oplog')
+const Oplog = require('../lib/oplog2')
 
-const STORAGE_FILE_NAME = 'test-storage'
+const STORAGE_FILE_NAME = 'oplog-test-storage'
+const STORAGE_FILE_PATH = p.join(__dirname, STORAGE_FILE_NAME)
 const SHOULD_ERROR = Symbol('hypercore-oplog-should-error')
 
-// TODO: These tests must be updated to use the revised oplog
+test('oplog - reset storage', async function (t) {
+  // just to make sure to cleanup storage if it failed half way through before
+  if (fs.existsSync(STORAGE_FILE_PATH)) await fs.promises.unlink(STORAGE_FILE_PATH)
+  t.pass('data is reset')
+  t.end()
+})
 
-test.skip('oplog - basic append', async function (t) {
+test('oplog - basic append', async function (t) {
   const storage = testStorage()
 
-  const log = await OpLog.open(storage)
-  await log.append(userData('a'))
-  await log.append(userData('b'))
+  const logWr = new Oplog(storage)
 
-  console.log('before entries')
+  await logWr.open()
+  await logWr.flush(Buffer.from('h'))
+  await logWr.append(Buffer.from('a'))
+  await logWr.append(Buffer.from('b'))
 
-  let entries = []
-  for await (const entry of log) {
-    entries.push(entry)
+  const logRd = new Oplog(storage)
+
+  {
+    const { header, entries } = await readLog(logRd)
+
+    t.same(header, Buffer.from('h'))
+    t.same(entries.length, 2)
+    t.same(entries[0], Buffer.from('a'))
+    t.same(entries[1], Buffer.from('b'))
   }
 
-  console.log('after entries')
+  await logWr.flush(Buffer.from('i'))
 
+  {
+    const { header, entries } = await readLog(logRd)
+
+    t.same(header, Buffer.from('i'))
+    t.same(entries.length, 0)
+  }
+
+  await logWr.append(Buffer.from('c'))
+
+  {
+    const { header, entries } = await readLog(logRd)
+
+    t.same(header, Buffer.from('i'))
+    t.same(entries.length, 1)
+    t.same(entries[0], Buffer.from('c'))
+  }
+
+  await cleanup(storage)
+  t.end()
+})
+
+test('oplog - custom encoding', async function (t) {
+  const storage = testStorage()
+
+  const log = new Oplog(storage, {
+    headerEncoding: c.string,
+    entryEncoding: c.uint
+  })
+
+  await log.open()
+  await log.flush('one header')
+  await log.append(42)
+  await log.append(43)
+
+  const { header, entries } = await readLog(log)
+
+  t.same(header, 'one header')
   t.same(entries.length, 2)
-  t.same(entries[0].userData, Buffer.from('a'))
-  t.same(entries[0].flushes, 0)
-  t.same(entries[1].userData, Buffer.from('b'))
-  t.same(entries[1].flushes, 0)
-
-  await log.flush()
-
-  entries = []
-  for await (const entry of log) {
-    entries.push(entry)
-  }
-
-  t.same(entries.length, 0)
-
-  await log.append(userData('c'))
-
-  entries = []
-  for await (const entry of log) {
-    entries.push(entry)
-  }
-
-  t.same(entries.length, 1)
-  t.same(entries[0].userData, Buffer.from('c'))
-  t.same(entries[0].flushes, 1)
+  t.same(entries[0], 42)
+  t.same(entries[1], 43)
 
   await cleanup(storage)
   t.end()
 })
 
-test.skip('oplog - alternating header writes', async function (t) {
+test('oplog - alternating header writes', async function (t) {
   const storage = testStorage()
 
-  const log = await OpLog.open(storage)
+  const log = new Oplog(storage)
 
-  await log.flush()
-  await log.flush()
+  await log.open()
+  await log.flush(Buffer.from('1'))
+  await log.flush(Buffer.from('2'))
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 2)
-    t.same(meta.headers[1].flushes, 1)
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('2'))
   }
 
-  await log.flush() // Should overwrite first header
+  await log.flush(Buffer.from('1')) // Should overwrite first header
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 2)
-    t.same(meta.headers[1].flushes, 3)
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('1'))
   }
 
-  await log.flush() // Should overwrite second header
+  await log.flush(Buffer.from('2')) // Should overwrite second header
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 4)
-    t.same(meta.headers[1].flushes, 3)
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('2'))
   }
 
   await cleanup(storage)
   t.end()
 })
 
-test.skip('oplog - one fully-corrupted header', async function (t) {
+test('oplog - one fully-corrupted header', async function (t) {
   const storage = testStorage()
 
-  const log = await OpLog.open(storage)
+  const log = new Oplog(storage)
 
-  await log.flush()
-  await log.flush()
+  await log.open()
+  await log.flush(Buffer.from('header 1'))
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 2)
-    t.same(meta.headers[1].flushes, 1)
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('header 1'))
   }
 
-  await log.flush() // Should overwrite second header
+  await log.flush(Buffer.from('header 2'))
+
+  {
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('header 2'))
+  }
+
+  await log.flush(Buffer.from('header 3')) // should overwrite first header
+
+  {
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('header 3'))
+  }
 
   // Corrupt the first header -- second header should win now
   await new Promise((resolve, reject) => {
@@ -121,71 +153,54 @@ test.skip('oplog - one fully-corrupted header', async function (t) {
     })
   })
 
-  const meta = await log._loadMetadata()
-  t.same(meta.headers.length, 2)
-  t.false(meta.headers[0])
-  t.true(meta.headers[1])
-  t.same(meta.headers[meta.latestHeader].flushes, 3)
+  {
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('header 2'), 'one is corrupted or partially written')
+  }
 
   await cleanup(storage)
   t.end()
 })
 
-test.skip('oplog - header invalid checksum', async function (t) {
+test('oplog - header invalid checksum', async function (t) {
   const storage = testStorage()
-  const badHeaderEncoding = {
-    preencode (state, m) {
-      c.uint.preencode(state, m.test)
-    },
-    encode (state, m) {
-      c.uint.encode(state, m.test)
-    },
-    decode (state) {
-      return { test: c.uint.decode(state) }
-    }
-  }
 
-  const log = await OpLog.open(storage)
+  const log = new Oplog(storage)
 
-  await log.flush()
-  await log.flush()
+  await log.open()
+  await log.flush(Buffer.from('a'))
+  await log.flush(Buffer.from('b'))
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 2)
-    t.same(meta.headers[1].flushes, 1)
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('b'))
   }
 
-  await log.flush() // Should overwrite second header (flushes = 3)
-
-  // Invalidate the second header's checksum -- first header should win now (flushes = 2)
+  // Invalidate the first header's checksum -- second header should win now
   await new Promise((resolve, reject) => {
-    storage.write(4096 + 1 + 4, c.encode(badHeaderEncoding, { test: 1 }), err => {
+    storage.write(4096 + 8, Buffer.from('a'), err => {
       if (err) return reject(err)
       return resolve()
     })
   })
 
   {
-    const meta = await log._loadMetadata()
-    t.same(meta.headers.length, 2)
-    t.same(meta.headers[0].flushes, 2)
-    t.false(meta.headers[1]) // second header is corrupted
+    const { header } = await readLog(log)
+    t.same(header, Buffer.from('a'))
   }
 
-  // Invalidate the first header's checksum -- the hypercore is now corrupted
+  // Invalidate the second header's checksum -- the hypercore is now corrupted
   await new Promise((resolve, reject) => {
-    storage.write(1 + 4, c.encode(badHeaderEncoding, { test: 1 }), err => {
+    storage.write(8, Buffer.from('b'), err => {
       if (err) return reject(err)
       return resolve()
     })
   })
 
   try {
-    await log._loadMetadata()
+    await log.open()
     t.fail('corruption should have been detected')
-  } catch (_) {
+  } catch {
     t.pass('corruption was correctly detected')
   }
 
@@ -193,155 +208,94 @@ test.skip('oplog - header invalid checksum', async function (t) {
   t.end()
 })
 
-test.skip('oplog - concurrent appends throw', async function (t) {
-  const storage = testStorage()
-
-  const log = await OpLog.open(storage)
-
-  const appends = []
-  appends.push(log.append(userData('a')))
-  appends.push(log.append(userData('b')))
-
-  const res = await Promise.allSettled(appends)
-  t.same(res[0].status, 'fulfilled')
-  t.same(res[1].status, 'rejected')
-
-  await log.append(userData('c'))
-
-  const entries = []
-  for await (const entry of log) {
-    entries.push(entry)
-  }
-
-  t.same(entries.length, 2)
-  t.same(entries[0].userData, Buffer.from('a'))
-  t.same(entries[1].userData, Buffer.from('c'))
-
-  await cleanup(storage)
-  t.end()
-})
-
-test.skip('oplog - another hypercore is stored here', async function (t) {
+test('oplog - malformed log entry gets overwritten', async function (t) {
   let storage = testStorage()
-  const kp1 = crypto.keyPair()
-  const kp2 = crypto.keyPair()
+  let log = new Oplog(storage)
 
-  const log = await OpLog.open(storage, { ...kp1 })
-
-  t.same(log.publicKey, kp1.publicKey)
-  t.same(log.secretKey, kp1.secretKey)
-
-  await log.close()
-  storage = testStorage()
-
-  try {
-    await OpLog.open(storage, { ...kp2 })
-    t.fail('should have thrown keypair error')
-  } catch (err) {
-    t.same(err.message, 'Another hypercore is stored here')
-  }
-
-  await cleanup(storage)
-  t.end()
-})
-
-test.skip('oplog - malformed log entry gets overwritten', async function (t) {
-  let storage = testStorage()
-  let log = await OpLog.open(storage)
-
-  await log.append(userData('a'))
-  await log.append(userData('b'))
-
+  await log.flush(Buffer.from('header'))
+  await log.append(Buffer.from('a'))
+  await log.append(Buffer.from('b'))
   await log.close()
 
+  const offset = log.byteLength
+
   storage = testStorage()
-  log = await OpLog.open(storage)
+  log = new Oplog(storage)
 
   // Write a bad oplog message at the end (simulates a failed append)
   await new Promise((resolve, reject) => {
-    storage.write(log._logLength + 4096 * 2 + 32, Buffer.from('hello world'), err => {
+    storage.write(offset + 4096 * 2, Buffer.from([0, 0, 0, 0, 4, 0, 0, 0]), err => {
       if (err) return reject(err)
       return resolve()
     })
   })
 
   {
-    const entries = []
-    for await (const entry of log) {
-      entries.push(entry)
-    }
+    const { entries } = await readLog(log)
 
     t.same(entries.length, 2) // The partial entry should not be present
-    t.same(entries[0].userData, Buffer.from('a'))
-    t.same(entries[1].userData, Buffer.from('b'))
+    t.same(entries[0], Buffer.from('a'))
+    t.same(entries[1], Buffer.from('b'))
   }
 
   // Write a valid oplog message now
-  await log.append(userData('c'))
+  await log.append(Buffer.from('c'))
 
   {
-    const entries = []
-    for await (const entry of log) {
-      entries.push(entry)
-    }
+    const { entries } = await readLog(log)
 
-    t.same(entries.length, 3) // The partial entry should be overwritten
-    t.same(entries[0].userData, Buffer.from('a'))
-    t.same(entries[1].userData, Buffer.from('b'))
-    t.same(entries[2].userData, Buffer.from('c'))
+    t.same(entries.length, 3) // The partial entry should not be present
+    t.same(entries[0], Buffer.from('a'))
+    t.same(entries[1], Buffer.from('b'))
+    t.same(entries[2], Buffer.from('c'))
   }
 
   await cleanup(storage)
   t.end()
 })
 
-test.skip('oplog - log not truncated when header write fails', async function (t) {
-  const storage = failingOffsetStorage(4096 * 2 + 32)
+test('oplog - log not truncated when header write fails', async function (t) {
+  const storage = failingOffsetStorage(4096 * 2)
 
-  const log = await OpLog.open(storage)
+  const log = new Oplog(storage)
+
+  await log.flush(Buffer.from('header'))
+  await log.append(Buffer.from('a'))
+  await log.append(Buffer.from('b'))
 
   // Make subsequent header writes fail
   storage[SHOULD_ERROR](true)
 
-  await log.append(userData('a'))
-  await log.append(userData('b'))
-
   // The flush should fail because the header can't be updated -- log should still have entries after this
   try {
-    await log.flush()
+    await log.flush(Buffer.from('header two'))
   } catch (err) {
     t.true(err.synthetic)
   }
 
   {
-    const entries = []
-    for await (const entry of log) {
-      entries.push(entry)
-    }
+    const { header, entries } = await readLog(log)
+
+    t.same(header, Buffer.from('header'))
     t.same(entries.length, 2)
-    t.same(entries[0].userData, Buffer.from('a'))
-    t.same(entries[1].userData, Buffer.from('b'))
+    t.same(entries[0], Buffer.from('a'))
+    t.same(entries[1], Buffer.from('b'))
   }
 
   // Re-enable header writes
   storage[SHOULD_ERROR](false)
-  await log.flush() // Should correctly truncate the oplog now
+  await log.flush(Buffer.from('header two')) // Should correctly truncate the oplog now
 
   {
-    const entries = []
-    for await (const entry of log) {
-      entries.push(entry)
-    }
+    const { header, entries } = await readLog(log)
+
+    t.same(header, Buffer.from('header two'))
     t.same(entries.length, 0)
   }
 
   await cleanup(storage)
   t.end()
 })
-
-function userData (s) {
-  return { userData: Buffer.from(s) }
-}
 
 function testStorage () {
   return raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
@@ -367,6 +321,22 @@ function failingOffsetStorage (offset) {
   return storage
 }
 
-function cleanup (storage) {
-  return fs.promises.unlink(p.join(__dirname, STORAGE_FILE_NAME))
+async function readLog (log) {
+  const r = { header: null, entries: [] }
+
+  await log.open({
+    onheader (h) {
+      r.header = h
+    },
+    onentry (e) {
+      r.entries.push(e)
+    }
+  })
+
+  return r
+}
+
+async function cleanup (storage) {
+  await new Promise((resolve) => storage.close(() => resolve()))
+  await fs.promises.unlink(STORAGE_FILE_PATH)
 }
