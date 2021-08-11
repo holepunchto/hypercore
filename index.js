@@ -261,7 +261,11 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    return this.replicator.requestRange(range.start, range.end, !!range.linear)
+    const start = (range && range.start) || 0
+    const end = typeof (range && range.end) === 'number' ? range.end : -1 // download all
+    const linear = !!(range && range.linear)
+    // TODO: support range.blocks
+    return this.replicator.requestRange(start, end, linear)
   }
 
   undownload (range) {
