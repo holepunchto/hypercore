@@ -5,7 +5,7 @@ const fsctl = require('fsctl')
 const raf = require('random-access-file')
 const c = require('compact-encoding')
 
-const Oplog = require('../lib/oplog2')
+const Oplog = require('../lib/oplog')
 
 const STORAGE_FILE_NAME = 'oplog-test-storage'
 const STORAGE_FILE_PATH = p.join(__dirname, STORAGE_FILE_NAME)
@@ -31,7 +31,7 @@ test('oplog - basic append', async function (t) {
   const logRd = new Oplog(storage)
 
   {
-    const { header, entries } = await readLog(logRd)
+    const { header, entries } = await logRd.open()
 
     t.same(header, Buffer.from('h'))
     t.same(entries.length, 2)
@@ -42,7 +42,7 @@ test('oplog - basic append', async function (t) {
   await logWr.flush(Buffer.from('i'))
 
   {
-    const { header, entries } = await readLog(logRd)
+    const { header, entries } = await logRd.open()
 
     t.same(header, Buffer.from('i'))
     t.same(entries.length, 0)
@@ -51,7 +51,7 @@ test('oplog - basic append', async function (t) {
   await logWr.append(Buffer.from('c'))
 
   {
-    const { header, entries } = await readLog(logRd)
+    const { header, entries } = await logRd.open()
 
     t.same(header, Buffer.from('i'))
     t.same(entries.length, 1)
@@ -75,7 +75,7 @@ test('oplog - custom encoding', async function (t) {
   await log.append(42)
   await log.append(43)
 
-  const { header, entries } = await readLog(log)
+  const { header, entries } = await log.open()
 
   t.same(header, 'one header')
   t.same(entries.length, 2)
@@ -96,21 +96,21 @@ test('oplog - alternating header writes', async function (t) {
   await log.flush(Buffer.from('2'))
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('2'))
   }
 
   await log.flush(Buffer.from('1')) // Should overwrite first header
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('1'))
   }
 
   await log.flush(Buffer.from('2')) // Should overwrite second header
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('2'))
   }
 
@@ -127,21 +127,21 @@ test('oplog - one fully-corrupted header', async function (t) {
   await log.flush(Buffer.from('header 1'))
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('header 1'))
   }
 
   await log.flush(Buffer.from('header 2'))
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('header 2'))
   }
 
   await log.flush(Buffer.from('header 3')) // should overwrite first header
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('header 3'))
   }
 
@@ -154,7 +154,7 @@ test('oplog - one fully-corrupted header', async function (t) {
   })
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('header 2'), 'one is corrupted or partially written')
   }
 
@@ -172,7 +172,7 @@ test('oplog - header invalid checksum', async function (t) {
   await log.flush(Buffer.from('b'))
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('b'))
   }
 
@@ -185,7 +185,7 @@ test('oplog - header invalid checksum', async function (t) {
   })
 
   {
-    const { header } = await readLog(log)
+    const { header } = await log.open()
     t.same(header, Buffer.from('a'))
   }
 
@@ -231,7 +231,7 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   })
 
   {
-    const { entries } = await readLog(log)
+    const { entries } = await log.open()
 
     t.same(entries.length, 2) // The partial entry should not be present
     t.same(entries[0], Buffer.from('a'))
@@ -242,7 +242,7 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   await log.append(Buffer.from('c'))
 
   {
-    const { entries } = await readLog(log)
+    const { entries } = await log.open()
 
     t.same(entries.length, 3) // The partial entry should not be present
     t.same(entries[0], Buffer.from('a'))
@@ -274,7 +274,7 @@ test('oplog - log not truncated when header write fails', async function (t) {
   }
 
   {
-    const { header, entries } = await readLog(log)
+    const { header, entries } = await log.open()
 
     t.same(header, Buffer.from('header'))
     t.same(entries.length, 2)
@@ -287,11 +287,81 @@ test('oplog - log not truncated when header write fails', async function (t) {
   await log.flush(Buffer.from('header two')) // Should correctly truncate the oplog now
 
   {
-    const { header, entries } = await readLog(log)
+    const { header, entries } = await log.open()
 
     t.same(header, Buffer.from('header two'))
     t.same(entries.length, 0)
   }
+
+  await cleanup(storage)
+  t.end()
+})
+
+test('oplog - multi append', async function (t) {
+  const storage = testStorage()
+
+  const log = new Oplog(storage)
+
+  await log.open()
+  await log.flush(Buffer.from('a'))
+
+  await log.append([
+    Buffer.from('1'),
+    Buffer.from('22'),
+    Buffer.from('333'),
+    Buffer.from('4')
+  ])
+
+  t.same(log.length, 4)
+  t.same(log.byteLength, 32 + 1 + 2 + 3 + 1)
+
+  const { header, entries } = await log.open()
+
+  t.same(header, Buffer.from('a'))
+  t.same(entries, [
+    Buffer.from('1'),
+    Buffer.from('22'),
+    Buffer.from('333'),
+    Buffer.from('4')
+  ])
+
+  await cleanup(storage)
+  t.end()
+})
+
+test('oplog - multi append is atomic', async function (t) {
+  const storage = testStorage()
+
+  const log = new Oplog(storage)
+
+  await log.open()
+  await log.flush(Buffer.from('a'))
+
+  await log.append(Buffer.from('0'))
+  await log.append([
+    Buffer.from('1'),
+    Buffer.from('22'),
+    Buffer.from('333'),
+    Buffer.from('4')
+  ])
+
+  t.same(log.length, 5)
+  t.same(log.byteLength, 40 + 1 + 1 + 2 + 3 + 1)
+
+  // Corrupt the last write, should revert the full batch
+  await new Promise((resolve, reject) => {
+    storage.write(8192 + log.byteLength - 1, Buffer.from('x'), err => {
+      if (err) return reject(err)
+      return resolve()
+    })
+  })
+
+  const { header, entries } = await log.open()
+
+  t.same(log.length, 1)
+  t.same(entries, [
+    Buffer.from('0')
+  ])
 
   await cleanup(storage)
   t.end()
@@ -319,21 +389,6 @@ function failingOffsetStorage (offset) {
   }
 
   return storage
-}
-
-async function readLog (log) {
-  const r = { header: null, entries: [] }
-
-  await log.open({
-    onheader (h) {
-      r.header = h
-    },
-    onentry (e) {
-      r.entries.push(e)
-    }
-  })
-
-  return r
 }
 
 async function cleanup (storage) {
