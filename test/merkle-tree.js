@@ -449,6 +449,23 @@ tape('basic tree seeks', async function (t) {
   }
 })
 
+tape('clear full tree', async function (t) {
+  const a = await create(5)
+
+  t.same(a.length, 5)
+
+  await a.clear()
+
+  t.same(a.length, 0)
+
+  try {
+    await a.get(2)
+    t.fail('node should not exist now')
+  } catch {
+    t.pass('node should fail')
+  }
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
