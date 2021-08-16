@@ -356,7 +356,7 @@ test('oplog - multi append is atomic', async function (t) {
     })
   })
 
-  const { header, entries } = await log.open()
+  const { entries } = await log.open()
 
   t.same(log.length, 1)
   t.same(entries, [
