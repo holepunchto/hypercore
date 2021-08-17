@@ -20,6 +20,7 @@
     "big-sparse-array": "^1.0.2",
     "codecs": "^2.2.0",
     "compact-encoding": "^2.0.0",
+    "crc32-universal": "^1.0.1",
     "flat-tree": "^1.7.0",
     "hypercore-crypto": "^2.1.1",
     "is-options": "^1.0.1",
