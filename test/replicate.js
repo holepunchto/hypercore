@@ -28,7 +28,7 @@ tape('basic replication from fork', async function (t) {
   await a.truncate(4)
   await a.append('e')
 
-  t.same(a.oplog.fork, 1)
+  t.same(a.fork, 1)
 
   const b = await create(a.key)
 
@@ -42,7 +42,7 @@ tape('basic replication from fork', async function (t) {
   await r.downloaded()
 
   t.same(d, 5)
-  t.same(a.oplog.fork, b.oplog.fork)
+  t.same(a.fork, b.fork)
 })
 
 tape('eager replication from bigger fork', async function (t) {
@@ -55,7 +55,7 @@ tape('eager replication from bigger fork', async function (t) {
   await a.truncate(4)
   await a.append(['FORKED', 'g', 'h', 'i', 'j', 'k'])
 
-  t.same(a.oplog.fork, 1)
+  t.same(a.fork, 1)
 
   let d = 0
   b.on('download', (index) => {
@@ -67,7 +67,7 @@ tape('eager replication from bigger fork', async function (t) {
   await r.downloaded()
 
   t.same(d, a.length)
-  t.same(a.oplog.fork, b.oplog.fork)
+  t.same(a.fork, b.fork)
 })
 
 tape('eager replication of updates per default', async function (t) {
@@ -76,14 +76,15 @@ tape('eager replication of updates per default', async function (t) {
 
   replicate(a, b)
 
-  await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
-
-  return new Promise(resolve => {
+  const appended = new Promise(resolve => {
     b.on('append', function () {
       t.pass('appended')
       resolve()
     })
   })
+
+  await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
+  await appended
 })
 
 tape('bigger download range', async function (t) {
