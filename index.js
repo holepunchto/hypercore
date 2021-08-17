@@ -1,12 +1,12 @@
 const { EventEmitter } = require('events')
 const raf = require('random-access-file')
 const isOptions = require('is-options')
+const hypercoreCrypto = require('hypercore-crypto')
 
 const codecs = require('codecs')
 const Replicator = require('./lib/replicator')
 const Extensions = require('./lib/extensions')
 const Core = require('./lib/core')
-const mutexify = require('mutexify/promise')
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
 const NoiseSecretStream = require('noise-secret-stream')
 
@@ -27,8 +27,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.options = opts
 
     this.storage = defaultStorage(storage)
-    this.lock = mutexify()
 
+    this.crypto = opts.crypto || hypercoreCrypto
     this.tree = null
     this.blocks = null
     this.bitfield = null
@@ -75,9 +75,15 @@ module.exports = class Hypercore extends EventEmitter {
 
   session (opts = {}) {
     const Clz = opts.class || Hypercore
+    const keyPair = opts.keyPair && opts.keyPair.secretKey && { ...opts.keyPair }
+
+    // This only works if the hypercore was fully loaded,
+    // but we only do this to validate the keypair to help catch bugs so yolo
+    if (this.key && keyPair) keyPair.publicKey = this.key
+
     const s = new Clz(this.storage, this.key, {
       ...opts,
-      sign: opts.sign || this.sign,
+      sign: opts.sign || (keyPair && keyPair.secretKey && Core.createSigner(this.crypto, keyPair)) || this.sign,
       valueEncoding: this.valueEncoding,
       extensions: this.extensions,
       _opening: this.opening,
@@ -91,8 +97,9 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _initSession (o) {
+    if (!this.sign) this.sign = o.sign
+    this.crypto = o.crypto
     this.opened = o.opened
-    this.lock = o.lock
     this.key = o.key
     this.discoveryKey = o.discoveryKey
     this.core = o.core
@@ -100,7 +107,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.tree = o.tree
     this.blocks = o.blocks
     this.bitfield = o.bitfield
-    this.writable = o.writable
+    this.writable = !!this.sign
   }
 
   async close () {
@@ -183,11 +190,14 @@ module.exports = class Hypercore extends EventEmitter {
       this.options = { ...this.options, ...(await this.options.preload()) }
     }
 
-    const keyPair = this.key ? { publicKey: this.key, secretKey: null } : this.options.keyPair
+    const keyPair = (this.key && this.options.keyPair)
+      ? { ...this.options.keyPair, publicKey: this.key }
+      : this.key
+        ? { publicKey: this.key, secretKey: null }
+        : this.options.keyPair
 
     this.core = await Core.open(this.storage, {
-      crypto: this.options.crypto,
-      sign: this.sign,
+      crypto: this.crypto,
       keyPair,
       onupdate: this._onupdate.bind(this)
     })
@@ -195,10 +205,11 @@ module.exports = class Hypercore extends EventEmitter {
     this.tree = this.core.tree
     this.blocks = this.core.blocks
     this.bitfield = this.core.bitfield
+    if (!this.sign) this.sign = this.core.defaultSign
 
     this.discoveryKey = this.core.crypto.discoveryKey(this.core.header.keyPair.publicKey)
     this.key = this.core.header.keyPair.publicKey
-    this.writable = !!this.core.sign
+    this.writable = !!this.sign
 
     this.replicator.checkRanges()
     this.opened = true
@@ -281,7 +292,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.writable === false) throw new Error('Core is not writable')
 
     if (fork === -1) fork = this.core.tree.fork + 1
-    await this.core.truncate(newLength, fork)
+    await this.core.truncate(newLength, fork, this.sign)
 
     // TODO: Should propagate from an event triggered by the oplog
     this.replicator.updateAll()
@@ -306,7 +317,7 @@ module.exports = class Hypercore extends EventEmitter {
       buffers[i] = buf
     }
 
-    return await this.core.append(buffers)
+    return await this.core.append(buffers, this.sign)
   }
 
   registerExtension (name, handlers) {

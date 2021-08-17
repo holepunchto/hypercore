@@ -81,7 +81,8 @@ tape('writable session with invalid keypair throws', async function (t) {
   }
 
   try {
-    new Hypercore(ram, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
+    const core = new Hypercore(ram, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
+    await core.ready()
     t.fail('invalid keypair did not throw')
   } catch {
     t.pass('invalid keypair threw')
