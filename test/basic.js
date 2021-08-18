@@ -34,3 +34,19 @@ tape('session', async function (t) {
   t.same(await session.get(0), Buffer.from('test'))
   t.end()
 })
+
+tape('close', async function (t) {
+  const core = await create()
+  await core.append('hello world')
+
+  await core.close()
+
+  try {
+    await core.get(0)
+    t.fail('core should be closed')
+  } catch {
+    t.pass('get threw correctly when core was closed')
+  }
+
+  t.end()
+})
