@@ -58,7 +58,7 @@ tape('core - append and truncate', async function (t) {
   t.same(core.tree.length, 3)
   t.same(core.tree.byteLength, 12)
   t.same(core.tree.fork, 1)
-  t.same(core.header.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
+  t.same(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
 
   await core.append([
     Buffer.from('a'),
@@ -72,11 +72,11 @@ tape('core - append and truncate', async function (t) {
   t.same(core.tree.length, 3)
   t.same(core.tree.byteLength, 12)
   t.same(core.tree.fork, 2)
-  t.same(core.header.reorgs, [{ from: 0, to: 1, ancestors: 3 }, { from: 1, to: 2, ancestors: 3 }])
+  t.same(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }, { from: 1, to: 2, ancestors: 3 }])
 
   await core.truncate(2, 3)
 
-  t.same(core.header.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
+  t.same(core.header.hints.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
 
   await core.append([Buffer.from('a')])
   await core.truncate(2, 4)
@@ -90,7 +90,7 @@ tape('core - append and truncate', async function (t) {
   await core.append([Buffer.from('a')])
   await core.truncate(2, 7)
 
-  t.same(core.header.reorgs.length, 4)
+  t.same(core.header.hints.reorgs.length, 4)
 
   // check that it was persisted
   const coreReopen = await reopen()
@@ -98,7 +98,7 @@ tape('core - append and truncate', async function (t) {
   t.same(coreReopen.tree.length, 2)
   t.same(coreReopen.tree.byteLength, 10)
   t.same(coreReopen.tree.fork, 7)
-  t.same(coreReopen.header.reorgs.length, 4)
+  t.same(coreReopen.header.hints.reorgs.length, 4)
 })
 
 tape('core - user data', async function (t) {
@@ -127,9 +127,9 @@ tape('core - user data', async function (t) {
 
 tape('core - verify', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { type: 'Ed25519', publicKey: core.header.keyPair.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
-  t.same(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.same(clone.header.signer.publicKey, core.header.signer.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b')])
 
@@ -150,9 +150,9 @@ tape('core - verify', async function (t) {
 
 tape('core - verify parallel upgrades', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { type: 'Ed25519', publicKey: core.header.keyPair.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
-  t.same(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.same(clone.header.signer.publicKey, core.header.signer.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b'), Buffer.from('c'), Buffer.from('d')])
 
@@ -173,7 +173,7 @@ tape('core - verify parallel upgrades', async function (t) {
 
 tape('core - update hook is triggered', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { type: 'Ed25519', publicKey: core.header.keyPair.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
   let ran = 0
 

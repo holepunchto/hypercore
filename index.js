@@ -207,8 +207,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.bitfield = this.core.bitfield
     if (!this.sign) this.sign = this.core.defaultSign
 
-    this.discoveryKey = this.crypto.discoveryKey(this.core.header.keyPair.publicKey)
-    this.key = this.core.header.keyPair.publicKey
+    this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
+    this.key = this.core.header.signer.publicKey
     this.writable = !!this.sign
 
     this.replicator.checkRanges()
