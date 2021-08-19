@@ -189,9 +189,6 @@ module.exports = class Hypercore extends EventEmitter {
   async ready () {
     if (this.opening) return this.opening
 
-    // We need to set this pre any async ticks so that range objects can be returned
-    this.replicator = new Replicator(this)
-
     if (this.options.preload) {
       const preloaded = await this.options.preload()
       this.options = { ...this.options, ...preloaded }
@@ -224,13 +221,13 @@ module.exports = class Hypercore extends EventEmitter {
     this.tree = this.core.tree
     this.blocks = this.core.blocks
     this.bitfield = this.core.bitfield
+    this.replicator = new Replicator(this)
     if (!this.sign) this.sign = this.options.sign || this.core.defaultSign
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
     this.key = this.core.header.signer.publicKey
     this.writable = !!this.sign
 
-    this.replicator.checkRanges()
     this.opened = true
 
     for (let i = 0; i < this.sessions.length; i++) {
@@ -298,8 +295,15 @@ module.exports = class Hypercore extends EventEmitter {
     const start = (range && range.start) || 0
     const end = typeof (range && range.end) === 'number' ? range.end : -1 // download all
     const linear = !!(range && range.linear)
+
     // TODO: support range.blocks
-    return this.replicator.requestRange(start, end, linear)
+
+    const r = Replicator.createRange(start, end, linear)
+
+    if (this.opened) this.replicator.addRange(r)
+    else this.opening.then(() => this.replicator.addRange(r))
+
+    return r
   }
 
   undownload (range) {
