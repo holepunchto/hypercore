@@ -18,16 +18,21 @@ module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
 
-    if (isOptions(key)) {
+    if (isOptions(storage)) {
+      opts = storage
+      storage = null
+      key = null
+    } else if (isOptions(key)) {
       opts = key
       key = null
     }
     if (!opts) opts = {}
+    if (!opts.storage) opts.storage = storage
 
     this[promises] = true
     this.options = opts
 
-    this.storage = defaultStorage(storage)
+    this.storage = null
 
     this.crypto = opts.crypto || hypercoreCrypto
     this.tree = null
@@ -188,7 +193,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = new Replicator(this)
 
     if (this.options.preload) {
-      this.options = { ...this.options, ...(await this.options.preload()) }
+      const preloaded = await this.options.preload()
+      this.options = { ...this.options, ...preloaded }
     }
 
     const keyPair = (this.key && this.options.keyPair)
@@ -196,6 +202,18 @@ module.exports = class Hypercore extends EventEmitter {
       : this.key
         ? { publicKey: this.key, secretKey: null }
         : this.options.keyPair
+
+    if (this.options.from) {
+      const from = this.options.from
+      await from.opening
+      this._initSession(from)
+      this.sessions = from.sessions
+      this.storage = from.storage
+      if (!this.sign && keyPair && keyPair.secretKey) this.sign = Core.createSigner(this.crypto, keyPair)
+      return
+    }
+
+    if (!this.storage) this.storage = defaultStorage(this.options.storage)
 
     this.core = await Core.open(this.storage, {
       crypto: this.crypto,
@@ -206,7 +224,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.tree = this.core.tree
     this.blocks = this.core.blocks
     this.bitfield = this.core.bitfield
-    if (!this.sign) this.sign = this.core.defaultSign
+    if (!this.sign) this.sign = this.options.sign || this.core.defaultSign
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
     this.key = this.core.header.signer.publicKey
