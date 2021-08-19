@@ -161,9 +161,9 @@ module.exports = class Hypercore extends EventEmitter {
 
     const protocol = noiseStream.userData
     if (this.opened) {
-      this.replicator.joinProtocol(protocol)
+      this.replicator.joinProtocol(protocol, this.key, this.discoveryKey)
     } else {
-      this.opening.then(() => this.replicator.joinProtocol(protocol), protocol.destroy.bind(protocol))
+      this.opening.then(() => this.replicator.joinProtocol(protocol, this.key, this.discoveryKey), protocol.destroy.bind(protocol))
     }
 
     return outerStream
@@ -215,13 +215,15 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = await Core.open(this.storage, {
       crypto: this.crypto,
       keyPair,
-      onupdate: this._onupdate.bind(this)
+      onupdate: this._oncoreupdate.bind(this)
     })
 
     this.tree = this.core.tree
     this.blocks = this.core.blocks
     this.bitfield = this.core.bitfield
-    this.replicator = new Replicator(this)
+    this.replicator = new Replicator(this.core, {
+      onupdate: this._onpeerupdate.bind(this)
+    })
     if (!this.sign) this.sign = opts.sign || this.core.defaultSign
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
@@ -237,7 +239,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  _onupdate (status, bitfield, value, from) {
+  _oncoreupdate (status, bitfield, value, from) {
     if (status !== 0) {
       for (let i = 0; i < this.sessions.length; i++) {
         if ((status & 0b10) !== 0) this.sessions[i].emit('truncate', this.core.tree.fork)
@@ -260,6 +262,15 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
+  _onpeerupdate (added, peer) {
+    if (added) this.extensions.update(peer)
+    const name = added ? 'peer-add' : 'peer-remove'
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit(name, peer)
+    }
+  }
+
   async update () {
     if (this.opened === false) await this.opening
     // TODO: add an option where a writer can bootstrap it's state from the network also
@@ -270,7 +281,7 @@ module.exports = class Hypercore extends EventEmitter {
   async seek (bytes) {
     if (this.opened === false) await this.opening
 
-    const s = this.tree.seek(bytes)
+    const s = this.core.tree.seek(bytes)
 
     return (await s.update()) || this.replicator.requestSeek(s)
   }
@@ -350,20 +361,6 @@ module.exports = class Hypercore extends EventEmitter {
   // called by the extensions
   onextensionupdate () {
     if (this.replicator !== null) this.replicator.broadcastOptions()
-  }
-
-  onpeeradd (peer) {
-    this.extensions.update(peer)
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('peer-add', peer)
-    }
-  }
-
-  onpeerremove (peer) {
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('peer-remove', peer)
-    }
   }
 }
 
