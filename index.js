@@ -2,6 +2,7 @@ const { EventEmitter } = require('events')
 const raf = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
+const c = require('compact-encoding')
 
 const codecs = require('codecs')
 const Replicator = require('./lib/replicator')
@@ -36,7 +37,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
 
-    this.valueEncoding = opts.valueEncoding ? codecs(opts.valueEncoding) : null
+    this.valueEncoding = opts.valueEncoding ? c.from(codecs(opts.valueEncoding)) : null
     this.key = key || null
     this.discoveryKey = null
     this.readable = true
@@ -267,7 +268,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
-    const encoding = (opts && opts.valueEncoding) || this.valueEncoding
+    const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
 
     if (this.bitfield.get(index)) return decode(encoding, await this.blocks.get(index))
     if (opts && opts.onwait) opts.onwait(index)
@@ -311,7 +312,7 @@ module.exports = class Hypercore extends EventEmitter {
       const buf = Buffer.isBuffer(blk)
         ? blk
         : this.valueEncoding
-          ? this.valueEncoding.encode(blk)
+          ? c.encode(this.valueEncoding, blk)
           : Buffer.from(blk)
 
       buffers[i] = buf
@@ -357,7 +358,7 @@ function defaultStorage (storage) {
 }
 
 function decode (enc, buf) {
-  return enc ? enc.decode(buf) : buf
+  return enc ? c.decode(enc, buf) : buf
 }
 
 function isStream (s) {
