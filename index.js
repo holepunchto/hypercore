@@ -190,8 +190,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opening) return this.opening
 
     if (this.options.preload) {
-      const preloaded = await this.options.preload()
-      this.options = { ...this.options, ...preloaded }
+      this.options = { ...this.options, ...(await this.options.preload()) }
     }
 
     const keyPair = (this.key && this.options.keyPair)
