@@ -3,13 +3,14 @@ const raf = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
-
+const NoiseSecretStream = require('noise-secret-stream')
 const codecs = require('codecs')
+
+const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
+
 const Replicator = require('./lib/replicator')
 const Extensions = require('./lib/extensions')
 const Core = require('./lib/core')
-const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
-const NoiseSecretStream = require('noise-secret-stream')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
