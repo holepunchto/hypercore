@@ -34,9 +34,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.storage = null
     this.crypto = opts.crypto || hypercoreCrypto
-    this.tree = null
-    this.blocks = null
-    this.bitfield = null
     this.core = null
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
@@ -109,9 +106,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.discoveryKey = o.discoveryKey
     this.core = o.core
     this.replicator = o.replicator
-    this.tree = o.tree
-    this.blocks = o.blocks
-    this.bitfield = o.bitfield
     this.writable = !!this.sign
   }
 
@@ -218,12 +212,10 @@ module.exports = class Hypercore extends EventEmitter {
       onupdate: this._oncoreupdate.bind(this)
     })
 
-    this.tree = this.core.tree
-    this.blocks = this.core.blocks
-    this.bitfield = this.core.bitfield
     this.replicator = new Replicator(this.core, {
       onupdate: this._onpeerupdate.bind(this)
     })
+
     if (!this.sign) this.sign = opts.sign || this.core.defaultSign
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
