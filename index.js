@@ -26,14 +26,13 @@ module.exports = class Hypercore extends EventEmitter {
       opts = key
       key = null
     }
+
     if (!opts) opts = {}
-    if (!opts.storage) opts.storage = storage
+    if (!storage) storage = opts.storage
 
     this[promises] = true
-    this.options = opts
 
     this.storage = null
-
     this.crypto = opts.crypto || hypercoreCrypto
     this.tree = null
     this.blocks = null
@@ -42,7 +41,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.extensions = opts.extensions || new Extensions(this)
 
-    this.valueEncoding = opts.valueEncoding ? c.from(codecs(opts.valueEncoding)) : null
+    this.valueEncoding = null
     this.key = key || null
     this.discoveryKey = null
     this.readable = true
@@ -52,7 +51,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.sessions = opts._sessions || [this]
     this.sign = opts.sign || null
 
-    this.opening = opts._opening || this.ready()
+    this.opening = opts._opening || this._open(key, storage, opts)
     this.opening.catch(noop)
   }
 
@@ -186,21 +185,23 @@ module.exports = class Hypercore extends EventEmitter {
     return this.replicator === null ? [] : this.replicator.peers
   }
 
-  async ready () {
-    if (this.opening) return this.opening
+  ready () {
+    return this.opening
+  }
 
-    if (this.options.preload) {
-      this.options = { ...this.options, ...(await this.options.preload()) }
-    }
+  async _open (key, storage, opts) {
+    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
 
-    const keyPair = (this.key && this.options.keyPair)
-      ? { ...this.options.keyPair, publicKey: this.key }
-      : this.key
-        ? { publicKey: this.key, secretKey: null }
-        : this.options.keyPair
+    this.valueEncoding = opts.valueEncoding ? c.from(codecs(opts.valueEncoding)) : null
 
-    if (this.options.from) {
-      const from = this.options.from
+    const keyPair = (key && opts.keyPair)
+      ? { ...opts.keyPair, publicKey: key }
+      : key
+        ? { publicKey: key, secretKey: null }
+        : opts.keyPair
+
+    if (opts.from) {
+      const from = opts.from
       await from.opening
       this._initSession(from)
       this.sessions = from.sessions
@@ -209,7 +210,7 @@ module.exports = class Hypercore extends EventEmitter {
       return
     }
 
-    if (!this.storage) this.storage = defaultStorage(this.options.storage)
+    if (!this.storage) this.storage = defaultStorage(opts.storage || storage)
 
     this.core = await Core.open(this.storage, {
       crypto: this.crypto,
@@ -221,7 +222,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.blocks = this.core.blocks
     this.bitfield = this.core.bitfield
     this.replicator = new Replicator(this)
-    if (!this.sign) this.sign = this.options.sign || this.core.defaultSign
+    if (!this.sign) this.sign = opts.sign || this.core.defaultSign
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
     this.key = this.core.header.signer.publicKey
