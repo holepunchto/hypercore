@@ -278,14 +278,14 @@ module.exports = class Hypercore extends EventEmitter {
   async has (index) {
     if (this.opened === false) await this.opening
 
-    return this.bitfield.get(index)
+    return this.core.bitfield.get(index)
   }
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
     const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
 
-    if (this.bitfield.get(index)) return decode(encoding, await this.blocks.get(index))
+    if (this.core.bitfield.get(index)) return decode(encoding, await this.core.blocks.get(index))
     if (opts && opts.onwait) opts.onwait(index)
 
     return decode(encoding, await this.replicator.requestBlock(index))
