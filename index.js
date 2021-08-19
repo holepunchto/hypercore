@@ -37,7 +37,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
     this.replicator = null
-    this.extensions = opts.extensions || new Extensions(this)
+    this.extensions = opts.extensions || new Extensions()
 
     this.valueEncoding = null
     this.key = key || null
@@ -198,7 +198,9 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.from) {
       const from = opts.from
       await from.opening
+      for (const [name, ext] of this.extensions) from.extensions.register(name, null, ext)
       this._initSession(from)
+      this.extensions = from.extensions
       this.sessions = from.sessions
       this.storage = from.storage
       if (!this.sign && keyPair && keyPair.secretKey) this.sign = Core.createSigner(this.crypto, keyPair)
@@ -223,6 +225,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.key = this.core.header.signer.publicKey
     this.writable = !!this.sign
 
+    this.extensions.attach(this.replicator)
     this.opened = true
 
     for (let i = 0; i < this.sessions.length; i++) {
