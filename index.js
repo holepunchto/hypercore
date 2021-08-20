@@ -210,10 +210,16 @@ module.exports = class Hypercore extends EventEmitter {
     if (!this.storage) this.storage = defaultStorage(opts.storage || storage)
 
     this.core = await Core.open(this.storage, {
-      crypto: this.crypto,
       keyPair,
+      crypto: this.crypto,
       onupdate: this._oncoreupdate.bind(this)
     })
+
+    if (opts.userData) {
+      for (const [key, value] of Object.entries(opts.userData)) {
+        await this.core.userData(key, value)
+      }
+    }
 
     this.replicator = new Replicator(this.core, {
       onupdate: this._onpeerupdate.bind(this)
