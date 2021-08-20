@@ -267,6 +267,19 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
+  async setUserData (key, value) {
+    if (this.opened === false) await this.opening
+    return this.core.userData(key, value)
+  }
+
+  async getUserData (key) {
+    if (this.opened === false) await this.opening
+    for (const { key: savedKey, value } of this.core.header.userData) {
+      if (key === savedKey) return value
+    }
+    return null
+  }
+
   async update () {
     if (this.opened === false) await this.opening
     // TODO: add an option where a writer can bootstrap it's state from the network also
