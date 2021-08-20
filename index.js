@@ -76,6 +76,16 @@ module.exports = class Hypercore extends EventEmitter {
     return noiseStream.rawStream
   }
 
+  static defaultStorage (storage) {
+    if (typeof storage !== 'string') return storage
+    const directory = storage
+    return function createFile (name) {
+      const lock = name === 'oplog' ? fsctl.lock : null
+      const sparse = name !== 'oplog' ? fsctl.sparse : null
+      return raf(name, { directory, lock, sparse })
+    }
+  }
+
   session (opts = {}) {
     const Clz = opts.class || Hypercore
     const keyPair = opts.keyPair && opts.keyPair.secretKey && { ...opts.keyPair }
@@ -207,7 +217,7 @@ module.exports = class Hypercore extends EventEmitter {
       return
     }
 
-    if (!this.storage) this.storage = defaultStorage(opts.storage || storage)
+    if (!this.storage) this.storage = Hypercore.defaultStorage(opts.storage || storage)
 
     this.core = await Core.open(this.storage, {
       keyPair,
@@ -380,16 +390,6 @@ module.exports = class Hypercore extends EventEmitter {
 }
 
 function noop () {}
-
-function defaultStorage (storage) {
-  if (typeof storage !== 'string') return storage
-  const directory = storage
-  return function createFile (name) {
-    const lock = name === 'oplog' ? fsctl.lock : null
-    const sparse = name !== 'oplog' ? fsctl.sparse : null
-    return raf(name, { directory, lock, sparse })
-  }
-}
 
 function decode (enc, buf) {
   return enc ? c.decode(enc, buf) : buf
