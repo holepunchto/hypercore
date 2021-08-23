@@ -48,6 +48,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.closed = false
     this.sessions = opts._sessions || [this]
     this.sign = opts.sign || null
+    this.autoClose = !!opts.autoClose
 
     this.closing = null
     this.opening = opts._opening || this._open(key, storage, opts)
@@ -88,6 +89,12 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   session (opts = {}) {
+    if (this.closing) {
+      // This makes the closing logic alot easier. If this turns out to be a problem
+      // in practive, open an issue and we'll try to make a solution for it.
+      throw new Error('Cannot make sessions on a closing core')
+    }
+
     const Clz = opts.class || Hypercore
     const keyPair = opts.keyPair && opts.keyPair.secretKey && { ...opts.keyPair }
 
@@ -119,6 +126,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.writable = !!this.sign
+    this.autoClose = o.autoClose
   }
 
   close () {
@@ -139,8 +147,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.closed = true
 
     if (this.sessions.length) {
-      // wait a tick
-      await Promise.resolve()
+      // if this is the last session and we are auto closing, trigger that first to enforce error handling
+      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close()
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
