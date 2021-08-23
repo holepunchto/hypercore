@@ -228,7 +228,9 @@ module.exports = class Hypercore extends EventEmitter {
       this.extensions = from.extensions
       this.sessions = from.sessions
       this.storage = from.storage
-      if (!this.sign && keyPair && keyPair.secretKey) this.sign = Core.createSigner(this.crypto, keyPair)
+      if (!this.sign) this.sign = opts.sign || ((keyPair && keyPair.secretKey) ? Core.createSigner(this.crypto, keyPair) : null)
+      this.writable = !!this.sign
+      this.sessions.push(this)
       return
     }
 

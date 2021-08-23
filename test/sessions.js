@@ -139,3 +139,19 @@ tape('sessions - auto close with all closing', async function (t) {
   await Promise.all([core.close(), a.close(), b.close()])
   t.same(closed, 3, 'all closed')
 })
+
+tape('sessions - auto close when using from option', async function (t) {
+  const core1 = new Hypercore(ram, {
+    autoClose: true
+  })
+  const core2 = new Hypercore({
+    preload: () => {
+      return {
+        from: core1
+      }
+    }
+  })
+  await core2.ready()
+  await core2.close()
+  t.true(core1.closed)
+})
