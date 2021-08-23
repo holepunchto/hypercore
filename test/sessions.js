@@ -2,9 +2,9 @@ const tape = require('tape')
 const ram = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 
-const Hypercore = require('..')
+const Hypercore = require('../')
 
-tape('can create writable sessions from a read-only core', async function (t) {
+tape('sessions - can create writable sessions from a read-only core', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -35,7 +35,7 @@ tape('can create writable sessions from a read-only core', async function (t) {
   t.end()
 })
 
-tape('writable session with custom sign function', async function (t) {
+tape('sessions - writable session with custom sign function', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -66,7 +66,7 @@ tape('writable session with custom sign function', async function (t) {
   t.end()
 })
 
-tape('writable session with invalid keypair throws', async function (t) {
+tape('sessions - writable session with invalid keypair throws', async function (t) {
   t.plan(2)
 
   const keyPair1 = crypto.keyPair()
@@ -87,4 +87,55 @@ tape('writable session with invalid keypair throws', async function (t) {
   } catch {
     t.pass('invalid keypair threw')
   }
+})
+
+tape('sessions - auto close', async function (t) {
+  const core = new Hypercore(ram, { autoClose: true })
+
+  let closed = false
+  core.on('close', function () {
+    closed = true
+  })
+
+  const a = core.session()
+  const b = core.session()
+
+  await a.close()
+  t.notOk(closed, 'not closed yet')
+
+  await b.close()
+  t.ok(closed, 'all closed')
+})
+
+tape('sessions - auto close different order', async function (t) {
+  const core = new Hypercore(ram, { autoClose: true })
+
+  const a = core.session()
+  const b = core.session()
+
+  let closed = false
+  a.on('close', function () {
+    closed = true
+  })
+
+  await core.close()
+  t.notOk(closed, 'not closed yet')
+
+  await b.close()
+  t.ok(closed, 'all closed')
+})
+
+tape('sessions - auto close with all closing', async function (t) {
+  const core = new Hypercore(ram, { autoClose: true })
+
+  const a = core.session()
+  const b = core.session()
+
+  let closed = 0
+  a.on('close', () => closed++)
+  b.on('close', () => closed++)
+  core.on('close', () => closed++)
+
+  await Promise.all([core.close(), a.close(), b.close()])
+  t.same(closed, 3, 'all closed')
 })

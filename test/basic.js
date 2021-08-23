@@ -1,9 +1,7 @@
 const tape = require('tape')
 const ram = require('random-access-memory')
-const crypto = require('hypercore-crypto')
-const tmp = require('tmp-promise')
 
-const Hypercore = require('..')
+const Hypercore = require('../')
 const { create } = require('./helpers')
 
 tape('basic', async function (t) {
@@ -54,120 +52,28 @@ tape('close', async function (t) {
   }
 })
 
+tape('close multiple', async function (t) {
+  const core = await create()
+  await core.append('hello world')
+
+  const expected = ['close event', 'close 1', 'close 2', 'close 3']
+
+  core.on('close', () => done('close event'))
+  core.close().then(() => done('close 1'))
+  core.close().then(() => done('close 2'))
+  core.close().then(() => done('close 3'))
+
+  await core.close()
+  t.same(expected.length, 0, 'all event passed')
+
+  function done (event) {
+    t.same(event, expected.shift())
+  }
+})
+
 tape('storage options', async function (t) {
   const core = new Hypercore({ storage: ram })
   await core.append('hello')
   t.same(await core.get(0), Buffer.from('hello'))
-  t.end()
-})
-
-tape('preload - storage', async function (t) {
-  const core = new Hypercore(null, {
-    preload: () => {
-      return { storage: ram }
-    }
-  })
-  await core.ready()
-
-  await core.append('hello world')
-  t.same(core.length, 1)
-  t.same(await core.get(0), Buffer.from('hello world'))
-
-  t.end()
-})
-
-tape('preload - from another core', async function (t) {
-  t.plan(2)
-
-  const first = new Hypercore(ram)
-  await first.ready()
-
-  const second = new Hypercore(null, {
-    preload: () => {
-      return { from: first }
-    }
-  })
-  await second.ready()
-
-  t.same(first.key, second.key)
-  t.same(first.sessions, second.sessions)
-})
-
-tape('preload - custom keypair', async function (t) {
-  const keyPair = crypto.keyPair()
-  const core = new Hypercore(ram, keyPair.publicKey, {
-    preload: () => {
-      return { keyPair }
-    }
-  })
-  await core.ready()
-
-  t.true(core.writable)
-  t.same(core.key, keyPair.publicKey)
-
-  t.end()
-})
-
-tape('preload - sign/storage', async function (t) {
-  const keyPair = crypto.keyPair()
-  const core = new Hypercore(null, keyPair.publicKey, {
-    valueEncoding: 'utf-8',
-    preload: () => {
-      return {
-        storage: ram,
-        sign: signable => crypto.sign(signable, keyPair.secretKey)
-      }
-    }
-  })
-  await core.ready()
-
-  t.true(core.writable)
-  await core.append('hello world')
-  t.same(core.length, 1)
-  t.same(await core.get(0), 'hello world')
-
-  t.end()
-})
-
-tape('userdata - can set through setUserData', async function (t) {
-  const core = await create()
-  await core.setUserData('hello', Buffer.from('world'))
-
-  t.same(await core.getUserData('hello'), Buffer.from('world'))
-
-  t.end()
-})
-
-tape('userdata - can set through constructor option', async function (t) {
-  const core = await create({
-    userData: {
-      hello: Buffer.from('world')
-    }
-  })
-
-  t.same(await core.getUserData('hello'), Buffer.from('world'))
-
-  t.end()
-})
-
-tape('userdata - persists across restarts', async function (t) {
-  const dir = await tmp.dir()
-
-  let core = new Hypercore(dir.path, {
-    userData: {
-      hello: Buffer.from('world')
-    }
-  })
-  await core.ready()
-
-  await core.close()
-  core = new Hypercore(dir.path, {
-    userData: {
-      other: Buffer.from('another')
-    }
-  })
-
-  t.same(await core.getUserData('hello'), Buffer.from('world'))
-  t.same(await core.getUserData('other'), Buffer.from('another'))
   t.end()
 })
