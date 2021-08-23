@@ -155,3 +155,20 @@ tape('sessions - auto close when using from option', async function (t) {
   await core2.close()
   t.true(core1.closed)
 })
+
+tape('sessions - close with from option', async function (t) {
+  const core1 = new Hypercore(ram)
+  await core1.append('hello world')
+
+  const core2 = new Hypercore({
+    preload: () => {
+      return {
+        from: core1
+      }
+    }
+  })
+  await core2.close()
+
+  t.false(core1.closed)
+  t.same(await core1.get(0), Buffer.from('hello world'))
+})
