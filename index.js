@@ -49,6 +49,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.sessions = opts._sessions || [this]
     this.sign = opts.sign || null
 
+    this.closing = null
     this.opening = opts._opening || this._open(key, storage, opts)
     this.opening.catch(noop)
   }
@@ -120,7 +121,13 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = !!this.sign
   }
 
-  async close () {
+  close () {
+    if (this.closing) return this.closing
+    this.closing = this._close()
+    return this.closing
+  }
+
+  async _close () {
     await this.opening
 
     const i = this.sessions.indexOf(this)
