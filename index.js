@@ -359,6 +359,12 @@ module.exports = class Hypercore extends EventEmitter {
     return r
   }
 
+  // TODO: get rid of this / deprecate it?
+  cancel (request) {
+    // Do nothing for now
+  }
+
+  // TODO: get rid of this / deprecate it?
   undownload (range) {
     range.destroy(null)
   }
