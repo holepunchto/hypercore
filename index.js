@@ -261,6 +261,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.extensions.attach(this.replicator)
     this.opened = true
 
+    if (opts.postload) await opts.postload(this)
+
     for (let i = 0; i < this.sessions.length; i++) {
       const s = this.sessions[i]
       if (s !== this) s._initSession(this)
