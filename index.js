@@ -1250,6 +1250,14 @@ Feed.prototype.has = function (start, end, cb) {
   return res
 }
 
+Feed.prototype.getBlockInfo = function (index, cb) {
+  var self = this
+  this.ready(function (err) {
+    if (err) return cb(err)
+    self._storage.getNode(2 * index, cb)
+  })
+}
+
 Feed.prototype.head = function (opts, cb) {
   if (typeof opts === 'function') return this.head({}, opts)
   var self = this
