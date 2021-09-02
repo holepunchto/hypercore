@@ -90,6 +90,13 @@ Options include
 }
 ```
 
+#### `await core.truncate(newLength, [forkId])`
+
+Truncate the core to a smaller length.
+
+Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
+Note that the fork id should be monotonely incrementing.
+
 #### `const range = core.download([range])`
 
 Download a range of data.
@@ -197,6 +204,12 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 #### `core.byteLength`
 
 How much data is available on this core in bytes?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `core.fork`
+
+What is the current fork id of this core?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
