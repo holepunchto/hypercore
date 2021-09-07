@@ -11,6 +11,8 @@ module.exports = {
   replicate (a, b) {
     const s1 = a.replicate(true)
     const s2 = b.replicate(false)
+    s1.on('error', err => console.log('STREAM ERROR:', err))
+    s2.on('error', err => console.log('STREAM ERROR:', err))
     s1.pipe(s2).pipe(s1)
     return [s1, s2]
   }
