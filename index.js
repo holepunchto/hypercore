@@ -96,6 +96,7 @@ function Feed (createStorage, key, opts) {
   // hooks
   this._onwrite = opts.onwrite || null
 
+  this._force = !!opts.force
   this._expectedLength = -1
   this._indexing = !!opts.indexing
   this._createIfMissing = opts.createIfMissing !== false
@@ -460,6 +461,10 @@ Feed.prototype._open = function (cb) {
 
     // if no key but we have data do a bitfield reset since we cannot verify the data.
     if (!state.key && state.bitfield.length) {
+      self._overwrite = true
+    }
+
+    if (self._force && state.key && self.key && Buffer.compare(state.key, self.key) !== 0) {
       self._overwrite = true
     }
 
