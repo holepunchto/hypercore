@@ -4,7 +4,7 @@
   "description": "Hypercore 10",
   "main": "index.js",
   "scripts": {
-    "test": "standard && tape test/*.js"
+    "test": "standard && brittle test/*.js"
   },
   "repository": {
     "type": "git",
@@ -32,10 +32,10 @@
   },
   "devDependencies": {
     "@hyperswarm/replicator": "^1.8.0",
+    "brittle": "^1.4.1",
     "random-access-memory": "^3.1.2",
     "range-parser": "^1.2.1",
     "standard": "^16.0.3",
-    "tape": "^5.0.1",
     "tmp-promise": "^3.0.2"
   },
   "optionalDependencies": {

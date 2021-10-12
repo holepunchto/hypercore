@@ -1,9 +1,9 @@
 const crypto = require('hypercore-crypto')
-const tape = require('tape')
+const test = require('brittle')
 const ram = require('random-access-memory')
 const Hypercore = require('../')
 
-tape('preload - storage', async function (t) {
+test('preload - storage', async function (t) {
   const core = new Hypercore(null, {
     preload: () => {
       return { storage: ram }
@@ -12,13 +12,13 @@ tape('preload - storage', async function (t) {
   await core.ready()
 
   await core.append('hello world')
-  t.same(core.length, 1)
-  t.same(await core.get(0), Buffer.from('hello world'))
+  t.is(core.length, 1)
+  t.alike(await core.get(0), Buffer.from('hello world'))
 
   t.end()
 })
 
-tape('preload - from another core', async function (t) {
+test('preload - from another core', async function (t) {
   t.plan(2)
 
   const first = new Hypercore(ram)
@@ -31,11 +31,11 @@ tape('preload - from another core', async function (t) {
   })
   await second.ready()
 
-  t.same(first.key, second.key)
-  t.same(first.sessions, second.sessions)
+  t.is(first.key, second.key)
+  t.is(first.sessions, second.sessions)
 })
 
-tape('preload - custom keypair', async function (t) {
+test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
   const core = new Hypercore(ram, keyPair.publicKey, {
     preload: () => {
@@ -44,13 +44,13 @@ tape('preload - custom keypair', async function (t) {
   })
   await core.ready()
 
-  t.true(core.writable)
-  t.same(core.key, keyPair.publicKey)
+  t.ok(core.writable)
+  t.is(core.key, keyPair.publicKey)
 
   t.end()
 })
 
-tape('preload - sign/storage', async function (t) {
+test('preload - sign/storage', async function (t) {
   const keyPair = crypto.keyPair()
   const core = new Hypercore(null, keyPair.publicKey, {
     valueEncoding: 'utf-8',
@@ -63,10 +63,10 @@ tape('preload - sign/storage', async function (t) {
   })
   await core.ready()
 
-  t.true(core.writable)
+  t.ok(core.writable)
   await core.append('hello world')
-  t.same(core.length, 1)
-  t.same(await core.get(0), 'hello world')
+  t.is(core.length, 1)
+  t.is(await core.get(0), 'hello world')
 
   t.end()
 })

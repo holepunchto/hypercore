@@ -1,10 +1,10 @@
-const tape = require('tape')
+const test = require('brittle')
 const ram = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 
 const Hypercore = require('../')
 
-tape('sessions - can create writable sessions from a read-only core', async function (t) {
+test('sessions - can create writable sessions from a read-only core', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -12,10 +12,10 @@ tape('sessions - can create writable sessions from a read-only core', async func
     valueEncoding: 'utf-8'
   })
   await core.ready()
-  t.false(core.writable)
+  t.absent(core.writable)
 
   const session = core.session({ keyPair: { secretKey: keyPair.secretKey } })
-  t.true(session.writable)
+  t.ok(session.writable)
 
   try {
     await core.append('hello')
@@ -31,11 +31,11 @@ tape('sessions - can create writable sessions from a read-only core', async func
     t.fail('session append should not have thrown')
   }
 
-  t.same(core.length, 1)
+  t.is(core.length, 1)
   t.end()
 })
 
-tape('sessions - writable session with custom sign function', async function (t) {
+test('sessions - writable session with custom sign function', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -43,10 +43,10 @@ tape('sessions - writable session with custom sign function', async function (t)
     valueEncoding: 'utf-8'
   })
   await core.ready()
-  t.false(core.writable)
+  t.absent(core.writable)
 
   const session = core.session({ sign: signable => crypto.sign(signable, keyPair.secretKey) })
-  t.true(session.writable)
+  t.ok(session.writable)
 
   try {
     await core.append('hello')
@@ -62,11 +62,11 @@ tape('sessions - writable session with custom sign function', async function (t)
     t.fail('session append should not have thrown')
   }
 
-  t.same(core.length, 1)
+  t.is(core.length, 1)
   t.end()
 })
 
-tape('sessions - writable session with invalid keypair throws', async function (t) {
+test('sessions - writable session with invalid keypair throws', async function (t) {
   t.plan(2)
 
   const keyPair1 = crypto.keyPair()
@@ -89,7 +89,7 @@ tape('sessions - writable session with invalid keypair throws', async function (
   }
 })
 
-tape('sessions - auto close', async function (t) {
+test('sessions - auto close', async function (t) {
   const core = new Hypercore(ram, { autoClose: true })
 
   let closed = false
@@ -101,13 +101,13 @@ tape('sessions - auto close', async function (t) {
   const b = core.session()
 
   await a.close()
-  t.notOk(closed, 'not closed yet')
+  t.absent(closed, 'not closed yet')
 
   await b.close()
   t.ok(closed, 'all closed')
 })
 
-tape('sessions - auto close different order', async function (t) {
+test('sessions - auto close different order', async function (t) {
   const core = new Hypercore(ram, { autoClose: true })
 
   const a = core.session()
@@ -119,13 +119,13 @@ tape('sessions - auto close different order', async function (t) {
   })
 
   await core.close()
-  t.notOk(closed, 'not closed yet')
+  t.absent(closed, 'not closed yet')
 
   await b.close()
   t.ok(closed, 'all closed')
 })
 
-tape('sessions - auto close with all closing', async function (t) {
+test('sessions - auto close with all closing', async function (t) {
   const core = new Hypercore(ram, { autoClose: true })
 
   const a = core.session()
@@ -137,10 +137,10 @@ tape('sessions - auto close with all closing', async function (t) {
   core.on('close', () => closed++)
 
   await Promise.all([core.close(), a.close(), b.close()])
-  t.same(closed, 3, 'all closed')
+  t.is(closed, 3, 'all closed')
 })
 
-tape('sessions - auto close when using from option', async function (t) {
+test('sessions - auto close when using from option', async function (t) {
   const core1 = new Hypercore(ram, {
     autoClose: true
   })
@@ -152,10 +152,10 @@ tape('sessions - auto close when using from option', async function (t) {
     }
   })
   await core2.close()
-  t.true(core1.closed)
+  t.ok(core1.closed)
 })
 
-tape('sessions - close with from option', async function (t) {
+test('sessions - close with from option', async function (t) {
   const core1 = new Hypercore(ram)
   await core1.append('hello world')
 
@@ -168,6 +168,6 @@ tape('sessions - close with from option', async function (t) {
   })
   await core2.close()
 
-  t.false(core1.closed)
-  t.same(await core1.get(0), Buffer.from('hello world'))
+  t.absent(core1.closed)
+  t.alike(await core1.get(0), Buffer.from('hello world'))
 })

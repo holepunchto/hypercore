@@ -1,8 +1,8 @@
-const tape = require('tape')
+const test = require('brittle')
 const NoiseSecretStream = require('noise-secret-stream')
 const { create, replicate } = require('./helpers')
 
-tape('basic replication', async function (t) {
+test('basic replication', async function (t) {
   const a = await create()
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -18,17 +18,17 @@ tape('basic replication', async function (t) {
 
   await r.downloaded()
 
-  t.same(d, 5)
+  t.is(d, 5)
 })
 
-tape('basic replication from fork', async function (t) {
+test('basic replication from fork', async function (t) {
   const a = await create()
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
   await a.truncate(4)
   await a.append('e')
 
-  t.same(a.fork, 1)
+  t.is(a.fork, 1)
 
   const b = await create(a.key)
 
@@ -41,11 +41,11 @@ tape('basic replication from fork', async function (t) {
 
   await r.downloaded()
 
-  t.same(d, 5)
-  t.same(a.fork, b.fork)
+  t.is(d, 5)
+  t.is(a.fork, b.fork)
 })
 
-tape('eager replication from bigger fork', async function (t) {
+test('eager replication from bigger fork', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -55,7 +55,7 @@ tape('eager replication from bigger fork', async function (t) {
   await a.truncate(4)
   await a.append(['FORKED', 'g', 'h', 'i', 'j', 'k'])
 
-  t.same(a.fork, 1)
+  t.is(a.fork, 1)
 
   let d = 0
   b.on('download', (index) => {
@@ -66,11 +66,11 @@ tape('eager replication from bigger fork', async function (t) {
 
   await r.downloaded()
 
-  t.same(d, a.length)
-  t.same(a.fork, b.fork)
+  t.is(d, a.length)
+  t.is(a.fork, b.fork)
 })
 
-tape('eager replication of updates per default', async function (t) {
+test('eager replication of updates per default', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -87,7 +87,7 @@ tape('eager replication of updates per default', async function (t) {
   await appended
 })
 
-tape('bigger download range', async function (t) {
+test('bigger download range', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -104,13 +104,13 @@ tape('bigger download range', async function (t) {
   const r = b.download({ start: 0, end: a.length })
   await r.downloaded()
 
-  t.same(b.length, a.length, 'same length')
-  t.same(downloaded.size, a.length, 'downloaded all')
+  t.is(b.length, a.length, 'same length')
+  t.is(downloaded.size, a.length, 'downloaded all')
 
   t.end()
 })
 
-tape('high latency reorg', async function (t) {
+test('high latency reorg', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -145,12 +145,12 @@ tape('high latency reorg', async function (t) {
     if (ba.equals(bb)) same++
   }
 
-  t.same(a.fork, 1)
-  t.same(a.fork, b.fork)
-  t.same(same, 80)
+  t.is(a.fork, 1)
+  t.is(a.fork, b.fork)
+  t.is(same, 80)
 })
 
-tape('invalid signature fails', async function (t) {
+test('invalid signature fails', async function (t) {
   t.plan(2)
 
   const a = await create()
@@ -167,7 +167,7 @@ tape('invalid signature fails', async function (t) {
   })
 
   s2.on('error', (err) => {
-    t.same(err.message, 'Remote signature does not match')
+    t.is(err.message, 'Remote signature does not match')
   })
 
   return new Promise((resolve) => {
@@ -182,17 +182,17 @@ tape('invalid signature fails', async function (t) {
   })
 })
 
-tape('update with zero length', async function (t) {
+test('update with zero length', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
   replicate(a, b)
 
   await b.update() // should not hang
-  t.same(b.length, 0)
+  t.is(b.length, 0)
 })
 
-tape('basic multiplexing', async function (t) {
+test('basic multiplexing', async function (t) {
   const a1 = await create()
   const a2 = await create()
 
@@ -205,13 +205,13 @@ tape('basic multiplexing', async function (t) {
   a.pipe(b).pipe(a)
 
   await a1.append('hi')
-  t.same(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), Buffer.from('hi'))
 
   await a2.append('ho')
-  t.same(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), Buffer.from('ho'))
 })
 
-tape('async multiplexing', async function (t) {
+test('async multiplexing', async function (t) {
   const a1 = await create()
   const b1 = await create(a1.key)
 
@@ -232,11 +232,11 @@ tape('async multiplexing', async function (t) {
 
   await new Promise(resolve => b2.once('peer-add', resolve))
 
-  t.same(b2.peers.length, 1)
-  t.same(await b2.get(0), Buffer.from('ho'))
+  t.is(b2.peers.length, 1)
+  t.alike(await b2.get(0), Buffer.from('ho'))
 })
 
-tape('multiplexing with external noise stream', async function (t) {
+test('multiplexing with external noise stream', async function (t) {
   const a1 = await create()
   const a2 = await create()
 
@@ -253,13 +253,13 @@ tape('multiplexing with external noise stream', async function (t) {
   b2.replicate(n2)
 
   await a1.append('hi')
-  t.same(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), Buffer.from('hi'))
 
   await a2.append('ho')
-  t.same(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), Buffer.from('ho'))
 })
 
-tape('seeking while replicating', async function (t) {
+test('seeking while replicating', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -267,10 +267,10 @@ tape('seeking while replicating', async function (t) {
 
   await a.append(['hello', 'this', 'is', 'test', 'data'])
 
-  t.same(await b.seek(6), [1, 1])
+  t.alike(await b.seek(6), [1, 1])
 })
 
-tape('multiplexing multiple times over the same stream', async function (t) {
+test('multiplexing multiple times over the same stream', async function (t) {
   const a1 = await create()
 
   await a1.append('hi')
@@ -288,9 +288,9 @@ tape('multiplexing multiple times over the same stream', async function (t) {
   b1.replicate(n2)
 
   t.ok(await b1.update(), 'update once')
-  t.notOk(await a1.update(), 'writer up to date')
-  t.notOk(await b1.update(), 'update again')
+  t.absent(await a1.update(), 'writer up to date')
+  t.absent(await b1.update(), 'update again')
 
-  t.same(b1.length, a1.length, 'same length')
+  t.is(b1.length, a1.length, 'same length')
   t.end()
 })

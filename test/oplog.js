@@ -1,6 +1,6 @@
 const p = require('path')
 const fs = require('fs')
-const test = require('tape')
+const test = require('brittle')
 const fsctl = require('fsctl')
 const raf = require('random-access-file')
 const c = require('compact-encoding')
@@ -10,6 +10,8 @@ const Oplog = require('../lib/oplog')
 const STORAGE_FILE_NAME = 'oplog-test-storage'
 const STORAGE_FILE_PATH = p.join(__dirname, STORAGE_FILE_NAME)
 const SHOULD_ERROR = Symbol('hypercore-oplog-should-error')
+
+test.configure({ serial: true })
 
 test('oplog - reset storage', async function (t) {
   // just to make sure to cleanup storage if it failed half way through before
@@ -33,10 +35,10 @@ test('oplog - basic append', async function (t) {
   {
     const { header, entries } = await logRd.open()
 
-    t.same(header, Buffer.from('h'))
-    t.same(entries.length, 2)
-    t.same(entries[0], Buffer.from('a'))
-    t.same(entries[1], Buffer.from('b'))
+    t.alike(header, Buffer.from('h'))
+    t.is(entries.length, 2)
+    t.alike(entries[0], Buffer.from('a'))
+    t.alike(entries[1], Buffer.from('b'))
   }
 
   await logWr.flush(Buffer.from('i'))
@@ -44,8 +46,8 @@ test('oplog - basic append', async function (t) {
   {
     const { header, entries } = await logRd.open()
 
-    t.same(header, Buffer.from('i'))
-    t.same(entries.length, 0)
+    t.alike(header, Buffer.from('i'))
+    t.is(entries.length, 0)
   }
 
   await logWr.append(Buffer.from('c'))
@@ -53,9 +55,9 @@ test('oplog - basic append', async function (t) {
   {
     const { header, entries } = await logRd.open()
 
-    t.same(header, Buffer.from('i'))
-    t.same(entries.length, 1)
-    t.same(entries[0], Buffer.from('c'))
+    t.alike(header, Buffer.from('i'))
+    t.is(entries.length, 1)
+    t.alike(entries[0], Buffer.from('c'))
   }
 
   await cleanup(storage)
@@ -77,10 +79,10 @@ test('oplog - custom encoding', async function (t) {
 
   const { header, entries } = await log.open()
 
-  t.same(header, 'one header')
-  t.same(entries.length, 2)
-  t.same(entries[0], 42)
-  t.same(entries[1], 43)
+  t.is(header, 'one header')
+  t.is(entries.length, 2)
+  t.is(entries[0], 42)
+  t.is(entries[1], 43)
 
   await cleanup(storage)
   t.end()
@@ -97,21 +99,21 @@ test('oplog - alternating header writes', async function (t) {
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('2'))
+    t.alike(header, Buffer.from('2'))
   }
 
   await log.flush(Buffer.from('1')) // Should overwrite first header
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('1'))
+    t.alike(header, Buffer.from('1'))
   }
 
   await log.flush(Buffer.from('2')) // Should overwrite second header
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('2'))
+    t.alike(header, Buffer.from('2'))
   }
 
   await cleanup(storage)
@@ -128,21 +130,21 @@ test('oplog - one fully-corrupted header', async function (t) {
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('header 1'))
+    t.alike(header, Buffer.from('header 1'))
   }
 
   await log.flush(Buffer.from('header 2'))
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('header 2'))
+    t.alike(header, Buffer.from('header 2'))
   }
 
   await log.flush(Buffer.from('header 3')) // should overwrite first header
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('header 3'))
+    t.alike(header, Buffer.from('header 3'))
   }
 
   // Corrupt the first header -- second header should win now
@@ -155,7 +157,7 @@ test('oplog - one fully-corrupted header', async function (t) {
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('header 2'), 'one is corrupted or partially written')
+    t.alike(header, Buffer.from('header 2'), 'one is corrupted or partially written')
   }
 
   await cleanup(storage)
@@ -173,7 +175,7 @@ test('oplog - header invalid checksum', async function (t) {
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('b'))
+    t.alike(header, Buffer.from('b'))
   }
 
   // Invalidate the first header's checksum -- second header should win now
@@ -186,7 +188,7 @@ test('oplog - header invalid checksum', async function (t) {
 
   {
     const { header } = await log.open()
-    t.same(header, Buffer.from('a'))
+    t.alike(header, Buffer.from('a'))
   }
 
   // Invalidate the second header's checksum -- the hypercore is now corrupted
@@ -233,9 +235,9 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   {
     const { entries } = await log.open()
 
-    t.same(entries.length, 2) // The partial entry should not be present
-    t.same(entries[0], Buffer.from('a'))
-    t.same(entries[1], Buffer.from('b'))
+    t.is(entries.length, 2) // The partial entry should not be present
+    t.alike(entries[0], Buffer.from('a'))
+    t.alike(entries[1], Buffer.from('b'))
   }
 
   // Write a valid oplog message now
@@ -244,10 +246,10 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   {
     const { entries } = await log.open()
 
-    t.same(entries.length, 3) // The partial entry should not be present
-    t.same(entries[0], Buffer.from('a'))
-    t.same(entries[1], Buffer.from('b'))
-    t.same(entries[2], Buffer.from('c'))
+    t.is(entries.length, 3) // The partial entry should not be present
+    t.alike(entries[0], Buffer.from('a'))
+    t.alike(entries[1], Buffer.from('b'))
+    t.alike(entries[2], Buffer.from('c'))
   }
 
   await cleanup(storage)
@@ -270,16 +272,16 @@ test('oplog - log not truncated when header write fails', async function (t) {
   try {
     await log.flush(Buffer.from('header two'))
   } catch (err) {
-    t.true(err.synthetic)
+    t.ok(err.synthetic)
   }
 
   {
     const { header, entries } = await log.open()
 
-    t.same(header, Buffer.from('header'))
-    t.same(entries.length, 2)
-    t.same(entries[0], Buffer.from('a'))
-    t.same(entries[1], Buffer.from('b'))
+    t.alike(header, Buffer.from('header'))
+    t.is(entries.length, 2)
+    t.alike(entries[0], Buffer.from('a'))
+    t.alike(entries[1], Buffer.from('b'))
   }
 
   // Re-enable header writes
@@ -289,8 +291,8 @@ test('oplog - log not truncated when header write fails', async function (t) {
   {
     const { header, entries } = await log.open()
 
-    t.same(header, Buffer.from('header two'))
-    t.same(entries.length, 0)
+    t.alike(header, Buffer.from('header two'))
+    t.is(entries.length, 0)
   }
 
   await cleanup(storage)
@@ -312,13 +314,13 @@ test('oplog - multi append', async function (t) {
     Buffer.from('4')
   ])
 
-  t.same(log.length, 4)
-  t.same(log.byteLength, 32 + 1 + 2 + 3 + 1)
+  t.is(log.length, 4)
+  t.is(log.byteLength, 32 + 1 + 2 + 3 + 1)
 
   const { header, entries } = await log.open()
 
-  t.same(header, Buffer.from('a'))
-  t.same(entries, [
+  t.alike(header, Buffer.from('a'))
+  t.alike(entries, [
     Buffer.from('1'),
     Buffer.from('22'),
     Buffer.from('333'),
@@ -345,8 +347,8 @@ test('oplog - multi append is atomic', async function (t) {
     Buffer.from('4')
   ])
 
-  t.same(log.length, 5)
-  t.same(log.byteLength, 40 + 1 + 1 + 2 + 3 + 1)
+  t.is(log.length, 5)
+  t.is(log.byteLength, 40 + 1 + 1 + 2 + 3 + 1)
 
   // Corrupt the last write, should revert the full batch
   await new Promise((resolve, reject) => {
@@ -358,8 +360,8 @@ test('oplog - multi append is atomic', async function (t) {
 
   const { entries } = await log.open()
 
-  t.same(log.length, 1)
-  t.same(entries, [
+  t.is(log.length, 1)
+  t.alike(entries, [
     Buffer.from('0')
   ])
 

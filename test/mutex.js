@@ -1,7 +1,7 @@
-const tape = require('tape')
+const test = require('brittle')
 const Mutex = require('../lib/mutex')
 
-tape('mutex - lock after destroy', async function (t) {
+test('mutex - lock after destroy', async function (t) {
   const mutex = new Mutex()
   mutex.destroy()
   try {
@@ -12,7 +12,7 @@ tape('mutex - lock after destroy', async function (t) {
   }
 })
 
-tape('mutex - graceful destroy', async function (t) {
+test('mutex - graceful destroy', async function (t) {
   t.plan(1)
 
   const mutex = new Mutex()
@@ -29,10 +29,10 @@ tape('mutex - graceful destroy', async function (t) {
 
   await destroyed
 
-  t.same(resolveCount, 5)
+  t.is(resolveCount, 5)
 })
 
-tape('mutex - quick destroy', async function (t) {
+test('mutex - quick destroy', async function (t) {
   t.plan(2)
 
   const mutex = new Mutex()
@@ -50,11 +50,11 @@ tape('mutex - quick destroy', async function (t) {
 
   await destroyed
 
-  t.same(resolveCount, 1)
-  t.same(rejectCount, 4)
+  t.is(resolveCount, 1)
+  t.is(rejectCount, 4)
 })
 
-tape('mutex - graceful then quick destroy', async function (t) {
+test('mutex - graceful then quick destroy', async function (t) {
   t.plan(2)
 
   const mutex = new Mutex()
@@ -73,11 +73,11 @@ tape('mutex - graceful then quick destroy', async function (t) {
 
   await destroyed
 
-  t.same(resolveCount, 1)
-  t.same(rejectCount, 4)
+  t.is(resolveCount, 1)
+  t.is(rejectCount, 4)
 })
 
-tape('mutex - quick destroy with re-entry', async function (t) {
+test('mutex - quick destroy with re-entry', async function (t) {
   t.plan(2)
 
   const mutex = new Mutex()
@@ -95,8 +95,8 @@ tape('mutex - quick destroy with re-entry', async function (t) {
 
   await destroyed
 
-  t.same(resolveCount, 1)
-  t.same(rejectCount, 4)
+  t.is(resolveCount, 1)
+  t.is(rejectCount, 4)
 
   async function lock () {
     try {
@@ -113,7 +113,7 @@ tape('mutex - quick destroy with re-entry', async function (t) {
   }
 })
 
-tape('mutex - error propagates', async function (t) {
+test('mutex - error propagates', async function (t) {
   const mutex = new Mutex()
 
   let resolveCount = 0
@@ -132,6 +132,6 @@ tape('mutex - error propagates', async function (t) {
     t.ok(e === err)
   }
 
-  t.same(resolveCount, 1)
-  t.same(rejectErrors, [err, err, err, err])
+  t.is(resolveCount, 1)
+  t.alike(rejectErrors, [err, err, err, err])
 })

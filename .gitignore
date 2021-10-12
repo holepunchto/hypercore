@@ -2,6 +2,7 @@ node_modules
 package-lock.json
 .DS_Store
 sandbox
+coverage
 sandbox.js
 tmp
 *.log

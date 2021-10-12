@@ -1,8 +1,8 @@
-const tape = require('tape')
+const test = require('brittle')
 const RAM = require('random-access-memory')
 const Core = require('../lib/core')
 
-tape('core - append', async function (t) {
+test('core - append', async function (t) {
   const { core } = await create()
 
   {
@@ -11,10 +11,10 @@ tape('core - append', async function (t) {
       Buffer.from('world')
     ])
 
-    t.same(seq, 0)
-    t.same(core.tree.length, 2)
-    t.same(core.tree.byteLength, 10)
-    t.same([
+    t.is(seq, 0)
+    t.is(core.tree.length, 2)
+    t.is(core.tree.byteLength, 10)
+    t.alike([
       await core.blocks.get(0),
       await core.blocks.get(1)
     ], [
@@ -28,10 +28,10 @@ tape('core - append', async function (t) {
       Buffer.from('hej')
     ])
 
-    t.same(seq, 2)
-    t.same(core.tree.length, 3)
-    t.same(core.tree.byteLength, 13)
-    t.same([
+    t.is(seq, 2)
+    t.is(core.tree.length, 3)
+    t.is(core.tree.byteLength, 13)
+    t.alike([
       await core.blocks.get(0),
       await core.blocks.get(1),
       await core.blocks.get(2)
@@ -43,7 +43,7 @@ tape('core - append', async function (t) {
   }
 })
 
-tape('core - append and truncate', async function (t) {
+test('core - append and truncate', async function (t) {
   const { core, reopen } = await create()
 
   await core.append([
@@ -55,10 +55,10 @@ tape('core - append and truncate', async function (t) {
 
   await core.truncate(3, 1)
 
-  t.same(core.tree.length, 3)
-  t.same(core.tree.byteLength, 12)
-  t.same(core.tree.fork, 1)
-  t.same(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
+  t.is(core.tree.length, 3)
+  t.is(core.tree.byteLength, 12)
+  t.is(core.tree.fork, 1)
+  t.alike(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
 
   await core.append([
     Buffer.from('a'),
@@ -69,14 +69,14 @@ tape('core - append and truncate', async function (t) {
 
   await core.truncate(3, 2)
 
-  t.same(core.tree.length, 3)
-  t.same(core.tree.byteLength, 12)
-  t.same(core.tree.fork, 2)
-  t.same(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }, { from: 1, to: 2, ancestors: 3 }])
+  t.is(core.tree.length, 3)
+  t.is(core.tree.byteLength, 12)
+  t.is(core.tree.fork, 2)
+  t.alike(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }, { from: 1, to: 2, ancestors: 3 }])
 
   await core.truncate(2, 3)
 
-  t.same(core.header.hints.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
+  t.alike(core.header.hints.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
 
   await core.append([Buffer.from('a')])
   await core.truncate(2, 4)
@@ -90,46 +90,46 @@ tape('core - append and truncate', async function (t) {
   await core.append([Buffer.from('a')])
   await core.truncate(2, 7)
 
-  t.same(core.header.hints.reorgs.length, 4)
+  t.is(core.header.hints.reorgs.length, 4)
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.same(coreReopen.tree.length, 2)
-  t.same(coreReopen.tree.byteLength, 10)
-  t.same(coreReopen.tree.fork, 7)
-  t.same(coreReopen.header.hints.reorgs.length, 4)
+  t.is(coreReopen.tree.length, 2)
+  t.is(coreReopen.tree.byteLength, 10)
+  t.is(coreReopen.tree.fork, 7)
+  t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
-tape('core - user data', async function (t) {
+test('core - user data', async function (t) {
   const { core, reopen } = await create()
 
   await core.userData('hello', Buffer.from('world'))
-  t.same(core.header.userData, [{ key: 'hello', value: Buffer.from('world') }])
+  t.alike(core.header.userData, [{ key: 'hello', value: Buffer.from('world') }])
 
   await core.userData('hej', Buffer.from('verden'))
-  t.same(core.header.userData, [
+  t.alike(core.header.userData, [
     { key: 'hello', value: Buffer.from('world') },
     { key: 'hej', value: Buffer.from('verden') }
   ])
 
   await core.userData('hello', null)
-  t.same(core.header.userData, [{ key: 'hej', value: Buffer.from('verden') }])
+  t.alike(core.header.userData, [{ key: 'hej', value: Buffer.from('verden') }])
 
   await core.userData('hej', Buffer.from('world'))
-  t.same(core.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
+  t.alike(core.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.same(coreReopen.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
+  t.alike(coreReopen.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
 })
 
-tape('core - verify', async function (t) {
+test('core - verify', async function (t) {
   const { core } = await create()
   const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
-  t.same(clone.header.signer.publicKey, core.header.signer.publicKey)
+  t.is(clone.header.signer.publicKey, core.header.signer.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b')])
 
@@ -138,8 +138,8 @@ tape('core - verify', async function (t) {
     await clone.verify(p)
   }
 
-  t.same(clone.header.tree.length, 2)
-  t.same(clone.header.tree.signature, core.header.tree.signature)
+  t.is(clone.header.tree.length, 2)
+  t.is(clone.header.tree.signature, core.header.tree.signature)
 
   {
     const p = await core.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
@@ -148,11 +148,11 @@ tape('core - verify', async function (t) {
   }
 })
 
-tape('core - verify parallel upgrades', async function (t) {
+test('core - verify parallel upgrades', async function (t) {
   const { core } = await create()
   const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
-  t.same(clone.header.signer.publicKey, core.header.signer.publicKey)
+  t.is(clone.header.signer.publicKey, core.header.signer.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b'), Buffer.from('c'), Buffer.from('d')])
 
@@ -167,20 +167,20 @@ tape('core - verify parallel upgrades', async function (t) {
     await v2
   }
 
-  t.same(clone.header.tree.length, core.header.tree.length)
-  t.same(clone.header.tree.signature, core.header.tree.signature)
+  t.is(clone.header.tree.length, core.header.tree.length)
+  t.is(clone.header.tree.signature, core.header.tree.signature)
 })
 
-tape('core - update hook is triggered', async function (t) {
+test('core - update hook is triggered', async function (t) {
   const { core } = await create()
   const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
   let ran = 0
 
   core.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b01, 'was appended')
-    t.same(from, null, 'was local')
-    t.same(bitfield, { drop: false, start: 0, length: 4 })
+    t.is(status, 0b01, 'was appended')
+    t.is(from, null, 'was local')
+    t.alike(bitfield, { drop: false, start: 0, length: 4 })
     ran |= 1
   }
 
@@ -189,10 +189,10 @@ tape('core - update hook is triggered', async function (t) {
   const peer = {}
 
   clone.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b01, 'was appended')
-    t.same(from, peer, 'was remote')
-    t.same(bitfield, { drop: false, start: 1, length: 1 })
-    t.same(value, Buffer.from('b'))
+    t.is(status, 0b01, 'was appended')
+    t.is(from, peer, 'was remote')
+    t.alike(bitfield, { drop: false, start: 1, length: 1 })
+    t.alike(value, Buffer.from('b'))
     ran |= 2
   }
 
@@ -203,10 +203,10 @@ tape('core - update hook is triggered', async function (t) {
   }
 
   clone.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b00, 'no append or truncate')
-    t.same(from, peer, 'was remote')
-    t.same(bitfield, { drop: false, start: 3, length: 1 })
-    t.same(value, Buffer.from('d'))
+    t.is(status, 0b00, 'no append or truncate')
+    t.is(from, peer, 'was remote')
+    t.alike(bitfield, { drop: false, start: 3, length: 1 })
+    t.alike(value, Buffer.from('d'))
     ran |= 4
   }
 
@@ -217,27 +217,27 @@ tape('core - update hook is triggered', async function (t) {
   }
 
   core.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b10, 'was truncated')
-    t.same(from, null, 'was local')
-    t.same(bitfield, { drop: true, start: 1, length: 3 })
+    t.is(status, 0b10, 'was truncated')
+    t.is(from, null, 'was local')
+    t.alike(bitfield, { drop: true, start: 1, length: 3 })
     ran |= 8
   }
 
   await core.truncate(1, 1)
 
   core.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b01, 'was appended')
-    t.same(from, null, 'was local')
-    t.same(bitfield, { drop: false, start: 1, length: 1 })
+    t.is(status, 0b01, 'was appended')
+    t.is(from, null, 'was local')
+    t.alike(bitfield, { drop: false, start: 1, length: 1 })
     ran |= 16
   }
 
   await core.append([Buffer.from('e')])
 
   clone.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b11, 'was appended and truncated')
-    t.same(from, peer, 'was remote')
-    t.same(bitfield, { drop: true, start: 1, length: 3 })
+    t.is(status, 0b11, 'was appended and truncated')
+    t.is(from, peer, 'was remote')
+    t.alike(bitfield, { drop: true, start: 1, length: 3 })
     ran |= 32
   }
 
@@ -249,18 +249,18 @@ tape('core - update hook is triggered', async function (t) {
   }
 
   core.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b10, 'was truncated')
-    t.same(from, null, 'was local')
-    t.same(bitfield, { drop: true, start: 1, length: 1 })
+    t.is(status, 0b10, 'was truncated')
+    t.is(from, null, 'was local')
+    t.alike(bitfield, { drop: true, start: 1, length: 1 })
     ran |= 64
   }
 
   await core.truncate(1, 2)
 
   clone.onupdate = (status, bitfield, value, from) => {
-    t.same(status, 0b10, 'was truncated')
-    t.same(from, peer, 'was remote')
-    t.same(bitfield, { drop: true, start: 1, length: 1 })
+    t.is(status, 0b10, 'was truncated')
+    t.is(from, peer, 'was remote')
+    t.alike(bitfield, { drop: true, start: 1, length: 1 })
     ran |= 128
   }
 
@@ -271,7 +271,7 @@ tape('core - update hook is triggered', async function (t) {
     await clone.reorg(r, peer)
   }
 
-  t.same(ran, 255, 'ran all')
+  t.is(ran, 255, 'ran all')
 })
 
 async function create (opts) {

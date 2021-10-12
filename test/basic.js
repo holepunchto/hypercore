@@ -1,17 +1,17 @@
-const tape = require('tape')
+const test = require('brittle')
 const ram = require('random-access-memory')
 
 const Hypercore = require('../')
 const { create } = require('./helpers')
 
-tape('basic', async function (t) {
+test('basic', async function (t) {
   const core = await create()
   let appends = 0
 
-  t.same(core.length, 0)
-  t.same(core.byteLength, 0)
-  t.same(core.writable, true)
-  t.same(core.readable, true)
+  t.is(core.length, 0)
+  t.is(core.byteLength, 0)
+  t.is(core.writable, true)
+  t.is(core.readable, true)
 
   core.on('append', function () {
     appends++
@@ -20,25 +20,25 @@ tape('basic', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  t.same(core.length, 2)
-  t.same(core.byteLength, 10)
-  t.same(appends, 2)
+  t.is(core.length, 2)
+  t.is(core.byteLength, 10)
+  t.is(appends, 2)
 
   t.end()
 })
 
-tape('session', async function (t) {
+test('session', async function (t) {
   const core = await create()
 
   const session = core.session()
 
   await session.append('test')
-  t.same(await core.get(0), Buffer.from('test'))
-  t.same(await session.get(0), Buffer.from('test'))
+  t.alike(await core.get(0), Buffer.from('test'))
+  t.alike(await session.get(0), Buffer.from('test'))
   t.end()
 })
 
-tape('close', async function (t) {
+test('close', async function (t) {
   const core = await create()
   await core.append('hello world')
 
@@ -52,7 +52,7 @@ tape('close', async function (t) {
   }
 })
 
-tape('close multiple', async function (t) {
+test('close multiple', async function (t) {
   const core = await create()
   await core.append('hello world')
 
@@ -64,16 +64,16 @@ tape('close multiple', async function (t) {
   core.close().then(() => done('close 3'))
 
   await core.close()
-  t.same(expected.length, 0, 'all event passed')
+  t.is(expected.length, 0, 'all event passed')
 
   function done (event) {
-    t.same(event, expected.shift())
+    t.is(event, expected.shift())
   }
 })
 
-tape('storage options', async function (t) {
+test('storage options', async function (t) {
   const core = new Hypercore({ storage: ram })
   await core.append('hello')
-  t.same(await core.get(0), Buffer.from('hello'))
+  t.alike(await core.get(0), Buffer.from('hello'))
   t.end()
 })

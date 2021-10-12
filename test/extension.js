@@ -1,7 +1,7 @@
-const tape = require('tape')
+const test = require('brittle')
 const { create, replicate } = require('./helpers')
 
-tape('basic extension', async function (t) {
+test('basic extension', async function (t) {
   const messages = ['world', 'hello']
 
   const a = await create()
@@ -9,7 +9,7 @@ tape('basic extension', async function (t) {
     encoding: 'utf-8',
     onmessage: (message, peer) => {
       t.ok(peer === a.peers[0])
-      t.same(message, messages.pop())
+      t.is(message, messages.pop())
     }
   })
 
@@ -21,18 +21,18 @@ tape('basic extension', async function (t) {
   replicate(a, b)
 
   await new Promise(resolve => setImmediate(resolve))
-  t.same(b.peers.length, 1)
+  t.is(b.peers.length, 1)
 
   bExt.send('hello', b.peers[0])
   bExt.send('world', b.peers[0])
 
   await new Promise(resolve => setImmediate(resolve))
-  t.false(messages.length)
+  t.absent(messages.length)
 
   t.end()
 })
 
-tape('two extensions', async function (t) {
+test('two extensions', async function (t) {
   const messages = ['world', 'hello']
 
   const a = await create()
@@ -48,7 +48,7 @@ tape('two extensions', async function (t) {
   })
 
   await new Promise(resolve => setImmediate(resolve))
-  t.same(b.peers.length, 1)
+  t.is(b.peers.length, 1)
 
   bExt2.send('world', b.peers[0])
 
@@ -58,14 +58,14 @@ tape('two extensions', async function (t) {
     encoding: 'utf-8',
     onmessage: (message, peer) => {
       t.ok(peer === a.peers[0])
-      t.same(message, messages.pop())
+      t.is(message, messages.pop())
     }
   })
 
   bExt2.send('hello', b.peers[0])
 
   await new Promise(resolve => setImmediate(resolve))
-  t.same(messages.length, 1) // First message gets ignored
+  t.is(messages.length, 1) // First message gets ignored
 
   t.end()
 })
