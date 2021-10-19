@@ -84,12 +84,13 @@ module.exports = class Hypercore extends EventEmitter {
     return noiseStream.rawStream
   }
 
-  static defaultStorage (storage) {
+  static defaultStorage (storage, opts = {}) {
     if (typeof storage !== 'string') return storage
     const directory = storage
+    const toLock = opts.lock || 'oplog'
     return function createFile (name) {
-      const lock = name === 'oplog' ? fsctl.lock : null
-      const sparse = name !== 'oplog' ? fsctl.sparse : null
+      const lock = name === toLock ? fsctl.lock : null
+      const sparse = name !== toLock ? fsctl.sparse : null
       return raf(name, { directory, lock, sparse })
     }
   }
@@ -362,7 +363,7 @@ module.exports = class Hypercore extends EventEmitter {
     const r = Replicator.createRange(start, end, linear)
 
     if (this.opened) this.replicator.addRange(r)
-    else this.opening.then(() => this.replicator.addRange(r))
+    else this.opening.then(() => this.replicator.addRange(r), noop)
 
     return r
   }
