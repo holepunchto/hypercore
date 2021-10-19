@@ -89,8 +89,9 @@ module.exports = class Hypercore extends EventEmitter {
     const directory = storage
     const toLock = opts.lock || 'oplog'
     return function createFile (name) {
-      const lock = name === toLock ? fsctl.lock : null
-      const sparse = name !== toLock ? fsctl.sparse : null
+      const locked = name === toLock || name.endsWith('/' + toLock)
+      const lock = locked ? fsctl.lock : null
+      const sparse = locked ? null : fsctl.sparse
       return raf(name, { directory, lock, sparse })
     }
   }
