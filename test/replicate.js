@@ -1,5 +1,5 @@
 const test = require('brittle')
-const NoiseSecretStream = require('noise-secret-stream')
+const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate } = require('./helpers')
 
 test('basic replication', async function (t) {

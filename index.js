@@ -3,7 +3,7 @@ const raf = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
-const NoiseSecretStream = require('noise-secret-stream')
+const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const codecs = require('codecs')
 
 const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
