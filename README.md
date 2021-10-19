@@ -12,10 +12,10 @@ Features all the power of Hypercore combined with
 
 ## Install
 
-Currently it is installable through Git (assuming you have access)
+Install from NPM using the next tag
 
 ```sh
-npm install hypercore-skunkworks/hypercore-x
+npm install hypercore@next
 ```
 
 ## API

@@ -1,5 +1,5 @@
 {
-  "name": "hypercore-x",
+  "name": "hypercore",
   "version": "0.0.0",
   "description": "Hypercore 10",
   "main": "index.js",
@@ -8,14 +8,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mafintosh/hypercorex.git"
+    "url": "git+https://github.com/hypercore-protocol/hypercore.git"
   },
-  "author": "Mathias Buus (@mafintosh)",
-  "license": "UNLICENSED",
+  "contributors": [
+    {
+      "name": "Mathias Buus",
+      "email": "mathiasbuus@gmail.com",
+      "url": "https://mafinto.sh"
+    },
+    {
+      "name": "Andrew Osheroff",
+      "email": "andrewosh@gmail.com",
+      "url": "https://andrewosh.com"
+    }
+  ],
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mafintosh/hypercorex/issues"
+    "url": "https://github.com/hypercore-protocol/hypercore/issues"
   },
-  "homepage": "https://github.com/mafintosh/hypercorex#readme",
+  "homepage": "https://github.com/hypercore-protocol/hypercore#readme",
   "dependencies": {
     "big-sparse-array": "^1.0.2",
     "codecs": "^2.2.0",
