@@ -56,19 +56,18 @@ test('close multiple', async function (t) {
   const core = await create()
   await core.append('hello world')
 
-  const expected = ['close event', 'close 1', 'close 2', 'close 3']
+  const ev = t.test('events')
 
-  core.on('close', () => done('close event'))
-  core.close().then(() => done('close 1'))
-  core.close().then(() => done('close 2'))
-  core.close().then(() => done('close 3'))
+  ev.plan(4)
 
-  await core.close()
-  t.is(expected.length, 0, 'all event passed')
+  let i = 0
 
-  function done (event) {
-    t.is(event, expected.shift())
-  }
+  core.on('close', () => ev.is(i++, 0, 'on close'))
+  core.close().then(() => ev.is(i++, 1, 'first close'))
+  core.close().then(() => ev.is(i++, 2, 'second close'))
+  core.close().then(() => ev.is(i++, 3, 'third close'))
+
+  await ev
 })
 
 test('storage options', async function (t) {
