@@ -1,15 +1,16 @@
 const Hypercore = require('../')
+const Hyperswarm = require('hyperswarm')
 
-const core = new Hypercore('./clone')
+const core = new Hypercore('./clone', process.argv[2])
 
 start()
 
 async function start () {
-  core.ready = (cb) => cb() // need to support promisified ready in replicator
-  require('@hyperswarm/replicator')(core, {
-    discoveryKey: Buffer.from('aa13976f5edc84ee157071e8acde51438039da67b999d2682318e9f2369db59b', 'hex'),
-    lookup: true
-  })
+  await core.ready()
+
+  const swarm = new Hyperswarm()
+  swarm.on('connection', socket => core.replicate(socket))
+  swarm.join(core.discoveryKey, { server: false, client: true })
 
   console.log((await core.get(42)).toString())
   console.log((await core.get(142)).toString())
