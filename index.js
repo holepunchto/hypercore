@@ -91,7 +91,7 @@ module.exports = class Hypercore extends EventEmitter {
     return function createFile (name) {
       const locked = name === toLock || name.endsWith('/' + toLock)
       const lock = locked ? fsctl.lock : null
-      const sparse = locked ? null : fsctl.sparse
+      const sparse = locked ? null : null // fsctl.sparse, disable sparse on windows - seems to fail for some people. TODO: investigate
       return raf(name, { directory, lock, sparse })
     }
   }
