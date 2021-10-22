@@ -3,6 +3,7 @@ const raf = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
+const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const codecs = require('codecs')
 
@@ -44,6 +45,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = null
     this.replicator = null
     this.extensions = opts.extensions || new Extensions()
+    this.cache = opts.cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (opts.cache || null)
 
     this.valueEncoding = null
     this.key = key || null
@@ -281,8 +283,13 @@ module.exports = class Hypercore extends EventEmitter {
   _oncoreupdate (status, bitfield, value, from) {
     if (status !== 0) {
       for (let i = 0; i < this.sessions.length; i++) {
-        if ((status & 0b10) !== 0) this.sessions[i].emit('truncate', this.core.tree.fork)
-        if ((status & 0b01) !== 0) this.sessions[i].emit('append')
+        if ((status & 0b10) !== 0) {
+          if (this.cache) this.cache.clear()
+          this.sessions[i].emit('truncate', this.core.tree.fork)
+        }
+        if ((status & 0b01) !== 0) {
+          this.sessions[i].emit('append')
+        }
       }
 
       this.replicator.broadcastInfo()
@@ -346,6 +353,15 @@ module.exports = class Hypercore extends EventEmitter {
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
+    const c = this.cache && this.cache.get(index)
+    if (c) return c
+    const fork = this.core.tree.fork
+    const b = await this._get(index, opts)
+    if (this.cache && fork === this.core.tree.fork && b) this.cache.set(index, b)
+    return b
+  }
+
+  async _get (index, opts) {
     const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
 
     if (this.core.bitfield.get(index)) return decode(encoding, await this.core.blocks.get(index))
