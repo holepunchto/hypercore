@@ -294,3 +294,40 @@ test('multiplexing multiple times over the same stream', async function (t) {
   t.is(b1.length, a1.length, 'same length')
   t.end()
 })
+
+test('destroying a stream and re-replicating works', async function (t) {
+  const core = await create()
+
+  while (core.length < 33) await core.append(Buffer.from('#' + core.length))
+
+  const clone = await create(core.key)
+
+  let s1 = core.replicate(true)
+  let s2 = clone.replicate(false)
+
+  s1.pipe(s2).pipe(s1)
+
+  await s2.opened
+
+  const all = []
+  for (let i = 0; i < 33; i++) {
+    all.push(clone.get(i))
+  }
+
+  clone.once('download', function () {
+    // simulate stream failure in the middle of bulk downloading
+    s1.destroy()
+  })
+
+  await new Promise((resolve) => s1.once('close', resolve))
+
+  // retry
+  s1 = core.replicate(true)
+  s2 = clone.replicate(false)
+
+  s1.pipe(s2).pipe(s1)
+
+  const blocks = await Promise.all(all)
+
+  t.is(blocks.length, 33, 'downloaded 33 blocks')
+})
