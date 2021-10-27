@@ -76,3 +76,15 @@ test('storage options', async function (t) {
   t.alike(await core.get(0), Buffer.from('hello'))
   t.end()
 })
+
+test(
+  'allow publicKeys with different byteLength that 32, if opts.crypto were passed',
+  function (t) {
+    const key = Buffer.alloc(33).fill('a')
+
+    const core = new Hypercore(ram, key, { crypto: {} })
+
+    t.is(core.key, key)
+    t.pass('creating a core with more than 32 byteLength key did not throw')
+  }
+)

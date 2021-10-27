@@ -28,14 +28,17 @@ module.exports = class Hypercore extends EventEmitter {
       opts = key
       key = null
     }
+
     if (key && typeof key === 'string') {
       key = Buffer.from(key, 'hex')
     }
-    if (key && key.byteLength !== 32) {
+
+    if (!opts) opts = {}
+
+    if (!opts.crypto && key && key.byteLength !== 32) {
       throw new Error('Hypercore key should be 32 bytes')
     }
 
-    if (!opts) opts = {}
     if (!storage) storage = opts.storage
 
     this[promises] = true
