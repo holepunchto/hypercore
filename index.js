@@ -371,13 +371,27 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    const start = (range && range.start) || 0
-    const end = typeof (range && range.end) === 'number' ? range.end : -1 // download all
     const linear = !!(range && range.linear)
 
-    // TODO: support range.blocks
+    let start
+    let end
+    let filter
 
-    const r = Replicator.createRange(start, end, linear)
+    if (range && range.blocks) {
+      const blocks = range.blocks instanceof Set
+        ? range.blocks
+        : new Set(range.blocks)
+
+      start = range.start || (blocks.size ? min(range.blocks) : 0)
+      end = range.end || (blocks.size ? max(range.blocks) + 1 : 0)
+
+      filter = (i) => blocks.has(i)
+    } else {
+      start = (range && range.start) || 0
+      end = typeof (range && range.end) === 'number' ? range.end : -1 // download all
+    }
+
+    const r = Replicator.createRange(start, end, filter, linear)
 
     if (this.opened) this.replicator.addRange(r)
     else this.opening.then(() => this.replicator.addRange(r), noop)
@@ -458,4 +472,17 @@ function requireMaybe (name) {
 
 function toHex (buf) {
   return buf && buf.toString('hex')
+}
+
+function reduce (iter, fn, acc) {
+  for (const item of iter) acc = fn(acc, item)
+  return acc
+}
+
+function min (arr) {
+  return reduce(arr, (a, b) => Math.min(a, b), Infinity)
+}
+
+function max (arr) {
+  return reduce(arr, (a, b) => Math.max(a, b), -Infinity)
 }

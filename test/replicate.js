@@ -331,3 +331,42 @@ test('destroying a stream and re-replicating works', async function (t) {
 
   t.is(blocks.length, 33, 'downloaded 33 blocks')
 })
+
+test('replicate discrete range', async function (t) {
+  const a = await create()
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ blocks: [0, 2, 3] })
+  await r.downloaded()
+
+  t.is(d, 3)
+  t.alike(await b.get(0), Buffer.from('a'))
+  t.alike(await b.get(2), Buffer.from('c'))
+  t.alike(await b.get(3), Buffer.from('d'))
+})
+
+test('replicate discrete empty range', async function (t) {
+  const a = await create()
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ blocks: [] })
+  await r.downloaded()
+
+  t.is(d, 0)
+})

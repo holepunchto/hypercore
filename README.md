@@ -113,6 +113,7 @@ A range can have the following properties:
 {
   start: startIndex,
   end: nonInclusiveEndIndex,
+  blocks: [index1, index2, ...],
   linear: false // download range linearly and not randomly
 }
 ```
@@ -123,6 +124,12 @@ To download the full core continously (often referred to as non sparse mode) do
 // Note that this will never be consider downloaded as the range
 // will keep waiting for new blocks to be appended.
 core.download({ start: 0, end: -1 })
+```
+
+To downloaded a discrete range of blocks pass a list of indices.
+
+```js
+core.download({ blocks: [4, 9, 7] });
 ```
 
 To cancel downloading a range simply destroy the range instance.
