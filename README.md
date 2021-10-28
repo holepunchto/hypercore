@@ -63,7 +63,8 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
-  keyPair: kp // optionally pass the public key and secret key as a key pair
+  keyPair: kp, // optionally pass the public key and secret key as a key pair
+  encryptionKey: k // optionally pass an encryption key to enable block encryption
 }
 ```
 
@@ -202,6 +203,10 @@ In contrast to `core.key` this key does not allow you to verify the data but can
 
 Populated after `ready` has been emitted. Will be `null` before the event.
 
+#### `core.encryptionKey`
+
+Buffer containing the optional block encryption key of this core. Will be `null` unless block encryption is enabled.
+
 #### `core.length`
 
 How many blocks of data are available on this core?
@@ -219,6 +224,10 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 What is the current fork id of this core?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `core.padding`
+
+How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
 
 #### `const stream = core.replicate(isInitiatorOrReplicationStream)`
 
