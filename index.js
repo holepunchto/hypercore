@@ -48,9 +48,9 @@ module.exports = class Hypercore extends EventEmitter {
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
     this.replicator = null
+    this.encryption = null
     this.extensions = opts.extensions || new Extensions()
     this.cache = opts.cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (opts.cache || null)
-    this.encryption = opts.encryption || null
 
     this.valueEncoding = null
     this.key = key || null
@@ -67,7 +67,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opening = opts._opening || this._open(key, storage, opts)
     this.opening.catch(noop)
 
-    this._preappend = this.encryption && preappend.bind(this)
+    this._preappend = preappend.bind(this)
   }
 
   [inspect] (depth, opts) {
@@ -123,7 +123,6 @@ module.exports = class Hypercore extends EventEmitter {
       ...opts,
       sign: opts.sign || (keyPair && keyPair.secretKey && Core.createSigner(this.crypto, keyPair)) || this.sign,
       valueEncoding: this.valueEncoding,
-      encryption: this.encryption,
       extensions: this.extensions,
       _opening: this.opening,
       _sessions: this.sessions
@@ -143,6 +142,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.discoveryKey = o.discoveryKey
     this.core = o.core
     this.replicator = o.replicator
+    this.encryption = o.encryption
     this.writable = !!this.sign
     this.autoClose = o.autoClose
   }
@@ -286,7 +286,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (!this.encryption && opts.encryptionKey) {
       this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
-      this._preappend = preappend.bind(this)
     }
 
     this.extensions.attach(this.replicator)
@@ -460,15 +459,14 @@ module.exports = class Hypercore extends EventEmitter {
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
+    const preappend = this.encryption && this._preappend
     const buffers = new Array(blocks.length)
 
     for (let i = 0; i < blocks.length; i++) {
       buffers[i] = this._encode(this.valueEncoding, blocks[i])
     }
 
-    return await this.core.append(buffers, this.sign, {
-      preappend: this._preappend
-    })
+    return await this.core.append(buffers, this.sign, { preappend })
   }
 
   registerExtension (name, handlers) {
