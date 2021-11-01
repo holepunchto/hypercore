@@ -1,4 +1,6 @@
 const test = require('brittle')
+const RAM = require('random-access-memory')
+const Hypercore = require('..')
 const { create, replicate } = require('./helpers')
 
 const encryptionKey = Buffer.alloc(32, 'hello world')
@@ -14,10 +16,10 @@ test('encrypted append and get', async function (t) {
   t.is(a.core.tree.byteLength, 5 + a.padding)
 
   const unencrypted = await a.get(0)
-  const encrypted = await a.core.blocks.get(0)
-
   t.alike(unencrypted, Buffer.from('hello'))
-  t.unlike(unencrypted, encrypted)
+
+  const encrypted = await a.core.blocks.get(0)
+  t.absent(encrypted.includes('hello'))
 })
 
 test('encrypted seek', async function (t) {
@@ -74,12 +76,35 @@ test('encrypted replication', async function (t) {
   })
 })
 
-test('encrypted sessions', async function (t) {
+test('encrypted session', async function (t) {
   const a = await create({ encryptionKey })
 
   await a.append(['hello'])
 
-  const session = a.session()
+  const s = a.session()
 
-  t.alike(await session.get(0), Buffer.from('hello'))
+  t.alike(a.encryptionKey, s.encryptionKey)
+  t.alike(await s.get(0), Buffer.from('hello'))
+
+  await s.append(['world'])
+
+  const unencrypted = await s.get(1)
+  t.alike(unencrypted, Buffer.from('world'))
+  t.alike(await a.get(1), unencrypted)
+
+  const encrypted = await s.core.blocks.get(1)
+  t.absent(encrypted.includes('world'))
+  t.alike(await a.core.blocks.get(1), encrypted)
+})
+
+test('encrypted session before ready core', async function (t) {
+  const a = new Hypercore(RAM, { encryptionKey })
+  const s = a.session()
+
+  await a.ready()
+
+  t.alike(a.encryptionKey, s.encryptionKey)
+
+  await a.append(['hello'])
+  t.alike(await s.get(0), Buffer.from('hello'))
 })
