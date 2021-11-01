@@ -394,12 +394,13 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.core.bitfield.get(index)) {
       block = await this.core.blocks.get(index)
+      if (this.encryption) this.encryption.decrypt(index, block)
     } else {
       if (opts && opts.onwait) opts.onwait(index)
+      // Note that the _oncoreupdate handler decrypts inplace so we should not decrypt here
       block = await this.replicator.requestBlock(index)
     }
 
-    if (this.encryption) this.encryption.decrypt(index, block)
     return this._decode(encoding, block)
   }
 
