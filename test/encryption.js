@@ -108,3 +108,14 @@ test('encrypted session before ready core', async function (t) {
   await a.append(['hello'])
   t.alike(await s.get(0), Buffer.from('hello'))
 })
+
+test('replicating encrypted block returns expected data', async function (t) {
+  const a = await create({ encryptionKey })
+  const b = await create(a.key, { encryptionKey })
+
+  replicate(a, b, t)
+
+  await a.append('hej')
+  const blk = await b.get(0)
+  t.alike(blk, Buffer.from('hej'), 'freshly replicated block is decrypted')
+})
