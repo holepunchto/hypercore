@@ -29,6 +29,7 @@
   "homepage": "https://github.com/hypercore-protocol/hypercore#readme",
   "dependencies": {
     "@hyperswarm/secret-stream": "^5.0.0",
+    "b4a": "^1.1.0",
     "big-sparse-array": "^1.0.2",
     "codecs": "^2.2.0",
     "compact-encoding": "^2.5.0",
@@ -40,7 +41,6 @@
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",
     "sodium-universal": "^3.0.4",
-    "uint64le": "^1.0.0",
     "xache": "^1.0.0"
   },
   "devDependencies": {

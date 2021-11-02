@@ -3,6 +3,7 @@ const raf = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
+const b4a = require('b4a')
 const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const codecs = require('codecs')
@@ -31,7 +32,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (key && typeof key === 'string') {
-      key = Buffer.from(key, 'hex')
+      key = b4a.from(key, 'hex')
     }
 
     if (!opts) opts = {}
@@ -477,18 +478,18 @@ module.exports = class Hypercore extends EventEmitter {
   _encode (enc, val) {
     const state = { start: this.padding, end: this.padding, buffer: null }
 
-    if (Buffer.isBuffer(val)) {
+    if (b4a.isBuffer(val)) {
       if (state.start === 0) return val
       state.end += val.byteLength
     } else if (enc) {
       enc.preencode(state, val)
     } else {
-      val = Buffer.from(val)
+      val = b4a.from(val)
       if (state.start === 0) return val
       state.end += val.byteLength
     }
 
-    state.buffer = Buffer.allocUnsafe(state.end)
+    state.buffer = b4a.allocUnsafe(state.end)
 
     if (enc) enc.encode(state, val)
     else state.buffer.set(val, state.start)
@@ -518,7 +519,7 @@ function requireMaybe (name) {
 }
 
 function toHex (buf) {
-  return buf && buf.toString('hex')
+  return buf && b4a.toString(buf, 'hex')
 }
 
 function reduce (iter, fn, acc) {
