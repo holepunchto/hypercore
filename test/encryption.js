@@ -47,12 +47,22 @@ test('encrypted replication', async function (t) {
 
     replicate(a, b, t)
 
-    const r = b.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await t.test('through direct download', async function (t) {
+      const r = b.download({ start: 0, end: a.length })
+      await r.downloaded()
 
-    for (let i = 0; i < 5; i++) {
-      t.alike(await b.get(i), await a.get(i))
-    }
+      for (let i = 0; i < 5; i++) {
+        t.alike(await b.get(i), await a.get(i))
+      }
+    })
+
+    await t.test('through indirect download', async function (t) {
+      await a.append(['f', 'g', 'h', 'i', 'j'])
+
+      for (let i = 5; i < 10; i++) {
+        t.alike(await b.get(i), await a.get(i))
+      }
+    })
   })
 
   t.test('without encryption key', async function (t) {
@@ -60,13 +70,22 @@ test('encrypted replication', async function (t) {
 
     replicate(a, b, t)
 
-    const r = b.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await t.test('through direct download', async function (t) {
+      const r = b.download({ start: 0, end: a.length })
+      await r.downloaded()
 
-    for (let i = 0; i < 5; i++) {
-      t.unlike(await b.get(i), await a.get(i))
-      t.alike(await b.get(i), await a.core.blocks.get(i))
-    }
+      for (let i = 0; i < 5; i++) {
+        t.alike(await b.get(i), await a.core.blocks.get(i))
+      }
+    })
+
+    await t.test('through indirect download', async function (t) {
+      await a.append(['f', 'g', 'h', 'i', 'j'])
+
+      for (let i = 5; i < 10; i++) {
+        t.alike(await b.get(i), await a.core.blocks.get(i))
+      }
+    })
   })
 })
 
@@ -101,15 +120,4 @@ test('encrypted session before ready core', async function (t) {
 
   await a.append(['hello'])
   t.alike(await s.get(0), Buffer.from('hello'))
-})
-
-test('replicating encrypted block returns expected data', async function (t) {
-  const a = await create({ encryptionKey })
-  const b = await create(a.key, { encryptionKey })
-
-  replicate(a, b, t)
-
-  await a.append('hej')
-  const blk = await b.get(0)
-  t.alike(blk, Buffer.from('hej'), 'freshly replicated block is decrypted')
 })
