@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "10.0.0-alpha.10",
+  "version": "10.0.0-alpha.11",
   "description": "Hypercore 10",
   "main": "index.js",
   "scripts": {
