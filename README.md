@@ -98,6 +98,19 @@ Truncate the core to a smaller length.
 Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
 Note that the fork id should be monotonely incrementing.
 
+#### `const stream = core.createReadStream([options])`
+
+Make a read stream. Options include:
+
+``` js
+{
+  start: 0,
+  end: core.length,
+  live: false,
+  snapshot: true // auto set end to core.length on open or update it on every read
+}
+```
+
 #### `const range = core.download([range])`
 
 Download a range of data.
