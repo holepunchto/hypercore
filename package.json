@@ -35,7 +35,7 @@
     "compact-encoding": "^2.5.0",
     "crc32-universal": "^1.0.1",
     "flat-tree": "^1.9.0",
-    "hypercore-crypto": "^3.0.0",
+    "hypercore-crypto": "^3.1.0",
     "is-options": "^1.0.1",
     "random-access-file": "^2.1.4",
     "random-array-iterator": "^1.0.0",
