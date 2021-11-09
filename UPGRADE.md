@@ -2,6 +2,12 @@
 
 Notes for downstream developers who are upgrading their modules to new, breaking versions of hypercore.
 
+## 10.0.0
+
+- All number encodings are now LE
+- Introduces an "oplog" to atomically track changes locally
+- Updated merkle format that only requires a single signature (stored in the oplog)
+
 ## 9.0.0
 
 - The format of signatures [has been changed](https://github.com/mafintosh/hypercore/issues/260). This is backwards-compatible (v9 can read v8 signatures), but forward-incompatible (v8 cannot read v9 signatures). If a v8 peer replicates with a v9 peer, it will emit a "REMOTE SIGNTURE INVALID" error on the replication stream.
