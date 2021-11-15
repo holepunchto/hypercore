@@ -66,7 +66,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.autoClose = !!opts.autoClose
 
     this.closing = null
-    this.opening = opts._opening || this._open(key, storage, opts)
+    this.opening = this._openSession(key, storage, opts)
     this.opening.catch(noop)
 
     this._preappend = preappend.bind(this)
@@ -115,28 +115,20 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const Clz = opts.class || Hypercore
-    const keyPair = opts.keyPair && opts.keyPair.secretKey && { ...opts.keyPair }
-
-    // This only works if the hypercore was fully loaded,
-    // but we only do this to validate the keypair to help catch bugs so yolo
-    if (this.key && keyPair) keyPair.publicKey = this.key
-
     const s = new Clz(this.storage, this.key, {
       ...opts,
-      sign: opts.sign || (keyPair && keyPair.secretKey && Core.createSigner(this.crypto, keyPair)) || this.sign,
-      valueEncoding: this.valueEncoding,
       extensions: this.extensions,
       _opening: this.opening,
       _sessions: this.sessions
     })
 
-    s._initSession(this)
+    s._passCapabilities(this)
     this.sessions.push(s)
 
     return s
   }
 
-  _initSession (o) {
+  _passCapabilities (o) {
     if (!this.sign) this.sign = o.sign
     this.crypto = o.crypto
     this.opened = o.opened
@@ -147,6 +139,98 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = !!this.sign
     this.autoClose = o.autoClose
+  }
+
+  async _openFromExisting (from, opts) {
+    await from.opening
+
+    for (const [name, ext] of this.extensions) {
+      from.extensions.register(name, null, ext)
+    }
+
+    this._passCapabilities(from)
+    this.extensions = from.extensions
+    this.sessions = from.sessions
+    this.storage = from.storage
+
+    this.sessions.push(this)
+  }
+
+  async _openSession (key, storage, opts) {
+    const isFirst = !opts._opening
+
+    if (!isFirst) await opts._opening
+    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
+
+    const keyPair = (key && opts.keyPair)
+      ? { ...opts.keyPair, publicKey: key }
+      : key
+        ? { publicKey: key, secretKey: null }
+        : opts.keyPair
+
+    // This only works if the hypercore was fully loaded,
+    // but we only do this to validate the keypair to help catch bugs so yolo
+    if (this.key && keyPair) keyPair.publicKey = this.key
+
+    if (opts.sign) {
+      this.sign = opts.sign
+    } else if (keyPair && keyPair.secretKey) {
+      this.sign = Core.createSigner(this.crypto, keyPair)
+    }
+
+    if (isFirst) {
+      await this._openCapabilities(keyPair, storage, opts)
+      // Only the root session should pass capabilities to other sessions.
+      for (let i = 0; i < this.sessions.length; i++) {
+        const s = this.sessions[i]
+        if (s !== this) s._passCapabilities(this)
+      }
+    }
+
+    if (!this.sign) this.sign = this.core.defaultSign
+    this.writable = !!this.sign
+
+    if (opts.valueEncoding) {
+      this.valueEncoding = c.from(codecs(opts.valueEncoding))
+    }
+
+    // This is a hidden option that's only used by Corestore.
+    // It's required so that corestore can load a name from userData before 'ready' is emitted.
+    if (opts._preready) await opts._preready(this)
+
+    this.opened = true
+    this.emit('ready')
+  }
+
+  async _openCapabilities (keyPair, storage, opts) {
+    if (opts.from) return this._openFromExisting(opts.from, opts)
+
+    if (!this.storage) this.storage = Hypercore.defaultStorage(opts.storage || storage)
+
+    this.core = await Core.open(this.storage, {
+      keyPair,
+      crypto: this.crypto,
+      onupdate: this._oncoreupdate.bind(this)
+    })
+
+    if (opts.userData) {
+      for (const [key, value] of Object.entries(opts.userData)) {
+        await this.core.userData(key, value)
+      }
+    }
+
+    this.replicator = new Replicator(this.core, {
+      onupdate: this._onpeerupdate.bind(this)
+    })
+
+    this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
+    this.key = this.core.header.signer.publicKey
+
+    if (!this.encryption && opts.encryptionKey) {
+      this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
+    }
+
+    this.extensions.attach(this.replicator)
   }
 
   close () {
@@ -235,71 +319,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   ready () {
     return this.opening
-  }
-
-  async _open (key, storage, opts) {
-    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
-
-    this.valueEncoding = opts.valueEncoding ? c.from(codecs(opts.valueEncoding)) : null
-
-    const keyPair = (key && opts.keyPair)
-      ? { ...opts.keyPair, publicKey: key }
-      : key
-        ? { publicKey: key, secretKey: null }
-        : opts.keyPair
-
-    if (opts.from) {
-      const from = opts.from
-      await from.opening
-      for (const [name, ext] of this.extensions) from.extensions.register(name, null, ext)
-      this._initSession(from)
-      this.extensions = from.extensions
-      this.sessions = from.sessions
-      this.storage = from.storage
-      if (!this.sign) this.sign = opts.sign || ((keyPair && keyPair.secretKey) ? Core.createSigner(this.crypto, keyPair) : null)
-      this.writable = !!this.sign
-      this.sessions.push(this)
-      return
-    }
-
-    if (!this.storage) this.storage = Hypercore.defaultStorage(opts.storage || storage)
-
-    this.core = await Core.open(this.storage, {
-      keyPair,
-      crypto: this.crypto,
-      onupdate: this._oncoreupdate.bind(this)
-    })
-
-    if (opts.userData) {
-      for (const [key, value] of Object.entries(opts.userData)) {
-        await this.core.userData(key, value)
-      }
-    }
-
-    this.replicator = new Replicator(this.core, {
-      onupdate: this._onpeerupdate.bind(this)
-    })
-
-    if (!this.sign) this.sign = opts.sign || this.core.defaultSign
-
-    this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
-    this.key = this.core.header.signer.publicKey
-    this.writable = !!this.sign
-
-    if (!this.encryption && opts.encryptionKey) {
-      this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
-    }
-
-    this.extensions.attach(this.replicator)
-    this.opened = true
-
-    if (opts.postload) await opts.postload(this)
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      const s = this.sessions[i]
-      if (s !== this) s._initSession(this)
-      s.emit('ready')
-    }
   }
 
   _oncoreupdate (status, bitfield, value, from) {

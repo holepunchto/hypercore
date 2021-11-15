@@ -15,6 +15,7 @@ test('sessions - can create writable sessions from a read-only core', async func
   t.absent(core.writable)
 
   const session = core.session({ keyPair: { secretKey: keyPair.secretKey } })
+  await session.ready()
   t.ok(session.writable)
 
   try {
@@ -74,7 +75,8 @@ test('sessions - writable session with invalid keypair throws', async function (
 
   try {
     const core = new Hypercore(ram, keyPair2.publicKey) // Create a new core in read-only mode.
-    core.session({ keyPair: keyPair1 })
+    const session = core.session({ keyPair: keyPair1 })
+    await session.ready()
     t.fail('invalid keypair did not throw')
   } catch {
     t.pass('invalid keypair threw')
@@ -170,4 +172,12 @@ test('sessions - close with from option', async function (t) {
 
   t.absent(core1.closed)
   t.alike(await core1.get(0), Buffer.from('hello world'))
+})
+
+test('sessions - custom valueEncoding on session', async function (t) {
+  const core1 = new Hypercore(ram)
+  const core2 = core1.session({ valueEncoding: 'utf-8' })
+
+  await core1.append(Buffer.from('hello world'))
+  t.is(await core2.get(0), 'hello world')
 })
