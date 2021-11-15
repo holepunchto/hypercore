@@ -27,6 +27,10 @@
     "url": "https://github.com/hypercore-protocol/hypercore/issues"
   },
   "homepage": "https://github.com/hypercore-protocol/hypercore#readme",
+  "files": [
+    "index.js",
+    "lib/**.js"
+  ],
   "dependencies": {
     "@hyperswarm/secret-stream": "^5.0.0",
     "b4a": "^1.1.0",
