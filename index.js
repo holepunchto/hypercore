@@ -131,7 +131,6 @@ module.exports = class Hypercore extends EventEmitter {
   _passCapabilities (o) {
     if (!this.sign) this.sign = o.sign
     this.crypto = o.crypto
-    this.opened = o.opened
     this.key = o.key
     this.discoveryKey = o.discoveryKey
     this.core = o.core
@@ -205,7 +204,7 @@ module.exports = class Hypercore extends EventEmitter {
   async _openCapabilities (keyPair, storage, opts) {
     if (opts.from) return this._openFromExisting(opts.from, opts)
 
-    if (!this.storage) this.storage = Hypercore.defaultStorage(opts.storage || storage)
+    this.storage = Hypercore.defaultStorage(opts.storage || storage)
 
     this.core = await Core.open(this.storage, {
       keyPair,

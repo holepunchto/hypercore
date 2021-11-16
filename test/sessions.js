@@ -1,6 +1,7 @@
 const test = require('brittle')
 const ram = require('random-access-memory')
 const crypto = require('hypercore-crypto')
+const codecs = require('codecs')
 
 const Hypercore = require('../')
 
@@ -176,8 +177,32 @@ test('sessions - close with from option', async function (t) {
 
 test('sessions - custom valueEncoding on session', async function (t) {
   const core1 = new Hypercore(ram)
-  const core2 = core1.session({ valueEncoding: 'utf-8' })
+  await core1.append(codecs('json').encode({ a: 1 }))
 
-  await core1.append(Buffer.from('hello world'))
-  t.is(await core2.get(0), 'hello world')
+  const core2 = core1.session({ valueEncoding: 'json' })
+  await core2.append({ b: 2 })
+
+  t.alike(await core2.get(0), { a: 1 })
+  t.alike(await core2.get(1), { b: 2 })
+})
+
+test('sessions - custom preload hook on first/later sessions', async function (t) {
+  const preloadsTest = t.test('both preload hooks called')
+  preloadsTest.plan(2)
+
+  const core1 = new Hypercore(ram, {
+    preload: () => {
+      preloadsTest.pass('first hook called')
+      return null
+    }
+  })
+  const core2 = core1.session({
+    preload: () => {
+      preloadsTest.pass('second hook called')
+      return null
+    }
+  })
+  await core2.ready()
+
+  await preloadsTest
 })
