@@ -466,6 +466,44 @@ test('clear full tree', async function (t) {
   }
 })
 
+test('get older roots', async function (t) {
+  const a = await create(5)
+
+  const roots = await a.getRoots(5)
+  t.alike(roots, a.roots, 'same roots')
+
+  {
+    const b = a.batch()
+    b.append(Buffer.from('next'))
+    b.append(Buffer.from('next'))
+    b.append(Buffer.from('next'))
+    b.commit()
+  }
+
+  const oldRoots = await a.getRoots(5)
+  t.alike(oldRoots, roots, 'same old roots')
+
+  const expected = []
+  const len = a.length
+
+  for (let i = 0; i < 40; i++) {
+    expected.push([...a.roots])
+    {
+      const b = a.batch()
+      b.append(Buffer.from('tick'))
+      b.commit()
+    }
+  }
+
+  const actual = []
+
+  for (let i = 0; i < 40; i++) {
+    actual.push(await a.getRoots(len + i))
+  }
+
+  t.alike(actual, expected, 'check a bunch of different roots')
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
