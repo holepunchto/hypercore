@@ -63,12 +63,15 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
+  encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
   encryptionKey: k // optionally pass an encryption key to enable block encryption
 }
 ```
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
+
+valueEncodings will be applied to individually blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 #### `const seq = await core.append(block)`
 

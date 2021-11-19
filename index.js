@@ -55,6 +55,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.cache = opts.cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (opts.cache || null)
 
     this.valueEncoding = null
+    this.encodeBatch = null
+
     this.key = key || null
     this.discoveryKey = null
     this.readable = true
@@ -191,6 +193,9 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(codecs(opts.valueEncoding))
+    }
+    if (opts.encodeBatch) {
+      this.encodeBatch = opts.encodeBatch
     }
 
     // This is a hidden option that's only used by Corestore.
@@ -480,10 +485,13 @@ module.exports = class Hypercore extends EventEmitter {
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const preappend = this.encryption && this._preappend
-    const buffers = new Array(blocks.length)
 
-    for (let i = 0; i < blocks.length; i++) {
-      buffers[i] = this._encode(this.valueEncoding, blocks[i])
+    const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
+
+    if (this.encodeBatch === null) {
+      for (let i = 0; i < blocks.length; i++) {
+        buffers[i] = this._encode(this.valueEncoding, blocks[i])
+      }
     }
 
     return await this.core.append(buffers, this.sign, { preappend })
