@@ -14,7 +14,7 @@ const Replicator = require('./lib/replicator')
 const Extensions = require('./lib/extensions')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
-const { ReadStream } = require('./lib/streams')
+const { ReadStream, WriteStream } = require('./lib/streams')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -426,6 +426,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   createReadStream (opts) {
     return new ReadStream(this, opts)
+  }
+
+  createWriteStream (opts) {
+    return new WriteStream(this, opts)
   }
 
   download (range) {

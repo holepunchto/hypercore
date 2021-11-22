@@ -53,3 +53,27 @@ test('read stream with start / end', async function (t) {
     t.is(expected.length, 0)
   }
 })
+
+test('basic write+read stream', async function (t) {
+  const core = await create()
+
+  const expected = [
+    'hello',
+    'world',
+    'verden',
+    'welt'
+  ]
+
+  const ws = core.createWriteStream()
+
+  for (const data of expected) ws.write(data)
+  ws.end()
+
+  await new Promise(resolve => ws.on('finish', resolve))
+
+  for await (const data of core.createReadStream()) {
+    t.alike(data.toString(), expected.shift())
+  }
+
+  t.is(expected.length, 0)
+})
