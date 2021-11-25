@@ -416,6 +416,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.core.bitfield.get(index)) {
       block = await this.core.blocks.get(index)
     } else {
+      if (opts && opts.wait === false) return null
       if (opts && opts.onwait) opts.onwait(index)
       block = await this.replicator.requestBlock(index)
     }

@@ -87,7 +87,7 @@ Options include
 
 ``` js
 {
-  wait: true, // wait for index to be downloaded
+  wait: true, // wait for block to be downloaded
   onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the core's valueEncoding

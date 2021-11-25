@@ -370,3 +370,16 @@ test('replicate discrete empty range', async function (t) {
 
   t.is(d, 0)
 })
+
+test('get with { wait: false } returns null if block is not available', async function (t) {
+  const a = await create()
+
+  await a.append('a')
+
+  const b = await create(a.key, { valueEncoding: 'utf-8' })
+
+  replicate(a, b, t)
+
+  t.is(await b.get(0, { wait: false }), null)
+  t.is(await b.get(0), 'a')
+})
