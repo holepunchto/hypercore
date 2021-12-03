@@ -92,9 +92,27 @@ module.exports = class Hypercore extends EventEmitter {
       indent + ')'
   }
 
-  static createProtocolStream (isInitiator, opts) {
-    const noiseStream = new NoiseSecretStream(isInitiator, null, opts)
-    return noiseStream.rawStream
+  static createProtocolStream (isInitiator, opts = {}) {
+    let outerStream = isStream(isInitiator)
+      ? isInitiator
+      : opts.stream
+    let noiseStream = null
+
+    if (outerStream) {
+      noiseStream = outerStream.noiseStream
+    } else {
+      noiseStream = new NoiseSecretStream(isInitiator, null, opts)
+      outerStream = noiseStream.rawStream
+    }
+    if (!noiseStream) throw new Error('Invalid stream')
+
+    if (!noiseStream.userData) {
+      const protocol = Replicator.createProtocol(noiseStream)
+      noiseStream.userData = protocol
+      noiseStream.on('error', noop) // All noise errors already propagate through outerStream
+    }
+
+    return outerStream
   }
 
   static defaultStorage (storage, opts = {}) {
@@ -268,33 +286,17 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   replicate (isInitiator, opts = {}) {
-    let outerStream = isStream(isInitiator)
-      ? isInitiator
-      : opts.stream
-    let noiseStream = null
-
-    if (outerStream) {
-      noiseStream = outerStream.noiseStream
-    } else {
-      outerStream = Hypercore.createProtocolStream(isInitiator, opts)
-      noiseStream = outerStream.noiseStream
-    }
-    if (!noiseStream) throw new Error('Invalid stream passed to replicate')
-
-    if (!noiseStream.userData) {
-      const protocol = Replicator.createProtocol(noiseStream)
-      noiseStream.userData = protocol
-      noiseStream.on('error', noop) // All noise errors already propagate through outerStream
-    }
-
+    const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
+    const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
+
     if (this.opened) {
       this.replicator.joinProtocol(protocol, this.key, this.discoveryKey)
     } else {
       this.opening.then(() => this.replicator.joinProtocol(protocol, this.key, this.discoveryKey), protocol.destroy.bind(protocol))
     }
 
-    return outerStream
+    return protocolStream
   }
 
   get length () {
