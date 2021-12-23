@@ -9,10 +9,10 @@ module.exports = {
   },
 
   replicate (a, b, t) {
-    const s1 = a.replicate(true)
-    const s2 = b.replicate(false)
-    s1.on('error', err => t.comment(`STREAM ERROR: ${err}`))
-    s2.on('error', err => t.comment(`STREAM ERROR: ${err}`))
+    const s1 = a.replicate(true, { keepAlive: false })
+    const s2 = b.replicate(false, { keepAlive: false })
+    s1.on('error', err => t.comment(`replication stream error (initiator): ${err}`))
+    s2.on('error', err => t.comment(`replication stream error (responder): ${err}`))
     s1.pipe(s2).pipe(s1)
     return [s1, s2]
   },

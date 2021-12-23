@@ -199,8 +199,8 @@ test('basic multiplexing', async function (t) {
   const b1 = await create(a1.key)
   const b2 = await create(a2.key)
 
-  const a = a1.replicate(a2.replicate(true))
-  const b = b1.replicate(b2.replicate(false))
+  const a = a1.replicate(a2.replicate(true, { keepAlive: false }))
+  const b = b1.replicate(b2.replicate(false, { keepAlive: false }))
 
   a.pipe(b).pipe(a)
 
@@ -215,8 +215,8 @@ test('async multiplexing', async function (t) {
   const a1 = await create()
   const b1 = await create(a1.key)
 
-  const a = a1.replicate(true)
-  const b = b1.replicate(false)
+  const a = a1.replicate(true, { keepAlive: false })
+  const b = b1.replicate(false, { keepAlive: false })
 
   a.pipe(b).pipe(a)
 
@@ -247,10 +247,10 @@ test('multiplexing with external noise stream', async function (t) {
   const n2 = new NoiseSecretStream(false)
   n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
 
-  a1.replicate(n1)
-  a2.replicate(n1)
-  b1.replicate(n2)
-  b2.replicate(n2)
+  a1.replicate(n1, { keepAlive: false })
+  a2.replicate(n1, { keepAlive: false })
+  b1.replicate(n2, { keepAlive: false })
+  b2.replicate(n2, { keepAlive: false })
 
   await a1.append('hi')
   t.alike(await b1.get(0), Buffer.from('hi'))
@@ -282,10 +282,10 @@ test('multiplexing multiple times over the same stream', async function (t) {
 
   n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
 
-  a1.replicate(n1)
+  a1.replicate(n1, { keepAlive: false })
 
-  b1.replicate(n2)
-  b1.replicate(n2)
+  b1.replicate(n2, { keepAlive: false })
+  b1.replicate(n2, { keepAlive: false })
 
   t.ok(await b1.update(), 'update once')
   t.absent(await a1.update(), 'writer up to date')
@@ -302,8 +302,8 @@ test('destroying a stream and re-replicating works', async function (t) {
 
   const clone = await create(core.key)
 
-  let s1 = core.replicate(true)
-  let s2 = clone.replicate(false)
+  let s1 = core.replicate(true, { keepAlive: false })
+  let s2 = clone.replicate(false, { keepAlive: false })
 
   s1.pipe(s2).pipe(s1)
 
@@ -322,8 +322,8 @@ test('destroying a stream and re-replicating works', async function (t) {
   await new Promise((resolve) => s1.once('close', resolve))
 
   // retry
-  s1 = core.replicate(true)
-  s2 = clone.replicate(false)
+  s1 = core.replicate(true, { keepAlive: false })
+  s2 = clone.replicate(false, { keepAlive: false })
 
   s1.pipe(s2).pipe(s1)
 

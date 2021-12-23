@@ -108,6 +108,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (!noiseStream.userData) {
       const protocol = Replicator.createProtocol(noiseStream)
+      if (opts.keepAlive !== false) protocol.setKeepAlive(true)
       noiseStream.userData = protocol
       noiseStream.on('error', noop) // All noise errors already propagate through outerStream
     }
