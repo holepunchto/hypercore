@@ -153,10 +153,12 @@ test('high latency reorg', async function (t) {
 test('invalid signature fails', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create() // not the same key
-
-  b.discoveryKey = a.discoveryKey // haxx to make them swarm
+  const a = await create(null, {
+    sign () {
+      return Buffer.alloc(64)
+    }
+  })
+  const b = await create(a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -168,6 +170,38 @@ test('invalid signature fails', async function (t) {
 
   s2.on('error', (err) => {
     t.is(err.message, 'Remote signature does not match')
+  })
+
+  return new Promise((resolve) => {
+    let missing = 2
+
+    s1.on('close', onclose)
+    s2.on('close', onclose)
+
+    function onclose () {
+      if (--missing === 0) resolve()
+    }
+  })
+})
+
+test('invalid capability fails', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create()
+
+  b.discoveryKey = a.discoveryKey
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const [s1, s2] = replicate(a, b, t)
+
+  s1.on('error', (err) => {
+    t.ok(err, 'stream closed')
+  })
+
+  s2.on('error', (err) => {
+    t.is(err.message, 'Remote sent an invalid capability')
   })
 
   return new Promise((resolve) => {
