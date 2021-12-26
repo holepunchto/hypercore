@@ -231,6 +231,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = Hypercore.defaultStorage(opts.storage || storage)
 
     this.core = await Core.open(this.storage, {
+      createIfMissing: opts.createIfMissing,
+      overwrite: opts.overwrite,
       keyPair,
       crypto: this.crypto,
       onupdate: this._oncoreupdate.bind(this)
