@@ -88,3 +88,33 @@ test(
     t.pass('creating a core with more than 32 byteLength key did not throw')
   }
 )
+
+test('createIfMissing', async function (t) {
+  const core = new Hypercore(ram, { createIfMissing: false })
+
+  t.exception(core.ready())
+})
+
+test('reopen and overwrite', async function (t) {
+  const st = {}
+  const core = new Hypercore(open)
+
+  await core.ready()
+  const key = core.key
+
+  const reopen = new Hypercore(open)
+
+  await reopen.ready()
+  t.alike(reopen.key, key, 'reopened the core')
+
+  const overwritten = new Hypercore(open, { overwrite: true })
+
+  await overwritten.ready()
+  t.unlike(overwritten.key, key, 'overwrote the core')
+
+  function open (name) {
+    if (st[name]) return st[name]
+    st[name] = ram()
+    return st[name]
+  }
+})
