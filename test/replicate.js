@@ -417,3 +417,45 @@ test('get with { wait: false } returns null if block is not available', async fu
   t.is(await b.get(0, { wait: false }), null)
   t.is(await b.get(0), 'a')
 })
+
+test('can disable downloading from a peer', async function (t) {
+  const a = await create()
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(a.key, { valueEncoding: 'utf-8' })
+  const c = await create(a.key, { valueEncoding: 'utf-8' })
+
+  const [aStream] = replicate(b, a, t)
+  replicate(b, c, t)
+  replicate(a, c, t)
+
+  {
+    const r = c.download({ start: 0, end: a.length })
+    await r.downloaded()
+  }
+
+  const aPeer = b.peers[0].protocol.noiseStream.rawStream === aStream
+    ? b.peers[0]
+    : b.peers[1]
+
+  aPeer.setDownloading(false)
+
+  let aUploads = 0
+  let cUploads = 0
+
+  c.on('upload', function () {
+    cUploads++
+  })
+  a.on('upload', function () {
+    aUploads++
+  })
+
+  {
+    const r = b.download({ start: 0, end: a.length })
+    await r.downloaded()
+  }
+
+  t.is(aUploads, 0)
+  t.is(cUploads, a.length)
+})

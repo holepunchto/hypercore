@@ -245,7 +245,8 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     this.replicator = new Replicator(this.core, {
-      onupdate: this._onpeerupdate.bind(this)
+      onupdate: this._onpeerupdate.bind(this),
+      onupload: this._onupload.bind(this)
     })
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
@@ -328,6 +329,14 @@ module.exports = class Hypercore extends EventEmitter {
 
   ready () {
     return this.opening
+  }
+
+  _onupload (index, value, from) {
+    const byteLength = value.byteLength - this.padding
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('upload', index, byteLength, from)
+    }
   }
 
   _oncoreupdate (status, bitfield, value, from) {
