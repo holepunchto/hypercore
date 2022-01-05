@@ -58,6 +58,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.encodeBatch = null
 
     this.key = key || null
+    this.keyPair = null
     this.discoveryKey = null
     this.readable = true
     this.writable = false
@@ -251,6 +252,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.discoveryKey = this.crypto.discoveryKey(this.core.header.signer.publicKey)
     this.key = this.core.header.signer.publicKey
+    this.keyPair = this.core.header.signer
 
     if (!this.encryption && opts.encryptionKey) {
       this.encryption = new BlockEncryption(opts.encryptionKey, this.key)

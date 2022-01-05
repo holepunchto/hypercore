@@ -212,6 +212,12 @@ Buffer containing the public key identifying this core.
 
 Populated after `ready` has been emitted. Will be `null` before the event.
 
+#### `core.keyPair`
+
+Object containing buffers of the core's public and secret key
+
+Populated after `ready` has been emitted. Will be `null` before the event.
+
 #### `core.discoveryKey`
 
 Buffer containing a key derived from the core's public key.
