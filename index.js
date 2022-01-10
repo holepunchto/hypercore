@@ -346,7 +346,7 @@ module.exports = class Hypercore extends EventEmitter {
       for (let i = 0; i < this.sessions.length; i++) {
         if ((status & 0b10) !== 0) {
           if (this.cache) this.cache.clear()
-          this.sessions[i].emit('truncate', this.core.tree.fork)
+          this.sessions[i].emit('truncate', bitfield.start, this.core.tree.fork)
         }
         if ((status & 0b01) !== 0) {
           this.sessions[i].emit('append')

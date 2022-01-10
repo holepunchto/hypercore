@@ -280,6 +280,6 @@ socket.pipe(localCore.replicate(true)).pipe(socket)
 
 Emitted when the core has been appended to (i.e. has a new length / byteLength), either locally or remotely.
 
-#### `core.on('truncate')`
+#### `core.on('truncate', ancestors, forkId)`
 
 Emitted when the core has been truncated, either locally or remotely.

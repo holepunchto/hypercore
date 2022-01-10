@@ -118,3 +118,17 @@ test('reopen and overwrite', async function (t) {
     return st[name]
   }
 })
+
+test('truncate event has truncated-length and fork', async function (t) {
+  t.plan(2)
+
+  const core = new Hypercore(ram)
+
+  core.on('truncate', function (length, fork) {
+    t.is(length, 2)
+    t.is(fork, 1)
+  })
+
+  await core.append(['a', 'b', 'c'])
+  await core.truncate(2)
+})
