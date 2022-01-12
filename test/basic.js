@@ -132,3 +132,21 @@ test('truncate event has truncated-length and fork', async function (t) {
   await core.append(['a', 'b', 'c'])
   await core.truncate(2)
 })
+
+test('treeHash gets the tree hash at a given core length', async (t) => {
+  const core = new Hypercore(ram)
+  await core.ready()
+
+  const { core: { tree } } = core
+
+  const hashes = [tree.hash()]
+
+  for (let i = 1; i < 10; i++) {
+    await core.append([`${i}`])
+    hashes.push(tree.hash())
+  }
+
+  for (let i = 0; i < 10; i++) {
+    t.alike(await core.treeHash(i), hashes[i])
+  }
+})

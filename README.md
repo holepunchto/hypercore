@@ -101,6 +101,10 @@ Truncate the core to a smaller length.
 Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
 Note that the fork id should be monotonely incrementing.
 
+#### `const hash = await core.treeHash([length])`
+
+Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
+
 #### `const stream = core.createReadStream([options])`
 
 Make a read stream. Options include:
