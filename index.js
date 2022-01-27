@@ -73,6 +73,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opening.catch(noop)
 
     this._preappend = preappend.bind(this)
+    this._snapshot = opts.snapshot || null
   }
 
   [inspect] (depth, opts) {
@@ -127,6 +128,10 @@ module.exports = class Hypercore extends EventEmitter {
       const sparse = locked ? null : null // fsctl.sparse, disable sparse on windows - seems to fail for some people. TODO: investigate
       return raf(name, { directory, lock, sparse })
     }
+  }
+
+  snapshot () {
+    return this.session({ snapshot: { length: this.length, byteLength: this.byteLength, fork: this.fork } })
   }
 
   session (opts = {}) {
@@ -306,15 +311,21 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get length () {
-    return this.core === null ? 0 : this.core.tree.length
+    return this._snapshot
+      ? this._snapshot.length
+      : (this.core === null ? 0 : this.core.tree.length)
   }
 
   get byteLength () {
-    return this.core === null ? 0 : this.core.tree.byteLength - (this.core.tree.length * this.padding)
+    return this._snapshot
+      ? this._snapshot.byteLength
+      : (this.core === null ? 0 : this.core.tree.byteLength - (this.core.tree.length * this.padding))
   }
 
   get fork () {
-    return this.core === null ? 0 : this.core.tree.fork
+    return this._snapshot
+      ? this._snapshot.fork
+      : (this.core === null ? 0 : this.core.tree.fork)
   }
 
   get peers () {

@@ -133,7 +133,7 @@ test('truncate event has truncated-length and fork', async function (t) {
   await core.truncate(2)
 })
 
-test('treeHash gets the tree hash at a given core length', async (t) => {
+test('treeHash gets the tree hash at a given core length', async function (t) {
   const core = new Hypercore(ram)
   await core.ready()
 
@@ -149,4 +149,23 @@ test('treeHash gets the tree hash at a given core length', async (t) => {
   for (let i = 0; i < 10; i++) {
     t.alike(await core.treeHash(i), hashes[i])
   }
+})
+
+test('snapshot locks the state', async function (t) {
+  const core = new Hypercore(ram)
+  await core.ready()
+
+  const a = core.snapshot()
+
+  await core.append('a')
+
+  t.is(a.length, 0)
+  t.is(core.length, 1)
+
+  const b = core.snapshot()
+
+  await core.append('c')
+
+  t.is(a.length, 0)
+  t.is(b.length, 1)
 })
