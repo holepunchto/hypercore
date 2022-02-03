@@ -504,6 +504,50 @@ test('get older roots', async function (t) {
   t.alike(actual, expected, 'check a bunch of different roots')
 })
 
+test('check if a length is upgradeable', async function (t) {
+  const tree = await create(5)
+  const clone = await create()
+
+  // Full clone, has it all
+
+  t.is(await tree.upgradeable(0), true)
+  t.is(await tree.upgradeable(1), true)
+  t.is(await tree.upgradeable(2), true)
+  t.is(await tree.upgradeable(3), true)
+  t.is(await tree.upgradeable(4), true)
+  t.is(await tree.upgradeable(5), true)
+
+  const p = await tree.proof({
+    upgrade: { start: 0, length: 5 }
+  })
+
+  const b = await clone.verify(p)
+  b.commit()
+
+  /*
+    Merkle tree looks like
+
+    0─┐
+      1─┐
+    2─┘ │
+        3 <-- root
+    4─┐ │
+      5─┘
+    6─┘
+
+    8 <-- root
+
+    So length = 0, length = 4 (node 3) and length = 5 (node 8 + 3) should be upgradeable
+  */
+
+  t.is(await clone.upgradeable(0), true)
+  t.is(await clone.upgradeable(1), false)
+  t.is(await clone.upgradeable(2), false)
+  t.is(await clone.upgradeable(3), false)
+  t.is(await clone.upgradeable(4), true)
+  t.is(await clone.upgradeable(5), true)
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
