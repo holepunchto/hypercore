@@ -282,6 +282,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.readable = false
     this.writable = false
     this.closed = true
+    this.opened = false
 
     if (this.sessions.length) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
