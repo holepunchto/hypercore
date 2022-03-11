@@ -253,6 +253,7 @@ module.exports = class Hypercore extends EventEmitter {
       overwrite: opts.overwrite,
       keyPair,
       crypto: this.crypto,
+      legacy: opts.legacy,
       onupdate: this._oncoreupdate.bind(this)
     })
 

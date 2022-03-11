@@ -40,7 +40,7 @@
     "crc32-universal": "^1.0.1",
     "events": "^3.3.0",
     "flat-tree": "^1.9.0",
-    "hypercore-crypto": "^3.1.0",
+    "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.2.0",
     "random-access-file": "^2.1.4",
