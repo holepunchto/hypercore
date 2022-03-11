@@ -48,7 +48,7 @@ test('encrypted replication', async function (t) {
     replicate(a, b, t)
 
     await t.test('through direct download', async function (t) {
-      const r = b.download({ start: 0, end: a.length })
+      const r = b.download({ start: 0, length: a.length })
       await r.downloaded()
 
       for (let i = 0; i < 5; i++) {
@@ -71,7 +71,7 @@ test('encrypted replication', async function (t) {
     replicate(a, b, t)
 
     await t.test('through direct download', async function (t) {
-      const r = b.download({ start: 0, end: a.length })
+      const r = b.download({ start: 0, length: a.length })
       await r.downloaded()
 
       for (let i = 0; i < 5; i++) {

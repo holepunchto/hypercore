@@ -242,9 +242,8 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 0, nodes: 0, value: false }, upgrade: { start: 0, length: 2 } })
+    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
     const r = await clone.tree.reorg(p)
-
     await clone.reorg(r, peer)
   }
 
@@ -265,7 +264,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 0, nodes: 0, value: false }, upgrade: { start: 0, length: 1 } })
+    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
     const r = await clone.tree.reorg(p)
 
     await clone.reorg(r, peer)

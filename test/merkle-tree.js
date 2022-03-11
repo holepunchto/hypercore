@@ -21,7 +21,7 @@ test('proof only block', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    block: { index: 4, nodes: 2, value: true }
+    block: { index: 4, nodes: 2 }
   })
 
   t.is(proof.upgrade, null)
@@ -37,7 +37,7 @@ test('proof with upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    block: { index: 4, nodes: 0, value: true },
+    block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
 
@@ -57,7 +57,7 @@ test('proof with upgrade + additional', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    block: { index: 4, nodes: 0, value: true },
+    block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 8 }
   })
 
@@ -77,7 +77,7 @@ test('proof with upgrade from existing state', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    block: { index: 1, nodes: 0, value: true },
+    block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 9 }
   })
 
@@ -97,7 +97,7 @@ test('proof with upgrade from existing state + additional', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    block: { index: 1, nodes: 0, value: true },
+    block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 5 }
   })
 
@@ -118,7 +118,7 @@ test('proof block and seek, no upgrade', async function (t) {
 
   const proof = await tree.proof({
     seek: { bytes: 8 },
-    block: { index: 4, nodes: 2, value: true }
+    block: { index: 4, nodes: 2 }
   })
 
   t.is(proof.upgrade, null)
@@ -135,7 +135,7 @@ test('proof block and seek #2, no upgrade', async function (t) {
 
   const proof = await tree.proof({
     seek: { bytes: 10 },
-    block: { index: 4, nodes: 2, value: true }
+    block: { index: 4, nodes: 2 }
   })
 
   t.is(proof.upgrade, null)
@@ -152,7 +152,7 @@ test('proof block and seek #3, no upgrade', async function (t) {
 
   const proof = await tree.proof({
     seek: { bytes: 13 },
-    block: { index: 4, nodes: 2, value: true }
+    block: { index: 4, nodes: 2 }
   })
 
   t.is(proof.upgrade, null)
@@ -169,7 +169,7 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
 
   const proof = await tree.proof({
     seek: { bytes: 26 },
-    block: { index: 0, nodes: 4, value: true }
+    block: { index: 0, nodes: 4 }
   })
 
   t.is(proof.upgrade, null)
@@ -184,7 +184,7 @@ test('proof block and seek, with upgrade', async function (t) {
 
   const proof = await tree.proof({
     seek: { bytes: 13 },
-    block: { index: 4, nodes: 2, value: true },
+    block: { index: 4, nodes: 2 },
     upgrade: { start: 8, length: 2 }
   })
 
@@ -223,7 +223,7 @@ test('verify proof #1', async function (t) {
   const clone = await create()
 
   const p = await tree.proof({
-    block: { index: 3 },
+    hash: { index: 6, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
 
@@ -579,10 +579,10 @@ async function reorg (local, remote) {
   const r = await local.reorg(await remote.proof({ upgrade }))
 
   while (!r.finished) {
-    const index = r.want.end - 1
+    const index = 2 * (r.want.end - 1)
     const nodes = r.want.nodes
 
-    await r.update(await remote.proof({ block: { index, nodes } }))
+    await r.update(await remote.proof({ hash: { index, nodes } }))
   }
 
   r.commit()
