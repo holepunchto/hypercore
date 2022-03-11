@@ -126,7 +126,6 @@ module.exports = class Hypercore extends EventEmitter {
         noiseStream.setTimeout(7000)
       }
       noiseStream.userData = protocol
-      noiseStream.on('error', noop) // All noise errors already propagate through outerStream
     }
 
     return outerStream
