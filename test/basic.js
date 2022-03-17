@@ -2,7 +2,7 @@ const test = require('brittle')
 const ram = require('random-access-memory')
 
 const Hypercore = require('../')
-const { create } = require('./helpers')
+const { create, eventFlush } = require('./helpers')
 
 test('basic', async function (t) {
   const core = await create()
@@ -168,4 +168,20 @@ test('snapshot locks the state', async function (t) {
 
   t.is(a.length, 0)
   t.is(b.length, 1)
+})
+
+test('downloading local range', async function (t) {
+  t.plan(1)
+
+  const core = new Hypercore(ram)
+
+  await core.append('a')
+
+  const range = core.download({ start: 0, end: 1 })
+
+  await eventFlush()
+
+  await range.destroy()
+
+  t.pass('did not throw')
 })

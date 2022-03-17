@@ -522,7 +522,7 @@ module.exports = class Hypercore extends EventEmitter {
         return req.promise
       },
       destroy () {
-        reqP.then(req => req.context.detach(req), noop)
+        reqP.then(req => req.context && req.context.detach(req), noop)
       }
     }
   }
