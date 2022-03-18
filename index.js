@@ -269,7 +269,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.replicator = new Replicator(this.core, this.key, {
       eagerUpdate: true,
-      allowFork: true,
+      allowFork: opts.allowFork !== false,
       onpeerupdate: this._onpeerupdate.bind(this),
       onupload: this._onupload.bind(this)
     })
