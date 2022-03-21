@@ -94,8 +94,8 @@ module.exports = class Hypercore extends EventEmitter {
       indent + ')'
   }
 
-  static protomux (stream, opts) {
-    return stream.noiseStream.userData.open(opts)
+  static getProtocolMuxer (stream) {
+    return stream.noiseStream.userData
   }
 
   static createProtocolStream (isInitiator, opts = {}) {
