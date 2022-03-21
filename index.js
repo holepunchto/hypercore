@@ -392,7 +392,7 @@ module.exports = class Hypercore extends EventEmitter {
         }
       }
 
-      this.replicator.signalUpgrade()
+      this.replicator.localUpgrade()
     }
 
     if (bitfield) {

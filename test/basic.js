@@ -185,3 +185,19 @@ test('downloading local range', async function (t) {
 
   t.pass('did not throw')
 })
+
+test('read ahead', async function (t) {
+  t.plan(1)
+
+  const core = new Hypercore(ram, { valueEncoding: 'utf-8' })
+
+  await core.append('a')
+
+  const blk = core.get(1, { wait: true }) // readahead
+
+  await eventFlush()
+
+  await core.append('b')
+
+  t.alike(await blk, 'b')
+})
