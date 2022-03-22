@@ -51,7 +51,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = null
     this.replicator = null
     this.encryption = null
-    this.extensions = opts.extensions || new Map()
+    this.extensions = new Map()
     this.cache = opts.cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (opts.cache || null)
 
     this.valueEncoding = null
@@ -157,7 +157,6 @@ module.exports = class Hypercore extends EventEmitter {
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
-      extensions: this.extensions,
       _opening: this.opening,
       _sessions: this.sessions
     })
@@ -182,12 +181,7 @@ module.exports = class Hypercore extends EventEmitter {
   async _openFromExisting (from, opts) {
     await from.opening
 
-    for (const [name, ext] of this.extensions) {
-      from.extensions.register(name, null, ext)
-    }
-
     this._passCapabilities(from)
-    this.extensions = from.extensions
     this.sessions = from.sessions
     this.storage = from.storage
 
@@ -411,14 +405,14 @@ module.exports = class Hypercore extends EventEmitter {
   _onpeerupdate (added, peer) {
     const name = added ? 'peer-add' : 'peer-remove'
 
-    if (added) {
-      for (const ext of this.extensions.values()) {
-        peer.extensions.set(ext.name, ext)
-      }
-    }
-
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit(name, peer)
+
+      if (added) {
+        for (const ext of this.sessions[i].extensions.values()) {
+          peer.extensions.set(ext.name, ext)
+        }
+      }
     }
   }
 
@@ -610,7 +604,7 @@ module.exports = class Hypercore extends EventEmitter {
       },
       destroy () {
         for (const peer of this.session.peers) {
-          peer.extensions.delete(name)
+          if (peer.extensions.get(name) === ext) peer.extensions.delete(name)
         }
         this.session.extensions.delete(name)
       },
