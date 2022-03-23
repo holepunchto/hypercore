@@ -418,6 +418,32 @@ test('get with { wait: false } returns null if block is not available', async fu
   t.is(await b.get(0), 'a')
 })
 
+test('request cancellation regression', async function (t) {
+  t.plan(1)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  let errored = 0
+
+  // do not connect the two
+
+  b.get(0).catch(onerror)
+  b.get(1).catch(onerror)
+  b.get(2).catch(onerror)
+
+  // No explict api to trigger this (maybe we add a cancel signal / abort controller?) but cancel get(1)
+  b.activeRequests[1].context.detach(b.activeRequests[1])
+
+  await b.close()
+
+  t.is(b.activeRequests.length, 0)
+
+  function onerror () {
+    errored++
+  }
+})
+
 test.skip('can disable downloading from a peer', async function (t) {
   const a = await create()
 
