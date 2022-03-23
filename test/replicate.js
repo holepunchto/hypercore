@@ -419,7 +419,7 @@ test('get with { wait: false } returns null if block is not available', async fu
 })
 
 test('request cancellation regression', async function (t) {
-  t.plan(1)
+  t.plan(2)
 
   const a = await create()
   const b = await create(a.key)
@@ -438,6 +438,7 @@ test('request cancellation regression', async function (t) {
   await b.close()
 
   t.is(b.activeRequests.length, 0)
+  t.is(errored, 3)
 
   function onerror () {
     errored++
