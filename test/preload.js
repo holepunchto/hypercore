@@ -57,7 +57,10 @@ test('preload - sign/storage', async function (t) {
     preload: () => {
       return {
         storage: ram,
-        sign: signable => crypto.sign(signable, keyPair.secretKey)
+        auth: {
+          sign: signable => crypto.sign(signable, keyPair.secretKey),
+          verify: (signable, signature) => crypto.verify(signable, signature, keyPair.publicKey)
+        }
       }
     }
   })

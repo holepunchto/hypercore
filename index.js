@@ -65,7 +65,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opened = false
     this.closed = false
     this.sessions = opts._sessions || [this]
-    this.sign = opts.sign || null
+    this.auth = opts.auth || null
     this.autoClose = !!opts.autoClose
 
     this.closing = null
@@ -168,13 +168,13 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _passCapabilities (o) {
-    if (!this.sign) this.sign = o.sign
+    if (!this.auth) this.auth = o.auth
     this.crypto = o.crypto
     this.key = o.key
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !!this.sign
+    this.writable = !!(this.auth && this.auth.sign)
     this.autoClose = o.autoClose
   }
 
@@ -204,10 +204,12 @@ module.exports = class Hypercore extends EventEmitter {
     // but we only do this to validate the keypair to help catch bugs so yolo
     if (this.key && keyPair) keyPair.publicKey = this.key
 
-    if (opts.sign) {
-      this.sign = opts.sign
+    if (opts.auth) {
+      this.auth = opts.auth
+    } else if (opts.sign) {
+      this.auth = Core.createAuth(this.crypto, keyPair, opts)
     } else if (keyPair && keyPair.secretKey) {
-      this.sign = Core.createSigner(this.crypto, keyPair)
+      this.auth = Core.createAuth(this.crypto, keyPair)
     }
 
     if (isFirst) {
@@ -219,8 +221,8 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    if (!this.sign) this.sign = this.core.defaultSign
-    this.writable = !!this.sign
+    if (!this.auth) this.auth = this.core.defaultAuth
+    this.writable = !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(codecs(opts.valueEncoding))
@@ -249,6 +251,7 @@ module.exports = class Hypercore extends EventEmitter {
       keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
+      auth: opts.auth,
       onupdate: this._oncoreupdate.bind(this)
     })
 
@@ -543,7 +546,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.writable === false) throw new Error('Core is not writable')
 
     if (fork === -1) fork = this.core.tree.fork + 1
-    await this.core.truncate(newLength, fork, this.sign)
+    await this.core.truncate(newLength, fork, this.auth)
 
     // TODO: Should propagate from an event triggered by the oplog
     this.replicator.updateAll()
@@ -565,7 +568,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return await this.core.append(buffers, this.sign, { preappend })
+    return await this.core.append(buffers, this.auth, { preappend })
   }
 
   async treeHash (length) {

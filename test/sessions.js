@@ -47,7 +47,13 @@ test('sessions - writable session with custom sign function', async function (t)
   await core.ready()
   t.absent(core.writable)
 
-  const session = core.session({ sign: signable => crypto.sign(signable, keyPair.secretKey) })
+  const session = core.session({
+    auth: {
+      sign: signable => crypto.sign(signable, keyPair.secretKey),
+      verify: (signable, signature) => crypto.verify(signable, signature, keyPair.publicKey)
+    }
+  })
+
   t.ok(session.writable)
 
   try {

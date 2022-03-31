@@ -153,10 +153,16 @@ test('invalid signature fails', async function (t) {
   t.plan(2)
 
   const a = await create(null, {
-    sign () {
-      return Buffer.alloc(64)
+    auth: {
+      sign () {
+        return Buffer.alloc(64)
+      },
+      verify (s, sig) {
+        return false
+      }
     }
   })
+
   const b = await create(a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
