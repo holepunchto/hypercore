@@ -74,6 +74,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._preappend = preappend.bind(this)
     this._snapshot = opts.snapshot || null
+    this._findingPeers = 0
   }
 
   [inspect] (depth, opts) {
@@ -184,6 +185,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._passCapabilities(from)
     this.sessions = from.sessions
     this.storage = from.storage
+    this.replicator.findingPeers += this._findingPeers
 
     this.sessions.push(this)
   }
@@ -271,6 +273,8 @@ module.exports = class Hypercore extends EventEmitter {
       onupload: this._onupload.bind(this)
     })
 
+    this.replicator.findingPeers += this._findingPeers
+
     if (!this.encryption && opts.encryptionKey) {
       this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
     }
@@ -301,8 +305,11 @@ module.exports = class Hypercore extends EventEmitter {
     for (const ext of gc) ext.destroy()
 
     if (this.replicator !== null) {
+      this.replicator.findingPeers -= this._findingPeers
       this.replicator.clearRequests(this.activeRequests)
     }
+
+    this._findingPeers = 0
 
     if (this.sessions.length) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
@@ -432,6 +439,22 @@ module.exports = class Hypercore extends EventEmitter {
     return null
   }
 
+  findingPeers () {
+    this._findingPeers++
+    if (this.replicator !== null && !this.closing) this.replicator.findingPeers++
+
+    let once = true
+
+    return () => {
+      if (this.closing || !once) return
+      once = false
+      this._findingPeers--
+      if (this.replicator !== null && --this.replicator.findingPeers === 0) {
+        this.replicator.updateAll()
+      }
+    }
+  }
+
   async update (opts) {
     if (this.opened === false) await this.opening
 
@@ -441,6 +464,7 @@ module.exports = class Hypercore extends EventEmitter {
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
+    // TODO: if snapshot, also update the length/byteLength to latest
     return req.promise
   }
 

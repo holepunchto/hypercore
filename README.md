@@ -280,6 +280,13 @@ const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
 
+#### `const done = core.findingPeers()`
+
+Create a hook that tells Hypercore you are finding peers for this core in the background. Call `done` when your current discovery iteration is done.
+If you're using Hyperswarm, you'd normally call this after a `swarm.flush()` finishes.
+
+This allows `core.update` to wait for either the `findingPeers` hook to finish or one peer to appear before deciding whether it should wait for a merkle tree update before returning.
+
 #### `core.on('append')`
 
 Emitted when the core has been appended to (i.e. has a new length / byteLength), either locally or remotely.

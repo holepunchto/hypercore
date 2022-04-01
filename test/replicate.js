@@ -451,6 +451,46 @@ test('request cancellation regression', async function (t) {
   }
 })
 
+test('findingPeers makes update wait for first peer', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append('hi')
+
+  t.is(await b.update(), false)
+
+  const done = b.findingPeers()
+
+  const u = b.update()
+  await eventFlush()
+
+  replicate(a, b, t)
+
+  t.is(await u, true)
+  done()
+})
+
+test('findingPeers + done makes update return false if no peers', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append('hi')
+
+  t.is(await b.update(), false)
+
+  const done = b.findingPeers()
+
+  const u = b.update()
+  await eventFlush()
+
+  done()
+  t.is(await u, false)
+})
+
 test.skip('can disable downloading from a peer', async function (t) {
   const a = await create()
 
