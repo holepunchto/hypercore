@@ -124,7 +124,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
       if (opts.keepAlive !== false) {
         noiseStream.setKeepAlive(5000)
-        noiseStream.setTimeout(7000)
+        noiseStream.setTimeout(10000)
       }
       noiseStream.userData = protocol
     }
