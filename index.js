@@ -329,6 +329,13 @@ module.exports = class Hypercore extends EventEmitter {
     const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
 
+    // If the user wants to, we can make this replication run in a session
+    // that way the core wont close "under them" during replication
+    if (opts.session) {
+      const s = this.session()
+      protocolStream.on('close', () => s.close().catch(noop))
+    }
+
     if (this.opened) {
       this.replicator.attachTo(protocol)
     } else {
