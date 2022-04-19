@@ -393,21 +393,28 @@ module.exports = class Hypercore extends EventEmitter {
 
   _oncoreupdate (status, bitfield, value, from) {
     if (status !== 0) {
+      const truncated = (status & 0b10) !== 0
+      const appended = (status & 0b01) !== 0
+
+      if (truncated) {
+        this.replicator.ontruncate(bitfield.start)
+      }
+
       for (let i = 0; i < this.sessions.length; i++) {
-        if ((status & 0b10) !== 0) {
+        if (truncated) {
           if (this.cache) this.cache.clear()
           this.sessions[i].emit('truncate', bitfield.start, this.core.tree.fork)
         }
-        if ((status & 0b01) !== 0) {
+        if (appended) {
           this.sessions[i].emit('append')
         }
       }
 
-      this.replicator.localUpgrade()
+      this.replicator.onupgrade()
     }
 
     if (bitfield) {
-      this.replicator.broadcastRange(bitfield.start, bitfield.length, bitfield.drop)
+      this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
     }
 
     if (value) {
