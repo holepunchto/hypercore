@@ -145,8 +145,8 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  snapshot () {
-    return this.session({ snapshot: true })
+  snapshot (opts) {
+    return this.session({ ...opts, snapshot: true })
   }
 
   session (opts = {}) {
@@ -289,7 +289,8 @@ module.exports = class Hypercore extends EventEmitter {
     const next = this._snapshot = {
       length: this.core.tree.length,
       byteLength: this.core.tree.byteLength,
-      fork: this.core.tree.fork
+      fork: this.core.tree.fork,
+      compatLength: this.core.tree.length
     }
 
     if (!prev) return true
@@ -415,12 +416,17 @@ module.exports = class Hypercore extends EventEmitter {
       }
 
       for (let i = 0; i < this.sessions.length; i++) {
+        const s = this.sessions[i]
+
         if (truncated) {
-          if (this.cache) this.cache.clear()
-          this.sessions[i].emit('truncate', bitfield.start, this.core.tree.fork)
+          if (s.cache) s.cache.clear()
+          s.emit('truncate', bitfield.start, this.core.tree.fork)
+          // If snapshotted, make sure to update our compat so we can fail gets
+          if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
         }
+
         if (appended) {
-          this.sessions[i].emit('append')
+          s.emit('append')
         }
       }
 
@@ -527,6 +533,7 @@ module.exports = class Hypercore extends EventEmitter {
   async get (index, opts) {
     if (this.opened === false) await this.opening
     if (this.closing !== null) throw new Error('Session is closed')
+    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw new Error('Snapshot not available')
 
     const c = this.cache && this.cache.get(index)
     if (c) return c
