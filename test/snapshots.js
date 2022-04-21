@@ -1,4 +1,4 @@
-const { create } = require('./helpers')
+const { create, createStored } = require('./helpers')
 const test = require('brittle')
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
@@ -48,6 +48,59 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 
   await range2.downloaded()
   t.pass('remote range finished')
+})
+
+test('snapshots wait for ready', async function (t) {
+  t.plan(10)
+
+  const create = createStored()
+
+  const core = create()
+  const s1 = core.snapshot()
+
+  await core.append('block #0.0')
+  await core.append('block #1.0')
+
+  const s2 = core.snapshot()
+
+  await core.append('block #2.0')
+
+  t.is(s1.length, 0, 'empty snapshot')
+  t.is(s2.length, 2, 'set after ready')
+
+  await core.append('block #3.0')
+
+  // check that they are static
+  t.is(s1.length, 0, 'is static')
+  t.is(s2.length, 2, 'is static')
+
+  await s1.update()
+  await s2.update()
+
+  // check that they can be updated
+  t.is(s1.length, 4, 'explictly updated')
+  t.is(s2.length, 4, 'explictly updated')
+
+  await core.close()
+
+  const coreCopy = create()
+
+  // if a snapshot is made on an opening core, it should wait until opened
+  const s3 = coreCopy.snapshot()
+
+  await s3.ready()
+
+  t.is(s3.length, 4, 'waited for ready')
+
+  const s4 = coreCopy.snapshot()
+
+  t.is(s4.length, 4, 'sync but opened')
+
+  await s3.update()
+  await s4.update()
+
+  t.is(s3.length, 4, 'no changes')
+  t.is(s4.length, 4, 'no changes')
 })
 
 function replicate (a, b) {

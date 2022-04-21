@@ -8,6 +8,21 @@ module.exports = {
     return core
   },
 
+  createStored () {
+    const files = new Map()
+
+    return function (...args) {
+      return new Hypercore(storage, ...args)
+    }
+
+    function storage (name) {
+      if (files.has(name)) return files.get(name).clone()
+      const st = ram()
+      files.set(name, st)
+      return st
+    }
+  },
+
   replicate (a, b, t) {
     const s1 = a.replicate(true, { keepAlive: false })
     const s2 = b.replicate(false, { keepAlive: false })

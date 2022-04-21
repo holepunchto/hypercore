@@ -64,6 +64,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = false
     this.opened = false
     this.closed = false
+    this.snapshotted = !!opts.snapshot
     this.sessions = opts._sessions || [this]
     this.auth = opts.auth || null
     this.autoClose = !!opts.autoClose
@@ -73,7 +74,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opening.catch(noop)
 
     this._preappend = preappend.bind(this)
-    this._snapshot = opts.snapshot || null
+    this._snapshot = null
     this._findingPeers = 0
   }
 
@@ -145,7 +146,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   snapshot () {
-    return this.session({ snapshot: { length: this.length, byteLength: this.byteLength, fork: this.fork } })
+    return this.session({ snapshot: true })
   }
 
   session (opts = {}) {
@@ -170,6 +171,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   _passCapabilities (o) {
     if (!this.auth) this.auth = o.auth
+
     this.crypto = o.crypto
     this.key = o.key
     this.core = o.core
@@ -177,6 +179,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = !!(this.auth && this.auth.sign)
     this.autoClose = o.autoClose
+
+    if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
   async _openFromExisting (from, opts) {
@@ -280,6 +284,18 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
+  _updateSnapshot () {
+    const prev = this._snapshot
+    const next = this._snapshot = {
+      length: this.core.tree.length,
+      byteLength: this.core.tree.byteLength,
+      fork: this.core.tree.fork
+    }
+
+    if (!prev) return true
+    return prev.length !== next.length || prev.fork !== next.fork
+  }
+
   close () {
     if (this.closing) return this.closing
     this.closing = this._close()
@@ -362,9 +378,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get fork () {
-    return this._snapshot
-      ? this._snapshot.fork
-      : (this.core === null ? 0 : this.core.tree.fork)
+    return this.core === null ? 0 : this.core.tree.fork
   }
 
   get peers () {
@@ -471,15 +485,21 @@ module.exports = class Hypercore extends EventEmitter {
 
   async update (opts) {
     if (this.opened === false) await this.opening
+    if (this.closing !== null) return false
 
     // TODO: add an option where a writer can bootstrap it's state from the network also
-    if (this.writable || this.closing !== null) return false
+    if (this.writable) {
+      if (!this.snapshotted) return false
+      return this._updateSnapshot()
+    }
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
-    // TODO: if snapshot, also update the length/byteLength to latest
-    return req.promise
+    if (!this.snapshotted) return req.promise
+    if (!(await req.promise)) return false
+
+    return this._updateSnapshot()
   }
 
   async seek (bytes, opts) {
