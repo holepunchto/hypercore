@@ -84,15 +84,40 @@ module.exports = class Hypercore extends EventEmitter {
       while (indent.length < opts.indentationLvl) indent += ' '
     }
 
+    let peers = ''
+    const min = Math.min(this.peers.length, 5)
+
+    for (let i = 0; i < min; i++) {
+      const peer = this.peers[i]
+
+      peers += indent + '    Peer(\n'
+      peers += indent + '      remotePublicKey: ' + opts.stylize(toHex(peer.remotePublicKey), 'string') + '\n'
+      peers += indent + '      remoteLength: ' + opts.stylize(peer.remoteLength, 'number') + '\n'
+      peers += indent + '      remoteFork: ' + opts.stylize(peer.remoteFork, 'number') + '\n'
+      peers += indent + '      remoteCanUpgrade: ' + opts.stylize(peer.remoteCanUpgrade, 'boolean') + '\n'
+      peers += indent + '    )' + '\n'
+    }
+
+    if (this.peers.length > 5) {
+      peers += indent + '  ... and ' + (this.peers.length - 5) + ' more\n'
+    }
+
+    if (peers) peers = '[\n' + peers + indent + '  ]'
+    else peers = '[ ' + opts.stylize(0, 'number') + ' ]'
+
     return this.constructor.name + '(\n' +
-      indent + '  key: ' + opts.stylize((toHex(this.key)), 'string') + '\n' +
+      indent + '  key: ' + opts.stylize(toHex(this.key), 'string') + '\n' +
       indent + '  discoveryKey: ' + opts.stylize(toHex(this.discoveryKey), 'string') + '\n' +
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
+      indent + '  closed: ' + opts.stylize(this.closed, 'boolean') + '\n' +
+      indent + '  snapshotted: ' + opts.stylize(this.snapshotted, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
-      indent + '  sessions: ' + opts.stylize(this.sessions.length, 'number') + '\n' +
-      indent + '  peers: [ ' + opts.stylize(this.peers.length, 'number') + ' ]\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
+      indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
+      indent + '  sessions: [ ' + opts.stylize(this.sessions.length, 'number') + ' ]\n' +
+      indent + '  activeRequests: [ ' + opts.stylize(this.activeRequests.length, 'number') + ' ]\n' +
+      indent + '  peers: ' + peers + '\n' +
       indent + ')'
   }
 
