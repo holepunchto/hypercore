@@ -174,7 +174,7 @@ test('invalid signature fails', async function (t) {
   })
 
   s2.on('error', (err) => {
-    t.is(err.message, 'Remote signature does not match')
+    t.is(err.code, 'INVALID_SIGNATURE')
   })
 
   return new Promise((resolve) => {
@@ -206,7 +206,7 @@ test('invalid capability fails', async function (t) {
   })
 
   s2.on('error', (err) => {
-    t.is(err.message, 'Remote sent an invalid capability')
+    t.is(err.code, 'INVALID_CAPABILITY')
   })
 
   return new Promise((resolve) => {
