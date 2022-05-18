@@ -1,5 +1,5 @@
-const { create, createStored } = require('./helpers')
 const test = require('brittle')
+const { replicate, unreplicate, create, createStored } = require('./helpers')
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
@@ -19,7 +19,7 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   await core.append('block #1.0')
   await core.append('block #2.0')
 
-  const r1 = replicate(core, clone)
+  const r1 = replicate(core, clone, t)
 
   t.is(await clone.get(0), 'block #0.0')
 
@@ -36,7 +36,7 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   await core.append('block #2.1')
   await core.append('block #3.1')
 
-  replicate(core, clone)
+  replicate(core, clone, t)
 
   t.is(await p2, 'block #1.0')
   t.exception(p3, 'should fail cause snapshot not available')
@@ -113,7 +113,7 @@ test('snapshots are consistent', async function (t) {
   await core.append('block #1.0')
   await core.append('block #2.0')
 
-  replicate(clone, core)
+  replicate(clone, core, t)
 
   await clone.update()
   const snapshot = clone.snapshot({ valueEncoding: 'utf-8' })
@@ -133,23 +133,3 @@ test('snapshots are consistent', async function (t) {
   t.exception(snapshot.get(2))
   t.is(await b, 'block #0.0')
 })
-
-function replicate (a, b) {
-  const s1 = a.replicate(true)
-  const s2 = b.replicate(false)
-
-  s1.pipe(s2).pipe(s1)
-
-  return [s1, s2]
-}
-
-function unreplicate (streams) {
-  const ps = streams.map(s => {
-    return new Promise((resolve) => {
-      s.on('error', () => {})
-      s.on('close', resolve)
-      s.destroy()
-    })
-  })
-  return Promise.all(ps)
-}

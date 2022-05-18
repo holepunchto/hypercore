@@ -245,6 +245,12 @@ How much data is available on this core in bytes?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
+#### `core.contiguousLength`
+
+How many blocks are contiguously available starting from the first block of this core?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
 #### `core.fork`
 
 What is the current fork id of this core?

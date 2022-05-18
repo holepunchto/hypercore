@@ -15,8 +15,7 @@ test('storage layout', async function (t) {
     await core.append(Buffer.from([i]))
   }
 
-  t.snapshot(core.core.blocks.storage.toBuffer().toString('base64'), 'blocks')
-  t.snapshot(core.core.tree.storage.toBuffer().toString('base64'), 'tree')
+  snapshot(t, core)
 })
 
 test('encrypted storage layout', async function (t) {
@@ -26,6 +25,11 @@ test('encrypted storage layout', async function (t) {
     await core.append(Buffer.from([i]))
   }
 
+  snapshot(t, core)
+})
+
+function snapshot (t, core) {
   t.snapshot(core.core.blocks.storage.toBuffer().toString('base64'), 'blocks')
   t.snapshot(core.core.tree.storage.toBuffer().toString('base64'), 'tree')
-})
+  t.snapshot(core.core.oplog.storage.toBuffer().toString('base64'), 'oplog')
+}

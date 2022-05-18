@@ -426,6 +426,10 @@ module.exports = class Hypercore extends EventEmitter {
       : (this.core === null ? 0 : this.core.tree.byteLength - (this.core.tree.length * this.padding))
   }
 
+  get contiguousLength () {
+    return this.core === null ? 0 : this.core.header.contiguousLength
+  }
+
   get fork () {
     return this.core === null ? 0 : this.core.tree.fork
   }
