@@ -121,3 +121,29 @@ test('encrypted session before ready core', async function (t) {
   await a.append(['hello'])
   t.alike(await s.get(0), Buffer.from('hello'))
 })
+
+test('encrypted session on unencrypted core', async function (t) {
+  const a = await create()
+  const s = a.session({ encryptionKey })
+
+  await s.append(['hello'])
+
+  const unencrypted = await s.get(0)
+  t.alike(unencrypted, Buffer.from('hello'))
+
+  const encrypted = await a.get(0)
+  t.absent(encrypted.includes('hello'))
+})
+
+test('encrypted session on encrypted core, different keys', async function (t) {
+  const a = await create({ encryptionKey: Buffer.alloc(32, 'a') })
+  const s = a.session({ encryptionKey: Buffer.alloc(32, 's') })
+
+  await s.append(['hello'])
+
+  const unencrypted = await s.get(0)
+  t.alike(unencrypted, Buffer.from('hello'))
+
+  const encrypted = await a.get(0)
+  t.absent(encrypted.includes('hello'))
+})
