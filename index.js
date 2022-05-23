@@ -191,6 +191,9 @@ module.exports = class Hypercore extends EventEmitter {
 
     s._passCapabilities(this)
 
+    // Pass on the cache unless explicitly disabled.
+    if (opts.cache !== false) s.cache = this.cache
+
     if (opts.encryptionKey) {
       // Only override the block encryption if its either not already set or if
       // the caller provided a different key.
@@ -587,12 +590,10 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
-    const c = this.cache && this.cache.get(index)
-    if (c) return c
-    const fork = this.core.tree.fork
-    const b = await this._get(index, opts)
-    if (this.cache && fork === this.core.tree.fork && b) this.cache.set(index, b)
-    return b
+    const block = this.cache && this.cache.get(index)
+    if (block) return block
+
+    return this._get(index, opts)
   }
 
   async _get (index, opts) {
@@ -601,19 +602,45 @@ module.exports = class Hypercore extends EventEmitter {
     let block
 
     if (this.core.bitfield.get(index)) {
-      block = await this.core.blocks.get(index)
+      block = this._decryptAndDecode(
+        index,
+        this.core.tree.fork,
+        this.core.blocks.get(index),
+        encoding
+      )
+
+      if (this.cache) this.cache.set(index, block)
     } else {
       if (opts && opts.wait === false) return null
       if (opts && opts.onwait) opts.onwait(index)
 
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-      const req = this.replicator.addBlock(activeRequests, index)
 
-      block = await req.promise
+      block = this._decryptAndDecode(
+        index,
+        this.core.tree.fork,
+        this.replicator
+          .addBlock(activeRequests, index)
+          .promise,
+        encoding
+      )
     }
 
+    return block
+  }
+
+  async _decryptAndDecode (index, fork, req, encoding) {
+    const block = await req
+
     if (this.encryption) this.encryption.decrypt(index, block)
-    return this._decode(encoding, block)
+
+    const value = this._decode(encoding, block)
+
+    if (this.cache && fork === this.core.tree.fork) {
+      this.cache.set(index, Promise.resolve(value))
+    }
+
+    return value
   }
 
   createReadStream (opts) {
@@ -765,7 +792,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _decode (enc, block) {
-    block = block.subarray(this.padding)
+    if (this.padding) block = block.subarray(this.padding)
     if (enc) return c.decode(enc, block)
     return block
   }
