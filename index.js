@@ -590,57 +590,57 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
-    const block = this.cache && this.cache.get(index)
-    if (block) return block
+    const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
 
-    return this._get(index, opts)
+    let req = this.cache && this.cache.get(index)
+    if (!req) req = this._get(index, opts)
+
+    let block = await req
+    if (!block) return null
+
+    if (this.encryption) {
+      // Copy the block as it might be shared with other sessions.
+      block = b4a.from(block)
+
+      this.encryption.decrypt(index, block)
+    }
+
+    return this._decode(encoding, block)
   }
 
   async _get (index, opts) {
-    const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
-
-    let block
+    let req
 
     if (this.core.bitfield.get(index)) {
-      block = this._decryptAndDecode(
-        index,
-        this.core.tree.fork,
-        this.core.blocks.get(index),
-        encoding
-      )
+      req = this.core.blocks.get(index)
 
-      if (this.cache) this.cache.set(index, block)
+      if (this.cache) this.cache.set(index, req)
     } else {
       if (opts && opts.wait === false) return null
       if (opts && opts.onwait) opts.onwait(index)
 
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-      block = this._decryptAndDecode(
+      req = this._cacheOnResolve(
         index,
-        this.core.tree.fork,
         this.replicator
           .addBlock(activeRequests, index)
           .promise,
-        encoding
+        this.core.tree.fork
       )
     }
 
-    return block
+    return req
   }
 
-  async _decryptAndDecode (index, fork, req, encoding) {
+  async _cacheOnResolve (index, req, fork) {
     const block = await req
 
-    if (this.encryption) this.encryption.decrypt(index, block)
-
-    const value = this._decode(encoding, block)
-
     if (this.cache && fork === this.core.tree.fork) {
-      this.cache.set(index, Promise.resolve(value))
+      this.cache.set(index, Promise.resolve(block))
     }
 
-    return value
+    return block
   }
 
   createReadStream (opts) {

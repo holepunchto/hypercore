@@ -69,3 +69,16 @@ test('cache on replicate', async function (t) {
 
   t.is(await p, await r, 'blocks are identical')
 })
+
+test('session cache with different encodings', async function (t) {
+  const a = await create({ cache: true })
+  await a.append(['a', 'b', 'c'])
+
+  const s = a.session({ valueEncoding: 'utf-8' })
+
+  const p = a.get(0)
+  const q = s.get(0)
+
+  t.alike(await p, Buffer.from('a'))
+  t.is(await q, 'a')
+})
