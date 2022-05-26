@@ -184,3 +184,16 @@ test('multiple gets to replicated, encrypted block', async function (t) {
   t.alike(await p, await q)
   t.alike(await p, Buffer.from('a'))
 })
+
+test('encrypted core from existing unencrypted core', async function (t) {
+  const a = await create({ encryptionKey: Buffer.alloc(32, 'a') })
+  const b = await create({ from: a, encryptionKey })
+
+  t.alike(b.key, a.key)
+  t.alike(b.encryptionKey, encryptionKey)
+
+  await b.append(['hello'])
+
+  const unencrypted = await b.get(0)
+  t.alike(unencrypted, Buffer.from('hello'))
+})
