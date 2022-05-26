@@ -573,3 +573,28 @@ test('contiguous length after fork', async function (t) {
   await b.download({ start: 0, end: a.length }).downloaded()
   t.is(b.contiguousLength, 3, 'b has all blocks after fork')
 })
+
+test('one inflight request to a peer per block', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  let uploads = 0
+  a.on('upload', function (index) {
+    if (index === 2) uploads++
+  })
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t)
+
+  await eventFlush()
+
+  const r1 = b.get(2)
+  await Promise.resolve()
+  const r2 = b.get(2)
+
+  await r1
+  await r2
+
+  t.is(uploads, 1)
+})
