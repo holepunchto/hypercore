@@ -21,7 +21,7 @@ test('basic replication', async function (t) {
   t.is(d, 5)
 })
 
-test.skip('basic replication from fork', async function (t) {
+test('basic replication from fork', async function (t) {
   const a = await create()
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -45,7 +45,7 @@ test.skip('basic replication from fork', async function (t) {
   t.is(a.fork, b.fork)
 })
 
-test.skip('eager replication from bigger fork', async function (t) {
+test('eager replication from bigger fork', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
@@ -109,7 +109,7 @@ test('bigger download range', async function (t) {
   t.end()
 })
 
-test.skip('high latency reorg', async function (t) {
+test('high latency reorg', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
