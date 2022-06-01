@@ -62,6 +62,7 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
+  sparse: true, // enable sparse mode, counting unavailable blocks towards core.length and core.byteLength
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
@@ -235,19 +236,25 @@ Buffer containing the optional block encryption key of this core. Will be `null`
 
 #### `core.length`
 
-How many blocks of data are available on this core?
+How many blocks of data are available on this core? If `sparse: false`, this will equal `core.contiguousLength`.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `core.byteLength`
 
-How much data is available on this core in bytes?
+How much data is available on this core in bytes? If `sparse: false`, this will equal `core.contiguousByteLength`.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `core.contiguousLength`
 
 How many blocks are contiguously available starting from the first block of this core?
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `core.contiguousByteLength`
+
+How much data is contiguously available starting from the first block of this core?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 

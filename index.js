@@ -66,6 +66,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opened = false
     this.closed = false
     this.snapshotted = !!opts.snapshot
+    this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
     this.auth = opts.auth || null
     this.autoClose = !!opts.autoClose
@@ -271,6 +272,9 @@ module.exports = class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
+    // Start continous replication if not in sparse mode.
+    if (!this.sparse) this.download({ start: 0, end: -1 })
+
     // This is a hidden option that's only used by Corestore.
     // It's required so that corestore can load a name from userData before 'ready' is emitted.
     if (opts._preready) await opts._preready(this)
@@ -411,19 +415,25 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get length () {
-    return this._snapshot
-      ? this._snapshot.length
-      : (this.core === null ? 0 : this.core.tree.length)
+    if (this._snapshot) return this._snapshot.length
+    if (this.core === null) return 0
+    if (!this.sparse) return this.contiguousLength
+    return this.core.tree.length
   }
 
   get byteLength () {
-    return this._snapshot
-      ? this._snapshot.byteLength
-      : (this.core === null ? 0 : this.core.tree.byteLength - (this.core.tree.length * this.padding))
+    if (this._snapshot) return this._snapshot.byteLength
+    if (this.core === null) return 0
+    if (!this.sparse) return this.contiguousByteLength
+    return this.core.tree.byteLength - (this.core.tree.length * this.padding)
   }
 
   get contiguousLength () {
     return this.core === null ? 0 : this.core.header.contiguousLength
+  }
+
+  get contiguousByteLength () {
+    return 0
   }
 
   get fork () {

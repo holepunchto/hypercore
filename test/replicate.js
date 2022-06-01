@@ -598,3 +598,20 @@ test('one inflight request to a peer per block', async function (t) {
 
   t.is(uploads, 1)
 })
+
+test('non-sparse replication', async function (t) {
+  t.plan(6)
+
+  const a = await create()
+  const b = await create(a.key, { sparse: false })
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t)
+
+  b
+    .once('download', () => t.is(b.core.tree.length, 5))
+    .on('download', (i) => {
+      t.is(b.length, b.contiguousLength, `block ${i}`)
+    })
+})
