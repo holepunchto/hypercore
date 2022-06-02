@@ -1,4 +1,5 @@
 const test = require('brittle')
+const Xache = require('xache')
 const { create, replicate } = require('./helpers')
 
 test('cache', async function (t) {
@@ -11,7 +12,7 @@ test('cache', async function (t) {
   t.is(await p, await q, 'blocks are identical')
 })
 
-test('session cache', async function (t) {
+test('session cache inheritance', async function (t) {
   const a = await create({ cache: true })
   await a.append(['a', 'b', 'c'])
 
@@ -33,6 +34,20 @@ test('session cache opt-out', async function (t) {
   const q = s.get(0)
 
   t.not(await p, await q, 'blocks are not identical')
+})
+
+test('session cache override', async function (t) {
+  const a = await create({ cache: true })
+  await a.append(['a', 'b', 'c'])
+
+  const s = a.session({ cache: new Xache({ maxSize: 64, maxAge: 0 }) })
+
+  const p = a.get(0)
+  const q = s.get(0)
+  const r = s.get(0)
+
+  t.not(await p, await q, 'blocks are not identical')
+  t.is(await q, await r, 'blocks are identical')
 })
 
 test('clear cache on truncate', async function (t) {

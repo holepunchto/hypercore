@@ -191,8 +191,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     s._passCapabilities(this)
 
-    // Pass on the cache unless explicitly disabled.
-    if (opts.cache !== false) s.cache = this.cache
+    // Configure the cache unless explicitly disabled.
+    if (opts.cache !== false) {
+      s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
+    }
 
     ensureEncryption(s, opts)
 
