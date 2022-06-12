@@ -600,7 +600,7 @@ test('one inflight request to a peer per block', async function (t) {
 })
 
 test('non-sparse replication', async function (t) {
-  t.plan(6)
+  t.plan(2)
 
   const a = await create()
   const b = await create(a.key, { sparse: false })
@@ -609,9 +609,32 @@ test('non-sparse replication', async function (t) {
 
   replicate(a, b, t)
 
+  const download = t.test('download')
+
+  let contiguousLength = 0
+
   b
-    .once('download', () => t.is(b.core.tree.length, 5))
+    // The tree length should be updated to the full length when the first block
+    // is downloaded.
+    .once('download', () => download.is(b.core.tree.length, 5))
+
+    // When blocks are downloaded, the reported length should always match the
+    // contiguous length.
     .on('download', (i) => {
-      t.is(b.length, b.contiguousLength, `block ${i}`)
+      download.is(b.length, b.contiguousLength, `block ${i}`)
     })
+
+    // Appends should only be emitted when the contiguous length is updated and
+    // never when it's zero.
+    .on('append', () => {
+      if (contiguousLength >= b.contiguousLength) {
+        download.fail('append emitted before contiguous length updated')
+      }
+
+      contiguousLength = b.contiguousLength
+    })
+
+  await download
+
+  t.is(contiguousLength, b.length)
 })
