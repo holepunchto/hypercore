@@ -113,6 +113,7 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  closed: ' + opts.stylize(this.closed, 'boolean') + '\n' +
       indent + '  snapshotted: ' + opts.stylize(this.snapshotted, 'boolean') + '\n' +
+      indent + '  sparse: ' + opts.stylize(this.sparse, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
@@ -182,9 +183,11 @@ module.exports = class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
+    const sparse = opts.sparse === false ? false : this.sparse
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
+      sparse,
       _opening: this.opening,
       _sessions: this.sessions
     })
@@ -324,14 +327,27 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
+  _getSnapshot () {
+    if (this.sparse) {
+      return {
+        length: this.core.tree.length,
+        byteLength: this.core.tree.byteLength,
+        fork: this.core.tree.fork,
+        compatLength: this.core.tree.length
+      }
+    }
+
+    return {
+      length: this.core.header.contiguousLength,
+      byteLength: 0,
+      fork: this.core.tree.fork,
+      compatLength: this.core.header.contiguousLength
+    }
+  }
+
   _updateSnapshot () {
     const prev = this._snapshot
-    const next = this._snapshot = {
-      length: this.core.tree.length,
-      byteLength: this.core.tree.byteLength,
-      fork: this.core.tree.fork,
-      compatLength: this.core.tree.length
-    }
+    const next = this._snapshot = this._getSnapshot()
 
     if (!prev) return true
     return prev.length !== next.length || prev.fork !== next.fork
