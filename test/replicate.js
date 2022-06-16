@@ -726,3 +726,15 @@ test('download range resolves immediately if no peers', async function (t) {
 
   t.pass('range resolved')
 })
+
+test('download available blocks on non-sparse update', async function (t) {
+  const a = await create()
+  const b = await create(a.key, { sparse: false })
+
+  replicate(a, b, t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  await b.update()
+
+  t.is(b.contiguousLength, 5)
+})
