@@ -736,5 +736,48 @@ test('download available blocks on non-sparse update', async function (t) {
   await a.append(['a', 'b', 'c', 'd', 'e'])
   await b.update()
 
-  t.is(b.contiguousLength, 5)
+  t.is(b.contiguousLength, b.length)
+})
+
+test('non-sparse snapshot during replication', async function (t) {
+  const a = await create()
+  const b = await create(a.key, { sparse: false })
+
+  replicate(a, b, t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  await b.update()
+
+  const s = b.snapshot()
+
+  await a.append(['f', 'g', 'h', 'i', 'j'])
+  await s.update()
+
+  t.is(s.contiguousLength, s.length)
+})
+
+test('non-sparse snapshot during partial replication', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+  const c = await create(a.key, { sparse: false })
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  await b.download({ start: 0, end: 3 }).downloaded()
+  await c.update()
+
+  const s = c.snapshot()
+  t.is(s.contiguousLength, s.length)
+
+  await s.update()
+  t.is(s.contiguousLength, s.length)
+
+  await b.download({ start: 3, end: 5 }).downloaded()
+  t.is(s.contiguousLength, s.length)
+
+  await s.update()
+  t.is(s.contiguousLength, s.length)
 })

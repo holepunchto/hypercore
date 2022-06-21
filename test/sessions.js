@@ -2,6 +2,7 @@ const test = require('brittle')
 const ram = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 const codecs = require('codecs')
+const { create } = require('./helpers')
 
 const Hypercore = require('../')
 
@@ -211,4 +212,11 @@ test('sessions - custom preload hook on first/later sessions', async function (t
   await core2.ready()
 
   await preloadsTest
+})
+
+test('session inherits non-sparse setting', async function (t) {
+  const a = await create({ sparse: false })
+  const s = a.session()
+
+  t.is(s.sparse, false)
 })
