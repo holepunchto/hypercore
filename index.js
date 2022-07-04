@@ -185,10 +185,12 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const sparse = opts.sparse === false ? false : this.sparse
+    const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
       sparse,
+      onwait,
       _opening: this.opening,
       _sessions: this.sessions
     })
