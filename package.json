@@ -32,7 +32,7 @@
     "lib/**.js"
   ],
   "dependencies": {
-    "@hyperswarm/secret-stream": "^5.2.0",
+    "@hyperswarm/secret-stream": "^6.0.0",
     "b4a": "^1.1.0",
     "big-sparse-array": "^1.0.2",
     "codecs": "^3.0.0",
