@@ -48,7 +48,7 @@
     "safety-catch": "^1.0.1",
     "sodium-universal": "^3.0.4",
     "streamx": "^2.12.4",
-    "xache": "^1.0.0"
+    "xache": "^1.1.0"
   },
   "devDependencies": {
     "brittle": "^2.0.0",
