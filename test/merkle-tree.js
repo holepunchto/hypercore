@@ -1,6 +1,6 @@
 const test = require('brittle')
 const Tree = require('../lib/merkle-tree')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 
 test('nodes', async function (t) {
   const tree = await create()
@@ -590,7 +590,7 @@ async function reorg (local, remote) {
 }
 
 async function create (length = 0) {
-  const tree = await Tree.open(ram())
+  const tree = await Tree.open(new RAM())
   const b = tree.batch()
   for (let i = 0; i < length; i++) {
     b.append(Buffer.from('#' + i))

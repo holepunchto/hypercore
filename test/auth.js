@@ -1,5 +1,5 @@
 const test = require('brittle')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 const sodium = require('sodium-universal')
 const b4a = require('b4a')
@@ -29,14 +29,14 @@ test('multisig hypercore', async function (t) {
     }
   }
 
-  const a = new Hypercore(ram, null, {
+  const a = new Hypercore(RAM, null, {
     valueEncoding: 'utf-8',
     auth
   })
 
   await a.ready()
 
-  const b = new Hypercore(ram, a.key, {
+  const b = new Hypercore(RAM, a.key, {
     valueEncoding: 'utf-8',
     auth
   })
@@ -110,14 +110,14 @@ test('multisig hypercore with instance and extension', async function (t) {
   const aKey = crypto.keyPair()
   const bKey = crypto.keyPair()
 
-  const a = new Hypercore(ram, null, {
+  const a = new Hypercore(RAM, null, {
     valueEncoding: 'utf-8',
     auth: new MultiSigAuth(aKey.publicKey, bKey.publicKey, { keyPair: aKey })
   })
 
   await a.ready()
 
-  const b = new Hypercore(ram, a.key, {
+  const b = new Hypercore(RAM, a.key, {
     valueEncoding: 'utf-8',
     auth: new MultiSigAuth(bKey.publicKey, aKey.publicKey, { keyPair: bKey })
   })
@@ -193,14 +193,14 @@ test('proof-of-work hypercore', async function (t) {
     }
   }
 
-  const a = new Hypercore(ram, null, {
+  const a = new Hypercore(RAM, null, {
     valueEncoding: 'utf-8',
     auth
   })
 
   await a.ready()
 
-  const b = new Hypercore(ram, a.key, {
+  const b = new Hypercore(RAM, a.key, {
     valueEncoding: 'utf-8',
     auth
   })
@@ -224,7 +224,7 @@ test('core using custom sign fn', async function (t) {
 
   const keyPair = crypto.keyPair()
 
-  const a = new Hypercore(ram, null, {
+  const a = new Hypercore(RAM, null, {
     valueEncoding: 'utf-8',
     sign: (signable) => crypto.sign(signable, keyPair.secretKey),
     keyPair: {
@@ -234,7 +234,7 @@ test('core using custom sign fn', async function (t) {
 
   await a.ready()
 
-  const b = new Hypercore(ram, a.key, { valueEncoding: 'utf-8' })
+  const b = new Hypercore(RAM, a.key, { valueEncoding: 'utf-8' })
   await b.ready()
 
   await a.append(['a', 'b', 'c', 'd', 'e'])

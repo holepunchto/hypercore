@@ -1,8 +1,8 @@
 const Hypercore = require('../../')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 
 exports.create = async function create (...args) {
-  const core = new Hypercore(ram, ...args)
+  const core = new Hypercore(RAM, ...args)
   await core.ready()
   return core
 }
@@ -16,7 +16,7 @@ exports.createStored = function createStored () {
 
   function storage (name) {
     if (files.has(name)) return files.get(name).clone()
-    const st = ram()
+    const st = new RAM()
     files.set(name, st)
     return st
   }

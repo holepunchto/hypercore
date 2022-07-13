@@ -1,5 +1,5 @@
 const test = require('brittle')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 const codecs = require('codecs')
 const { create } = require('./helpers')
@@ -10,7 +10,7 @@ test('sessions - can create writable sessions from a read-only core', async func
   t.plan(5)
 
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(ram, keyPair.publicKey, {
+  const core = new Hypercore(RAM, keyPair.publicKey, {
     valueEncoding: 'utf-8'
   })
   await core.ready()
@@ -42,7 +42,7 @@ test('sessions - writable session with custom sign function', async function (t)
   t.plan(5)
 
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(ram, keyPair.publicKey, {
+  const core = new Hypercore(RAM, keyPair.publicKey, {
     valueEncoding: 'utf-8'
   })
   await core.ready()
@@ -82,7 +82,7 @@ test('sessions - writable session with invalid keypair throws', async function (
   const keyPair2 = crypto.keyPair()
 
   try {
-    const core = new Hypercore(ram, keyPair2.publicKey) // Create a new core in read-only mode.
+    const core = new Hypercore(RAM, keyPair2.publicKey) // Create a new core in read-only mode.
     const session = core.session({ keyPair: keyPair1 })
     await session.ready()
     t.fail('invalid keypair did not throw')
@@ -91,7 +91,7 @@ test('sessions - writable session with invalid keypair throws', async function (
   }
 
   try {
-    const core = new Hypercore(ram, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
+    const core = new Hypercore(RAM, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
     await core.ready()
     t.fail('invalid keypair did not throw')
   } catch {
@@ -100,7 +100,7 @@ test('sessions - writable session with invalid keypair throws', async function (
 })
 
 test('sessions - auto close', async function (t) {
-  const core = new Hypercore(ram, { autoClose: true })
+  const core = new Hypercore(RAM, { autoClose: true })
 
   let closed = false
   core.on('close', function () {
@@ -118,7 +118,7 @@ test('sessions - auto close', async function (t) {
 })
 
 test('sessions - auto close different order', async function (t) {
-  const core = new Hypercore(ram, { autoClose: true })
+  const core = new Hypercore(RAM, { autoClose: true })
 
   const a = core.session()
   const b = core.session()
@@ -136,7 +136,7 @@ test('sessions - auto close different order', async function (t) {
 })
 
 test('sessions - auto close with all closing', async function (t) {
-  const core = new Hypercore(ram, { autoClose: true })
+  const core = new Hypercore(RAM, { autoClose: true })
 
   const a = core.session()
   const b = core.session()
@@ -151,7 +151,7 @@ test('sessions - auto close with all closing', async function (t) {
 })
 
 test('sessions - auto close when using from option', async function (t) {
-  const core1 = new Hypercore(ram, {
+  const core1 = new Hypercore(RAM, {
     autoClose: true
   })
   const core2 = new Hypercore({
@@ -166,7 +166,7 @@ test('sessions - auto close when using from option', async function (t) {
 })
 
 test('sessions - close with from option', async function (t) {
-  const core1 = new Hypercore(ram)
+  const core1 = new Hypercore(RAM)
   await core1.append('hello world')
 
   const core2 = new Hypercore({
@@ -183,7 +183,7 @@ test('sessions - close with from option', async function (t) {
 })
 
 test('sessions - custom valueEncoding on session', async function (t) {
-  const core1 = new Hypercore(ram)
+  const core1 = new Hypercore(RAM)
   await core1.append(codecs('json').encode({ a: 1 }))
 
   const core2 = core1.session({ valueEncoding: 'json' })
@@ -197,7 +197,7 @@ test('sessions - custom preload hook on first/later sessions', async function (t
   const preloadsTest = t.test('both preload hooks called')
   preloadsTest.plan(2)
 
-  const core1 = new Hypercore(ram, {
+  const core1 = new Hypercore(RAM, {
     preload: () => {
       preloadsTest.pass('first hook called')
       return null

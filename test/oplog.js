@@ -1,8 +1,7 @@
 const p = require('path')
 const fs = require('fs')
 const test = require('brittle')
-const fsctl = require('fsctl')
-const raf = require('random-access-file')
+const RAF = require('random-access-file')
 const c = require('compact-encoding')
 
 const Oplog = require('../lib/oplog')
@@ -370,12 +369,12 @@ test('oplog - multi append is atomic', async function (t) {
 })
 
 function testStorage () {
-  return raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
+  return new RAF(STORAGE_FILE_NAME, { directory: __dirname, lock: true })
 }
 
 function failingOffsetStorage (offset) {
   let shouldError = false
-  const storage = raf(STORAGE_FILE_NAME, { directory: __dirname, lock: fsctl.lock })
+  const storage = new RAF(STORAGE_FILE_NAME, { directory: __dirname, lock: true })
   const write = storage.write.bind(storage)
 
   storage.write = (off, data, cb) => {

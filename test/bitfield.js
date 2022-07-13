@@ -1,9 +1,9 @@
 const test = require('brittle')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 const Bitfield = require('../lib/bitfield')
 
 test('bitfield - set and get', async function (t) {
-  const b = await Bitfield.open(ram())
+  const b = await Bitfield.open(new RAM())
 
   t.absent(b.get(42))
   b.set(42, true)
@@ -21,7 +21,7 @@ test('bitfield - set and get', async function (t) {
 })
 
 test('bitfield - random set and gets', async function (t) {
-  const b = await Bitfield.open(ram())
+  const b = await Bitfield.open(new RAM())
   const set = new Set()
 
   for (let i = 0; i < 200; i++) {
@@ -52,7 +52,7 @@ test('bitfield - random set and gets', async function (t) {
 })
 
 test('bitfield - reload', async function (t) {
-  const s = ram()
+  const s = new RAM()
 
   {
     const b = await Bitfield.open(s)

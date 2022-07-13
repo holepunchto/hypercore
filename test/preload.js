@@ -1,12 +1,12 @@
 const crypto = require('hypercore-crypto')
 const test = require('brittle')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 const Hypercore = require('../')
 
 test('preload - storage', async function (t) {
   const core = new Hypercore(null, {
     preload: () => {
-      return { storage: ram }
+      return { storage: RAM }
     }
   })
   await core.ready()
@@ -21,7 +21,7 @@ test('preload - storage', async function (t) {
 test('preload - from another core', async function (t) {
   t.plan(2)
 
-  const first = new Hypercore(ram)
+  const first = new Hypercore(RAM)
   await first.ready()
 
   const second = new Hypercore(null, {
@@ -37,7 +37,7 @@ test('preload - from another core', async function (t) {
 
 test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(ram, keyPair.publicKey, {
+  const core = new Hypercore(RAM, keyPair.publicKey, {
     preload: () => {
       return { keyPair }
     }
@@ -56,7 +56,7 @@ test('preload - sign/storage', async function (t) {
     valueEncoding: 'utf-8',
     preload: () => {
       return {
-        storage: ram,
+        storage: RAM,
         auth: {
           sign: signable => crypto.sign(signable, keyPair.secretKey),
           verify: (signable, signature) => crypto.verify(signable, signature, keyPair.publicKey)

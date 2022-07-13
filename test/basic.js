@@ -1,5 +1,5 @@
 const test = require('brittle')
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 
 const Hypercore = require('../')
 const { create, eventFlush } = require('./helpers')
@@ -71,7 +71,7 @@ test('close multiple', async function (t) {
 })
 
 test('storage options', async function (t) {
-  const core = new Hypercore({ storage: ram })
+  const core = new Hypercore({ storage: RAM })
   await core.append('hello')
   t.alike(await core.get(0), Buffer.from('hello'))
   t.end()
@@ -82,7 +82,7 @@ test(
   function (t) {
     const key = Buffer.alloc(33).fill('a')
 
-    const core = new Hypercore(ram, key, { crypto: {} })
+    const core = new Hypercore(RAM, key, { crypto: {} })
 
     t.is(core.key, key)
     t.pass('creating a core with more than 32 byteLength key did not throw')
@@ -90,7 +90,7 @@ test(
 )
 
 test('createIfMissing', async function (t) {
-  const core = new Hypercore(ram, { createIfMissing: false })
+  const core = new Hypercore(RAM, { createIfMissing: false })
 
   t.exception(core.ready())
 })
@@ -114,7 +114,7 @@ test('reopen and overwrite', async function (t) {
 
   function open (name) {
     if (st[name]) return st[name]
-    st[name] = ram()
+    st[name] = new RAM()
     return st[name]
   }
 })
@@ -122,7 +122,7 @@ test('reopen and overwrite', async function (t) {
 test('truncate event has truncated-length and fork', async function (t) {
   t.plan(2)
 
-  const core = new Hypercore(ram)
+  const core = new Hypercore(RAM)
 
   core.on('truncate', function (length, fork) {
     t.is(length, 2)
@@ -134,7 +134,7 @@ test('truncate event has truncated-length and fork', async function (t) {
 })
 
 test('treeHash gets the tree hash at a given core length', async function (t) {
-  const core = new Hypercore(ram)
+  const core = new Hypercore(RAM)
   await core.ready()
 
   const { core: { tree } } = core
@@ -152,7 +152,7 @@ test('treeHash gets the tree hash at a given core length', async function (t) {
 })
 
 test('snapshot locks the state', async function (t) {
-  const core = new Hypercore(ram)
+  const core = new Hypercore(RAM)
   await core.ready()
 
   const a = core.snapshot()
@@ -173,7 +173,7 @@ test('snapshot locks the state', async function (t) {
 test('downloading local range', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(ram)
+  const core = new Hypercore(RAM)
 
   await core.append('a')
 
@@ -189,7 +189,7 @@ test('downloading local range', async function (t) {
 test('read ahead', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(ram, { valueEncoding: 'utf-8' })
+  const core = new Hypercore(RAM, { valueEncoding: 'utf-8' })
 
   await core.append('a')
 

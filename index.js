@@ -1,5 +1,5 @@
 const { EventEmitter } = require('events')
-const raf = require('random-access-file')
+const RAF = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
@@ -8,8 +8,6 @@ const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const codecs = require('codecs')
-
-const fsctl = requireMaybe('fsctl') || { lock: noop, sparse: noop }
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -162,14 +160,25 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static defaultStorage (storage, opts = {}) {
-    if (typeof storage !== 'string') return storage
+    if (typeof storage !== 'string') {
+      if (!isRandomAccessClass(storage)) return storage
+      const Cls = storage // just to satisfy standard...
+      return name => new Cls(name)
+    }
+
     const directory = storage
     const toLock = opts.lock || 'oplog'
-    return function createFile (name) {
-      const locked = name === toLock || name.endsWith('/' + toLock)
-      const lock = locked ? fsctl.lock : null
-      const sparse = locked ? null : null // fsctl.sparse, disable sparse on windows - seems to fail for some people. TODO: investigate
-      return raf(name, { directory, lock, sparse })
+
+    return createFile
+
+    function createFile (name) {
+      const lock = isFile(name, toLock)
+      const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
+      return new RAF(name, { directory, lock, sparse })
+    }
+
+    function isFile (name, n) {
+      return name === n || name.endsWith('/' + n)
     }
   }
 
@@ -852,12 +861,8 @@ function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
 }
 
-function requireMaybe (name) {
-  try {
-    return require(name)
-  } catch (_) {
-    return null
-  }
+function isRandomAccessClass (fn) {
+  return !!(typeof fn === 'function' && fn.prototype && typeof fn.prototype.open === 'function')
 }
 
 function toHex (buf) {
