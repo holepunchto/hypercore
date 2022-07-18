@@ -312,8 +312,7 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       auth: opts.auth,
-      onupdate: this._oncoreupdate.bind(this),
-      oncontigupdate: this._oncorecontigupdate.bind(this)
+      onupdate: this._oncoreupdate.bind(this)
     })
 
     if (opts.userData) {
@@ -496,11 +495,17 @@ module.exports = class Hypercore extends EventEmitter {
 
   _oncoreupdate (status, bitfield, value, from) {
     if (status !== 0) {
-      const truncated = (status & 0b10) !== 0
-      const appended = (status & 0b01) !== 0
+      const truncatedNonSparse = (status & 0b1000) !== 0
+      const appendedNonSparse = (status & 0b0100) !== 0
+      const truncated = (status & 0b0010) !== 0
+      const appended = (status & 0b0001) !== 0
 
       if (truncated) {
         this.replicator.ontruncate(bitfield.start)
+      }
+
+      if ((status & 0b0011) !== 0) {
+        this.replicator.onupgrade()
       }
 
       for (let i = 0; i < this.sessions.length; i++) {
@@ -508,18 +513,20 @@ module.exports = class Hypercore extends EventEmitter {
 
         if (truncated) {
           if (s.cache) s.cache.clear()
-          s.emit('truncate', bitfield.start, this.core.tree.fork)
+
           // If snapshotted, make sure to update our compat so we can fail gets
           if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
         }
 
-        // For sparse sessions, immediately emit appends. Non-sparse sessions
-        // are handled separately and only emit appends when their contiguous
-        // length is updated.
-        if (appended && s.sparse) s.emit('append')
-      }
+        if (s.sparse ? truncated : truncatedNonSparse) {
+          s.emit('truncate', bitfield.start, this.core.tree.fork)
+        }
 
-      this.replicator.onupgrade()
+        // For sparse sessions, immediately emit appends. If non-sparse, emit if contig length has updated
+        if (s.sparse ? appended : appendedNonSparse) {
+          s.emit('append')
+        }
+      }
     }
 
     if (bitfield) {
@@ -532,16 +539,6 @@ module.exports = class Hypercore extends EventEmitter {
       for (let i = 0; i < this.sessions.length; i++) {
         this.sessions[i].emit('download', bitfield.start, byteLength, from)
       }
-    }
-  }
-
-  _oncorecontigupdate () {
-    // For non-sparse sessions, emit appends only when the contiguous length is
-    // updated.
-    for (let i = 0; i < this.sessions.length; i++) {
-      const s = this.sessions[i]
-
-      if (!s.sparse) s.emit('append')
     }
   }
 
