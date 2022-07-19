@@ -600,8 +600,6 @@ test('one inflight request to a peer per block', async function (t) {
 })
 
 test('non-sparse replication', async function (t) {
-  t.plan(2)
-
   const a = await create()
   const b = await create(a.key, { sparse: false })
 
@@ -610,6 +608,8 @@ test('non-sparse replication', async function (t) {
   replicate(a, b, t)
 
   const download = t.test('download')
+
+  download.plan(6)
 
   let contiguousLength = 0
 

@@ -92,7 +92,7 @@ test(
 test('createIfMissing', async function (t) {
   const core = new Hypercore(RAM, { createIfMissing: false })
 
-  t.exception(core.ready())
+  await t.exception(core.ready())
 })
 
 test('reopen and overwrite', async function (t) {
