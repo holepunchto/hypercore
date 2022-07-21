@@ -152,7 +152,7 @@ core.download({ start: 0, end: -1 })
 To downloaded a discrete range of blocks pass a list of indices.
 
 ```js
-core.download({ blocks: [4, 9, 7] });
+core.download({ blocks: [4, 9, 7] })
 ```
 
 To cancel downloading a range simply destroy the range instance.
