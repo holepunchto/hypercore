@@ -683,7 +683,7 @@ module.exports = class Hypercore extends EventEmitter {
     } else {
       if (opts && opts.wait === false) return null
       if (opts && opts.onwait) opts.onwait(index, this)
-      else if (this.onwait) this.onwait(index, this)
+      if (this.onwait) this.onwait(index, this)
 
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
