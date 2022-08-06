@@ -201,3 +201,34 @@ test('read ahead', async function (t) {
 
   t.alike(await blk, 'b')
 })
+
+test('defaults for wait', async function (t) {
+  t.plan(5)
+
+  const core = new Hypercore(RAM, Buffer.alloc(32), { valueEncoding: 'utf-8' })
+
+  const a = core.get(1)
+
+  a.catch(function (err) {
+    t.ok(err, 'a failed')
+  })
+
+  t.is(await core.get(1, { wait: false }), null)
+
+  const s = core.session({ wait: false })
+
+  const b = s.get(1, { wait: true })
+
+  b.catch(function (err) {
+    t.ok(err, 'b failed')
+  })
+
+  t.is(await s.get(1), null)
+
+  const s2 = s.session() // check if wait is inherited
+
+  t.is(await s2.get(1), null)
+
+  await s.close()
+  await core.close()
+})
