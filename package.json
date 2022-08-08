@@ -35,7 +35,7 @@
     "@hyperswarm/secret-stream": "^6.0.0",
     "b4a": "^1.1.0",
     "big-sparse-array": "^1.0.2",
-    "bits-to-bytes": "^1.2.0",
+    "bits-to-bytes": "^1.3.0",
     "codecs": "^3.0.0",
     "compact-encoding": "^2.5.0",
     "crc32-universal": "^1.0.1",
