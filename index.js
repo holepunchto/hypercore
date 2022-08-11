@@ -76,6 +76,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.opening.catch(noop)
 
     this._preappend = preappend.bind(this)
+    this._preupgrade = opts.preupgrade || null
+    this._preupgrading = null
     this._snapshot = null
     this._findingPeers = 0
   }
@@ -622,6 +624,16 @@ module.exports = class Hypercore extends EventEmitter {
     const req = this.replicator.addUpgrade(activeRequests)
 
     let upgraded = await req.promise
+
+    if (this._preupgrade) {
+      if (this._preupgrading === null) {
+        this._preupgrading = Promise.resolve(this._preupgrade(this))
+        this._preupgrading.catch(noop)
+      }
+
+      await this._preupgrading
+      this._preupgrading = null
+    }
 
     if (!this.sparse) {
       // Download all available blocks in non-sparse mode
