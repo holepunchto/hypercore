@@ -632,16 +632,21 @@ module.exports = class Hypercore extends EventEmitter {
       if (this._preupgrading === null) {
         const latest = this.session()
 
-        this._preupgrading = Promise.resolve(this._preupgrade(latest))
+        const preupgrading = this._preupgrading = Promise.resolve(this._preupgrade(latest))
+
         this._preupgrading
           .catch(noop)
-          .then(() => latest.close())
+          .then(() => {
+            latest.close()
+
+            if (this._preupgrading === preupgrading) {
+              this._preupgrading = null
+            }
+          })
       }
 
       const length = await this._preupgrading
       const preupgradeLength = this._snapshot.length
-
-      this._preupgrading = null
 
       if (typeof length === 'number' && length >= preupgradeLength && length < this.core.tree.length) {
         this._snapshot = {
