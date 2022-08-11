@@ -80,8 +80,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._findingPeers = 0
 
     this._preupgrade = opts.preupgrade || null
-    this._preupgradeLength = null
-    this._postupgradeLength = null
+    this._preupgrading = null
   }
 
   [inspect] (depth, opts) {
@@ -450,7 +449,6 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get length () {
-    if (this._preupgradeLength !== null) return this._preupgradeLength
     if (this._snapshot) return this._snapshot.length
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousLength
@@ -626,27 +624,24 @@ module.exports = class Hypercore extends EventEmitter {
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
-    if (this._preupgrade && this._preupgradeLength === null) {
-      this._preupgradeLength = this.core.tree.length
-    }
+    if (this._preupgrade) this._updateSnapshot()
 
     let upgraded = await req.promise
 
     if (this._preupgrade) {
-      if (this._postupgradeLength === null) {
+      if (this._preupgrading === null) {
         const latest = this.session()
 
-        this._postupgradeLength = Promise.resolve(this._preupgrade(latest))
-        this._postupgradeLength
+        this._preupgrading = Promise.resolve(this._preupgrade(latest))
+        this._preupgrading
           .catch(noop)
           .then(() => latest.close())
       }
 
-      const length = await this._postupgradeLength
-      const preupgradeLength = this._preupgradeLength
+      const length = await this._preupgrading
+      const preupgradeLength = this._snapshot.length
 
-      this._preupgradeLength = null
-      this._postupgradeLength = null
+      this._preupgrading = null
 
       if (typeof length === 'number' && length >= preupgradeLength && length < this.core.tree.length) {
         this._snapshot = {
@@ -658,6 +653,8 @@ module.exports = class Hypercore extends EventEmitter {
 
         return length !== preupgradeLength
       }
+
+      return this._updateSnapshot()
     }
 
     if (!this.sparse) {
