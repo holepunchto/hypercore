@@ -76,10 +76,12 @@ module.exports = class Hypercore extends EventEmitter {
     this.opening.catch(noop)
 
     this._preappend = preappend.bind(this)
-    this._preupgrade = opts.preupgrade || null
-    this._preupgrading = null
     this._snapshot = null
     this._findingPeers = 0
+
+    this._preupgrade = opts.preupgrade || null
+    this._preupgradeLength = null
+    this._postupgradeLength = null
   }
 
   [inspect] (depth, opts) {
@@ -448,6 +450,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get length () {
+    if (this._preupgradeLength !== null) return this._preupgradeLength
     if (this._snapshot) return this._snapshot.length
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousLength
@@ -623,16 +626,38 @@ module.exports = class Hypercore extends EventEmitter {
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
+    if (this._preupgrade && this._preupgradeLength === null) {
+      this._preupgradeLength = this.core.tree.length
+    }
+
     let upgraded = await req.promise
 
     if (this._preupgrade) {
-      if (this._preupgrading === null) {
-        this._preupgrading = Promise.resolve(this._preupgrade(this))
-        this._preupgrading.catch(noop)
+      if (this._postupgradeLength === null) {
+        const latest = this.session()
+
+        this._postupgradeLength = Promise.resolve(this._preupgrade(latest))
+        this._postupgradeLength
+          .then(() => latest.close())
+          .catch(noop)
       }
 
-      await this._preupgrading
-      this._preupgrading = null
+      const length = await this._postupgradeLength
+      const preupgradeLength = this._preupgradeLength
+
+      this._preupgradeLength = null
+      this._postupgradeLength = null
+
+      if (typeof length === 'number' && length >= preupgradeLength && length < this.core.tree.length) {
+        this._snapshot = {
+          length,
+          byteLength: 0,
+          fork: this.core.tree.fork,
+          compatLength: length
+        }
+
+        return length !== preupgradeLength
+      }
     }
 
     if (!this.sparse) {
