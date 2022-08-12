@@ -12,6 +12,7 @@ const codecs = require('codecs')
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
+const Info = require('./lib/info')
 const { ReadStream, WriteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
 
@@ -116,7 +117,6 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  sparse: ' + opts.stylize(this.sparse, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
-      indent + '  byteLength: ' + opts.stylize(this.byteLength, 'number') + '\n' +
       indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
       indent + '  sessions: [ ' + opts.stylize(this.sessions.length, 'number') + ' ]\n' +
       indent + '  activeRequests: [ ' + opts.stylize(this.activeRequests.length, 'number') + ' ]\n' +
@@ -453,6 +453,9 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.tree.length
   }
 
+  /**
+   * Deprecated. Use `const { byteLength } = await core.info()`.
+   */
   get byteLength () {
     if (this._snapshot) return this._snapshot.byteLength
     if (this.core === null) return 0
@@ -598,6 +601,12 @@ module.exports = class Hypercore extends EventEmitter {
         this.replicator.updateAll()
       }
     }
+  }
+
+  async info () {
+    if (this.opened === false) await this.opening
+
+    return Info.from(this.core, this.padding, this._snapshot)
   }
 
   async update (opts) {
