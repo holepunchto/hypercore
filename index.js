@@ -623,8 +623,9 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const fork = this.core.tree.fork
-    const preupgradeLength = this.core.tree.length
+    const fork = this.snapshotted ? this._snapshot.fork : this.core.tree.fork
+    const preupgradeLength = this.snapshotted ? this._snapshot.length : this.core.tree.length
+
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
