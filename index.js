@@ -12,6 +12,7 @@ const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
+const Upgrader = require('./lib/upgrader')
 const { ReadStream, WriteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
 
@@ -79,8 +80,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
 
-    this._preupgrade = opts.preupgrade || null
-    this._preupgrading = null
+    this._upgrader = new Upgrader(this, opts)
   }
 
   [inspect] (depth, opts) {
@@ -525,7 +525,7 @@ module.exports = class Hypercore extends EventEmitter {
           // If snapshotted, make sure to update our compat so we can fail gets
           if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
 
-          if (s._preupgrade) s._preupgrading = null
+          s._upgrader.ontruncate()
         }
 
         if (s.sparse ? truncated : truncatedNonSparse) {
@@ -623,48 +623,10 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const fork = this.snapshotted ? this._snapshot.fork : this.core.tree.fork
-    const preupgradeLength = this.snapshotted ? this._snapshot.length : this.core.tree.length
-
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
-    if (this._preupgrade) this._updateSnapshot()
-
-    let upgraded = await req.promise
-
-    if (this._preupgrade) {
-      let preupgrading = this._preupgrading
-      if (preupgrading === null) {
-        const latest = this.session()
-
-        preupgrading = this._preupgrading = Promise.resolve(this._preupgrade(latest))
-        preupgrading
-          .catch(noop)
-          .then(() => latest.close())
-      }
-
-      const length = await preupgrading
-
-      if (this._preupgrading === preupgrading) {
-        this._preupgrading = null
-      }
-
-      if (typeof length === 'number' && length >= preupgradeLength && length < this.core.tree.length) {
-        if (fork === this.core.tree.fork) {
-          this._snapshot = {
-            length,
-            byteLength: 0,
-            fork,
-            compatLength: length
-          }
-        }
-
-        return length !== preupgradeLength
-      }
-
-      return this._updateSnapshot()
-    }
+    let upgraded = await this._upgrader.onupgrade(req.promise)
 
     if (!this.sparse) {
       // Download all available blocks in non-sparse mode
