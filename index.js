@@ -524,6 +524,8 @@ module.exports = class Hypercore extends EventEmitter {
 
           // If snapshotted, make sure to update our compat so we can fail gets
           if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
+
+          if (s._preupgrade) s._preupgrading = null
         }
 
         if (s.sparse ? truncated : truncatedNonSparse) {
@@ -621,6 +623,8 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
+    const fork = this.core.tree.fork
+    const preupgradeLength = this.core.tree.length
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
@@ -629,31 +633,30 @@ module.exports = class Hypercore extends EventEmitter {
     let upgraded = await req.promise
 
     if (this._preupgrade) {
-      if (this._preupgrading === null) {
+      let preupgrading = this._preupgrading
+      if (preupgrading === null) {
         const latest = this.session()
 
-        const preupgrading = this._preupgrading = Promise.resolve(this._preupgrade(latest))
-
-        this._preupgrading
+        preupgrading = this._preupgrading = Promise.resolve(this._preupgrade(latest))
+        preupgrading
           .catch(noop)
-          .then(() => {
-            latest.close()
-
-            if (this._preupgrading === preupgrading) {
-              this._preupgrading = null
-            }
-          })
+          .then(() => latest.close())
       }
 
-      const length = await this._preupgrading
-      const preupgradeLength = this._snapshot.length
+      const length = await preupgrading
+
+      if (this._preupgrading === preupgrading) {
+        this._preupgrading = null
+      }
 
       if (typeof length === 'number' && length >= preupgradeLength && length < this.core.tree.length) {
-        this._snapshot = {
-          length,
-          byteLength: 0,
-          fork: this.core.tree.fork,
-          compatLength: length
+        if (fork === this.core.tree.fork) {
+          this._snapshot = {
+            length,
+            byteLength: 0,
+            fork,
+            compatLength: length
+          }
         }
 
         return length !== preupgradeLength
