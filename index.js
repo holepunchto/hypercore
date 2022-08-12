@@ -12,6 +12,7 @@ const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
+const Snapshot = require('./lib/snapshot')
 const Upgrader = require('./lib/upgrader')
 const { ReadStream, WriteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
@@ -344,21 +345,13 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _getSnapshot () {
+    const core = this.core
+
     if (this.sparse) {
-      return {
-        length: this.core.tree.length,
-        byteLength: this.core.tree.byteLength,
-        fork: this.core.tree.fork,
-        compatLength: this.core.tree.length
-      }
+      return new Snapshot(core.tree.length, core.tree.byteLength, core.tree.fork)
     }
 
-    return {
-      length: this.core.header.contiguousLength,
-      byteLength: 0,
-      fork: this.core.tree.fork,
-      compatLength: this.core.header.contiguousLength
-    }
+    return new Snapshot(core.header.contiguousLength, 0, core.tree.fork)
   }
 
   _updateSnapshot () {
