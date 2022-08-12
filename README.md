@@ -75,10 +75,10 @@ You can also set valueEncoding to any [abstract-encoding](https://github.com/maf
 
 valueEncodings will be applied to individually blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
-#### `const seq = await core.append(block)`
+#### `const { length, byteLength } = await core.append(block)`
 
 Append a block of data (or an array of blocks) to the core.
-Returns the seq the first block was stored at.
+Returns the new length and byte length of the core.
 
 #### `const block = await core.get(index, [options])`
 

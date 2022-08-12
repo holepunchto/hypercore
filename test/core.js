@@ -6,12 +6,12 @@ test('core - append', async function (t) {
   const { core } = await create()
 
   {
-    const seq = await core.append([
+    const info = await core.append([
       Buffer.from('hello'),
       Buffer.from('world')
     ])
 
-    t.is(seq, 0)
+    t.alike(info, { length: 2, byteLength: 10 })
     t.is(core.tree.length, 2)
     t.is(core.tree.byteLength, 10)
     t.alike([
@@ -24,11 +24,11 @@ test('core - append', async function (t) {
   }
 
   {
-    const seq = await core.append([
+    const info = await core.append([
       Buffer.from('hej')
     ])
 
-    t.is(seq, 2)
+    t.alike(info, { length: 3, byteLength: 13 })
     t.is(core.tree.length, 3)
     t.is(core.tree.byteLength, 13)
     t.alike([
