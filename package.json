@@ -4,7 +4,8 @@
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
-    "test": "standard && brittle test/*.js"
+    "test": "standard && node test/all.js",
+    "test:generate": "brittle -r test/all.js test/*.js"
   },
   "repository": {
     "type": "git",
