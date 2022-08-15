@@ -1,6 +1,6 @@
 # Upgrade Notes
 
-Notes for downstream developers who are upgrading their modules to new, breaking versions of hypercore.
+Notes for downstream developers who are upgrading their modules to new, breaking versions of Hypercore.
 
 ## 10.0.0
 
