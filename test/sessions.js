@@ -1,7 +1,7 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
 const crypto = require('hypercore-crypto')
-const codecs = require('codecs')
+const c = require('compact-encoding')
 const { create } = require('./helpers')
 
 const Hypercore = require('../')
@@ -184,7 +184,7 @@ test('sessions - close with from option', async function (t) {
 
 test('sessions - custom valueEncoding on session', async function (t) {
   const core1 = new Hypercore(RAM)
-  await core1.append(codecs('json').encode({ a: 1 }))
+  await core1.append(c.encode(c.raw.json, { a: 1 }))
 
   const core2 = core1.session({ valueEncoding: 'json' })
   await core2.append({ b: 2 })

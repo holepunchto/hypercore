@@ -7,7 +7,6 @@ const b4a = require('b4a')
 const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
-const codecs = require('codecs')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -285,7 +284,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = !!this.auth.sign
 
     if (opts.valueEncoding) {
-      this.valueEncoding = c.from(codecs(opts.valueEncoding))
+      this.valueEncoding = c.from(opts.valueEncoding)
     }
     if (opts.encodeBatch) {
       this.encodeBatch = opts.encodeBatch
@@ -667,7 +666,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
-    const encoding = (opts && opts.valueEncoding && c.from(codecs(opts.valueEncoding))) || this.valueEncoding
+    const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     let req = this.cache && this.cache.get(index)
     if (!req) req = this._get(index, opts)
@@ -820,7 +819,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.extensions.has(name)) {
       const ext = this.extensions.get(name)
       ext.handlers = handlers
-      ext.encoding = c.from(codecs(handlers.encoding) || c.buffer)
+      ext.encoding = c.from(handlers.encoding || c.buffer)
       ext.session = this
       return ext
     }
@@ -828,7 +827,7 @@ module.exports = class Hypercore extends EventEmitter {
     const ext = {
       name,
       handlers,
-      encoding: c.from(codecs(handlers.encoding) || c.buffer),
+      encoding: c.from(handlers.encoding || c.buffer),
       session: this,
       send (message, peer) {
         const buffer = c.encode(this.encoding, message)
