@@ -83,12 +83,31 @@ valueEncodings will be applied to individually blocks, even if you append batche
 Append a block of data (or an array of blocks) to the core.
 Returns the new length and byte length of the core.
 
+``` js
+// simple call append with a new block of data
+await core.append(Buffer.from('I am a block of data'))
+
+// pass an array to append multiple blocks as a batch
+await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
+```
+
 #### `const block = await core.get(index, [options])`
 
 Get a block of data.
 If the data is not available locally this method will prioritize and wait for the data to be downloaded.
 
-Options include
+``` js
+// get block #42
+const block = await core.get(42)
+
+// get block #43, but only wait 5s
+const blockIfFast = await core.get(43, { timeout: 5000 })
+
+// get block #44, but only if we have it locally
+const blockLocal = await core.get(44, { wait: false })
+```
+
+Additional options include
 
 ``` js
 {
@@ -98,6 +117,71 @@ Options include
   valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the core's valueEncoding
 }
 ```
+
+#### `const updated = await core.update()`
+
+Wait for the core to try and find a signed update to it's length.
+Does not download any data from peers except for a proof of the new core length.
+
+``` js
+const updated = await core.update()
+
+console.log('core was updated?', updated, 'length is', core.length)
+```
+
+#### `const [index, relativeOffset] = await core.seek(byteOffset)`
+
+Seek to a byte offset.
+
+Returns `(index, relativeOffset)`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
+the relative byte offset in the data block.
+
+``` js
+await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
+
+{
+  const [index, offset] = await core.seek(1) // returns [0, 1]
+}
+
+{
+  const [index, offset] = await core.seek(3) // returns [1, 0]
+}
+
+{
+  const [index, offset] = await core.seek(5) // returns [2, 1]
+}
+```
+
+#### `const stream = core.createReadStream([options])`
+
+Make a read stream to read a range of data out at once.
+
+``` js
+// read the full core
+const fullStream = core.createReadStream()
+
+// read from block 10-15
+const partialStream = core.createReadStream({ start: 10, end: 15 })
+
+// pipe the stream somewhere using the .pipe method on Node.js or consume it as
+// an async iterator
+
+for await (const data of fullStream) {
+  console.log('data:', data)
+}
+```
+
+Additional options include:
+
+``` js
+{
+  start: 0,
+  end: core.length,
+  live: false,
+  snapshot: true // auto set end to core.length on open or update it on every read
+}
+```
+
 
 #### `await core.truncate(newLength, [forkId])`
 
@@ -109,19 +193,6 @@ Note that the fork id should be monotonely incrementing.
 #### `const hash = await core.treeHash([length])`
 
 Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
-
-#### `const stream = core.createReadStream([options])`
-
-Make a read stream. Options include:
-
-``` js
-{
-  start: 0,
-  end: core.length,
-  live: false,
-  snapshot: true // auto set end to core.length on open or update it on every read
-}
-```
 
 #### `const range = core.download([range])`
 
@@ -163,23 +234,6 @@ To cancel downloading a range simply destroy the range instance.
 ``` js
 // will stop downloading now
 range.destroy()
-```
-
-#### `const [index, relativeOffset] = await core.seek(byteOffset)`
-
-Seek to a byte offset.
-
-Returns `(index, relativeOffset)`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
-the relative byte offset in the data block.
-
-#### `const updated = await core.update()`
-
-Wait for the core to try and find a signed update to it's length.
-Does not download any data from peers except for a proof of the new core length.
-
-``` js
-const updated = await core.update()
-console.log('core was updated?', updated, 'length is', core.length)
 ```
 
 #### `const info = await core.info()`
@@ -264,12 +318,6 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 #### `core.contiguousLength`
 
 How many blocks are contiguously available starting from the first block of this core?
-
-Populated after `ready` has been emitted. Will be `0` before the event.
-
-#### `core.contiguousByteLength`
-
-How much data is contiguously available starting from the first block of this core?
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
