@@ -13,7 +13,7 @@ Built for sharing large datasets and streams of real time data
 * **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.
 
 Note that the latest release is Hypercore 10, which adds support for truncate and many other things.
-Version 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning it's forward storage and wire protocol compat with future versions.
+Version 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning the storage format and wire protocol is forward compatible with future versions.
 
 ## Install
 
@@ -36,13 +36,13 @@ const core = new Hypercore('./directory') // store data in ./directory
 Alternatively you can pass a function instead that is called with every filename Hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
 
 ``` js
-const ram = require('random-access-memory')
+const RAM = require('random-access-memory')
 const core = new Hypercore((filename) => {
   // filename will be one of: data, bitfield, tree, signatures, key, secret_key
   // the data file will contain all your data concatenated.
 
   // just store all files in ram by returning a random-access-memory instance
-  return ram()
+  return new RAM()
 })
 ```
 
