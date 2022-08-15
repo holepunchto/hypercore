@@ -1,21 +1,24 @@
-# Hypercore 10
+# Hypercore
 
-NOTE: This is the _ALPHA_ version of the upcoming [Hypercore](https://github.com/hypercore-protocol/hypercore) 10 protocol upgrade.
+Hypercore is a secure, distributed append-only log.
 
-Features all the power of Hypercore combined with
+Built for sharing large datasets and streams of real time data
 
-* Multiwriter support
-* Fork recovery
-* Promises
-* Simplications and performance/scaling improvements
-* Internal oplog design
+## Features
+
+* **Sparse replication.** Only download the data you are interested in.
+* **Realtime.** Get the latest updates to the log fast and securely.
+* **Performant.** Uses a simple flat file structure to maximize I/O performance.
+* **Secure.** Uses signed merkle trees to verify log integrity in real time.
+* **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.
+
+Note that the latest release is Hypercore 10, which adds support for truncate and many other things.
+Version 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning it's forward storage and wire protocol compat with future versions.
 
 ## Install
 
-Install from NPM using the next tag
-
 ```sh
-npm install hypercore@next
+npm install hypercore
 ```
 
 ## API
