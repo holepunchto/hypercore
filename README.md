@@ -133,23 +133,15 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 Seek to a byte offset.
 
-Returns `(index, relativeOffset)`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
+Returns `[index, relativeOffset]`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
 the relative byte offset in the data block.
 
 ``` js
 await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
 
-{
-  const [index, offset] = await core.seek(1) // returns [0, 1]
-}
-
-{
-  const [index, offset] = await core.seek(3) // returns [1, 0]
-}
-
-{
-  const [index, offset] = await core.seek(5) // returns [2, 1]
-}
+const first = await core.seek(1) // returns [0, 1]
+const second = await core.seek(3) // returns [1, 0]
+const third = await core.seek(5) // returns [2, 1]
 ```
 
 #### `const stream = core.createReadStream([options])`
