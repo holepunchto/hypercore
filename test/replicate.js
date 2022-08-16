@@ -840,3 +840,25 @@ test('sparse replication without gossiping', async function (t) {
     t.alike(await c.seek(4), [4, 0])
   })
 })
+
+test('force update writable cores', async function (t) {
+  const a = await create()
+  const b = await create(a.key, { auth: a.auth })
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t)
+
+  await b.update()
+
+  t.is(a.length, 5)
+  t.is(b.length, 0, "new device didn't bootstrap its state from the network")
+
+  await b.update({ force: true })
+
+  t.is(
+    b.length,
+    a.length,
+    'new device did bootstrap its state from the network'
+  )
+})

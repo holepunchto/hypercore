@@ -612,8 +612,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (this.closing !== null) return false
 
-    // TODO: add an option where a writer can bootstrap it's state from the network also
-    if (this.writable) {
+    if (this.writable && (!opts || opts.force !== true)) {
       if (!this.snapshotted) return false
       return this._updateSnapshot()
     }
