@@ -182,6 +182,9 @@ Additional options include:
 }
 ```
 
+#### `await core.clear(start, [end])`
+
+Clear stored blocks between `start` and `end`, reclaiming storage when possible.
 
 #### `await core.truncate(newLength, [forkId])`
 
