@@ -12,6 +12,7 @@ const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
+const Download = require('./lib/download')
 const { ReadStream, WriteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
 
@@ -628,7 +629,7 @@ module.exports = class Hypercore extends EventEmitter {
       const end = this.core.tree.length
       const contig = this.contiguousLength
 
-      await this.download({ start, end, ifAvailable: true }).downloaded()
+      await this.download({ start, end, ifAvailable: true }).done()
 
       if (!upgraded) upgraded = this.contiguousLength !== contig
     }
@@ -739,21 +740,12 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    const reqP = this._download(range)
+    const req = this._download(range)
 
     // do not crash in the background...
-    reqP.catch(noop)
+    req.catch(noop)
 
-    // TODO: turn this into an actual object...
-    return {
-      async downloaded () {
-        const req = await reqP
-        return req.promise
-      },
-      destroy () {
-        reqP.then(req => req.context && req.context.detach(req), noop)
-      }
-    }
+    return new Download(req)
   }
 
   async _download (range) {

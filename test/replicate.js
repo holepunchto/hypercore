@@ -16,7 +16,7 @@ test('basic replication', async function (t) {
 
   const r = b.download({ start: 0, end: a.length })
 
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 5)
 })
@@ -39,7 +39,7 @@ test('basic replication from fork', async function (t) {
 
   const r = b.download({ start: 0, end: a.length })
 
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 5)
   t.is(a.fork, b.fork)
@@ -63,7 +63,7 @@ test('eager replication from bigger fork', async function (t) {
   })
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(d, a.length)
   t.is(a.fork, b.fork)
@@ -101,7 +101,7 @@ test('bigger download range', async function (t) {
   })
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(b.length, a.length, 'same length')
   t.is(downloaded.size, a.length, 'downloaded all')
@@ -119,7 +119,7 @@ test('high latency reorg', async function (t) {
 
   {
     const r = b.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await r.done()
   }
 
   s[0].destroy()
@@ -133,7 +133,7 @@ test('high latency reorg', async function (t) {
 
   {
     const r = b.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await r.done()
   }
 
   let same = 0
@@ -384,7 +384,7 @@ test('replicate discrete range', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ blocks: [0, 2, 3] })
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 3)
   t.alike(await b.get(0), Buffer.from('a'))
@@ -406,7 +406,7 @@ test('replicate discrete empty range', async function (t) {
 
   const r = b.download({ blocks: [] })
 
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 0)
 })
@@ -505,7 +505,7 @@ test.skip('can disable downloading from a peer', async function (t) {
 
   {
     const r = c.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await r.done()
   }
 
   const aPeer = b.peers[0].stream.rawStream === aStream
@@ -526,7 +526,7 @@ test.skip('can disable downloading from a peer', async function (t) {
 
   {
     const r = b.download({ start: 0, end: a.length })
-    await r.downloaded()
+    await r.done()
   }
 
   t.is(aUploads, 0)
@@ -544,13 +544,13 @@ test('contiguous length', async function (t) {
 
   replicate(a, b, t)
 
-  await b.download({ blocks: [0, 2, 4] }).downloaded()
+  await b.download({ blocks: [0, 2, 4] }).done()
   t.is(b.contiguousLength, 1, 'b has 0 through 1')
 
-  await b.download({ blocks: [1] }).downloaded()
+  await b.download({ blocks: [1] }).done()
   t.is(b.contiguousLength, 3, 'b has 0 through 2')
 
-  await b.download({ blocks: [3] }).downloaded()
+  await b.download({ blocks: [3] }).done()
   t.is(b.contiguousLength, 5, 'b has all blocks')
 })
 
@@ -570,7 +570,7 @@ test('contiguous length after fork', async function (t) {
 
   replicate(a, b, t)
 
-  await b.download({ start: 0, end: a.length }).downloaded()
+  await b.download({ start: 0, end: a.length }).done()
   t.is(b.contiguousLength, 3, 'b has all blocks after fork')
 })
 
@@ -651,7 +651,7 @@ test('download blocks if available', async function (t) {
   b.on('download', () => d++)
 
   const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 2)
 })
@@ -668,7 +668,7 @@ test('download range if available', async function (t) {
   b.on('download', () => d++)
 
   const r = b.download({ start: 2, end: 6, ifAvailable: true })
-  await r.downloaded()
+  await r.done()
 
   t.is(d, 3)
 })
@@ -687,7 +687,7 @@ test('download blocks if available, destroy midway', async function (t) {
   })
 
   const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.downloaded()
+  await r.done()
 
   t.pass('range resolved')
 })
@@ -706,7 +706,7 @@ test('download blocks available from when only a partial set is available', asyn
   await b.get(3)
 
   const r = c.download({ start: 0, end: -1, ifAvailable: true })
-  await r.downloaded()
+  await r.done()
 
   t.ok(!(await c.has(0)))
   t.ok(!(await c.has(1)))
@@ -722,7 +722,7 @@ test('download range resolves immediately if no peers', async function (t) {
   // no replication
 
   const r = b.download({ start: 0, end: 5, ifAvailable: true })
-  await r.downloaded()
+  await r.done()
 
   t.pass('range resolved')
 })
@@ -766,7 +766,7 @@ test('non-sparse snapshot during partial replication', async function (t) {
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  await b.download({ start: 0, end: 3 }).downloaded()
+  await b.download({ start: 0, end: 3 }).done()
   await c.update()
 
   const s = c.snapshot()
@@ -775,7 +775,7 @@ test('non-sparse snapshot during partial replication', async function (t) {
   await s.update()
   t.is(s.contiguousLength, s.length)
 
-  await b.download({ start: 3, end: 5 }).downloaded()
+  await b.download({ start: 3, end: 5 }).done()
   t.is(s.contiguousLength, s.length)
 
   await s.update()
@@ -793,13 +793,13 @@ test('sparse replication without gossiping', async function (t) {
   let s
 
   s = replicate(a, b)
-  await b.download({ start: 0, end: 3 }).downloaded()
+  await b.download({ start: 0, end: 3 }).done()
   await unreplicate(s)
 
   await a.append(['d', 'e', 'f', 'd'])
 
   s = replicate(a, b)
-  await b.download({ start: 4, end: 7 }).downloaded()
+  await b.download({ start: 4, end: 7 }).done()
   await unreplicate(s)
 
   await t.test('block', async function (t) {
@@ -817,7 +817,7 @@ test('sparse replication without gossiping', async function (t) {
     s = replicate(b, c)
     t.teardown(() => unreplicate(s))
 
-    await c.download({ start: 4, end: 6 }).downloaded()
+    await c.download({ start: 4, end: 6 }).done()
     t.pass('resolved')
   })
 
@@ -827,7 +827,7 @@ test('sparse replication without gossiping', async function (t) {
     s = replicate(b, c)
     t.teardown(() => unreplicate(s))
 
-    await c.download({ blocks: [4, 6] }).downloaded()
+    await c.download({ blocks: [4, 6] }).done()
     t.pass('resolved')
   })
 

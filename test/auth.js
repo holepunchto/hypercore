@@ -50,7 +50,7 @@ test('multisig hypercore', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(b.length, 5)
   t.end()
@@ -156,7 +156,7 @@ test('multisig hypercore with instance and extension', async function (t) {
   t.is(a.length, 1)
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(a.length, 1)
 
@@ -214,7 +214,7 @@ test('proof-of-work hypercore', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(b.length, 5)
 })
@@ -244,7 +244,7 @@ test('core using custom sign fn', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ start: 0, end: a.length })
-  await r.downloaded()
+  await r.done()
 
   t.is(b.length, 5)
   t.end()

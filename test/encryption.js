@@ -50,7 +50,7 @@ test('encrypted replication', async function (t) {
 
     await t.test('through direct download', async function (t) {
       const r = b.download({ start: 0, length: a.length })
-      await r.downloaded()
+      await r.done()
 
       for (let i = 0; i < 5; i++) {
         t.alike(await b.get(i), await a.get(i))
@@ -75,7 +75,7 @@ test('encrypted replication', async function (t) {
 
     await t.test('through direct download', async function (t) {
       const r = b.download({ start: 0, length: a.length })
-      await r.downloaded()
+      await r.done()
 
       for (let i = 0; i < 5; i++) {
         t.alike(await b.get(i), await a.core.blocks.get(i))
