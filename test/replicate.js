@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 
@@ -861,4 +862,23 @@ test('force update writable cores', async function (t) {
     a.length,
     'new device did bootstrap its state from the network'
   )
+})
+
+test('replicate to writable cores after clearing', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 5 }).downloaded()
+
+  await a.clear(0, 5) // clear all data
+
+  t.not(await a.has(2)) // make sure a does not have it
+  t.ok(await b.has(2)) // make sure b has it
+
+  const c = await a.get(2)
+
+  t.alike(c, b4a.from('c'))
 })
