@@ -12,6 +12,8 @@ const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
+const Snapshot = require('./lib/snapshot')
+const Upgrader = require('./lib/upgrader')
 const { ReadStream, WriteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
 
@@ -78,6 +80,8 @@ module.exports = class Hypercore extends EventEmitter {
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._findingPeers = 0
+
+    this._upgrader = new Upgrader(this, opts)
   }
 
   [inspect] (depth, opts) {
@@ -341,21 +345,13 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _getSnapshot () {
+    const core = this.core
+
     if (this.sparse) {
-      return {
-        length: this.core.tree.length,
-        byteLength: this.core.tree.byteLength,
-        fork: this.core.tree.fork,
-        compatLength: this.core.tree.length
-      }
+      return new Snapshot(core.tree.length, core.tree.byteLength, core.tree.fork)
     }
 
-    return {
-      length: this.core.header.contiguousLength,
-      byteLength: 0,
-      fork: this.core.tree.fork,
-      compatLength: this.core.header.contiguousLength
-    }
+    return new Snapshot(core.header.contiguousLength, 0, core.tree.fork)
   }
 
   _updateSnapshot () {
@@ -521,6 +517,8 @@ module.exports = class Hypercore extends EventEmitter {
 
           // If snapshotted, make sure to update our compat so we can fail gets
           if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
+
+          s._upgrader.ontruncate()
         }
 
         if (s.sparse ? truncated : truncatedNonSparse) {
@@ -620,22 +618,7 @@ module.exports = class Hypercore extends EventEmitter {
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addUpgrade(activeRequests)
 
-    let upgraded = await req.promise
-
-    if (!this.sparse) {
-      // Download all available blocks in non-sparse mode
-      const start = this.length
-      const end = this.core.tree.length
-      const contig = this.contiguousLength
-
-      await this.download({ start, end, ifAvailable: true }).downloaded()
-
-      if (!upgraded) upgraded = this.contiguousLength !== contig
-    }
-
-    if (!upgraded) return false
-    if (this.snapshotted) return this._updateSnapshot()
-    return true
+    return this._upgrader.onupgrade(req.promise)
   }
 
   async seek (bytes, opts) {
