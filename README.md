@@ -178,6 +178,13 @@ Additional options include:
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.
 
+``` js
+await core.clear(4) // clear block 4 from your local cache
+await core.clear(0, 10) // clear block 0-10 from your local cache
+```
+
+The core will also gossip to peers it is connected to, that is no longer has these blocks.
+
 #### `await core.truncate(newLength, [forkId])`
 
 Truncate the core to a smaller length.
