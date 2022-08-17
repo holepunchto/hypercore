@@ -247,6 +247,7 @@ The object will look like this:
 ```js
 Info {
   key: Buffer(...),
+  discoveryKey: Buffer(...),
   length: 18,
   contiguousLength: 16,
   byteLength: 742,
