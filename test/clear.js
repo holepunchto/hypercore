@@ -24,7 +24,7 @@ test('clear + replication', async function (t) {
   replicate(a, b, t)
 
   await a.append(['a', 'b', 'c'])
-  await b.download({ start: 0, end: 3 }).downloaded()
+  await b.download({ start: 0, end: 3 }).done()
 
   await a.clear(1)
 
@@ -43,7 +43,7 @@ test('clear + replication, gossip', async function (t) {
   replicate(b, c, t)
 
   await a.append(['a', 'b', 'c'])
-  await b.download({ start: 0, end: 3 }).downloaded()
+  await b.download({ start: 0, end: 3 }).done()
   await c.update()
 
   await b.clear(1)

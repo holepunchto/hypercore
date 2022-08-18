@@ -43,10 +43,10 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 
   t.is(await clone.get(2), 'block #2.1')
 
-  await range1.downloaded()
+  await range1.done()
   t.pass('local range finished')
 
-  await range2.downloaded()
+  await range2.done()
   t.pass('remote range finished')
 })
 

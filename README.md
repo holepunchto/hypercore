@@ -203,7 +203,7 @@ Download a range of data.
 You can await when the range has been fully downloaded by doing:
 
 ```js
-await range.downloaded()
+await range.done()
 ```
 
 A range can have the following properties:
