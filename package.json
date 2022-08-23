@@ -44,7 +44,7 @@
     "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.2.0",
-    "random-access-file": "^3.0.1",
+    "random-access-file": "^3.2.2",
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",
     "sodium-universal": "^3.0.4",
@@ -54,7 +54,7 @@
   "devDependencies": {
     "brittle": "^3.0.0",
     "hyperswarm": "^4.1.1",
-    "random-access-memory": "^5.0.0",
+    "random-access-memory": "^5.0.1",
     "random-access-memory-overlay": "^2.0.0",
     "standard": "^16.0.3",
     "tmp-promise": "^3.0.2"
