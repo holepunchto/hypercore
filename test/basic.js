@@ -31,9 +31,21 @@ test('basic', async function (t) {
 test('core id', async function (t) {
   const key = Buffer.alloc(32).fill('a')
   const core = new Hypercore(RAM, key)
+
   t.is(core.id, null)
   await core.ready()
   t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
+  t.end()
+})
+
+test('session id', async function (t) {
+  const key = Buffer.alloc(32).fill('a')
+  const core = new Hypercore(RAM, key)
+
+  const session = core.session()
+  t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
   t.end()
 })
 
