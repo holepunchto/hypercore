@@ -7,6 +7,7 @@ const b4a = require('b4a')
 const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
+const z32 = require('z32')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -58,6 +59,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.encodeBatch = null
     this.activeRequests = []
 
+    this.id = null
     this.key = key || null
     this.keyPair = null
     this.readable = true
@@ -326,6 +328,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.key = this.core.header.signer.publicKey
     this.keyPair = this.core.header.signer
+    this.id = z32.encode(this.key)
 
     this.replicator = new Replicator(this.core, this.key, {
       eagerUpdate: true,
