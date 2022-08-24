@@ -35,8 +35,6 @@ test('core id', async function (t) {
   t.is(core.id, null)
   await core.ready()
   t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
-
-  t.end()
 })
 
 test('session id', async function (t) {
@@ -45,8 +43,6 @@ test('session id', async function (t) {
 
   const session = core.session()
   t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
-
-  t.end()
 })
 
 test('session', async function (t) {
