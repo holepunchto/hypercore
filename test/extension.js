@@ -28,8 +28,6 @@ test('basic extension', async function (t) {
 
   await eventFlush()
   t.absent(messages.length)
-
-  t.end()
 })
 
 test('two extensions', async function (t) {
@@ -66,6 +64,4 @@ test('two extensions', async function (t) {
 
   await eventFlush()
   t.is(messages.length, 1) // First message gets ignored
-
-  t.end()
 })

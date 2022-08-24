@@ -14,8 +14,6 @@ test('preload - storage', async function (t) {
   await core.append('hello world')
   t.is(core.length, 1)
   t.alike(await core.get(0), Buffer.from('hello world'))
-
-  t.end()
 })
 
 test('preload - from another core', async function (t) {
@@ -46,8 +44,6 @@ test('preload - custom keypair', async function (t) {
 
   t.ok(core.writable)
   t.is(core.key, keyPair.publicKey)
-
-  t.end()
 })
 
 test('preload - sign/storage', async function (t) {
@@ -70,6 +66,4 @@ test('preload - sign/storage', async function (t) {
   await core.append('hello world')
   t.is(core.length, 1)
   t.is(await core.get(0), 'hello world')
-
-  t.end()
 })

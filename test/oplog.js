@@ -16,7 +16,6 @@ test('oplog - reset storage', async function (t) {
   // just to make sure to cleanup storage if it failed half way through before
   if (fs.existsSync(STORAGE_FILE_PATH)) await fs.promises.unlink(STORAGE_FILE_PATH)
   t.pass('data is reset')
-  t.end()
 })
 
 test('oplog - basic append', async function (t) {
@@ -60,7 +59,6 @@ test('oplog - basic append', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - custom encoding', async function (t) {
@@ -84,7 +82,6 @@ test('oplog - custom encoding', async function (t) {
   t.is(entries[1], 43)
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - alternating header writes', async function (t) {
@@ -116,7 +113,6 @@ test('oplog - alternating header writes', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - one fully-corrupted header', async function (t) {
@@ -160,7 +156,6 @@ test('oplog - one fully-corrupted header', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - header invalid checksum', async function (t) {
@@ -206,7 +201,6 @@ test('oplog - header invalid checksum', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - malformed log entry gets overwritten', async function (t) {
@@ -252,7 +246,6 @@ test('oplog - malformed log entry gets overwritten', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - log not truncated when header write fails', async function (t) {
@@ -295,7 +288,6 @@ test('oplog - log not truncated when header write fails', async function (t) {
   }
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - multi append', async function (t) {
@@ -327,7 +319,6 @@ test('oplog - multi append', async function (t) {
   ])
 
   await cleanup(storage)
-  t.end()
 })
 
 test('oplog - multi append is atomic', async function (t) {
@@ -365,7 +356,6 @@ test('oplog - multi append is atomic', async function (t) {
   ])
 
   await cleanup(storage)
-  t.end()
 })
 
 function testStorage () {

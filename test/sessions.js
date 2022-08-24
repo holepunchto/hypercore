@@ -35,7 +35,6 @@ test('sessions - can create writable sessions from a read-only core', async func
   }
 
   t.is(core.length, 1)
-  t.end()
 })
 
 test('sessions - writable session with custom sign function', async function (t) {
@@ -72,7 +71,6 @@ test('sessions - writable session with custom sign function', async function (t)
   }
 
   t.is(core.length, 1)
-  t.end()
 })
 
 test('sessions - writable session with invalid keypair throws', async function (t) {

@@ -53,7 +53,6 @@ test('multisig hypercore', async function (t) {
   await r.done()
 
   t.is(b.length, 5)
-  t.end()
 })
 
 test('multisig hypercore with instance and extension', async function (t) {
@@ -159,8 +158,6 @@ test('multisig hypercore with instance and extension', async function (t) {
   await r.done()
 
   t.is(a.length, 1)
-
-  t.end()
 })
 
 test('proof-of-work hypercore', async function (t) {
@@ -247,7 +244,6 @@ test('core using custom sign fn', async function (t) {
   await r.done()
 
   t.is(b.length, 5)
-  t.end()
 })
 
 function hash (...data) {
