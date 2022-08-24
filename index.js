@@ -227,8 +227,8 @@ module.exports = class Hypercore extends EventEmitter {
     if (!this.auth) this.auth = o.auth
 
     this.crypto = o.crypto
-    this.key = o.key
     this.id = o.id
+    this.key = o.key
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
