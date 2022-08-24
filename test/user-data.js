@@ -8,8 +8,6 @@ test('userdata - can set through setUserData', async function (t) {
   await core.setUserData('hello', Buffer.from('world'))
 
   t.alike(await core.getUserData('hello'), Buffer.from('world'))
-
-  t.end()
 })
 
 test('userdata - can set through constructor option', async function (t) {
@@ -20,8 +18,6 @@ test('userdata - can set through constructor option', async function (t) {
   })
 
   t.alike(await core.getUserData('hello'), Buffer.from('world'))
-
-  t.end()
 })
 
 test('userdata - persists across restarts', async function (t) {
@@ -43,5 +39,4 @@ test('userdata - persists across restarts', async function (t) {
 
   t.alike(await core.getUserData('hello'), Buffer.from('world'))
   t.alike(await core.getUserData('other'), Buffer.from('another'))
-  t.end()
 })

@@ -106,8 +106,6 @@ test('bigger download range', async function (t) {
 
   t.is(b.length, a.length, 'same length')
   t.is(downloaded.size, a.length, 'downloaded all')
-
-  t.end()
 })
 
 test('high latency reorg', async function (t) {

@@ -14,7 +14,6 @@ test('nodes', async function (t) {
   b.commit()
 
   t.is(await tree.nodes(0), 0)
-  t.end()
 })
 
 test('proof only block', async function (t) {
@@ -29,8 +28,6 @@ test('proof only block', async function (t) {
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
   t.alike(proof.block.nodes.map(n => n.index), [10, 13])
-
-  t.end()
 })
 
 test('proof with upgrade', async function (t) {
@@ -49,8 +46,6 @@ test('proof with upgrade', async function (t) {
   t.is(proof.upgrade.length, 10)
   t.alike(proof.upgrade.nodes.map(n => n.index), [17])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
-
-  t.end()
 })
 
 test('proof with upgrade + additional', async function (t) {
@@ -69,8 +64,6 @@ test('proof with upgrade + additional', async function (t) {
   t.is(proof.upgrade.length, 8)
   t.alike(proof.upgrade.nodes.map(n => n.index), [])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [17])
-
-  t.end()
 })
 
 test('proof with upgrade from existing state', async function (t) {
@@ -89,8 +82,6 @@ test('proof with upgrade from existing state', async function (t) {
   t.is(proof.upgrade.length, 9)
   t.alike(proof.upgrade.nodes.map(n => n.index), [5, 11, 17])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
-
-  t.end()
 })
 
 test('proof with upgrade from existing state + additional', async function (t) {
@@ -109,8 +100,6 @@ test('proof with upgrade from existing state + additional', async function (t) {
   t.is(proof.upgrade.length, 5)
   t.alike(proof.upgrade.nodes.map(n => n.index), [5, 9])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [13, 17])
-
-  t.end()
 })
 
 test('proof block and seek, no upgrade', async function (t) {
@@ -126,8 +115,6 @@ test('proof block and seek, no upgrade', async function (t) {
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
   t.alike(proof.block.nodes.map(n => n.index), [10, 13])
-
-  t.end()
 })
 
 test('proof block and seek #2, no upgrade', async function (t) {
@@ -143,8 +130,6 @@ test('proof block and seek #2, no upgrade', async function (t) {
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
   t.alike(proof.block.nodes.map(n => n.index), [10, 13])
-
-  t.end()
 })
 
 test('proof block and seek #3, no upgrade', async function (t) {
@@ -160,8 +145,6 @@ test('proof block and seek #3, no upgrade', async function (t) {
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 1)
   t.alike(proof.block.nodes.map(n => n.index), [10])
-
-  t.end()
 })
 
 test('proof block and seek that results in tree, no upgrade', async function (t) {
@@ -175,8 +158,6 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
   t.is(proof.upgrade, null)
   t.alike(proof.block.nodes.map(n => n.index), [2, 5, 11])
   t.alike(proof.seek.nodes.map(n => n.index), [19, 27])
-
-  t.end()
 })
 
 test('proof block and seek, with upgrade', async function (t) {
@@ -196,8 +177,6 @@ test('proof block and seek, with upgrade', async function (t) {
   t.is(proof.upgrade.length, 2)
   t.alike(proof.upgrade.nodes.map(n => n.index), [17])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
-
-  t.end()
 })
 
 test('proof seek with upgrade', async function (t) {
@@ -214,8 +193,6 @@ test('proof seek with upgrade', async function (t) {
   t.is(proof.upgrade.length, 10)
   t.alike(proof.upgrade.nodes.map(n => n.index), [17])
   t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
-
-  t.end()
 })
 
 test('verify proof #1', async function (t) {
@@ -234,8 +211,6 @@ test('verify proof #1', async function (t) {
   t.is(clone.byteLength, tree.byteLength)
   t.is(await clone.byteOffset(6), await tree.byteOffset(6))
   t.is(await clone.get(6), await tree.get(6))
-
-  t.end()
 })
 
 test('verify proof #2', async function (t) {
@@ -253,8 +228,6 @@ test('verify proof #2', async function (t) {
   t.is(clone.length, tree.length)
   t.is(clone.byteLength, tree.byteLength)
   t.alike(await clone.byteRange(10), await tree.byteRange(10))
-
-  t.end()
 })
 
 test('upgrade edgecase when no roots need upgrade', async function (t) {
@@ -284,7 +257,6 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   }
 
   t.is(tree.length, 5)
-  t.end()
 })
 
 test('lowest common ancestor - small gap', async function (t) {
@@ -294,7 +266,6 @@ test('lowest common ancestor - small gap', async function (t) {
 
   t.is(ancestors, 8)
   t.is(clone.length, tree.length)
-  t.end()
 })
 
 test('lowest common ancestor - bigger gap', async function (t) {
@@ -304,7 +275,6 @@ test('lowest common ancestor - bigger gap', async function (t) {
 
   t.is(ancestors, 1)
   t.is(clone.length, tree.length)
-  t.end()
 })
 
 test('lowest common ancestor - remote is shorter than local', async function (t) {
@@ -314,7 +284,6 @@ test('lowest common ancestor - remote is shorter than local', async function (t)
 
   t.is(ancestors, 5)
   t.is(clone.length, tree.length)
-  t.end()
 })
 
 test('lowest common ancestor - simple fork', async function (t) {
@@ -337,7 +306,6 @@ test('lowest common ancestor - simple fork', async function (t) {
 
   t.is(ancestors, 5)
   t.is(clone.length, tree.length)
-  t.end()
 })
 
 test('lowest common ancestor - long fork', async function (t) {
@@ -376,8 +344,6 @@ test('lowest common ancestor - long fork', async function (t) {
   t.ok(await audit(tree))
   await tree.flush()
   t.ok(await audit(tree))
-
-  t.end()
 })
 
 test('tree hash', async function (t) {
@@ -405,8 +371,6 @@ test('tree hash', async function (t) {
     ba.commit()
     t.alike(h, b.hash())
   }
-
-  t.end()
 })
 
 test('basic tree seeks', async function (t) {

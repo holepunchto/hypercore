@@ -24,8 +24,6 @@ test('basic', async function (t) {
   t.is(core.length, 2)
   t.is(info.byteLength, 10)
   t.is(appends, 2)
-
-  t.end()
 })
 
 test('core id', async function (t) {
@@ -57,7 +55,6 @@ test('session', async function (t) {
   await session.append('test')
   t.alike(await core.get(0), Buffer.from('test'))
   t.alike(await session.get(0), Buffer.from('test'))
-  t.end()
 })
 
 test('close', async function (t) {
@@ -96,7 +93,6 @@ test('storage options', async function (t) {
   const core = new Hypercore({ storage: RAM })
   await core.append('hello')
   t.alike(await core.get(0), Buffer.from('hello'))
-  t.end()
 })
 
 test(
