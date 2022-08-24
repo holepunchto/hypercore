@@ -291,7 +291,7 @@ Populated after `ready` has been emitted. Will be `false` before the event.
 
 #### `core.id`
 
-Buffer containing the id (z-base-32 of the public key) identifying this core.
+String containing the id (z-base-32 of the public key) identifying this core.
 
 Populated after `ready` has been emitted. Will be `null` before the event.
 
