@@ -148,7 +148,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (!noiseStream) throw BAD_ARGUMENT('Invalid stream')
 
     if (!noiseStream.userData) {
-      const protocol = new Protomux(noiseStream)
+      const protocol = Protomux.from(noiseStream)
 
       if (opts.ondiscoverykey) {
         protocol.pair({ protocol: 'hypercore/alpha' }, opts.ondiscoverykey)
