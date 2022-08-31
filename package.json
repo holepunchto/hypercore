@@ -43,7 +43,7 @@
     "flat-tree": "^1.9.0",
     "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
-    "protomux": "^3.2.0",
+    "protomux": "^3.4.0",
     "random-access-file": "^3.2.2",
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",
