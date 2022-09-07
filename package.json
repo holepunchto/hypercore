@@ -55,6 +55,7 @@
   "devDependencies": {
     "brittle": "^3.0.0",
     "hyperswarm": "^4.1.1",
+    "node-segfault-handler": "^1.1.0",
     "random-access-memory": "^5.0.1",
     "random-access-memory-overlay": "^2.0.0",
     "standard": "^16.0.3",
