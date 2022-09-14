@@ -242,14 +242,19 @@ module.exports = class Hypercore extends EventEmitter {
   async _openFromExisting (from, opts) {
     await from.opening
 
-    this._passCapabilities(from)
-    this.sessions = from.sessions
+    // includes ourself as well, so the loop below also updates us
+    const sessions = this.sessions
+
+    for (const s of sessions) {
+      s.sessions = from.sessions
+      s.sessions.push(s)
+      s._passCapabilities(from)
+    }
+
     this.storage = from.storage
     this.replicator.findingPeers += this._findingPeers
 
     ensureEncryption(this, opts)
-
-    this.sessions.push(this)
   }
 
   async _openSession (key, storage, opts) {
