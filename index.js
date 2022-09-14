@@ -171,7 +171,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     const directory = storage
     const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
-    const pool = opts.pool || null
+    const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
 
     return createFile
 
