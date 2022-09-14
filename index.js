@@ -178,7 +178,7 @@ module.exports = class Hypercore extends EventEmitter {
     function createFile (name) {
       const lock = toLock === null ? false : isFile(name, toLock)
       const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool })
+      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool })
     }
 
     function isFile (name, n) {
