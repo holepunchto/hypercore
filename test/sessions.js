@@ -218,3 +218,17 @@ test('session inherits non-sparse setting', async function (t) {
 
   t.is(s.sparse, false)
 })
+
+test('session on a from instance, pre-ready', async function (t) {
+  const a = await create()
+
+  const b = new Hypercore({ from: a })
+  const c = b.session()
+
+  await a.ready()
+  await b.ready()
+  await c.ready()
+
+  t.is(a.sessions, b.sessions)
+  t.is(a.sessions, c.sessions)
+})
