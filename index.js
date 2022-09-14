@@ -170,14 +170,15 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const directory = storage
-    const toLock = opts.lock || 'oplog'
+    const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
+    const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
 
     return createFile
 
     function createFile (name) {
-      const lock = isFile(name, toLock)
+      const lock = toLock === null ? false : isFile(name, toLock)
       const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse })
+      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool })
     }
 
     function isFile (name, n) {
@@ -241,14 +242,19 @@ module.exports = class Hypercore extends EventEmitter {
   async _openFromExisting (from, opts) {
     await from.opening
 
-    this._passCapabilities(from)
-    this.sessions = from.sessions
+    // includes ourself as well, so the loop below also updates us
+    const sessions = this.sessions
+
+    for (const s of sessions) {
+      s.sessions = from.sessions
+      s.sessions.push(s)
+      s._passCapabilities(from)
+    }
+
     this.storage = from.storage
     this.replicator.findingPeers += this._findingPeers
 
     ensureEncryption(this, opts)
-
-    this.sessions.push(this)
   }
 
   async _openSession (key, storage, opts) {
