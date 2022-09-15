@@ -69,3 +69,31 @@ test('bitfield - reload', async function (t) {
     t.ok(b.get(1424242424))
   }
 })
+
+test('bitfield - want', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  // Ensure 2 pages
+  b.set(0, true)
+  b.set(0, false)
+  b.set(2 ** 18 * 8, true)
+  b.set(2 ** 18 * 8, false)
+
+  t.alike([...b.want(0, 1024 * 13 * 8 /* 13 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 * 16 / 4 /* 16 KiB */)
+    }
+  ])
+
+  t.alike([...b.want(0, 1024 * 260 * 8 /* 260 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 * 256 / 4 /* 256 KiB */)
+    },
+    {
+      start: 2 ** 18 * 8,
+      bitfield: new Uint32Array(1024 /* 4 KiB */)
+    }
+  ])
+})
