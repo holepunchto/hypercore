@@ -79,6 +79,13 @@ test('bitfield - want', async function (t) {
   b.set(2 ** 18 * 8, true)
   b.set(2 ** 18 * 8, false)
 
+  t.alike([...b.want(0, 1024 * 4 * 8 /* 4 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 /* 4 KiB */)
+    }
+  ])
+
   t.alike([...b.want(0, 1024 * 13 * 8 /* 13 KiB */)], [
     {
       start: 0,
