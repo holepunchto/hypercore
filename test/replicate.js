@@ -3,8 +3,6 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 
-require('node-segfault-handler').registerHandler()
-
 test('basic replication', async function (t) {
   const a = await create()
 
