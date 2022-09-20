@@ -616,7 +616,7 @@ module.exports = class Hypercore extends EventEmitter {
   async info () {
     if (this.opened === false) await this.opening
 
-    return Info.from(this.core, this.padding, this._snapshot)
+    return Info.from(this)
   }
 
   async update (opts) {
