@@ -69,3 +69,44 @@ test('bitfield - reload', async function (t) {
     t.ok(b.get(1424242424))
   }
 })
+
+test('bitfield - want', async function (t) {
+  // This test will likely break when bitfields are optimised to not actually
+  // store pages of all set or unset bits.
+
+  const b = new Bitfield(new RAM(), new Uint32Array(1024 * 512 / 4 /* 512 KiB */))
+
+  t.alike([...b.want(0, 0)], [])
+
+  t.alike([...b.want(0, 1)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 /* 4 KiB */)
+    }
+  ])
+
+  t.alike([...b.want(0, 1024 * 4 * 8 /* 4 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 /* 4 KiB */)
+    }
+  ])
+
+  t.alike([...b.want(0, 1024 * 13 * 8 /* 13 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 * 16 / 4 /* 16 KiB */)
+    }
+  ])
+
+  t.alike([...b.want(0, 1024 * 260 * 8 /* 260 KiB */)], [
+    {
+      start: 0,
+      bitfield: new Uint32Array(1024 * 256 / 4 /* 256 KiB */)
+    },
+    {
+      start: 2 ** 18 * 8,
+      bitfield: new Uint32Array(1024 /* 4 KiB */)
+    }
+  ])
+})
