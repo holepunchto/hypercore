@@ -880,3 +880,24 @@ test('replicate to writable cores after clearing', async function (t) {
 
   t.alike(c, b4a.from('c'))
 })
+
+test('large linear download', async function (t) {
+  const n = 1000
+
+  const a = await create()
+
+  for (let i = 0; i < n; i++) await a.append(i.toString())
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ start: 0, end: n, linear: true })
+
+  await r.done()
+
+  t.is(d, 1000)
+})
