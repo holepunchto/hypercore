@@ -43,7 +43,7 @@
     "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.4.0",
-    "quickbit-universal": "^1.3.0",
+    "quickbit-universal": "^2.0.2",
     "random-access-file": "^4.0.0",
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",
