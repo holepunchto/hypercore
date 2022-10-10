@@ -901,3 +901,62 @@ test('large linear download', async function (t) {
 
   t.is(d, 1000)
 })
+
+test('replication session', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const [s1, s2] = replicate(a, b, t, { session: true })
+
+  t.is(a.sessions.length, 2)
+  t.is(b.sessions.length, 2)
+
+  s1.destroy()
+  s2.destroy()
+
+  await Promise.all([new Promise(resolve => s1.on('close', resolve)), new Promise(resolve => s2.on('close', resolve))])
+
+  t.is(a.sessions.length, 1)
+  t.is(b.sessions.length, 1)
+})
+
+test('replication session after stream opened', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const [s1, s2] = replicate(a, b, t, { session: true })
+
+  await s1.noiseStream.opened
+  await s2.noiseStream.opened
+
+  t.is(a.sessions.length, 2)
+  t.is(b.sessions.length, 2)
+
+  s1.destroy()
+  s2.destroy()
+
+  await Promise.all([new Promise(resolve => s1.on('close', resolve)), new Promise(resolve => s2.on('close', resolve))])
+
+  t.is(a.sessions.length, 1)
+  t.is(b.sessions.length, 1)
+})
+
+test('replication session keeps the core open', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t, { session: true })
+
+  await a.close()
+  await eventFlush()
+
+  const blk = await b.get(2)
+
+  t.alike(blk, b4a.from('c'), 'still replicating due to session')
+})
