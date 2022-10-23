@@ -169,6 +169,19 @@ test('treeHash gets the tree hash at a given core length', async function (t) {
   }
 })
 
+test('treeHash with default length', async function (t) {
+  const core = new Hypercore(RAM)
+  const core2 = new Hypercore(RAM)
+  await core.ready()
+  await core2.ready()
+
+  t.alike(await core.treeHash(), await core2.treeHash())
+
+  await core.append('a')
+
+  t.unlike(await core.treeHash(), await core2.treeHash())
+})
+
 test('snapshot locks the state', async function (t) {
   const core = new Hypercore(RAM)
   await core.ready()
