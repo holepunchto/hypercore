@@ -810,7 +810,7 @@ module.exports = class Hypercore extends EventEmitter {
   async treeHash (length) {
     if (length === undefined) {
       await this.ready()
-      length = this.core.length
+      length = this.core.tree.length
     }
 
     const roots = await this.core.tree.getRoots(length)
