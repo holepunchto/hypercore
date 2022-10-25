@@ -2,6 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
+const Hypercore = require('../')
 
 test('basic replication', async function (t) {
   const a = await create()
@@ -289,6 +290,84 @@ test('multiplexing with external noise stream', async function (t) {
   a2.replicate(n1, { keepAlive: false })
   b1.replicate(n2, { keepAlive: false })
   b2.replicate(n2, { keepAlive: false })
+
+  await a1.append('hi')
+  t.alike(await b1.get(0), Buffer.from('hi'))
+
+  await a2.append('ho')
+  t.alike(await b2.get(0), Buffer.from('ho'))
+})
+
+test('multiplexing with createProtocolStream', async function (t) {
+  t.plan(2)
+
+  const a1 = await create()
+  const a2 = await create()
+
+  const b1 = await create(a1.key)
+  const b2 = await create(a2.key)
+
+  const n1 = new NoiseSecretStream(true)
+  const n2 = new NoiseSecretStream(false)
+  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+
+  const stream1 = Hypercore.createProtocolStream(n1, {
+    ondiscoverykey: function (discoveryKey) {
+      t.fail()
+    }
+  })
+  const stream2 = Hypercore.createProtocolStream(n2, {
+    ondiscoverykey: function (discoveryKey) {
+      t.fail()
+    }
+  })
+
+  a1.replicate(stream1, { keepAlive: false })
+  a2.replicate(stream1, { keepAlive: false })
+  b1.replicate(stream2, { keepAlive: false })
+  b2.replicate(stream2, { keepAlive: false })
+
+  await a1.append('hi')
+  t.alike(await b1.get(0), Buffer.from('hi'))
+
+  await a2.append('ho')
+  t.alike(await b2.get(0), Buffer.from('ho'))
+})
+
+test('multiplexing with createProtocolStream', async function (t) {
+  t.plan(4)
+
+  const a1 = await create()
+  const a2 = await create()
+
+  const b1 = await create(a1.key)
+  const b2 = await create(a2.key)
+
+  const n1 = new NoiseSecretStream(true)
+  const n2 = new NoiseSecretStream(false)
+  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+
+  const stream1 = Hypercore.createProtocolStream(n1, {
+    ondiscoverykey: function (discoveryKey) {
+      if (a1.discoveryKey.equals(discoveryKey)) {
+        a1.replicate(stream1, { keepAlive: false })
+        t.pass()
+      }
+
+      if (a2.discoveryKey.equals(discoveryKey)) {
+        a2.replicate(stream1, { keepAlive: false })
+        t.pass()
+      }
+    }
+  })
+  const stream2 = Hypercore.createProtocolStream(n2, {
+    ondiscoverykey: function (discoveryKey) {
+      t.fail()
+    }
+  })
+
+  b1.replicate(stream2, { keepAlive: false })
+  b2.replicate(stream2, { keepAlive: false })
 
   await a1.append('hi')
   t.alike(await b1.get(0), Buffer.from('hi'))
