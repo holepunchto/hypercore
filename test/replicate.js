@@ -298,7 +298,7 @@ test('multiplexing with external noise stream', async function (t) {
   t.alike(await b2.get(0), Buffer.from('ho'))
 })
 
-test('multiplexing with createProtocolStream', async function (t) {
+test('multiplexing with createProtocolStream (ondiscoverykey is not called)', async function (t) {
   t.plan(2)
 
   const a1 = await create()
@@ -334,7 +334,7 @@ test('multiplexing with createProtocolStream', async function (t) {
   t.alike(await b2.get(0), Buffer.from('ho'))
 })
 
-test('multiplexing with createProtocolStream', async function (t) {
+test('multiplexing with createProtocolStream (ondiscoverykey is called)', async function (t) {
   t.plan(4)
 
   const a1 = await create()
