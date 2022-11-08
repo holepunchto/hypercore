@@ -263,3 +263,37 @@ test('defaults for wait', async function (t) {
   await s.close()
   await core.close()
 })
+
+test('has', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  for (let i = 0; i < core.length; i++) {
+    t.ok(await core.has(i), `has ${i}`)
+  }
+
+  await core.clear(2)
+  t.comment('2 cleared')
+
+  for (let i = 0; i < core.length; i++) {
+    if (i === 2) {
+      t.absent(await core.has(i), `does not have ${i}`)
+    } else {
+      t.ok(await core.has(i), `has ${i}`)
+    }
+  }
+})
+
+test('has range', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  t.ok(await core.has(0, 5), 'has 0 to 4')
+
+  await core.clear(2)
+  t.comment('2 cleared')
+
+  t.absent(await core.has(0, 5), 'does not have 0 to 4')
+  t.ok(await core.has(0, 2), 'has 0 to 1')
+  t.ok(await core.has(3, 5), 'has 3 to 4')
+})

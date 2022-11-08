@@ -118,6 +118,10 @@ Additional options include
 }
 ```
 
+#### `const has = await core.has(start, [end])`
+
+Check if the core has all blocks between `start` and `end`.
+
 #### `const updated = await core.update()`
 
 Wait for the core to try and find a signed update to it's length.

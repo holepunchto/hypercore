@@ -666,10 +666,15 @@ module.exports = class Hypercore extends EventEmitter {
     return req.promise
   }
 
-  async has (index) {
+  async has (start, end = start + 1) {
     if (this.opened === false) await this.opening
 
-    return this.core.bitfield.get(index)
+    const length = end - start
+    if (length <= 0) return false
+    if (length === 1) return this.core.bitfield.get(start)
+
+    const i = this.core.bitfield.firstUnset(start)
+    return i === -1 || i >= end
   }
 
   async get (index, opts) {
