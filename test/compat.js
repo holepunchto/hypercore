@@ -5,7 +5,8 @@ const RAO = require('random-access-memory-overlay')
 const Hypercore = require('..')
 
 const abis = [
-  'v10.0.0-alpha.39'
+  'v10.0.0-alpha.39',
+  'v10.4.1'
 ]
 
 for (const abi of abis) {
