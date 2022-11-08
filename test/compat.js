@@ -6,7 +6,8 @@ const Hypercore = require('..')
 
 const abis = [
   'v10.0.0-alpha.39',
-  'v10.4.1'
+  'v10.4.1',
+  'v10.4.1-partial'
 ]
 
 for (const abi of abis) {
