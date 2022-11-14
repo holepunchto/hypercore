@@ -21,6 +21,7 @@ async function runTests () {
   await import('./mutex.js')
   await import('./oplog.js')
   await import('./preload.js')
+  await import('./remote-bitfield.js')
   await import('./replicate.js')
   await import('./sessions.js')
   await import('./snapshots.js')
