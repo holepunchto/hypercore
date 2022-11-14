@@ -14,8 +14,15 @@ const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const Batch = require('./lib/batch')
 const { ReadStream, WriteStream } = require('./lib/streams')
-const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
+const {
+  BAD_ARGUMENT,
+  BATCH_ALREADY_EXISTS,
+  SESSION_CLOSED,
+  SESSION_NOT_WRITABLE,
+  SNAPSHOT_NOT_AVAILABLE
+} = require('./lib/errors')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -80,6 +87,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._preappend = preappend.bind(this)
     this._snapshot = null
+    this._batch = null
     this._findingPeers = 0
   }
 
@@ -648,6 +656,12 @@ module.exports = class Hypercore extends EventEmitter {
     if (!upgraded) return false
     if (this.snapshotted) return this._updateSnapshot()
     return true
+  }
+
+  batch () {
+    if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
+    this._batch = new Batch(this)
+    return this._batch
   }
 
   async seek (bytes, opts) {
