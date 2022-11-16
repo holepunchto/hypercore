@@ -614,10 +614,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  async info () {
+  async info (opts) {
     if (this.opened === false) await this.opening
 
-    return Info.from(this)
+    return Info.from(this, opts)
   }
 
   async update (opts) {
@@ -809,7 +809,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return await this.core.append(buffers, this.auth, { preappend })
+    return this.core.append(buffers, this.auth, { preappend })
   }
 
   async treeHash (length) {

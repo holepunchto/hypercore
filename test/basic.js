@@ -297,3 +297,21 @@ test('has range', async function (t) {
   t.ok(await core.has(0, 2), 'has 0 to 1')
   t.ok(await core.has(3, 5), 'has 3 to 4')
 })
+
+test('storage info', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const info = await core.info({ storage: true })
+
+  t.snapshot(info.storage)
+})
+
+test('storage info, off by default', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const info = await core.info()
+
+  t.is(info.storage, null)
+})
