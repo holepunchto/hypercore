@@ -17,7 +17,6 @@ test('batch append', async function (t) {
   t.alike(await b.get(4), b4a.from('fg'))
 
   await b.flush()
-
   t.is(core.length, 5)
 })
 
@@ -27,7 +26,6 @@ test('append to core during batch', async function (t) {
 
   const b = core.batch()
   await t.exception(core.append('d'))
-
   await b.flush()
 
   await core.append('d')
@@ -46,7 +44,6 @@ test('batch truncate', async function (t) {
   t.alike(await b.get(4), null)
 
   await b.flush()
-
   t.is(core.length, 4)
 })
 
@@ -56,7 +53,6 @@ test('truncate core during batch', async function (t) {
 
   const b = core.batch()
   await t.exception(core.truncate(2))
-
   await b.flush()
 
   await core.truncate(2)
@@ -72,6 +68,37 @@ test('batch truncate committed', async function (t) {
   t.exception(b.truncate(2))
 })
 
+test('batch destroy', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.append(['de', 'fg'])
+  await b.destroy()
+  t.is(core.length, 3)
+
+  await core.append(['d', 'e'])
+  t.is(core.length, 4)
+})
+
+test('batch destroy after flush', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.flush()
+  t.exception(b.destroy())
+})
+
+test('batch flush after destroy', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.destroy()
+  t.exception(b.flush())
+})
+
 test('batch info', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
@@ -80,14 +107,12 @@ test('batch info', async function (t) {
   await b.append(['de', 'fg'])
 
   const info = await b.info()
-
   t.is(info.length, 5)
   t.is(info.contiguousLength, 5)
   t.is(info.byteLength, 7)
   t.unlike(await core.info(), info)
 
   await b.flush()
-
   t.alike(await core.info(), info)
 })
 
