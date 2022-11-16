@@ -37,6 +37,25 @@ test('batch truncate', async function (t) {
   t.is(core.length, 4)
 })
 
+test('batch info', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.append(['de', 'fg'])
+
+  const info = await b.info()
+
+  t.is(info.length, 5)
+  t.is(info.contiguousLength, 5)
+  t.is(info.byteLength, 7)
+  t.unlike(await core.info(), info)
+
+  await b.flush()
+
+  t.alike(await core.info(), info)
+})
+
 test('simultaneous batches', async function (t) {
   const core = await create()
 
