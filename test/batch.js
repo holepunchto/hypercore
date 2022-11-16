@@ -37,6 +37,15 @@ test('batch truncate', async function (t) {
   t.is(core.length, 4)
 })
 
+test('batch truncate committed', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.append(['de', 'fg'])
+  t.exception(b.truncate(2))
+})
+
 test('batch info', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
