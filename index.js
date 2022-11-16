@@ -19,6 +19,7 @@ const { ReadStream, WriteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
   BATCH_ALREADY_EXISTS,
+  BATCH_UNFLUSHED,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE
@@ -797,6 +798,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async truncate (newLength = 0, fork = -1) {
+    if (this._batch) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -808,6 +810,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks) {
+    if (this._batch) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 

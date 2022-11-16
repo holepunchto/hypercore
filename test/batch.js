@@ -21,6 +21,19 @@ test('batch append', async function (t) {
   t.is(core.length, 5)
 })
 
+test('append to core during batch', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await t.exception(core.append('d'))
+
+  await b.flush()
+
+  await core.append('d')
+  t.is(core.length, 4)
+})
+
 test('batch truncate', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
@@ -35,6 +48,19 @@ test('batch truncate', async function (t) {
   await b.flush()
 
   t.is(core.length, 4)
+})
+
+test('truncate core during batch', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await t.exception(core.truncate(2))
+
+  await b.flush()
+
+  await core.truncate(2)
+  t.is(core.length, 2)
 })
 
 test('batch truncate committed', async function (t) {
