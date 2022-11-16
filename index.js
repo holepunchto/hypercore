@@ -88,7 +88,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._preappend = preappend.bind(this)
     this._snapshot = null
-    this._batch = null
+    this._batch = opts._batch || null
     this._findingPeers = 0
   }
 
@@ -216,7 +216,8 @@ module.exports = class Hypercore extends EventEmitter {
       wait,
       onwait,
       _opening: this.opening,
-      _sessions: this.sessions
+      _sessions: this.sessions,
+      _batch: this._batch
     })
 
     s._passCapabilities(this)
@@ -661,8 +662,9 @@ module.exports = class Hypercore extends EventEmitter {
 
   batch () {
     if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
-    this._batch = new Batch(this)
-    return this._batch
+    const batch = new Batch(this)
+    for (const session of this.sessions) session._batch = batch
+    return batch
   }
 
   async seek (bytes, opts) {
@@ -798,7 +800,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async truncate (newLength = 0, fork = -1) {
-    if (this._batch) throw BATCH_UNFLUSHED()
+    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -810,7 +812,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks) {
-    if (this._batch) throw BATCH_UNFLUSHED()
+    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 

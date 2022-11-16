@@ -32,6 +32,32 @@ test('append to core during batch', async function (t) {
   t.is(core.length, 4)
 })
 
+test('append to session during batch, create before batch', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const s = core.session()
+  const b = core.batch()
+  await t.exception(s.append('d'))
+  await b.flush()
+
+  await s.append('d')
+  t.is(s.length, 4)
+})
+
+test('append to session during batch, create after batch', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  const s = core.session()
+  await t.exception(s.append('d'))
+  await b.flush()
+
+  await s.append('d')
+  t.is(s.length, 4)
+})
+
 test('batch truncate', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
@@ -78,7 +104,7 @@ test('batch destroy', async function (t) {
   t.is(core.length, 3)
 
   await core.append(['d', 'e'])
-  t.is(core.length, 4)
+  t.is(core.length, 5)
 })
 
 test('batch destroy after flush', async function (t) {
