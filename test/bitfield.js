@@ -110,3 +110,9 @@ test('bitfield - want', async function (t) {
     }
   ])
 })
+
+test('bitfield - overflow?', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.set(7995511118690925, true)
+})
