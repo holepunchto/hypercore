@@ -55,7 +55,7 @@
   "devDependencies": {
     "brittle": "^3.0.0",
     "hyperswarm": "^4.3.0",
-    "random-access-memory": "^6.0.0",
+    "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
     "standard": "^17.0.0",
     "tmp-promise": "^3.0.2"

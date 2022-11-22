@@ -107,7 +107,7 @@ const blockIfFast = await core.get(43, { timeout: 5000 })
 const blockLocal = await core.get(44, { wait: false })
 ```
 
-Additional options include
+`options` include:
 
 ``` js
 {
@@ -167,7 +167,7 @@ for await (const data of fullStream) {
 }
 ```
 
-Additional options include:
+`options` include:
 
 ``` js
 {
@@ -242,7 +242,7 @@ To cancel downloading a range simply destroy the range instance.
 range.destroy()
 ```
 
-#### `const info = await core.info()`
+#### `const info = await core.info([options])`
 
 Get information about this core, such as its total size in bytes.
 
@@ -256,7 +256,21 @@ Info {
   contiguousLength: 16,
   byteLength: 742,
   fork: 0,
-  padding: 8
+  padding: 8,
+  storage: {
+    oplog: 8192, 
+    tree: 4096, 
+    blocks: 4096, 
+    bitfield: 4096 
+  }
+}
+```
+
+`options` include:
+
+```js
+{
+  storage: false // get storage estimates in bytes, disabled by default
 }
 ```
 
