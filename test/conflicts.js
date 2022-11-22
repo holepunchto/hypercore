@@ -28,9 +28,5 @@ test('one forks', async function (t) {
 
   replicate(c, b, t)
 
-  await t.exception(() => b.get(4))
-
-  // await b.update()
-  // await b.get(2)
-  // await a.truncate(0, 1)
+  await t.exception(b.get(4))
 })
