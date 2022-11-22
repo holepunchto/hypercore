@@ -324,7 +324,8 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       auth: opts.auth,
-      onupdate: this._oncoreupdate.bind(this)
+      onupdate: this._oncoreupdate.bind(this),
+      onconflict: this._oncoreconflict.bind(this)
     })
 
     if (opts.userData) {
@@ -377,13 +378,13 @@ module.exports = class Hypercore extends EventEmitter {
     return prev.length !== next.length || prev.fork !== next.fork
   }
 
-  close () {
+  close (err) {
     if (this.closing) return this.closing
-    this.closing = this._close()
+    this.closing = this._close(err || null)
     return this.closing
   }
 
-  async _close () {
+  async _close (err) {
     await this.opening
 
     const i = this.sessions.indexOf(this)
@@ -403,17 +404,21 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
-      this.replicator.clearRequests(this.activeRequests)
+      this.replicator.clearRequests(this.activeRequests, err)
     }
 
     this._findingPeers = 0
 
     if (this.sessions.length) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close()
+      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
+    }
+
+    if (this.replicator !== null) {
+      this.replicator.destroy()
     }
 
     await this.core.close()
@@ -508,6 +513,18 @@ module.exports = class Hypercore extends EventEmitter {
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('upload', index, byteLength, from)
     }
+  }
+
+  async _oncoreconflict (proof, from) {
+    await this.replicator.onconflict(from)
+
+    for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
+
+    const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
+
+    const all = []
+    for (const s of this.sessions) all.push(s.close(err))
+    await Promise.allSettled(all)
   }
 
   _oncoreupdate (status, bitfield, value, from) {
