@@ -111,8 +111,9 @@ test('bitfield - want', async function (t) {
   ])
 })
 
-test('bitfield - overflow?', async function (t) {
+test('bitfield - sparse array overflow', async function (t) {
   const b = await Bitfield.open(new RAM())
 
+  // Previously bugged due to missing bounds check in sparse array
   b.set(7995511118690925, true)
 })
