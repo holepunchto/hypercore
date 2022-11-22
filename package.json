@@ -35,7 +35,7 @@
   "dependencies": {
     "@hyperswarm/secret-stream": "^6.0.0",
     "b4a": "^1.1.0",
-    "big-sparse-array": "^1.0.2",
+    "big-sparse-array": "^1.0.3",
     "compact-encoding": "^2.11.0",
     "crc-universal": "^1.0.2",
     "events": "^3.3.0",
