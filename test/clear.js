@@ -62,3 +62,18 @@ test('clear + replication, gossip', async function (t) {
   t.alike(await b.get(1), b4a.from('b'), 'b downloaded from a')
   t.alike(await req, b4a.from('b'), 'c downloaded from b')
 })
+
+test('incorrect clear', async function (t) {
+  const core = await create()
+
+  const blocks = []
+  while (blocks.length < 129) {
+    blocks.push(b4a.from('tick'))
+  }
+
+  await core.append(blocks)
+  await core.clear(127, 128)
+
+  t.ok(await core.has(128))
+  t.alike(await core.get(128), b4a.from('tick'))
+})
