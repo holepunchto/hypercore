@@ -124,7 +124,7 @@ Check if the core has all blocks between `start` and `end`.
 
 #### `const updated = await core.update()`
 
-Wait for the core to try and find a signed update to it's length.
+Wait for the core to try and find a signed update to its length.
 Does not download any data from peers except for a proof of the new core length.
 
 ``` js
@@ -293,7 +293,7 @@ as all internals await this themself.
 
 #### `core.on('ready')`
 
-Emitted after the core has initially opened all it's internal state.
+Emitted after the core has initially opened all its internal state.
 
 #### `core.writable`
 
