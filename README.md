@@ -76,7 +76,7 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
 
-valueEncodings will be applied to individually blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
+valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 #### `const { length, byteLength } = await core.append(block)`
 
@@ -137,7 +137,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 Seek to a byte offset.
 
-Returns `[index, relativeOffset]`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
+Returns `[index, relativeOffset]`, where `index` is the data block the `byteOffset` is contained in and `relativeOffset` is
 the relative byte offset in the data block.
 
 ``` js
