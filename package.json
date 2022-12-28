@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hypercore-protocol/hypercore.git"
+    "url": "git+https://github.com/holepunchto/hypercore.git"
   },
   "contributors": [
     {
@@ -25,9 +25,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hypercore-protocol/hypercore/issues"
+    "url": "https://github.com/holepunchto/hypercore/issues"
   },
-  "homepage": "https://github.com/hypercore-protocol/hypercore#readme",
+  "homepage": "https://github.com/holepunchto/hypercore#readme",
   "files": [
     "index.js",
     "lib/**.js"
