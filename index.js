@@ -385,7 +385,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _close (err) {
-    await this.opening
+    if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
     if (i === -1) return
