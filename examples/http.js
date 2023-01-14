@@ -1,11 +1,15 @@
 const Hypercore = require('../')
 const streamx = require('streamx')
-const replicator = require('@hyperswarm/replicator')
+const Hyperswarm = require('hyperswarm')
 
-const core = new Hypercore('/tmp/movie')
+// Convert video into a core: node http.js import ./joker-scene.mp4
+// Later replicate so other peers can also watch it: node http.js
+// Other peers: node http.js <core key>
 
-if (process.argv[2] === 'bench') bench()
-else if (process.argv[2]) importData()
+const key = process.argv[2] && process.argv[2] !== 'import' ? Buffer.from(process.argv[2], 'hex') : null
+const core = new Hypercore('/tmp/movie' + (key ? '-peer' : ''), key)
+
+if (process.argv[2] === 'import') importData(process.argv[3])
 else start()
 
 class ByteStream extends streamx.Readable {
@@ -28,18 +32,18 @@ class ByteStream extends streamx.Readable {
     }
 
     if (this.byteOffset > 0) {
-      const [block, byteOffset] = await core.seek(this.byteOffset)
+      const [block, byteOffset] = await this.core.seek(this.byteOffset)
       this.byteOffset = 0
       this.index = block + 1
       this._select(this.index)
-      data = (await core.get(block)).slice(byteOffset)
+      data = (await this.core.get(block)).subarray(byteOffset)
     } else {
       this._select(this.index + 1)
-      data = await core.get(this.index++)
+      data = await this.core.get(this.index++)
     }
 
     if (data.length >= this.byteLength) {
-      data = data.slice(0, this.byteLength)
+      data = data.subarray(0, this.byteLength)
       this.push(data)
       this.push(null)
     } else {
@@ -62,36 +66,28 @@ class ByteStream extends streamx.Readable {
   }
 }
 
-async function bench () {
-  await core.ready()
-
-  console.time()
-  for (let i = 0; i < core.length; i++) {
-    await core.get(i)
-  }
-  console.timeEnd()
-}
-
 async function start () {
   const http = require('http')
   const parse = require('range-parser')
 
   await core.ready()
+  if (core.writable) console.log('Share this core key:', core.key.toString('hex'))
 
   core.on('download', (index) => console.log('Downloaded block #' + index))
-  core.download({ start: 0, end: 1 })
 
-  // hack until we update the replicator
-  core.ready = (cb) => cb(null)
+  const swarm = new Hyperswarm()
+  swarm.on('connection', (socket) => core.replicate(socket))
+  swarm.join(core.discoveryKey)
 
-  replicator(core, {
-    discoveryKey: require('crypto').createHash('sha256').update('http').digest(),
-    announce: true,
-    lookup: true
-  })
+  if (!core.writable) {
+    console.log('Finding peers')
+    const done = core.findingPeers()
+    swarm.flush().then(done, done)
+    await core.update()
+  }
 
   http.createServer(function (req, res) {
-    res.setHeader('Content-Type', 'video/x-matroska')
+    res.setHeader('Content-Type', 'video/mp4')
     res.setHeader('Accept-Ranges', 'bytes')
 
     let s
@@ -108,12 +104,14 @@ async function start () {
 
     res.setHeader('Content-Length', s.byteLength)
     s.pipe(res, () => {})
-  }).listen(10101)
+  }).listen(function () {
+    console.log('HTTP server on http://localhost:' + this.address().port)
+  })
 }
 
-async function importData () {
+async function importData (filename) {
   const fs = require('fs')
-  const rs = fs.createReadStream(process.argv[2])
+  const rs = fs.createReadStream(filename)
 
   for await (const data of rs) {
     await core.append(data)
