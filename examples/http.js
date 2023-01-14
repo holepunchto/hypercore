@@ -84,7 +84,7 @@ async function start () {
   // hack until we update the replicator
   core.ready = (cb) => cb(null)
 
-  new Replicator(core, {
+  new Replicator(core, { // eslint-disable-line no-new
     discoveryKey: require('crypto').createHash('sha256').update('http').digest(),
     announce: true,
     lookup: true
