@@ -10,7 +10,7 @@ const key = process.argv[2] && process.argv[2] !== 'import' ? Buffer.from(proces
 const core = new Hypercore('/tmp/movie' + (key ? '-peer' : ''), key)
 
 if (process.argv[2] === 'import') importData(process.argv[3])
-else start(key)
+else start()
 
 class ByteStream extends streamx.Readable {
   constructor (core, byteOffset, byteLength) {
@@ -66,12 +66,12 @@ class ByteStream extends streamx.Readable {
   }
 }
 
-async function start (key) {
+async function start () {
   const http = require('http')
   const parse = require('range-parser')
 
   await core.ready()
-  if (!key) console.log('Share this core key:', core.key.toString('hex'))
+  if (core.writable) console.log('Share this core key:', core.key.toString('hex'))
 
   core.on('download', (index) => console.log('Downloaded block #' + index))
 
