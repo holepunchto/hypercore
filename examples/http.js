@@ -28,14 +28,14 @@ class ByteStream extends streamx.Readable {
     }
 
     if (this.byteOffset > 0) {
-      const [block, byteOffset] = await core.seek(this.byteOffset)
+      const [block, byteOffset] = await this.core.seek(this.byteOffset)
       this.byteOffset = 0
       this.index = block + 1
       this._select(this.index)
-      data = (await core.get(block)).slice(byteOffset)
+      data = (await this.core.get(block)).slice(byteOffset)
     } else {
       this._select(this.index + 1)
-      data = await core.get(this.index++)
+      data = await this.core.get(this.index++)
     }
 
     if (data.length >= this.byteLength) {
