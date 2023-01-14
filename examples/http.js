@@ -87,7 +87,7 @@ async function start () {
   }
 
   http.createServer(function (req, res) {
-    res.setHeader('Content-Type', 'video/x-matroska')
+    res.setHeader('Content-Type', 'video/mp4')
     res.setHeader('Accept-Ranges', 'bytes')
 
     let s
