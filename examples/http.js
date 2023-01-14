@@ -1,6 +1,6 @@
 const Hypercore = require('../')
 const streamx = require('streamx')
-const replicator = require('@hyperswarm/replicator')
+const Replicator = require('@hyperswarm/replicator')
 
 const core = new Hypercore('/tmp/movie')
 
@@ -32,14 +32,14 @@ class ByteStream extends streamx.Readable {
       this.byteOffset = 0
       this.index = block + 1
       this._select(this.index)
-      data = (await this.core.get(block)).slice(byteOffset)
+      data = (await this.core.get(block)).subarray(byteOffset)
     } else {
       this._select(this.index + 1)
       data = await this.core.get(this.index++)
     }
 
     if (data.length >= this.byteLength) {
-      data = data.slice(0, this.byteLength)
+      data = data.subarray(0, this.byteLength)
       this.push(data)
       this.push(null)
     } else {
@@ -84,7 +84,7 @@ async function start () {
   // hack until we update the replicator
   core.ready = (cb) => cb(null)
 
-  replicator(core, {
+  new Replicator(core, {
     discoveryKey: require('crypto').createHash('sha256').update('http').digest(),
     announce: true,
     lookup: true
