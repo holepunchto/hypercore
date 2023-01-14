@@ -1,12 +1,16 @@
 const Hypercore = require('../')
 const streamx = require('streamx')
-const Replicator = require('@hyperswarm/replicator')
+const Hyperswarm = require('hyperswarm')
 
-const core = new Hypercore('/tmp/movie')
+// Convert video into a core: node http.js import ./joker-scene.mp4
+// Later replicate so other peers can also watch it: node http.js
+// Other peers: node http.js <core key>
 
-if (process.argv[2] === 'bench') bench()
-else if (process.argv[2]) importData()
-else start()
+const key = process.argv[2] && process.argv[2] !== 'import' ? Buffer.from(process.argv[2], 'hex') : null
+const core = new Hypercore('/tmp/movie' + (key ? '-peer' : ''), key)
+
+if (process.argv[2] === 'import') importData(process.argv[3])
+else start(key)
 
 class ByteStream extends streamx.Readable {
   constructor (core, byteOffset, byteLength) {
@@ -72,23 +76,25 @@ async function bench () {
   console.timeEnd()
 }
 
-async function start () {
+async function start (key) {
   const http = require('http')
   const parse = require('range-parser')
 
   await core.ready()
+  if (!key) console.log('Share this core key:', core.key.toString('hex'))
 
   core.on('download', (index) => console.log('Downloaded block #' + index))
-  core.download({ start: 0, end: 1 })
 
-  // hack until we update the replicator
-  core.ready = (cb) => cb(null)
+  const swarm = new Hyperswarm()
+  swarm.on('connection', (socket) => core.replicate(socket))
+  swarm.join(core.discoveryKey)
 
-  new Replicator(core, { // eslint-disable-line no-new
-    discoveryKey: require('crypto').createHash('sha256').update('http').digest(),
-    announce: true,
-    lookup: true
-  })
+  if (!core.writable) {
+    console.log('Finding peers')
+    const done = core.findingPeers()
+    swarm.flush().then(done, done)
+    await core.update()
+  }
 
   http.createServer(function (req, res) {
     res.setHeader('Content-Type', 'video/x-matroska')
@@ -108,12 +114,14 @@ async function start () {
 
     res.setHeader('Content-Length', s.byteLength)
     s.pipe(res, () => {})
-  }).listen(10101)
+  }).listen(function () {
+    console.log('Local HTTP server on http://localhost:' + this.address().port)
+  })
 }
 
-async function importData () {
+async function importData (filename) {
   const fs = require('fs')
-  const rs = fs.createReadStream(process.argv[2])
+  const rs = fs.createReadStream(filename)
 
   for await (const data of rs) {
     await core.append(data)
