@@ -105,7 +105,7 @@ async function start () {
     res.setHeader('Content-Length', s.byteLength)
     s.pipe(res, () => {})
   }).listen(function () {
-    console.log('Local HTTP server on http://localhost:' + this.address().port)
+    console.log('HTTP server on http://localhost:' + this.address().port)
   })
 }
 
