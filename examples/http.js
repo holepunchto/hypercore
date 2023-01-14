@@ -66,16 +66,6 @@ class ByteStream extends streamx.Readable {
   }
 }
 
-async function bench () {
-  await core.ready()
-
-  console.time()
-  for (let i = 0; i < core.length; i++) {
-    await core.get(i)
-  }
-  console.timeEnd()
-}
-
 async function start (key) {
   const http = require('http')
   const parse = require('range-parser')
