@@ -28,6 +28,7 @@ async function runTests () {
   await import('./snapshots.js')
   await import('./storage.js')
   await import('./streams.js')
+  await import('./timeouts.js')
   await import('./user-data.js')
 
   test.resume()

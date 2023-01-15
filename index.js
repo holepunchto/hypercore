@@ -15,7 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const { ReadStream, WriteStream } = require('./lib/streams')
-const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
+const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE, REQUEST_TIMEOUT } = require('./lib/errors')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -749,6 +749,14 @@ module.exports = class Hypercore extends EventEmitter {
       const req = this.replicator.addBlock(activeRequests, index)
 
       block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
+
+      if (opts && opts.timeout) {
+        const timeoutId = setTimeout(() => {
+          req.context.detach(req, REQUEST_TIMEOUT())
+        }, opts.timeout)
+
+        req.promise.finally(() => clearTimeout(timeoutId))
+      }
     }
 
     return block
