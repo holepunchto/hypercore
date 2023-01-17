@@ -748,27 +748,18 @@ module.exports = class Hypercore extends EventEmitter {
 
       const req = this.replicator.addBlock(activeRequests, index)
 
-      let request = req.promise
-      if (opts && typeof opts.timeout === 'number') request = this._addTimeout(req, opts.timeout)
+      if (opts && typeof opts.timeout === 'number') {
+        const t = setTimeout(() => {
+          if (req.context) req.context.detach(req, REQUEST_TIMEOUT())
+        }, opts.timeout)
 
-      block = this._cacheOnResolve(index, request, this.core.tree.fork)
+        req.promise = req.promise.finally(() => clearTimeout(t))
+      }
+
+      block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
     }
 
     return block
-  }
-
-  _addTimeout (req, timeout) {
-    const t = setTimeout(() => {
-      if (req.context) req.context.detach(req, REQUEST_TIMEOUT())
-    }, timeout)
-
-    return req.promise.then((block) => {
-      clearTimeout(t)
-      return block
-    }).catch(err => {
-      clearTimeout(t)
-      throw err
-    })
   }
 
   async _cacheOnResolve (index, req, fork) {
