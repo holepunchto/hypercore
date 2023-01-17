@@ -148,13 +148,13 @@ test('block request gets cancelled before timeout', async function (t) {
 
   const core = await create()
 
-  const promise = core.get(0, { timeout: 500 })
-
-  const b = core.replicator._blocks.get(0)
-  b.detach(b.refs[0])
+  const a = core.session()
+  const promise = a.get(0, { timeout: 500 })
+  await a.close()
 
   try {
     await promise
+    t.fail('should have failed')
   } catch (err) {
     t.is(err.code, 'REQUEST_CANCELLED')
   }
