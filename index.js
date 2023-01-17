@@ -750,7 +750,7 @@ module.exports = class Hypercore extends EventEmitter {
 
       block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
 
-      if (opts && opts.timeout != null) {
+      if (opts && typeof opts.timeout === 'number') {
         const timeoutId = setTimeout(() => {
           if (req.context) req.context.detach(req, REQUEST_TIMEOUT())
         }, opts.timeout)
