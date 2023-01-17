@@ -757,7 +757,7 @@ module.exports = class Hypercore extends EventEmitter {
 
       const block = await request
 
-      if (block !== null && this.cache && fork === this.core.tree.fork) {
+      if (this.cache && fork === this.core.tree.fork) {
         this.cache.set(index, Promise.resolve(block))
       }
 
