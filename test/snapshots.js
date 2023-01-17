@@ -115,7 +115,8 @@ test('snapshots are consistent', async function (t) {
 
   replicate(clone, core, t)
 
-  await clone.update()
+  await clone.update({ wait: true })
+
   const snapshot = clone.snapshot({ valueEncoding: 'utf-8' })
 
   t.is(snapshot.length, 3)

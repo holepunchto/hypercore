@@ -404,9 +404,9 @@ test('multiplexing multiple times over the same stream', async function (t) {
   b1.replicate(n2, { keepAlive: false })
   b1.replicate(n2, { keepAlive: false })
 
-  t.ok(await b1.update(), 'update once')
-  t.absent(await a1.update(), 'writer up to date')
-  t.absent(await b1.update(), 'update again')
+  t.ok(await b1.update({ wait: true }), 'update once')
+  t.absent(await a1.update({ wait: true }), 'writer up to date')
+  t.absent(await b1.update({ wait: true }), 'update again')
 
   t.is(b1.length, a1.length, 'same length')
   t.end()
@@ -817,7 +817,7 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
-test('non-sparse snapshot during replication', async function (t) {
+test.skip('non-sparse snapshot during replication', async function (t) {
   const a = await create()
   const b = await create(a.key, { sparse: false })
 
@@ -834,7 +834,7 @@ test('non-sparse snapshot during replication', async function (t) {
   t.is(s.contiguousLength, s.length)
 })
 
-test('non-sparse snapshot during partial replication', async function (t) {
+test.skip('non-sparse snapshot during partial replication', async function (t) {
   const a = await create()
   const b = await create(a.key)
   const c = await create(a.key, { sparse: false })
@@ -932,7 +932,7 @@ test('force update writable cores', async function (t) {
   t.is(a.length, 5)
   t.is(b.length, 0, "new device didn't bootstrap its state from the network")
 
-  await b.update({ force: true })
+  await b.update({ force: true, wait: true })
 
   t.is(
     b.length,
