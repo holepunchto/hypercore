@@ -61,3 +61,20 @@ test('get after timeout with await', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 })
+
+test('block request gets cancelled before timeout', async function (t) {
+  t.plan(1)
+
+  const core = await create()
+
+  const promise = core.get(0, { timeout: 500 })
+
+  const b = core.replicator._blocks.get(0)
+  b.detach(b.refs[0])
+
+  try {
+    await promise
+  } catch (err) {
+    t.is(err.code, 'REQUEST_CANCELLED')
+  }
+})
