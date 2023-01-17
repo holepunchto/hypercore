@@ -750,24 +750,10 @@ module.exports = class Hypercore extends EventEmitter {
 
       const req = this.replicator.addBlock(activeRequests, index)
       const fork = this.core.tree.fork
+
       let request = null
-
-      if (opts && typeof opts.timeout === 'number') {
-        const timeoutId = setTimeout(() => {
-          if (req.context) req.context.detach(req, REQUEST_TIMEOUT())
-        }, opts.timeout)
-
-        const cleanup = () => clearTimeout(timeoutId)
-        request = req.promise.then((block) => {
-          cleanup()
-          return block
-        }).catch(err => {
-          cleanup()
-          throw err
-        })
-      } else {
-        request = req.promise
-      }
+      if (opts && typeof opts.timeout === 'number') request = this._addTimeout(req, opts.timeout)
+      else request = req.promise
 
       const block = await request
 
@@ -777,6 +763,20 @@ module.exports = class Hypercore extends EventEmitter {
 
       return block
     }
+  }
+
+  _addTimeout (req, timeout) {
+    const timeoutId = setTimeout(() => {
+      req.context && req.context.detach(req, REQUEST_TIMEOUT())
+    }, timeout)
+
+    return req.promise.then((block) => {
+      clearTimeout(timeoutId)
+      return block
+    }).catch(err => {
+      clearTimeout(timeoutId)
+      throw err
+    })
   }
 
   createReadStream (opts) {
