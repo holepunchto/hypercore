@@ -738,8 +738,6 @@ module.exports = class Hypercore extends EventEmitter {
       block = this.core.blocks.get(index)
 
       if (this.cache) this.cache.set(index, block)
-
-      return block
     } else {
       if (opts && opts.wait === false) return null
       if (this.wait === false && (!opts || !opts.wait)) return null
@@ -755,14 +753,14 @@ module.exports = class Hypercore extends EventEmitter {
       if (opts && typeof opts.timeout === 'number') request = this._addTimeout(req, opts.timeout)
       else request = req.promise
 
-      const block = await request
+      block = await request
 
       if (this.cache && fork === this.core.tree.fork) {
         this.cache.set(index, Promise.resolve(block))
       }
-
-      return block
     }
+
+    return block
   }
 
   _addTimeout (req, timeout) {
