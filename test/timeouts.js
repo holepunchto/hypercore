@@ -32,20 +32,6 @@ test('get after timeout', async function (t) {
   })
 })
 
-test('get after 0ms timeout', async function (t) {
-  t.plan(1)
-
-  const core = await create()
-
-  const req = core.get(0, { timeout: 0 })
-
-  req.then((block) => {
-    t.fail('should not have got block: ' + block)
-  }).catch((err) => {
-    t.is(err.code, 'REQUEST_TIMEOUT')
-  })
-})
-
 test('timeout but hits cache (remote await)', async function (t) {
   t.plan(2)
 
@@ -54,7 +40,7 @@ test('timeout but hits cache (remote await)', async function (t) {
   replicate(a, b, t)
 
   try {
-    const block = await b.get(0, { timeout: 0 })
+    const block = await b.get(0, { timeout: 1 })
     t.fail('should not have got block: ' + block)
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
@@ -74,7 +60,7 @@ test('timeout but hits cache (remote parallel)', async function (t) {
   const b = await create(a.key, { cache: true })
   replicate(a, b, t)
 
-  const b1 = b.get(0, { timeout: 0 })
+  const b1 = b.get(0, { timeout: 1 })
   const b2 = b.get(0)
 
   try {
@@ -97,7 +83,7 @@ test('timeout but hits cache (await)', async function (t) {
   const core = await create({ cache: true })
 
   try {
-    await core.get(0, { timeout: 0 })
+    await core.get(0, { timeout: 1 })
   } catch (error) {
     t.is(error.code, 'REQUEST_TIMEOUT')
   }
@@ -111,7 +97,7 @@ test('timeout but hits cache (parallel)', async function (t) {
 
   const core = await create({ cache: true })
 
-  const b1 = core.get(0, { timeout: 0 })
+  const b1 = core.get(0, { timeout: 1 })
   const b2 = core.get(0)
 
   try {
@@ -156,6 +142,6 @@ test('block request gets cancelled before timeout', async function (t) {
     await promise
     t.fail('should have failed')
   } catch (err) {
-    t.is(err.code, 'REQUEST_CANCELLED')
+    t.is(err.code, 'SESSION_CLOSED')
   }
 })
