@@ -765,7 +765,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   _addTimeout (req, timeout) {
     const timeoutId = setTimeout(() => {
-      req.context && req.context.detach(req, REQUEST_TIMEOUT())
+      if (req.context) req.context.detach(req, REQUEST_TIMEOUT())
     }, timeout)
 
     return req.promise.then((block) => {
