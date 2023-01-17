@@ -9,11 +9,14 @@ test('get before timeout', async function (t) {
 
   const req = core.get(0, { timeout: 500 })
 
-  req.then((block) => {
-    t.alike(block, b4a.from('hi'))
-  }).catch((err) => {
-    t.fail(err.message)
-  })
+  req.then(
+    (block) => {
+      t.alike(block, b4a.from('hi'))
+    },
+    (err) => {
+      t.fail(err.message)
+    }
+  )
 
   await core.append('hi')
 })
@@ -25,12 +28,15 @@ test('get after timeout', async function (t) {
 
   const req = core.get(0, { timeout: 500 })
 
-  req.then((block) => {
-    console.log('block', block)
-    t.fail('should not have got block')
-  }).catch((err) => {
-    t.is(err.code, 'REQUEST_TIMEOUT')
-  })
+  req.then(
+    (block) => {
+      console.log('block', block)
+      t.fail('should not have got block')
+    },
+    (err) => {
+      t.is(err.code, 'REQUEST_TIMEOUT')
+    }
+  )
 })
 
 test('get after 0ms timeout', async function (t) {
@@ -40,10 +46,13 @@ test('get after 0ms timeout', async function (t) {
 
   const req = core.get(0, { timeout: 0 })
 
-  req.then((block) => {
-    console.log('block', block)
-    t.fail('should not have got block')
-  }).catch((err) => {
-    t.is(err.code, 'REQUEST_TIMEOUT')
-  })
+  req.then(
+    (block) => {
+      console.log('block', block)
+      t.fail('should not have got block')
+    },
+    (err) => {
+      t.is(err.code, 'REQUEST_TIMEOUT')
+    }
+  )
 })
