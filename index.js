@@ -738,6 +738,8 @@ module.exports = class Hypercore extends EventEmitter {
       block = this.core.blocks.get(index)
 
       if (this.cache) this.cache.set(index, block)
+
+      return block
     } else {
       if (opts && opts.wait === false) return null
       if (this.wait === false && (!opts || !opts.wait)) return null
@@ -747,29 +749,34 @@ module.exports = class Hypercore extends EventEmitter {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
       const req = this.replicator.addBlock(activeRequests, index)
+      const fork = this.core.tree.fork
+      let request = null
 
-      block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
-
-      if (opts && opts.timeout) {
+      if (opts && typeof opts.timeout === 'number') {
         const timeoutId = setTimeout(() => {
-          req.context.detach(req, REQUEST_TIMEOUT())
+          /* if (req.context) */req.context.detach(req, REQUEST_TIMEOUT())
         }, opts.timeout)
 
-        req.promise.finally(() => clearTimeout(timeoutId))
+        const cleanup = () => clearTimeout(timeoutId)
+        request = req.promise.then((block) => {
+          cleanup()
+          return block
+        }).catch(err => {
+          cleanup()
+          throw err
+        })
+      } else {
+        request = req.promise
       }
+
+      const block = await request
+
+      if (block !== null && this.cache && fork === this.core.tree.fork) {
+        this.cache.set(index, Promise.resolve(block))
+      }
+
+      return block
     }
-
-    return block
-  }
-
-  async _cacheOnResolve (index, req, fork) {
-    const block = await req
-
-    if (this.cache && fork === this.core.tree.fork) {
-      this.cache.set(index, Promise.resolve(block))
-    }
-
-    return block
   }
 
   createReadStream (opts) {
