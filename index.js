@@ -646,20 +646,19 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-    const req = this.replicator.addUpgrade(activeRequests)
+    const remoteWait = typeof (opts && opts.wait) === 'boolean' ? opts.wait : this._findingPeers > 0
 
-    let upgraded = await req.promise
+    let upgraded = false
 
-    if (!this.sparse) {
-      // Download all available blocks in non-sparse mode
-      const start = this.length
-      const end = this.core.tree.length
-      const contig = this.contiguousLength
+    if (await this.replicator.applyPendingReorg()) {
+      upgraded = true
+    }
 
-      await this.download({ start, end, ifAvailable: true }).done()
+    if (!upgraded && remoteWait) {
+      const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+      const req = this.replicator.addUpgrade(activeRequests)
 
-      if (!upgraded) upgraded = this.contiguousLength !== contig
+      upgraded = await req.promise
     }
 
     if (!upgraded) return false
