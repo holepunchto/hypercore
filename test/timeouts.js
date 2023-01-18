@@ -35,7 +35,7 @@ test('get before timeout', async function (t) {
 
   const core = await create()
 
-  setImmediate(() => core.append('hi'))
+  afterTicks(() => core.append('hi'))
   t.alike(await core.get(0, { timeout: 30000 }), b4a.from('hi'))
 })
 
@@ -98,8 +98,17 @@ test('core constructor timeout but disable on get', async function (t) {
 
   const core = await create({ timeout: 1 })
 
-  setImmediate(() => core.append('hi'))
+  afterTicks(() => core.append('hi'))
   t.alike(await core.get(0, { timeout: 0 }), b4a.from('hi'))
+})
+
+test('core constructor timeout but increase on get', async function (t) {
+  t.plan(1)
+
+  const core = await create({ timeout: 1 })
+
+  afterTicks(() => core.append('hi'))
+  t.alike(await core.get(0, { timeout: 30000 }), b4a.from('hi'))
 })
 
 test('timeout but tries to hit cache (remote await)', async function (t) {
@@ -116,7 +125,7 @@ test('timeout but tries to hit cache (remote await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  setImmediate(() => a.append('hi'))
+  afterTicks(() => a.append('hi'))
   t.alike(await b.get(0), b4a.from('hi'), 'second request succeed')
 })
 
@@ -137,7 +146,7 @@ test('timeout but tries to hit cache (remote parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  setImmediate(() => a.append('hi'))
+  afterTicks(() => a.append('hi'))
   t.alike(await b2, b4a.from('hi'), 'second request succeed')
 })
 
@@ -153,7 +162,7 @@ test('timeout but tries to hit cache (await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  setImmediate(() => core.append('hi'))
+  afterTicks(() => core.append('hi'))
   t.alike(await core.get(0), b4a.from('hi'))
 })
 
@@ -171,7 +180,7 @@ test('timeout but hits cache (parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  setImmediate(() => core.append('hi'))
+  afterTicks(() => core.append('hi'))
   t.alike(await b2, b4a.from('hi'))
 })
 
@@ -209,3 +218,7 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
+
+function afterTicks (cb) {
+  setImmediate(() => setTimeout(cb, 1))
+}
