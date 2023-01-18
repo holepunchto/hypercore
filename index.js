@@ -646,7 +646,7 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const remoteWait = typeof (opts && opts.wait) === 'boolean' ? opts.wait : this._findingPeers > 0
+    const remoteWait = typeof (opts && opts.wait) === 'boolean' ? opts.wait : this.replicator.findingPeers > 0
 
     let upgraded = false
 
