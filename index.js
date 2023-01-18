@@ -746,6 +746,7 @@ module.exports = class Hypercore extends EventEmitter {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
       const req = this.replicator.addBlock(activeRequests, index)
+      if (opts && opts.timeout) req.context.setTimeout(req, opts.timeout)
 
       block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
     }
