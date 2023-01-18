@@ -94,6 +94,15 @@ test('session get after inherited timeout', async function (t) {
   }
 })
 
+test('core constructor timeout but disable on get', async function (t) {
+  t.plan(1)
+
+  const core = await create({ timeout: 1 })
+
+  afterTimeout(() => core.append('hi'))
+  t.alike(await core.get(0, { timeout: 0 }), b4a.from('hi'))
+})
+
 test('timeout but tries to hit cache (remote await)', async function (t) {
   t.plan(2)
 
@@ -201,3 +210,7 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
+
+function afterTimeout (cb) {
+  setImmediate(() => setTimeout(cb, 1))
+}
