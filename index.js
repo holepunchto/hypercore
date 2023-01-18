@@ -73,6 +73,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.autoClose = !!opts.autoClose
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
+    this.timeout = opts.timeout || 0
 
     this.closing = null
     this.opening = this._openSession(key, storage, opts)
@@ -200,12 +201,14 @@ module.exports = class Hypercore extends EventEmitter {
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
+    const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
       sparse,
       wait,
       onwait,
+      timeout,
       _opening: this.opening,
       _sessions: this.sessions
     })
@@ -746,7 +749,8 @@ module.exports = class Hypercore extends EventEmitter {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
       const req = this.replicator.addBlock(activeRequests, index)
-      if (opts && opts.timeout) req.context.setTimeout(req, opts.timeout)
+      const timeout = (opts && opts.timeout) || this.timeout
+      if (timeout) req.context.setTimeout(req, timeout)
 
       block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
     }
