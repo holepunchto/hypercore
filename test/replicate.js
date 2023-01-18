@@ -817,49 +817,6 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
-test.skip('non-sparse snapshot during replication', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { sparse: false })
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await b.update()
-
-  const s = b.snapshot()
-
-  await a.append(['f', 'g', 'h', 'i', 'j'])
-  await s.update()
-
-  t.is(s.contiguousLength, s.length)
-})
-
-test.skip('non-sparse snapshot during partial replication', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key, { sparse: false })
-
-  replicate(a, b, t)
-  replicate(b, c, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  await b.download({ start: 0, end: 3 }).done()
-  await c.update()
-
-  const s = c.snapshot()
-  t.is(s.contiguousLength, s.length)
-
-  await s.update()
-  t.is(s.contiguousLength, s.length)
-
-  await b.download({ start: 3, end: 5 }).done()
-  t.is(s.contiguousLength, s.length)
-
-  await s.update()
-  t.is(s.contiguousLength, s.length)
-})
-
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
