@@ -17,7 +17,7 @@ test('core and session timeout property', async function (t) {
   t.is(b.timeout, 50)
 })
 
-test('core session inherits timeout', async function (t) {
+test('core session inherits timeout property', async function (t) {
   t.plan(3)
 
   const core = new Hypercore(RAM, { timeout: 50 })
