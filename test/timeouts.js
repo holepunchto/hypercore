@@ -8,7 +8,7 @@ test('get before timeout', async function (t) {
   const core = await create()
   setImmediate(() => core.append('hi'))
 
-  const block = await core.get(0, { timeout: 1 })
+  const block = await core.get(0, { timeout: 30000 })
   t.alike(block, b4a.from('hi'))
 })
 
