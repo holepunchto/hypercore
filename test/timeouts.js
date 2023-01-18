@@ -35,7 +35,7 @@ test('get before timeout', async function (t) {
 
   const core = await create()
 
-  afterTimeout(() => core.append('hi'))
+  setImmediate(() => core.append('hi'))
   t.alike(await core.get(0, { timeout: 30000 }), b4a.from('hi'))
 })
 
@@ -98,7 +98,7 @@ test('core constructor timeout but disable on get', async function (t) {
 
   const core = await create({ timeout: 1 })
 
-  afterTimeout(() => core.append('hi'))
+  setImmediate(() => core.append('hi'))
   t.alike(await core.get(0, { timeout: 0 }), b4a.from('hi'))
 })
 
@@ -116,7 +116,7 @@ test('timeout but tries to hit cache (remote await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  afterTimeout(() => a.append('hi'))
+  setImmediate(() => a.append('hi'))
   t.alike(await b.get(0), b4a.from('hi'), 'second request succeed')
 })
 
@@ -137,7 +137,7 @@ test('timeout but tries to hit cache (remote parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  afterTimeout(() => a.append('hi'))
+  setImmediate(() => a.append('hi'))
   t.alike(await b2, b4a.from('hi'), 'second request succeed')
 })
 
@@ -153,7 +153,7 @@ test('timeout but tries to hit cache (await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  afterTimeout(() => core.append('hi'))
+  setImmediate(() => core.append('hi'))
   t.alike(await core.get(0), b4a.from('hi'))
 })
 
@@ -171,7 +171,7 @@ test('timeout but hits cache (parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  afterTimeout(() => core.append('hi'))
+  setImmediate(() => core.append('hi'))
   t.alike(await b2, b4a.from('hi'))
 })
 
@@ -209,7 +209,3 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
-
-function afterTimeout (cb) {
-  setImmediate(() => setTimeout(cb, 1))
-}
