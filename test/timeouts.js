@@ -71,6 +71,7 @@ test('timeout but tries to hit cache (await)', async function (t) {
 
   try {
     await core.get(0, { timeout: 1 })
+    t.fail('should have failed')
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
