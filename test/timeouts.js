@@ -8,7 +8,7 @@ test('get before timeout', async function (t) {
   const core = await create()
   setImmediate(() => core.append('hi'))
 
-  const block = await core.get(0, { timeout: 50 })
+  const block = await core.get(0, { timeout: 1 })
   t.alike(block, b4a.from('hi'))
 })
 
@@ -18,7 +18,7 @@ test('get after timeout', async function (t) {
   const core = await create()
 
   try {
-    await core.get(0, { timeout: 50 })
+    await core.get(0, { timeout: 1 })
     t.fail('should not get a block')
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
@@ -106,7 +106,7 @@ test('get after timeout with await', async function (t) {
   t.alike(await core.get(0, { timeout: 1 }), b4a.from('sup'))
 
   try {
-    const block = await core.get(1, { timeout: 50 })
+    const block = await core.get(1, { timeout: 1 })
     t.fail('should not get a block: ' + block)
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
@@ -119,7 +119,7 @@ test('block request gets cancelled before timeout', async function (t) {
   const core = await create()
 
   const a = core.session()
-  const promise = a.get(0, { timeout: 50 })
+  const promise = a.get(0, { timeout: 1 })
   const close = a.close()
 
   try {
