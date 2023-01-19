@@ -219,7 +219,7 @@ test('block request gets cancelled before timeout', async function (t) {
   await close
 })
 
-// Allows 1ms timeouts (i.e. inside of Hypercore) to be triggered before afterTicks
+// Allows 1ms timeouts (of core.get) to be triggered before afterTicks
 // "cb" is ensured to be called after 1-2ms (min-max) of timeouts
 // For example: afterTicks happens before a timeout of 3ms
 function afterTicks (cb) {
