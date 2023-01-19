@@ -139,8 +139,8 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 ``` js
 {
-  force: true,
-  wait: false
+  wait: false,
+  force: true
 }
 ```
 
