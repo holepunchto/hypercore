@@ -219,6 +219,8 @@ test('block request gets cancelled before timeout', async function (t) {
   await close
 })
 
+// "cb" is ensured to be called after 1-2ms (min-max) of timeouts
+// For example: afterTicks happens before a timeout of 3ms
 function afterTicks (cb) {
   setImmediate(() => setTimeout(cb, 1))
 }
