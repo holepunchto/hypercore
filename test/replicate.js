@@ -1016,3 +1016,19 @@ test('append event emits new length', async function (t) {
   t.is(4, (await once(a, 'append'))[0])
   t.is(4, (await once(b, 'append'))[0])
 })
+
+test('append event emits contiguous length in sparse', async function (t) {
+  const a = await create()
+  const b = await create(a.key, { sparse: false })
+
+  replicate(a, b, t, { session: true })
+
+  a.append('a')
+  t.is((await once(b, 'append'))[0], b.contiguousLength)
+
+  a.append('b')
+  t.is((await once(b, 'append'))[0], b.contiguousLength)
+
+  a.append(['c', 'd'])
+  t.is((await once(b, 'append'))[0], b.contiguousLength)
+})

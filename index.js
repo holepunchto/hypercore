@@ -558,7 +558,7 @@ module.exports = class Hypercore extends EventEmitter {
 
         // For sparse sessions, immediately emit appends. If non-sparse, emit if contig length has updated
         if (s.sparse ? appended : appendedNonSparse) {
-          s.emit('append', this.core.tree.length)
+          s.emit('append', s.sparse ? this.core.tree.length : this.core.header.contiguousLength)
         }
       }
 
