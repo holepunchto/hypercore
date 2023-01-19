@@ -126,8 +126,7 @@ Check if the core has all blocks between `start` and `end`.
 
 #### `const updated = await core.update([options])`
 
-Wait for the core to try and find a signed update to its length.
-Does not download any data from peers except for a proof of the new core length.
+Waits for initial proof of the new core length until all `findingPeers` calls has finished.
 
 ``` js
 const updated = await core.update()
