@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 const Hypercore = require('../')
+const { once } = require('events')
 
 test('basic replication', async function (t) {
   const a = await create()
@@ -995,4 +996,23 @@ test('replication session keeps the core open', async function (t) {
   const blk = await b.get(2)
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
+})
+
+test('append event emits new length', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b, t, { session: true })
+
+  a.append('a')
+  t.is(1, (await once(a, 'append'))[0])
+  t.is(1, (await once(b, 'append'))[0])
+
+  a.append('b')
+  t.is(2, (await once(a, 'append'))[0])
+  t.is(2, (await once(b, 'append'))[0])
+
+  a.append(['c', 'd'])
+  t.is(4, (await once(a, 'append'))[0])
+  t.is(4, (await once(b, 'append'))[0])
 })

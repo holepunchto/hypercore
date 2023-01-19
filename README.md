@@ -392,7 +392,7 @@ If you're using Hyperswarm, you'd normally call this after a `swarm.flush()` fin
 
 This allows `core.update` to wait for either the `findingPeers` hook to finish or one peer to appear before deciding whether it should wait for a merkle tree update before returning.
 
-#### `core.on('append')`
+#### `core.on('append', length)`
 
 Emitted when the core has been appended to (i.e. has a new length / byteLength), either locally or remotely.
 
