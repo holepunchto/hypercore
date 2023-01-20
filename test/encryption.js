@@ -23,6 +23,18 @@ test('encrypted append and get', async function (t) {
   t.absent(encrypted.includes('hello'))
 })
 
+test('get with decrypt option', async function (t) {
+  const a = await create({ encryptionKey })
+
+  await a.append('hello')
+
+  const unencrypted = await a.get(0, { decrypt: true })
+  t.alike(unencrypted, Buffer.from('hello'))
+
+  const encrypted = await a.get(0, { decrypt: false })
+  t.absent(encrypted.includes('hello'))
+})
+
 test('encrypted seek', async function (t) {
   const a = await create({ encryptionKey })
 
