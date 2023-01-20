@@ -230,11 +230,13 @@ test('temp case: intensive timeouts (3ms)', async function (t) {
       resolved = resolve
     })
 
+    const get = core.get(i, { timeout: 1 })
+
     setTimeout(() => core.append('hi').then(resolved), 3)
 
     // It should fail because the block is being appended late
     try {
-      await core.get(i, { timeout: 1 })
+      await get
       t.fail('should have failed (index: ' + i + ')')
     } catch (err) {
       t.pass(err.code, 'got error')
@@ -255,11 +257,13 @@ test('temp case: intensive timeouts (2ms)', async function (t) {
       resolved = resolve
     })
 
+    const get = core.get(i, { timeout: 1 })
+
     setTimeout(() => core.append('hi').then(resolved), 2)
 
     // It should sometimes fail and sometimes work because the block is in the middle of just in time
     try {
-      await core.get(i, { timeout: 1 })
+      await get
       t.pass('got block #' + i)
     } catch (err) {
       t.pass(err.code, 'got error')
@@ -280,14 +284,16 @@ test('temp case: intensive timeouts (1ms)', async function (t) {
       resolved = resolve
     })
 
+    const get = core.get(i, { timeout: 1 })
+
     setTimeout(() => core.append('hi').then(resolved), 1)
 
     // It should always work
     try {
-      await core.get(i, { timeout: 1 })
-      t.pass('got block #' + i)
+      await get
+      t.fail('got block #' + i)
     } catch (err) {
-      t.fail(err.code, 'got error')
+      t.pass(err.code, 'got error')
     }
 
     await promise
