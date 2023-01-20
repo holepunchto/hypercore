@@ -1,5 +1,5 @@
 const test = require('brittle')
-const { create, replicate } = require('./helpers')
+const { create } = require('./helpers')
 const Hypercore = require('../')
 const RAM = require('random-access-memory')
 const b4a = require('b4a')
