@@ -36,7 +36,7 @@ test('get before timeout', async function (t) {
   const core = await create()
 
   const get = core.get(0, { timeout: 30000 })
-  setTimeout(() => core.append('hi'), 3)
+  setTimeout(() => core.append('hi'), 5)
   t.alike(await get, b4a.from('hi'))
 })
 
@@ -100,7 +100,7 @@ test('core constructor timeout but disable on get', async function (t) {
   const core = await create({ timeout: 1 })
 
   const get = core.get(0, { timeout: 0 })
-  setTimeout(() => core.append('hi'), 3)
+  setTimeout(() => core.append('hi'), 5)
   t.alike(await get, b4a.from('hi'))
 })
 
@@ -110,7 +110,7 @@ test('core constructor timeout but increase on get', async function (t) {
   const core = await create({ timeout: 1 })
 
   const get = core.get(0, { timeout: 30000 })
-  setTimeout(() => core.append('hi'), 3)
+  setTimeout(() => core.append('hi'), 5)
   t.alike(await get, b4a.from('hi'))
 })
 
