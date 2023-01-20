@@ -219,36 +219,77 @@ test('block request gets cancelled before timeout', async function (t) {
   await close
 })
 
-test('temp case: macos slowness (3ms)', async function (t) {
-  t.plan(1)
+test('temp case: intensive timeouts (3ms)', async function (t) {
+  t.plan(1000)
 
   const core = await create({ timeout: 1 })
 
-  for (let i = 0; i < 100; i++) {
-    const t = setTimeout(() => core.append('hi'), 3)
+  for (let i = 0; i < 1000; i++) {
+    let resolved = null
+    const promise = new Promise(resolve => {
+      resolved = resolve
+    })
+
+    setTimeout(() => core.append('hi').then(resolved), 3)
+
+    // It should fail because the block is being appended late
     try {
-      t.alike(await core.get(0, { timeout: 1 }), b4a.from('hi'), 'got block')
+      await core.get(i, { timeout: 1 })
+      t.fail('should have failed (index: ' + i + ')')
     } catch (err) {
-      t.fail(err.code, 'got error')
-    } finally {
-      clearTimeout(t)
+      t.pass(err.code, 'got error')
     }
+
+    await promise
   }
 })
 
-test('temp case: macos slowness (2ms)', async function (t) {
-  t.plan(1)
+test('temp case: intensive timeouts (2ms)', async function (t) {
+  t.plan(1000)
 
   const core = await create({ timeout: 1 })
 
-  for (let i = 0; i < 100; i++) {
-    const t = setTimeout(() => core.append('hi'), 2)
+  for (let i = 0; i < 1000; i++) {
+    let resolved = null
+    const promise = new Promise(resolve => {
+      resolved = resolve
+    })
+
+    setTimeout(() => core.append('hi').then(resolved), 2)
+
+    // It should sometimes fail and sometimes work because the block is in the middle of just in time
     try {
-      t.alike(await core.get(0, { timeout: 1 }), b4a.from('hi'), 'got block')
+      await core.get(i, { timeout: 1 })
+      t.pass('got block #' + i)
+    } catch (err) {
+      t.pass(err.code, 'got error')
+    }
+
+    await promise
+  }
+})
+
+test('temp case: intensive timeouts (1ms)', async function (t) {
+  t.plan(1000)
+
+  const core = await create({ timeout: 1 })
+
+  for (let i = 0; i < 1000; i++) {
+    let resolved = null
+    const promise = new Promise(resolve => {
+      resolved = resolve
+    })
+
+    setTimeout(() => core.append('hi').then(resolved), 1)
+
+    // It should sometimes fail and sometimes work because the block is in the middle of just in time
+    try {
+      await core.get(i, { timeout: 1 })
+      t.pass('got block #' + i)
     } catch (err) {
       t.fail(err.code, 'got error')
-    } finally {
-      clearTimeout(t)
     }
+
+    await promise
   }
 })
