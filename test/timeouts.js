@@ -218,3 +218,37 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
+
+test('temp case: macos slowness (3ms)', async function (t) {
+  t.plan(1)
+
+  const core = await create({ timeout: 1 })
+
+  for (let i = 0; i < 100; i++) {
+    const t = setTimeout(() => core.append('hi'), 3)
+    try {
+      t.alike(await core.get(0, { timeout: 1 }), b4a.from('hi'), 'got block')
+    } catch (err) {
+      t.fail(err.code, 'got error')
+    } finally {
+      clearTimeout(t)
+    }
+  }
+})
+
+test('temp case: macos slowness (2ms)', async function (t) {
+  t.plan(1)
+
+  const core = await create({ timeout: 1 })
+
+  for (let i = 0; i < 100; i++) {
+    const t = setTimeout(() => core.append('hi'), 2)
+    try {
+      t.alike(await core.get(0, { timeout: 1 }), b4a.from('hi'), 'got block')
+    } catch (err) {
+      t.fail(err.code, 'got error')
+    } finally {
+      clearTimeout(t)
+    }
+  }
+})
