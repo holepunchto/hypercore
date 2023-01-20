@@ -282,7 +282,7 @@ test('temp case: intensive timeouts (1ms)', async function (t) {
 
     setTimeout(() => core.append('hi').then(resolved), 1)
 
-    // It should sometimes fail and sometimes work because the block is in the middle of just in time
+    // It should always work
     try {
       await core.get(i, { timeout: 1 })
       t.pass('got block #' + i)
