@@ -35,7 +35,7 @@ test('get before timeout', async function (t) {
 
   const core = await create()
 
-  afterTicks(() => core.append('hi'))
+  setTimeout(() => core.append('hi'), 3)
   t.alike(await core.get(0, { timeout: 30000 }), b4a.from('hi'))
 })
 
@@ -98,7 +98,7 @@ test('core constructor timeout but disable on get', async function (t) {
 
   const core = await create({ timeout: 1 })
 
-  afterTicks(() => core.append('hi'))
+  setTimeout(() => core.append('hi'), 3)
   t.alike(await core.get(0, { timeout: 0 }), b4a.from('hi'))
 })
 
@@ -107,7 +107,7 @@ test('core constructor timeout but increase on get', async function (t) {
 
   const core = await create({ timeout: 1 })
 
-  afterTicks(() => core.append('hi'))
+  setTimeout(() => core.append('hi'), 3)
   t.alike(await core.get(0, { timeout: 30000 }), b4a.from('hi'))
 })
 
@@ -125,7 +125,7 @@ test('timeout but tries to hit cache (remote await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  afterTicks(() => a.append('hi'))
+  setTimeout(() => a.append('hi'), 3)
   t.alike(await b.get(0), b4a.from('hi'), 'second request succeed')
 })
 
@@ -146,7 +146,7 @@ test('timeout but tries to hit cache (remote parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT', 'first request failed')
   }
 
-  afterTicks(() => a.append('hi'))
+  setTimeout(() => a.append('hi'), 3)
   t.alike(await b2, b4a.from('hi'), 'second request succeed')
 })
 
@@ -162,7 +162,7 @@ test('timeout but tries to hit cache (await)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  afterTicks(() => core.append('hi'))
+  setTimeout(() => core.append('hi'), 3)
   t.alike(await core.get(0), b4a.from('hi'))
 })
 
@@ -180,7 +180,7 @@ test('timeout but hits cache (parallel)', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
-  afterTicks(() => core.append('hi'))
+  setTimeout(() => core.append('hi'), 3)
   t.alike(await b2, b4a.from('hi'))
 })
 
@@ -218,10 +218,3 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
-
-// Allows 1ms timeouts (of core.get) to be triggered before afterTicks
-// "cb" is ensured to be called after 1-2ms (min-max) of timeouts
-// For example: afterTicks happens before a timeout of 3ms
-function afterTicks (cb) {
-  setImmediate(() => setTimeout(cb, 1))
-}
