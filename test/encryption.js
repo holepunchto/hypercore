@@ -1,9 +1,96 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
 const Hypercore = require('..')
-const { create, replicate } = require('./helpers')
+const { create, createCore, replicate, useTestnet, createStore } = require('./helpers')
+const crypto = require('hypercore-crypto')
+const DHT = require('@hyperswarm/dht')
+const Hyperswarm = require('hyperswarm')
+// const HypercoreId = require('hypercore-id-encoding')
 
 const encryptionKey = Buffer.alloc(32, 'hello world')
+
+test.solo('encrypted append and get', async function (t) {
+  const { bootstrap } = await useTestnet(t)
+  const keyPair = crypto.keyPair()
+
+  // writer
+  const a = await createCore(t, { keyPair, encryptionKey })
+  await a.append('hello')
+  await a.append('hola')
+
+  const [swarm, discovery] = await hyperswarmReplicate(t, a.discoveryKey, a, { bootstrap, keyPair })
+  await discovery.flushed()
+
+  // replica (i.e. simple-seeder)
+  const store2 = await createStore(t)
+  const b = store2.get(a.key)
+  await b.ready()
+
+  const [swarm2] = await hyperswarmReplicate(t, b.discoveryKey, store2, { bootstrap, name: 'seeder1' })
+  b.download()
+  b.on('download', (index) => console.log('seeder1 downloaded block #' + index))
+
+  // basic checks
+  t.alike(await a.get(0), Buffer.from('hello')) // unencrypted
+  t.absent((await b.get(0)).includes('hello')) // encrypted
+
+  t.absent((await a.core.blocks.get(0)).includes('hello')) // encrypted
+  t.absent((await b.core.blocks.get(0)).includes('hello')) // encrypted
+
+  // kill writer
+  await swarm.destroy()
+  await a.close()
+
+  // re-create writer in different folder
+  console.log('re-creating writer')
+  const c = await createCore(t, { keyPair, encryptionKey })
+
+  const [swarm3, discovery3, dht3] = await hyperswarmReplicate(t, c.discoveryKey, c, { bootstrap, keyPair })
+  await discovery3.flushed()
+
+  await c.get(1) // important
+  console.log('has #0?', await c.has(0))
+  console.log(await c.core.blocks.get(0), 'zeros but correct length?')
+  console.log(await c.get(0), 'got block')
+  console.log('has #0?', await c.has(0))
+  console.log(await c.core.blocks.get(0), 'filled!')
+})
+
+function hyperswarmReplicate (t, discoveryKey, instance, { name, bootstrap, keyPair } = {}) {
+  const dht = new DHT({ bootstrap, keyPair })
+  const swarm = new Hyperswarm({ dht, keyPair })
+  t.teardown(() => swarm.destroy())
+
+  swarm.on('connection', (socket) => {
+    if (name) {
+      socket.on('error', (err) => console.error('Error (' + name + '):', err.message))
+    }
+
+    instance.replicate(socket)
+  })
+
+  // + swarm.listen()?
+  const discovery = swarm.join(discoveryKey)
+
+  return [swarm, discovery, dht]
+}
+
+function waitForSocketFlush (socket) {
+  return new Promise((resolve, reject) => {
+    socket.on('open', done)
+    socket.on('close', done)
+    socket.on('error', done)
+
+    function done (error) {
+      socket.off('open', done)
+      socket.off('close', done)
+      socket.off('error', done)
+
+      if (error) reject(error)
+      else resolve()
+    }
+  })
+}
 
 test('encrypted append and get', async function (t) {
   const a = await create({ encryptionKey })
