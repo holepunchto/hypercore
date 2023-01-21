@@ -26,7 +26,7 @@ test.solo('encrypted append and get', async function (t) {
   const b = store2.get(a.key)
   await b.ready()
 
-  const [swarm2] = await hyperswarmReplicate(t, b.discoveryKey, store2, { bootstrap, name: 'seeder1' })
+  const [swarm2] = await hyperswarmReplicate(t, b.discoveryKey, store2, { bootstrap, name: 'seeder1' }) // eslint-disable-line
   b.download()
   b.on('download', (index) => console.log('seeder1 downloaded block #' + index))
 
@@ -45,7 +45,7 @@ test.solo('encrypted append and get', async function (t) {
   console.log('re-creating writer')
   const c = await createCore(t, { keyPair, encryptionKey })
 
-  const [swarm3, discovery3, dht3] = await hyperswarmReplicate(t, c.discoveryKey, c, { bootstrap, keyPair })
+  const [swarm3, discovery3, dht3] = await hyperswarmReplicate(t, c.discoveryKey, c, { bootstrap, keyPair }) // eslint-disable-line
   await discovery3.flushed()
 
   await c.get(1) // important
@@ -75,7 +75,7 @@ function hyperswarmReplicate (t, discoveryKey, instance, { name, bootstrap, keyP
   return [swarm, discovery, dht]
 }
 
-function waitForSocketFlush (socket) {
+function waitForSocketFlush (socket) { // eslint-disable-line
   return new Promise((resolve, reject) => {
     socket.on('open', done)
     socket.on('close', done)
