@@ -116,7 +116,8 @@ const blockLocal = await core.get(44, { wait: false })
   wait: true, // wait for block to be downloaded
   onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
-  valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the core's valueEncoding
+  valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to the core's valueEncoding
+  decrypt: true // automatically decrypts the block if encrypted
 }
 ```
 
