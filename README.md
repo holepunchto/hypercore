@@ -292,7 +292,7 @@ Fully close this core.
 
 #### `core.on('close')`
 
-Emitted when then core has been fully closed.
+Emitted when the core has been fully closed.
 
 #### `await core.ready()`
 
