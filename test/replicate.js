@@ -1034,4 +1034,10 @@ test('closing a core should not end replication stream', async function (t) {
 
   t.is(stream1.destroying, false)
   t.is(stream2.destroying, false)
+
+  stream1.destroy()
+  stream2.destroy()
+
+  await store1.close()
+  await store2.close()
 })
