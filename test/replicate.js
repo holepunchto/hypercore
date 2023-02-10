@@ -3,6 +3,8 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 const Hypercore = require('../')
+const Corestore = require('corestore')
+const RAM = require('random-access-memory')
 
 test('basic replication', async function (t) {
   const a = await create()
@@ -995,4 +997,41 @@ test('replication session keeps the core open', async function (t) {
   const blk = await b.get(2)
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
+})
+
+test('closing a core should not end replication stream', async function (t) {
+  const store1 = new Corestore(RAM)
+  const store2 = new Corestore(RAM)
+
+  const a1 = store1.get({ name: 'a' })
+  await a1.ready()
+
+  const b1 = store1.get({ name: 'b' })
+  await b1.ready()
+
+  const a2 = store2.get({ publicKey: a1.key })
+  await a2.ready()
+
+  const b2 = store2.get({ publicKey: b1.key })
+  await b2.ready()
+
+  const stream1 = store1.replicate(true)
+  const stream2 = store2.replicate(false)
+
+  stream1.pipe(stream2).pipe(stream1)
+
+  await a1.append(['a', 'b', 'c', 'd', 'e'])
+  t.alike(await a2.get(2), b4a.from('c'))
+
+  await a1.close()
+  await a2.close()
+
+  await b1.append(['a', 'b', 'c', 'd', 'e'])
+  t.alike(await b2.get(2), b4a.from('c'))
+
+  await b1.close()
+  await b2.close()
+
+  t.is(stream1.destroying, false)
+  t.is(stream2.destroying, false)
 })
