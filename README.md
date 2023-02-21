@@ -145,7 +145,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 Use `core.findingPeers()` or `{ wait: true }` to make `await core.update()` blocking.
 
-#### `const [index, relativeOffset] = await core.seek(byteOffset)`
+#### `const [index, relativeOffset] = await core.seek(byteOffset, [options])`
 
 Seek to a byte offset.
 
@@ -158,6 +158,13 @@ await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
 const first = await core.seek(1) // returns [0, 1]
 const second = await core.seek(3) // returns [1, 0]
 const third = await core.seek(5) // returns [2, 1]
+```
+
+``` js
+{
+  wait: true, // wait for data to be downloaded
+  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+}
 ```
 
 #### `const stream = core.createReadStream([options])`

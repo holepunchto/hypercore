@@ -679,8 +679,14 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.closing !== null) throw SESSION_CLOSED()
 
+    if (opts && opts.wait === false) return null
+    if (this.wait === false && (!opts || !opts.wait)) return null
+
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addSeek(activeRequests, s)
+
+    const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
+    if (timeout) req.context.setTimeout(req, timeout)
 
     return req.promise
   }

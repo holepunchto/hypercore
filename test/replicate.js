@@ -387,6 +387,30 @@ test('seeking while replicating', async function (t) {
   t.alike(await b.seek(6), [1, 1])
 })
 
+test('seek with no wait', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  t.is(await a.seek(6, { wait: false }), null)
+
+  await a.append(['hello', 'this', 'is', 'test', 'data'])
+
+  t.alike(await a.seek(6, { wait: false }), [1, 1])
+})
+
+test('seek with timeout', async function (t) {
+  const a = await create()
+
+  try {
+    await a.seek(6, { timeout: 1 })
+    t.fail('should have timeout')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
+})
+
 test('multiplexing multiple times over the same stream', async function (t) {
   const a1 = await create()
 
