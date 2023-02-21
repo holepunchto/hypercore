@@ -388,6 +388,8 @@ test('seeking while replicating', async function (t) {
 })
 
 test('seek with no wait', async function (t) {
+  t.plan(2)
+
   const a = await create()
   const b = await create(a.key)
 
@@ -401,6 +403,8 @@ test('seek with no wait', async function (t) {
 })
 
 test('seek with timeout', async function (t) {
+  t.plan(1)
+
   const a = await create()
 
   try {
@@ -409,6 +413,31 @@ test('seek with timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+})
+
+test('seek with session options', async function (t) {
+  t.plan(3)
+
+  const a = await create()
+
+  const s1 = a.session({ wait: false })
+
+  t.is(await s1.seek(6), null)
+  await s1.append(['hello', 'this', 'is', 'test', 'data'])
+  t.alike(await s1.seek(6, { wait: false }), [1, 1])
+
+  await s1.close()
+
+  const s2 = a.session({ timeout: 1 })
+
+  try {
+    await s2.seek(100)
+    t.fail('should have timeout')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
+
+  await s2.close()
 })
 
 test('multiplexing multiple times over the same stream', async function (t) {
