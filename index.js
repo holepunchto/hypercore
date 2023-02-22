@@ -649,7 +649,7 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const remoteWait = typeof (opts && opts.wait) === 'boolean' ? opts.wait : this.replicator.findingPeers > 0
+    const remoteWait = this._shouldWait(opts) || this.replicator.findingPeers > 0
 
     let upgraded = false
 
@@ -679,8 +679,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.closing !== null) throw SESSION_CLOSED()
 
-    if (opts && opts.wait === false) return null
-    if (this.wait === false && (!opts || !opts.wait)) return null
+    if (!this._shouldWait(opts)) return null
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addSeek(activeRequests, s)
@@ -747,8 +746,8 @@ module.exports = class Hypercore extends EventEmitter {
 
       if (this.cache) this.cache.set(index, block)
     } else {
-      if (opts && opts.wait === false) return null
-      if (this.wait === false && (!opts || !opts.wait)) return null
+      if (!this._shouldWait(opts)) return null
+
       if (opts && opts.onwait) opts.onwait(index, this)
       if (this.onwait) this.onwait(index, this)
 
@@ -773,6 +772,14 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     return block
+  }
+
+  _shouldWait (opts) {
+    if (opts) {
+      if (opts.wait === false) return false
+      if (opts.wait === true) return true
+    }
+    return this.wait
   }
 
   createReadStream (opts) {
