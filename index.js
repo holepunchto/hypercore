@@ -472,6 +472,10 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.tree.length
   }
 
+  get indexedLength () {
+    return this.length
+  }
+
   /**
    * Deprecated. Use `const { byteLength } = await core.info()`.
    */
