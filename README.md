@@ -416,3 +416,11 @@ Emitted when the core has been appended to (i.e. has a new length / byteLength),
 #### `core.on('truncate', ancestors, forkId)`
 
 Emitted when the core has been truncated, either locally or remotely.
+
+#### `core.on('peer-add')`
+
+Emitted when a new connection has been established with a peer.
+
+#### `core.on('peer-remove')`
+
+Emitted when a peer's connection has been closed.
