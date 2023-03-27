@@ -15,7 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const { ReadStream, WriteStream } = require('./lib/streams')
-const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
+const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE } = require('./lib/errors')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -708,7 +708,6 @@ module.exports = class Hypercore extends EventEmitter {
   async get (index, opts) {
     if (this.opened === false) await this.opening
     if (this.closing !== null) throw SESSION_CLOSED()
-    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 

@@ -129,8 +129,7 @@ test('snapshots are consistent', async function (t) {
 
   t.is(clone.fork, 1, 'clone updated')
 
-  const b = snapshot.get(0)
-  t.exception(snapshot.get(1))
-  t.exception(snapshot.get(2))
-  t.is(await b, 'block #0.0')
+  t.is(await snapshot.get(2), 'block #2.1')
+  t.is(await snapshot.get(1), 'block #1.1')
+  t.is(await snapshot.get(0), 'block #0.0')
 })
