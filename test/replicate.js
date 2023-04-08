@@ -1051,7 +1051,7 @@ test('replication session keeps the core open', async function (t) {
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
 })
 
-test('firewall peers', async function (t) {
+test('firewall peers - at .replicate()', async function (t) {
   const keys = [NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair()]
 
   const a = await create()
@@ -1077,9 +1077,45 @@ test('firewall peers', async function (t) {
 
   await a.append(['a'])
 
-  a.replicate(p1[0], { keepAlive: false, session: true, firewall })
+  a.replicate(p1[0], { keepAlive: false, firewall })
   b.replicate(p1[1], { keepAlive: false })
-  a.replicate(p2[0], { session: true, firewall })
+  a.replicate(p2[0], { keepAlive: false, firewall })
+  c.replicate(p2[1], { keepAlive: false })
+
+  t.is(b4a.toString(await b.get(0), 'utf8'), 'a')
+  await t.exception(c.get.bind(c, 0, { timeout: 500 }))
+
+  return p
+})
+
+test('firewall peers - at constructor', async function (t) {
+  const keys = [NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair()]
+  const firewall = async (rpk) => !b4a.compare(rpk, keys[1].publicKey)
+
+  const a = await create({ firewall })
+  const b = await create(a.key)
+  const c = await create(a.key)
+
+  const [s1, s2] = mkduplex()
+  const [s3, s4] = mkduplex()
+
+  const p1 = [new NoiseSecretStream(false, s1, { keyPair: keys[0] }), new NoiseSecretStream(true, s2, { keyPair: keys[1] })]
+  const p2 = [new NoiseSecretStream(false, s3, { keyPair: keys[0] }), new NoiseSecretStream(true, s4, { keyPair: keys[2] })]
+
+  const p = new Promise((resolve) => {
+    let missing = 2
+
+    p2[0].once('close', onclose)
+    p2[1].once('close', onclose)
+
+    function onclose () { if (--missing === 0) resolve() }
+  })
+
+  await a.append(['a'])
+
+  a.replicate(p1[0], { keepAlive: false })
+  b.replicate(p1[1], { keepAlive: false })
+  a.replicate(p2[0], { keepAlive: false })
   c.replicate(p2[1], { keepAlive: false })
 
   t.is(b4a.toString(await b.get(0), 'utf8'), 'a')
