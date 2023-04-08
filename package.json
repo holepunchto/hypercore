@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "brittle": "^3.0.0",
+    "duplex-through": "^1.0.2",
     "hyperswarm": "^4.3.6",
     "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",

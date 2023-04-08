@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
+const mkduplex = require('duplex-through')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 const Hypercore = require('../')
 
@@ -1048,4 +1049,41 @@ test('replication session keeps the core open', async function (t) {
   const blk = await b.get(2)
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
+})
+
+test('firewall peers', async function (t) {
+  const keys = [NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair()]
+
+  const a = await create()
+  const b = await create(a.key)
+  const c = await create(a.key)
+
+  const [s1, s2] = mkduplex()
+  const [s3, s4] = mkduplex()
+
+  const p1 = [new NoiseSecretStream(false, s1, { keyPair: keys[0] }), new NoiseSecretStream(true, s2, { keyPair: keys[1] })]
+  const p2 = [new NoiseSecretStream(false, s3, { keyPair: keys[0] }), new NoiseSecretStream(true, s4, { keyPair: keys[2] })]
+
+  const p = new Promise((resolve) => {
+    let missing = 2
+
+    p2[0].once('close', onclose)
+    p2[1].once('close', onclose)
+
+    function onclose () { if (--missing === 0) resolve() }
+  })
+
+  const firewall = async (rpk) => !b4a.compare(rpk, keys[1].publicKey)
+
+  await a.append(['a'])
+
+  a.replicate(p1[0], { keepAlive: false, session: true, firewall })
+  b.replicate(p1[1], { keepAlive: false })
+  a.replicate(p2[0], { session: true, firewall })
+  c.replicate(p2[1], { keepAlive: false })
+
+  t.is(b4a.toString(await b.get(0), 'utf8'), 'a')
+  await t.exception(c.get.bind(c, 0, { timeout: 500 }))
+
+  return p
 })
