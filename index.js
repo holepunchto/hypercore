@@ -459,16 +459,19 @@ module.exports = class Hypercore extends EventEmitter {
   _attachToMuxerOpened (mux, useSession, opts = {}) {
     // If the user wants to, we can make this replication run in a session
     // that way the core wont close "under them" during replication
-    const session = useSession ? this.session() : null
 
-    const maybeAttach = (allow) => (allow) ? this.replicator.attachTo(mux, session) : mux.destroy()
+    const maybeAttach = (allow) => {
+      if (!allow) return mux.destroy()
+      const session = useSession ? this.session() : null
+      this.replicator.attachTo(mux, session)
+    }
 
     if (!opts.firewall) return maybeAttach(true)
 
     mux.stream.noiseStream.opened.then(() => {
       const { remotePublicKey, handshake } = mux.stream.noiseStream
       opts.firewall(remotePublicKey, handshake, this).then(maybeAttach, mux.destroy.bind(mux))
-    }, noop)
+    })
   }
 
   get discoveryKey () {
