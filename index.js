@@ -434,7 +434,7 @@ module.exports = class Hypercore extends EventEmitter {
     opts = { firewall: this.firewall, ...opts }
     // Only limitation here is that ondiscoverykey doesn't work atm when passing a muxer directly,
     // because it doesn't really make a lot of sense.
-    if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator, true, opts)
+    if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator, { session: true, ...opts })
 
     const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
     const noiseStream = protocolStream.noiseStream
