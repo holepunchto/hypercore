@@ -1073,13 +1073,14 @@ test('firewall peers - at .replicate()', async function (t) {
     function onclose () { if (--missing === 0) resolve() }
   })
 
-  const firewall = async (rpk) => !b4a.compare(rpk, keys[1].publicKey)
+  const firewall = async (rpk) => b4a.compare(rpk, keys[1].publicKey)
+  const onfirewalled = (mux) => mux.destroy()
 
   await a.append(['a'])
 
-  a.replicate(p1[0], { keepAlive: false, firewall })
+  a.replicate(p1[0], { keepAlive: false, firewall, onfirewalled })
   b.replicate(p1[1], { keepAlive: false })
-  a.replicate(p2[0], { keepAlive: false, firewall })
+  a.replicate(p2[0], { keepAlive: false, firewall, onfirewalled })
   c.replicate(p2[1], { keepAlive: false })
 
   t.is(b4a.toString(await b.get(0), 'utf8'), 'a')
@@ -1090,9 +1091,10 @@ test('firewall peers - at .replicate()', async function (t) {
 
 test('firewall peers - at constructor', async function (t) {
   const keys = [NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair(), NoiseSecretStream.keyPair()]
-  const firewall = async (rpk) => !b4a.compare(rpk, keys[1].publicKey)
+  const firewall = async (rpk) => b4a.compare(rpk, keys[1].publicKey)
+  const onfirewalled = (mux) => mux.destroy()
 
-  const a = await create({ firewall })
+  const a = await create({ firewall, onfirewalled })
   const b = await create(a.key)
   const c = await create(a.key)
 

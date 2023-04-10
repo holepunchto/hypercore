@@ -75,6 +75,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
     this.firewall = opts.firewall || null
+    this.onfirewalled = opts.onfirewalled || noop
 
     this.closing = null
     this.opening = this._openSession(key, storage, opts)
@@ -431,7 +432,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   replicate (isInitiator, opts = {}) {
-    opts = { firewall: this.firewall, ...opts }
+    const { firewall, onfirewalled } = this
+    opts = { firewall, onfirewalled, ...opts }
     // Only limitation here is that ondiscoverykey doesn't work atm when passing a muxer directly,
     // because it doesn't really make a lot of sense.
     if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator, { session: true, ...opts })
@@ -460,17 +462,17 @@ module.exports = class Hypercore extends EventEmitter {
     // that way the core wont close "under them" during replication
     const useSession = !!opts.session
 
-    const maybeAttach = (allow) => {
-      if (!allow) return mux.destroy()
+    const maybeAttach = (deny) => {
+      if (deny) return opts.onfirewalled(mux, this)
       const session = useSession ? this.session() : null
       this.replicator.attachTo(mux, session)
     }
 
-    if (!opts.firewall) return maybeAttach(true)
+    if (!opts.firewall) return maybeAttach(false)
 
     mux.stream.noiseStream.opened.then(() => {
-      const { remotePublicKey, handshake } = mux.stream.noiseStream
-      opts.firewall(remotePublicKey, handshake, this).then(maybeAttach, mux.destroy.bind(mux))
+      const { remotePublicKey } = mux.stream.noiseStream
+      opts.firewall(remotePublicKey, this).then(maybeAttach, mux.destroy.bind(mux))
     })
   }
 
