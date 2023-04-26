@@ -117,3 +117,14 @@ test('bitfield - sparse array overflow', async function (t) {
   // Previously bugged due to missing bounds check in sparse array
   b.set(7995511118690925, true)
 })
+
+test('bitfield - count', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
+    b.setRange(start, length, true)
+  }
+
+  t.is(b.count(3, 18, true), 8)
+  t.is(b.count(3, 18, false), 10)
+})
