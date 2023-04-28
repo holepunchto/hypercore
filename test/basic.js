@@ -1,5 +1,6 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
 
 const Hypercore = require('../')
 const { create, eventFlush } = require('./helpers')
@@ -324,4 +325,17 @@ test('indexedLength mirrors core length (linearised core compat)', async functio
   await core.append(['a', 'b'])
   t.is(core.length, 2)
   t.is(core.indexedLength, core.length)
+})
+
+test('key is set sync', async function (t) {
+  const key = b4a.from('a'.repeat(64), 'hex')
+
+  t.alike((new Hypercore(RAM, key)).key, key)
+  t.is((new Hypercore(RAM)).key, null)
+
+  t.alike((new Hypercore(RAM, { key })).key, key)
+  t.is((new Hypercore(RAM, { })).key, null)
+
+  t.alike((new Hypercore({ key })).key, key)
+  t.is((new Hypercore({ })).key, null)
 })
