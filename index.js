@@ -27,10 +27,10 @@ module.exports = class Hypercore extends EventEmitter {
     if (isOptions(storage)) {
       opts = storage
       storage = null
-      key = null
+      key = opts.key || null
     } else if (isOptions(key)) {
       opts = key
-      key = null
+      key = opts.key || null
     }
 
     if (key && typeof key === 'string') {
