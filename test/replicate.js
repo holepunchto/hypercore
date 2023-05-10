@@ -1049,3 +1049,41 @@ test('replication session keeps the core open', async function (t) {
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
 })
+
+test.solo('replicate range that fills initial size of bitfield page', async function (t) {
+  const a = await create()
+
+  await a.append(new Array(2 ** 15).fill('a'))
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ start: 0, end: a.length })
+
+  await r.done()
+
+  t.is(d, a.length)
+})
+
+test.solo('replicate range that overflows initial size of bitfield page', async function (t) {
+  const a = await create()
+
+  await a.append(new Array(2 ** 15 + 1).fill('a'))
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ start: 0, end: a.length })
+
+  await r.done()
+
+  t.is(d, a.length)
+})
