@@ -158,7 +158,9 @@ test('bitfield - find first, all ones', async function (t) {
   b.setRange(0, 2 ** 24, true)
 
   t.is(b.findFirst(true, 0), 0)
+  t.is(b.findFirst(true, 2 ** 24), -1)
   t.is(b.findFirst(false, 0), 2 ** 24)
+  t.is(b.findFirst(false, 2 ** 24), 2 ** 24)
 
   t.comment('Page boundaries')
   t.is(b.findFirst(true, 2 ** 15), 2 ** 15)
@@ -205,8 +207,10 @@ test('bitfield - find last, all ones', async function (t) {
 
   b.setRange(0, 2 ** 24, true)
 
-  t.is(b.findLast(false, 0), 0)
+  t.is(b.findLast(false, 0), -1)
+  t.is(b.findLast(false, 2 ** 24), 2 ** 24)
   t.is(b.findLast(true, 0), 0)
+  t.is(b.findLast(true, 2 ** 24), 2 ** 24 - 1)
 
   t.comment('Page boundaries')
   t.is(b.findLast(true, 2 ** 15), 2 ** 15)
