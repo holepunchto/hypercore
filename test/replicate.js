@@ -1050,7 +1050,7 @@ test('replication session keeps the core open', async function (t) {
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
 })
 
-test.solo('replicate range that fills initial size of bitfield page', async function (t) {
+test('replicate range that fills initial size of bitfield page', async function (t) {
   const a = await create()
 
   await a.append(new Array(2 ** 15).fill('a'))
@@ -1069,7 +1069,7 @@ test.solo('replicate range that fills initial size of bitfield page', async func
   t.is(d, a.length)
 })
 
-test.solo('replicate range that overflows initial size of bitfield page', async function (t) {
+test('replicate range that overflows initial size of bitfield page', async function (t) {
   const a = await create()
 
   await a.append(new Array(2 ** 15 + 1).fill('a'))
