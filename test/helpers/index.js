@@ -48,9 +48,9 @@ exports.eventFlush = async function eventFlush () {
   await new Promise(resolve => setImmediate(resolve))
 }
 
-exports.createTmpDir = function createTmpDir (teardown) {
+exports.createTmpDir = function createTmpDir (t) {
   const tmpdir = path.join(os.tmpdir(), 'hypercore-test-')
   const dir = fs.mkdtempSync(tmpdir)
-  if (teardown) teardown(() => fs.rmSync(dir, { recursive: true }))
+  if (t) t.teardown(() => fs.promises.rm(dir, { recursive: true }))
   return dir
 }
