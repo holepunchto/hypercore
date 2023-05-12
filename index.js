@@ -722,7 +722,7 @@ module.exports = class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      this.encryption.decrypt(index, block)
+      await this.encryption.decrypt(index, block)
     }
 
     return this._decode(encoding, block)
@@ -948,11 +948,11 @@ function toHex (buf) {
   return buf && b4a.toString(buf, 'hex')
 }
 
-function preappend (blocks) {
+async function preappend (blocks) {
   const offset = this.core.tree.length
   const fork = this.core.tree.fork
 
   for (let i = 0; i < blocks.length; i++) {
-    this.encryption.encrypt(offset + i, blocks[i], fork)
+    await this.encryption.encrypt(offset + i, blocks[i], fork)
   }
 }
