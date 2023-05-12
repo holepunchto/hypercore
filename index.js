@@ -220,7 +220,9 @@ module.exports = class Hypercore extends EventEmitter {
       s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
     }
 
-    ensureEncryption(s, opts)
+    if (opts.encryptionKey) {
+      s.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, s.key))
+    }
 
     this.sessions.push(s)
 
@@ -257,7 +259,9 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = from.storage
     this.replicator.findingPeers += this._findingPeers
 
-    ensureEncryption(this, opts)
+    if (opts.encryptionKey) {
+      this.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, this.key))
+    }
   }
 
   async _openSession (key, storage, opts) {
@@ -351,7 +355,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator.findingPeers += this._findingPeers
 
     if (!this.encryption && opts.encryptionKey) {
-      this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
+      this.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, this.key))
     }
   }
 
@@ -955,12 +959,4 @@ function preappend (blocks) {
   for (let i = 0; i < blocks.length; i++) {
     this.encryption.encrypt(offset + i, blocks[i], fork)
   }
-}
-
-function ensureEncryption (core, opts) {
-  if (!opts.encryptionKey) return
-  // Only override the block encryption if its either not already set or if
-  // the caller provided a different key.
-  if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey)) return
-  core.encryption = new BlockEncryption(opts.encryptionKey, core.key)
 }

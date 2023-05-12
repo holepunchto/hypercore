@@ -8,8 +8,6 @@ const encryptionKey = Buffer.alloc(32, 'hello world')
 test('encrypted append and get', async function (t) {
   const a = await create({ encryptionKey })
 
-  t.alike(a.encryptionKey, encryptionKey)
-
   await a.append(['hello'])
 
   const info = await a.info()
@@ -133,8 +131,6 @@ test('encrypted session before ready core', async function (t) {
 
   await a.ready()
 
-  t.alike(a.encryptionKey, s.encryptionKey)
-
   await a.append(['hello'])
   t.alike(await s.get(0), Buffer.from('hello'))
 })
@@ -142,9 +138,6 @@ test('encrypted session before ready core', async function (t) {
 test('encrypted session on unencrypted core', async function (t) {
   const a = await create()
   const s = a.session({ encryptionKey })
-
-  t.alike(s.encryptionKey, encryptionKey)
-  t.unlike(s.encryptionKey, a.encryptionKey)
 
   await s.append(['hello'])
 
@@ -159,8 +152,6 @@ test('encrypted session on encrypted core, same key', async function (t) {
   const a = await create({ encryptionKey })
   const s = a.session({ encryptionKey })
 
-  t.alike(s.encryptionKey, a.encryptionKey)
-
   await s.append(['hello'])
 
   const unencrypted = await s.get(0)
@@ -171,8 +162,6 @@ test('encrypted session on encrypted core, same key', async function (t) {
 test('encrypted session on encrypted core, different keys', async function (t) {
   const a = await create({ encryptionKey: Buffer.alloc(32, 'a') })
   const s = a.session({ encryptionKey: Buffer.alloc(32, 's') })
-
-  t.unlike(s.encryptionKey, a.encryptionKey)
 
   await s.append(['hello'])
 
@@ -203,7 +192,6 @@ test('encrypted core from existing unencrypted core', async function (t) {
   const b = await create({ from: a, encryptionKey })
 
   t.alike(b.key, a.key)
-  t.alike(b.encryptionKey, encryptionKey)
 
   await b.append(['hello'])
 
