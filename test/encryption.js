@@ -5,7 +5,7 @@ const { create, replicate } = require('./helpers')
 
 const encryptionKey = Buffer.alloc(32, 'hello world')
 
-test.solo('encrypted append and get', async function (t) {
+test('encrypted append and get', async function (t) {
   const a = await create({ encryptionKey })
 
   t.alike(a.encryptionKey, encryptionKey)
