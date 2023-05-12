@@ -228,3 +228,13 @@ test('bitfield - find last, all ones', async function (t) {
   t.is(b.findLast(true, 2 ** 22 - 1), 2 ** 22 - 1)
   t.is(b.findLast(true, 2 ** 22 + 1), 2 ** 22 + 1)
 })
+
+test('bitfield - find last, ones around page boundary', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.set(32767, true)
+  b.set(32768, true)
+
+  t.is(b.lastUnset(32768), 32766)
+  t.is(b.lastUnset(32769), 32769)
+})
