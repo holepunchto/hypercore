@@ -506,10 +506,6 @@ module.exports = class Hypercore extends EventEmitter {
     return this.replicator === null ? [] : this.replicator.peers
   }
 
-  get encryptionKey () {
-    return this.encryption && this.encryption.key
-  }
-
   get padding () {
     return this.encryption === null ? 0 : this.encryption.padding
   }
