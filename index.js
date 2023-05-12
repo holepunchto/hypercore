@@ -220,8 +220,10 @@ module.exports = class Hypercore extends EventEmitter {
       s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
     }
 
-    if (opts.encryptionKey) {
-      s.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, s.key))
+    if (opts.encryption || opts.encryptionKey) {
+      s.encryption = new BlockEncryption(
+        opts.encryption || BlockEncryption.defaultEncryption(opts.encryptionKey, s.key)
+      )
     }
 
     this.sessions.push(s)
@@ -259,8 +261,10 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = from.storage
     this.replicator.findingPeers += this._findingPeers
 
-    if (opts.encryptionKey) {
-      this.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, this.key))
+    if (opts.encryption || opts.encryptionKey) {
+      this.encryption = new BlockEncryption(
+        opts.encryption || BlockEncryption.defaultEncryption(opts.encryptionKey, this.key)
+      )
     }
   }
 
@@ -354,8 +358,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.replicator.findingPeers += this._findingPeers
 
-    if (!this.encryption && opts.encryptionKey) {
-      this.encryption = new BlockEncryption(BlockEncryption.defaultEncryption(opts.encryptionKey, this.key))
+    if (!this.encryption && (opts.encryption || opts.encryptionKey)) {
+      this.encryption = new BlockEncryption(
+        opts.encryption || BlockEncryption.defaultEncryption(opts.encryptionKey, this.key)
+      )
     }
   }
 
