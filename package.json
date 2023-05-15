@@ -57,6 +57,7 @@
     "hyperswarm": "^4.3.6",
     "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
+    "range-parser": "^1.2.1",
     "standard": "^17.0.0",
     "tmp-promise": "^3.0.2"
   }
