@@ -21,9 +21,12 @@ async function start () {
 
   const swarm = new Hyperswarm()
   swarm.on('connection', (socket) => core.replicate(socket))
-  swarm.join(core.discoveryKey)
+  const discovery = swarm.join(core.discoveryKey)
 
-  if (!core.writable) {
+  if (core.writable) {
+    console.log('Announcing')
+    await discovery.flushed()
+  } else {
     console.log('Finding peers')
     const done = core.findingPeers()
     swarm.flush().then(done, done)
@@ -34,8 +37,8 @@ async function start () {
     res.setHeader('Content-Type', 'video/mp4')
     res.setHeader('Accept-Ranges', 'bytes')
 
-    let start = 0
-    let length = core.byteLength
+    let byteOffset = 0
+    let byteLength = core.byteLength
 
     if (req.headers.range) {
       const ranges = rangeParser(core.byteLength, req.headers.range)
@@ -48,22 +51,22 @@ async function start () {
       }
 
       const range = ranges[0]
-      start = range.start
-      length = range.end - range.start + 1
+      byteOffset = range.start
+      byteLength = range.end - range.start + 1
 
       res.statusCode = 206
       res.setHeader('Content-Range', 'bytes ' + range.start + '-' + range.end + '/' + core.byteLength)
     }
 
-    res.setHeader('Content-Length', length)
+    res.setHeader('Content-Length', byteLength)
 
     if (req.method === 'HEAD') {
       res.end()
       return
     }
 
-    const rs = core.createByteStream(start, length)
-    rs.pipe(res, noop)
+    const bs = core.createByteStream({ byteOffset, byteLength })
+    bs.pipe(res, noop)
   }).listen(function () {
     console.log('HTTP server on http://localhost:' + this.address().port)
   })

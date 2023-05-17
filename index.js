@@ -794,8 +794,8 @@ module.exports = class Hypercore extends EventEmitter {
     return new WriteStream(this, opts)
   }
 
-  createByteStream (byteOffset, byteLength) {
-    return new ByteStream(this, byteOffset, byteLength)
+  createByteStream (opts) {
+    return new ByteStream(this, opts)
   }
 
   download (range) {

@@ -205,7 +205,7 @@ Make a byte stream to read a range of bytes.
 // Read the full core
 const fullStream = core.createByteStream()
 
-// Read from byte 3 to 50
+// Read from byte 3, and from there read 50 bytes
 const partialStream = core.createByteStream({ byteOffset: 3, byteLength: 50 })
 
 // Consume it as an async iterator
@@ -222,7 +222,7 @@ partialStream.pipe(process.stdout)
 ``` js
 {
   byteOffset: 0,
-  byteLength: core.byteLength,
+  byteLength: core.byteLength - options.byteOffset,
   prefetch: 32
 }
 ```

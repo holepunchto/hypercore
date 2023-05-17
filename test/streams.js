@@ -142,7 +142,7 @@ test('byte stream with lower byteLength than byteOffset', async function (t) {
   t.is(expected.length, 0)
 })
 
-test('basic byte stream with byteOffset / byteLength', async function (t) {
+test('basic byte stream with custom byteOffset but default byteLength', async function (t) {
   const core = await create()
 
   await core.append([
@@ -152,7 +152,7 @@ test('basic byte stream with byteOffset / byteLength', async function (t) {
     'welt'
   ])
 
-  const opts = { byteOffset: 10, byteLength: -1 }
+  const opts = { byteOffset: 10 }
   const expected = [
     'verden',
     'welt'
