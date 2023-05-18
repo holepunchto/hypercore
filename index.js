@@ -358,7 +358,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.replicator.findingPeers += this._findingPeers
 
-    if (!this.encryption && (opts.encryption || opts.encryptionKey)) {
+    if (opts.encryption || opts.encryptionKey) {
       this.encryption = new BlockEncryption(
         opts.encryption || BlockEncryption.defaultEncryption(opts.encryptionKey, this.key)
       )
@@ -956,9 +956,8 @@ function toHex (buf) {
 
 async function preappend (blocks) {
   const offset = this.core.tree.length
-  const fork = this.core.tree.fork
 
   for (let i = 0; i < blocks.length; i++) {
-    await this.encryption.encrypt(offset + i, blocks[i], fork)
+    await this.encryption.encrypt(offset + i, blocks[i], this)
   }
 }

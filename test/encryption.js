@@ -7,7 +7,6 @@ const encryptionKey = Buffer.alloc(32, 'hello world')
 
 test('encrypted append and get', async function (t) {
   const a = await create({ encryptionKey })
-
   await a.append(['hello'])
 
   const info = await a.info()
@@ -23,7 +22,6 @@ test('encrypted append and get', async function (t) {
 
 test('get with decrypt option', async function (t) {
   const a = await create({ encryptionKey })
-
   await a.append('hello')
 
   const unencrypted = await a.get(0, { decrypt: true })
@@ -35,7 +33,6 @@ test('get with decrypt option', async function (t) {
 
 test('encrypted seek', async function (t) {
   const a = await create({ encryptionKey })
-
   await a.append(['hello', 'world', '!'])
 
   t.alike(await a.seek(0), [0, 0])
@@ -50,7 +47,6 @@ test('encrypted seek', async function (t) {
 
 test('encrypted replication', async function (t) {
   const a = await create({ encryptionKey })
-
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
   await t.test('with encryption key', async function (t) {
@@ -106,7 +102,6 @@ test('encrypted replication', async function (t) {
 
 test('encrypted session', async function (t) {
   const a = await create({ encryptionKey })
-
   await a.append(['hello'])
 
   const s = a.session()
@@ -197,4 +192,22 @@ test('encrypted core from existing unencrypted core', async function (t) {
 
   const unencrypted = await b.get(0)
   t.alike(unencrypted, Buffer.from('hello'))
+})
+
+test('custom encryption hooks', async function (t) {
+  const a = await create({
+    encryption: {
+      id (index, core) {
+        return index
+      },
+
+      key (id) {
+        return Buffer.alloc(32, '`${id}`')
+      }
+    }
+  })
+
+  await a.append('a')
+
+  t.alike(await a.get(0), Buffer.from('a'))
 })
