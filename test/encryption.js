@@ -202,7 +202,7 @@ test('custom encryption hooks', async function (t) {
       },
 
       key (id) {
-        return Buffer.alloc(32, '`${id}`')
+        return Buffer.alloc(32, `${id}`)
       }
     }
   })
