@@ -482,7 +482,6 @@ module.exports = class Hypercore extends EventEmitter {
   get byteLength () {
     if (this._snapshot) return this._snapshot.byteLength
     if (this.core === null) return 0
-    if (!this.sparse) return this.contiguousByteLength
     return this.core.tree.byteLength - (this.core.tree.length * this.padding)
   }
 
