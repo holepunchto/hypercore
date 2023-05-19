@@ -756,7 +756,7 @@ module.exports = class Hypercore extends EventEmitter {
     const after = cleared ? await Info.bytesUsed(this.core.blocks.storage) : null
 
     if (cleared) {
-      cleared.blocks = before - after
+      cleared.blocks = Math.max(before - after, 0)
     }
 
     return cleared
