@@ -528,9 +528,16 @@ module.exports = class Hypercore extends EventEmitter {
     for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
 
     const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
+    await this._closeAllSessions(err)
+  }
+
+  async _closeAllSessions (err) {
+    // this.sessions modifies itself when a session closes
+    // This way we ensure we indeed iterate over all sessions
+    const sessions = [...this.sessions]
 
     const all = []
-    for (const s of this.sessions) all.push(s.close(err))
+    for (const s of sessions) all.push(s.close(err))
     await Promise.allSettled(all)
   }
 
@@ -740,6 +747,11 @@ module.exports = class Hypercore extends EventEmitter {
     if (start >= end) return
 
     await this.core.clear(start, end)
+  }
+
+  async purge () {
+    await this._closeAllSessions(null)
+    await this.core.purge()
   }
 
   async _get (index, opts) {
