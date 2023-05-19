@@ -528,9 +528,16 @@ module.exports = class Hypercore extends EventEmitter {
     for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
 
     const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
+    await this._closeAllSessions(err)
+  }
+
+  async _closeAllSessions (err) {
+    // this.sessions modifies itself when a session closes
+    // This way we ensure we indeed iterate over all sessions
+    const sessions = [...this.sessions]
 
     const all = []
-    for (const s of this.sessions) all.push(s.close(err))
+    for (const s of sessions) all.push(s.close(err))
     await Promise.allSettled(all)
   }
 
@@ -743,15 +750,26 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async purge () {
-    await this.close()
-    // TODO: unlink dir itself
+    await this._closeAllSessions()
 
-    const proms = ['oplog', 'tree', 'bitfield', 'blocks'].map(
-      filename => new Promise((resolve, reject) => {
+    const proms = [
+      new Promise((resolve, reject) => {
         const cb = (err, val) => err ? reject(err) : resolve(val)
-        return this.core[filename].storage.unlink(cb)
+        this.core.oplog.storage.unlink(cb)
+      }),
+      new Promise((resolve, reject) => {
+        const cb = (err, val) => err ? reject(err) : resolve(val)
+        this.core.tree.storage.unlink(cb)
+      }),
+      new Promise((resolve, reject) => {
+        const cb = (err, val) => err ? reject(err) : resolve(val)
+        this.core.bitfield.storage.unlink(cb)
+      }),
+      new Promise((resolve, reject) => {
+        const cb = (err, val) => err ? reject(err) : resolve(val)
+        this.core.blocks.storage.unlink(cb)
       })
-    )
+    ]
 
     await Promise.all(proms)
   }
