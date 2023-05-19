@@ -1,5 +1,6 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const c = require('compact-encoding')
 const Hypercore = require('..')
 const { create, replicate } = require('./helpers')
 
@@ -197,12 +198,14 @@ test('encrypted core from existing unencrypted core', async function (t) {
 test('custom encryption hooks', async function (t) {
   const a = await create({
     encryption: {
-      id (index, core) {
-        return index
+      id (index, core, id) {
+        c.uint64.encode(c.state(0, 8, id), 42)
       },
 
       key (id) {
-        return Buffer.alloc(32, `${id}`)
+        const n = c.uint64.decode(c.state(0, 8, id))
+        t.is(n, 42)
+        return Buffer.alloc(32, `${n}`)
       }
     }
   })
