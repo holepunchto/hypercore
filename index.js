@@ -751,27 +751,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async purge () {
     await this._closeAllSessions()
-
-    const proms = [
-      new Promise((resolve, reject) => {
-        const cb = (err, val) => err ? reject(err) : resolve(val)
-        this.core.oplog.storage.unlink(cb)
-      }),
-      new Promise((resolve, reject) => {
-        const cb = (err, val) => err ? reject(err) : resolve(val)
-        this.core.tree.storage.unlink(cb)
-      }),
-      new Promise((resolve, reject) => {
-        const cb = (err, val) => err ? reject(err) : resolve(val)
-        this.core.bitfield.storage.unlink(cb)
-      }),
-      new Promise((resolve, reject) => {
-        const cb = (err, val) => err ? reject(err) : resolve(val)
-        this.core.blocks.storage.unlink(cb)
-      })
-    ]
-
-    await Promise.all(proms)
+    await this.core.purge()
   }
 
   async _get (index, opts) {
