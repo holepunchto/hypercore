@@ -742,6 +742,20 @@ module.exports = class Hypercore extends EventEmitter {
     await this.core.clear(start, end)
   }
 
+  async purge () {
+    await this.close()
+    // TODO: unlink dir itself
+
+    const proms = ['oplog', 'tree', 'bitfield', 'blocks'].map(
+      filename => new Promise((resolve, reject) => {
+        const cb = (err, val) => err ? reject(err) : resolve(val)
+        return this.core[filename].storage.unlink(cb)
+      })
+    )
+
+    await Promise.all(proms)
+  }
+
   async _get (index, opts) {
     let block
 
