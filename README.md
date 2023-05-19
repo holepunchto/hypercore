@@ -197,6 +197,36 @@ for await (const data of fullStream) {
 }
 ```
 
+#### `const bs = core.createByteStream([options])`
+
+Make a byte stream to read a range of bytes.
+
+``` js
+// Read the full core
+const fullStream = core.createByteStream()
+
+// Read from byte 3, and from there read 50 bytes
+const partialStream = core.createByteStream({ byteOffset: 3, byteLength: 50 })
+
+// Consume it as an async iterator
+for await (const data of fullStream) {
+  console.log('data:', data)
+}
+
+// Or pipe it somewhere like any stream:
+partialStream.pipe(process.stdout)
+```
+
+`options` include:
+
+``` js
+{
+  byteOffset: 0,
+  byteLength: core.byteLength - options.byteOffset,
+  prefetch: 32
+}
+```
+
 #### `await core.clear(start, [end])`
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.

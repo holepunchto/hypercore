@@ -14,7 +14,7 @@ const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
-const { ReadStream, WriteStream } = require('./lib/streams')
+const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
 
 const promises = Symbol.for('hypercore.promises')
@@ -792,6 +792,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   createWriteStream (opts) {
     return new WriteStream(this, opts)
+  }
+
+  createByteStream (opts) {
+    return new ByteStream(this, opts)
   }
 
   download (range) {
