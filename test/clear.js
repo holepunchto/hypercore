@@ -1,6 +1,8 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const { create, replicate, eventFlush } = require('./helpers')
+const { create, replicate, eventFlush, createTmpDir } = require('./helpers')
+
+const Hypercore = require('../')
 
 test('clear', async function (t) {
   const a = await create()
@@ -76,4 +78,22 @@ test('incorrect clear', async function (t) {
 
   t.ok(await core.has(128))
   t.alike(await core.get(128), b4a.from('tick'))
+})
+
+test('clear blocks with diff option', async function (t) {
+  const storage = createTmpDir(t)
+
+  const core = new Hypercore(storage)
+  await core.append(b4a.alloc(4 * 1024))
+
+  const cleared = await core.clear(1337)
+  t.is(cleared, null)
+
+  const cleared2 = await core.clear(0, { diff: true })
+  t.ok(cleared2.blocks > 0)
+
+  const cleared3 = await core.clear(0, { diff: true })
+  t.is(cleared3.blocks, 0)
+
+  await core.close()
 })

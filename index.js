@@ -745,9 +745,13 @@ module.exports = class Hypercore extends EventEmitter {
       end = start + 1
     }
 
-    if (start >= end) return
+    const cleared = (opts && opts.diff) ? { blocks: 0 } : null
 
-    await this.core.clear(start, end)
+    if (start >= end) return cleared
+
+    await this.core.clear(start, end, cleared)
+
+    return cleared
   }
 
   async purge () {

@@ -227,7 +227,7 @@ partialStream.pipe(process.stdout)
 }
 ```
 
-#### `await core.clear(start, [end])`
+#### `const cleared = await core.clear(start, [end], [options])`
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.
 
@@ -237,6 +237,13 @@ await core.clear(0, 10) // clear block 0-10 from your local cache
 ```
 
 The core will also gossip to peers it is connected to, that is no longer has these blocks.
+
+`options` include:
+```js
+{
+  diff: false // Returned `cleared` bytes object is null unless you enable this
+}
+```
 
 #### `await core.truncate(newLength, [forkId])`
 
