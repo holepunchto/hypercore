@@ -1,6 +1,9 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const RAM = require('random-access-memory')
 const { create, replicate, eventFlush } = require('./helpers')
+
+const Hypercore = require('../index.js')
 
 test('clear', async function (t) {
   const a = await create()
@@ -79,8 +82,8 @@ test('incorrect clear', async function (t) {
 })
 
 test('clear blocks with diff option', async function (t) {
-  const core = await create()
-  await core.append(b4a.alloc(1024 * 1024))
+  const core = new Hypercore(() => new RAM({ pageSize: 128 }))
+  await core.append(b4a.alloc(128))
 
   const cleared = await core.clear(1337)
   t.is(cleared, null)
