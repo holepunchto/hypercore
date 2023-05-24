@@ -3,7 +3,7 @@ const b4a = require('b4a')
 const RAM = require('random-access-memory')
 const { create, replicate, eventFlush } = require('./helpers')
 
-const Hypercore = require('../index.js')
+const Hypercore = require('../')
 
 test('clear', async function (t) {
   const a = await create()
