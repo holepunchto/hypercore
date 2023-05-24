@@ -6,7 +6,7 @@ const Path = require('path')
 const Hypercore = require('..')
 
 test('basic purge', async function (t) {
-  const dir = createTmpDir(t.teardown)
+  const dir = createTmpDir(t)
   const core = new Hypercore(dir)
   await core.append(['a', 'b', 'c'])
 
@@ -32,7 +32,7 @@ test('basic purge', async function (t) {
 })
 
 test('purge closes all sessions', async function (t) {
-  const dir = createTmpDir(t.teardown)
+  const dir = createTmpDir(t)
   const core = new Hypercore(dir)
   await core.append(['a', 'b', 'c'])
   const otherSession = core.session()
