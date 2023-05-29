@@ -74,7 +74,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
-    this.readonly = opts.readonly || false
+    this.readonly = opts.writable === false
 
     this.closing = null
     this.opening = this._openSession(key, storage, opts)
@@ -202,9 +202,9 @@ module.exports = class Hypercore extends EventEmitter {
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
+    const writable = opts.writable === false ? false : !this.readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
-    const readonly = opts.readonly === undefined ? this.readonly : opts.readonly
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
@@ -212,7 +212,7 @@ module.exports = class Hypercore extends EventEmitter {
       wait,
       onwait,
       timeout,
-      readonly,
+      writable,
       _opening: this.opening,
       _sessions: this.sessions
     })
@@ -240,7 +240,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !!(this.auth && this.auth.sign)
+    this.writable = !this.readonly && !!(this.auth && this.auth.sign)
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -298,7 +298,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !!this.auth.sign
+    this.writable = !this.readonly && !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -847,7 +847,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async truncate (newLength = 0, fork = -1) {
     if (this.opened === false) await this.opening
-    if (this.writable === false || this.readonly) throw SESSION_NOT_WRITABLE()
+    if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
     if (fork === -1) fork = this.core.tree.fork + 1
     await this.core.truncate(newLength, fork, this.auth)
@@ -858,7 +858,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async append (blocks) {
     if (this.opened === false) await this.opening
-    if (this.writable === false || this.readonly) throw SESSION_NOT_WRITABLE()
+    if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
