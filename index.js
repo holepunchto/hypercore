@@ -74,6 +74,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this._readonly = opts.writable === false
 
     this.closing = null
     this.opening = this._openSession(key, storage, opts)
@@ -201,6 +202,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
+    const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const Clz = opts.class || Hypercore
@@ -210,6 +212,7 @@ module.exports = class Hypercore extends EventEmitter {
       wait,
       onwait,
       timeout,
+      writable,
       _opening: this.opening,
       _sessions: this.sessions
     })
@@ -237,7 +240,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !!(this.auth && this.auth.sign)
+    this.writable = !this._readonly && !!(this.auth && this.auth.sign)
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -295,7 +298,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !!this.auth.sign
+    this.writable = !this._readonly && !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)

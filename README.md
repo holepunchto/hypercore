@@ -72,7 +72,8 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
   encryptionKey: k, // optionally pass an encryption key to enable block encryption
-  onwait: () => {} // hook that is called if gets are waiting for download
+  onwait: () => {}, // hook that is called if gets are waiting for download
+  writable: true // disable appends and truncates
 }
 ```
 
