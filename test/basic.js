@@ -339,3 +339,35 @@ test('key is set sync', async function (t) {
   t.alike((new Hypercore({ key })).key, key)
   t.is((new Hypercore({ })).key, null)
 })
+
+test('readonly option', async function (t) {
+  t.plan(6)
+
+  const a = new Hypercore(RAM)
+  t.is(a.readonly, false)
+  await a.append('abc')
+
+  const b = new Hypercore(RAM)
+  const b1 = b.session()
+  t.is(b1.readonly, false)
+  await b1.append('abc')
+
+  const c = new Hypercore(RAM, { readonly: true })
+  t.is(c.readonly, true)
+  try {
+    await c.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
+
+  const d = new Hypercore(RAM)
+  const d1 = d.session({ readonly: true })
+  t.is(d1.readonly, true)
+  try {
+    await d1.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
+})
