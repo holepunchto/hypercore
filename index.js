@@ -14,8 +14,16 @@ const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const Batch = require('./lib/batch')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
-const { BAD_ARGUMENT, SESSION_CLOSED, SESSION_NOT_WRITABLE, SNAPSHOT_NOT_AVAILABLE } = require('./lib/errors')
+const {
+  BAD_ARGUMENT,
+  BATCH_ALREADY_EXISTS,
+  BATCH_UNFLUSHED,
+  SESSION_CLOSED,
+  SESSION_NOT_WRITABLE,
+  SNAPSHOT_NOT_AVAILABLE
+} = require('./lib/errors')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
@@ -82,6 +90,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._preappend = preappend.bind(this)
     this._snapshot = null
+    this._batch = opts._batch || null
     this._findingPeers = 0
   }
 
@@ -214,7 +223,8 @@ module.exports = class Hypercore extends EventEmitter {
       timeout,
       writable,
       _opening: this.opening,
-      _sessions: this.sessions
+      _sessions: this.sessions,
+      _batch: this._batch
     })
 
     s._passCapabilities(this)
@@ -684,6 +694,13 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
+  batch () {
+    if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
+    const batch = new Batch(this)
+    for (const session of this.sessions) session._batch = batch
+    return batch
+  }
+
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
 
@@ -846,6 +863,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async truncate (newLength = 0, fork = -1) {
+    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -857,6 +875,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks) {
+    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
