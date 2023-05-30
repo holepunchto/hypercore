@@ -340,50 +340,56 @@ test('key is set sync', async function (t) {
   t.is((new Hypercore({ })).key, null)
 })
 
-test('basic writable option', async function (t) {
-  t.plan(7)
+test('disable writable option', async function (t) {
+  t.plan(2)
 
-  const a = new Hypercore(RAM, { writable: false })
-  await a.ready()
-  t.is(a.writable, false)
+  const core = new Hypercore(RAM, { writable: false })
+  await core.ready()
+
+  t.is(core.writable, false)
+
   try {
-    await a.append('abc')
+    await core.append('abc')
     t.fail('should have failed')
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+})
 
-  const b = new Hypercore(RAM)
-  const b1 = b.session({ writable: false })
-  await b1.ready()
-  t.is(b1.writable, false)
+test('disable session writable option', async function (t) {
+  t.plan(3)
+
+  const core = new Hypercore(RAM)
+  await core.ready()
+
+  const session = core.session({ writable: false })
+  await session.ready()
+
+  t.is(core.writable, true)
+  await core.append('abc')
+
+  t.is(session.writable, false)
   try {
-    await b1.append('abc')
+    await session.append('abc')
     t.fail('should have failed')
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+})
 
-  const c = new Hypercore(RAM)
-  const c1 = c.session({ writable: false })
-  const c2 = c1.session()
+test('session of a session with the writable option disabled', async function (t) {
+  t.plan(1)
+
+  const core = new Hypercore(RAM)
+  const s1 = core.session({ writable: false })
+  const s2 = s1.session()
+
   try {
-    await c2.append('abc')
+    await s2.append('abc')
     t.fail('should have failed')
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
-
-  const d = new Hypercore(RAM)
-  await d.ready()
-  t.is(d.writable, true)
-  await d.append('abc')
-
-  const e = new Hypercore(RAM)
-  const e1 = e.session()
-  await e1.ready()
-  t.is(e1.writable, true)
-  await e1.append('abc')
 })
 
 test('writable session on a readable only core', async function (t) {
