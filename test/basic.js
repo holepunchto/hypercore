@@ -340,7 +340,7 @@ test('key is set sync', async function (t) {
   t.is((new Hypercore({ })).key, null)
 })
 
-test('writable option', async function (t) {
+test('basic writable option', async function (t) {
   t.plan(7)
 
   const a = new Hypercore(RAM, { writable: false })
@@ -384,4 +384,23 @@ test('writable option', async function (t) {
   await e1.ready()
   t.is(e1.writable, true)
   await e1.append('abc')
+})
+
+test('writable session on a readable only core', async function (t) {
+  t.plan(2)
+
+  const core = new Hypercore(RAM)
+  await core.ready()
+
+  const a = new Hypercore(RAM, core.key)
+  const s = a.session({ writable: true })
+  await s.ready()
+  t.is(s.writable, false)
+
+  try {
+    await s.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
 })
