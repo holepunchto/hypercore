@@ -303,6 +303,16 @@ To cancel downloading a range simply destroy the range instance.
 range.destroy()
 ```
 
+#### `const session = await core.session([options])`
+
+Creates a new Hypercore instance that shares the same underlying core.
+
+You must close any session you make.
+
+Options are inherited from the parent instance, unless they are re-set.
+
+`options` are the same as in the constructor.
+
 #### `const info = await core.info([options])`
 
 Get information about this core, such as its total size in bytes.
