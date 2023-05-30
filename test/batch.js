@@ -94,34 +94,34 @@ test('batch truncate committed', async function (t) {
   t.exception(b.truncate(2))
 })
 
-test('batch destroy', async function (t) {
+test('batch close', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
   await b.append(['de', 'fg'])
-  await b.destroy()
+  await b.close()
   t.is(core.length, 3)
 
   await core.append(['d', 'e'])
   t.is(core.length, 5)
 })
 
-test('batch destroy after flush', async function (t) {
+test('batch close after flush', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
   await b.flush()
-  t.exception(b.destroy())
+  t.exception(b.close())
 })
 
-test('batch flush after destroy', async function (t) {
+test('batch flush after close', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
-  await b.destroy()
+  await b.close()
   t.exception(b.flush())
 })
 
