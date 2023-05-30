@@ -110,3 +110,131 @@ test('bitfield - want', async function (t) {
     }
   ])
 })
+
+test('bitfield - sparse array overflow', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  // Previously bugged due to missing bounds check in sparse array
+  b.set(7995511118690925, true)
+})
+
+test('bitfield - count', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
+    b.setRange(start, length, true)
+  }
+
+  t.is(b.count(3, 18, true), 8)
+  t.is(b.count(3, 18, false), 10)
+})
+
+test('bitfield - find first, all zeroes', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  t.is(b.findFirst(false, 0), 0)
+  t.is(b.findFirst(true, 0), -1)
+
+  t.comment('Page boundaries')
+  t.is(b.findFirst(false, 2 ** 15), 2 ** 15)
+  t.is(b.findFirst(false, 2 ** 15 - 1), 2 ** 15 - 1)
+  t.is(b.findFirst(false, 2 ** 15 + 1), 2 ** 15 + 1)
+  t.is(b.findFirst(false, 2 ** 16), 2 ** 16)
+  t.is(b.findFirst(false, 2 ** 16 - 1), 2 ** 16 - 1)
+  t.is(b.findFirst(false, 2 ** 16 + 1), 2 ** 16 + 1)
+
+  t.comment('Segment boundaries')
+  t.is(b.findFirst(false, 2 ** 21), 2 ** 21)
+  t.is(b.findFirst(false, 2 ** 21 - 1), 2 ** 21 - 1)
+  t.is(b.findFirst(false, 2 ** 21 + 1), 2 ** 21 + 1)
+  t.is(b.findFirst(false, 2 ** 22), 2 ** 22)
+  t.is(b.findFirst(false, 2 ** 22 - 1), 2 ** 22 - 1)
+  t.is(b.findFirst(false, 2 ** 22 + 1), 2 ** 22 + 1)
+})
+
+test('bitfield - find first, all ones', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.setRange(0, 2 ** 24, true)
+
+  t.is(b.findFirst(true, 0), 0)
+  t.is(b.findFirst(true, 2 ** 24), -1)
+  t.is(b.findFirst(false, 0), 2 ** 24)
+  t.is(b.findFirst(false, 2 ** 24), 2 ** 24)
+
+  t.comment('Page boundaries')
+  t.is(b.findFirst(true, 2 ** 15), 2 ** 15)
+  t.is(b.findFirst(true, 2 ** 15 - 1), 2 ** 15 - 1)
+  t.is(b.findFirst(true, 2 ** 15 + 1), 2 ** 15 + 1)
+  t.is(b.findFirst(true, 2 ** 16), 2 ** 16)
+  t.is(b.findFirst(true, 2 ** 16 - 1), 2 ** 16 - 1)
+  t.is(b.findFirst(true, 2 ** 16 + 1), 2 ** 16 + 1)
+
+  t.comment('Segment boundaries')
+  t.is(b.findFirst(true, 2 ** 21), 2 ** 21)
+  t.is(b.findFirst(true, 2 ** 21 - 1), 2 ** 21 - 1)
+  t.is(b.findFirst(true, 2 ** 21 + 1), 2 ** 21 + 1)
+  t.is(b.findFirst(true, 2 ** 22), 2 ** 22)
+  t.is(b.findFirst(true, 2 ** 22 - 1), 2 ** 22 - 1)
+  t.is(b.findFirst(true, 2 ** 22 + 1), 2 ** 22 + 1)
+})
+
+test('bitfield - find last, all zeroes', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  t.is(b.findLast(false, 0), 0)
+  t.is(b.findLast(true, 0), -1)
+
+  t.comment('Page boundaries')
+  t.is(b.findLast(false, 2 ** 15), 2 ** 15)
+  t.is(b.findLast(false, 2 ** 15 - 1), 2 ** 15 - 1)
+  t.is(b.findLast(false, 2 ** 15 + 1), 2 ** 15 + 1)
+  t.is(b.findLast(false, 2 ** 16), 2 ** 16)
+  t.is(b.findLast(false, 2 ** 16 - 1), 2 ** 16 - 1)
+  t.is(b.findLast(false, 2 ** 16 + 1), 2 ** 16 + 1)
+
+  t.comment('Segment boundaries')
+  t.is(b.findLast(false, 2 ** 21), 2 ** 21)
+  t.is(b.findLast(false, 2 ** 21 - 1), 2 ** 21 - 1)
+  t.is(b.findLast(false, 2 ** 21 + 1), 2 ** 21 + 1)
+  t.is(b.findLast(false, 2 ** 22), 2 ** 22)
+  t.is(b.findLast(false, 2 ** 22 - 1), 2 ** 22 - 1)
+  t.is(b.findLast(false, 2 ** 22 + 1), 2 ** 22 + 1)
+})
+
+test('bitfield - find last, all ones', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.setRange(0, 2 ** 24, true)
+
+  t.is(b.findLast(false, 0), -1)
+  t.is(b.findLast(false, 2 ** 24), 2 ** 24)
+  t.is(b.findLast(true, 0), 0)
+  t.is(b.findLast(true, 2 ** 24), 2 ** 24 - 1)
+
+  t.comment('Page boundaries')
+  t.is(b.findLast(true, 2 ** 15), 2 ** 15)
+  t.is(b.findLast(true, 2 ** 15 - 1), 2 ** 15 - 1)
+  t.is(b.findLast(true, 2 ** 15 + 1), 2 ** 15 + 1)
+  t.is(b.findLast(true, 2 ** 16), 2 ** 16)
+  t.is(b.findLast(true, 2 ** 16 - 1), 2 ** 16 - 1)
+  t.is(b.findLast(true, 2 ** 16 + 1), 2 ** 16 + 1)
+
+  t.comment('Segment boundaries')
+  t.is(b.findLast(true, 2 ** 21), 2 ** 21)
+  t.is(b.findLast(true, 2 ** 21 - 1), 2 ** 21 - 1)
+  t.is(b.findLast(true, 2 ** 21 + 1), 2 ** 21 + 1)
+  t.is(b.findLast(true, 2 ** 22), 2 ** 22)
+  t.is(b.findLast(true, 2 ** 22 - 1), 2 ** 22 - 1)
+  t.is(b.findLast(true, 2 ** 22 + 1), 2 ** 22 + 1)
+})
+
+test('bitfield - find last, ones around page boundary', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.set(32767, true)
+  b.set(32768, true)
+
+  t.is(b.lastUnset(32768), 32766)
+  t.is(b.lastUnset(32769), 32769)
+})

@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "10.4.1",
+  "version": "10.12.0",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hypercore-protocol/hypercore.git"
+    "url": "git+https://github.com/holepunchto/hypercore.git"
   },
   "contributors": [
     {
@@ -25,9 +25,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/hypercore-protocol/hypercore/issues"
+    "url": "https://github.com/holepunchto/hypercore/issues"
   },
-  "homepage": "https://github.com/hypercore-protocol/hypercore#readme",
+  "homepage": "https://github.com/holepunchto/hypercore#readme",
   "files": [
     "index.js",
     "lib/**.js"
@@ -35,7 +35,7 @@
   "dependencies": {
     "@hyperswarm/secret-stream": "^6.0.0",
     "b4a": "^1.1.0",
-    "big-sparse-array": "^1.0.2",
+    "big-sparse-array": "^1.0.3",
     "compact-encoding": "^2.11.0",
     "crc-universal": "^1.0.2",
     "events": "^3.3.0",
@@ -43,20 +43,21 @@
     "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.4.0",
-    "quickbit-universal": "^2.0.3",
+    "quickbit-universal": "^2.1.1",
     "random-access-file": "^4.0.0",
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",
-    "sodium-universal": "^3.0.4",
+    "sodium-universal": "^4.0.0",
     "streamx": "^2.12.4",
     "xache": "^1.1.0",
     "z32": "^1.0.0"
   },
   "devDependencies": {
     "brittle": "^3.0.0",
-    "hyperswarm": "^4.3.0",
-    "random-access-memory": "^6.0.0",
+    "hyperswarm": "^4.3.6",
+    "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
+    "range-parser": "^1.2.1",
     "standard": "^17.0.0",
     "tmp-promise": "^3.0.2"
   }

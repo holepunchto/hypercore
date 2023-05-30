@@ -1,5 +1,6 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
 
 const Hypercore = require('../')
 const { create, eventFlush } = require('./helpers')
@@ -296,4 +297,91 @@ test('has range', async function (t) {
   t.absent(await core.has(0, 5), 'does not have 0 to 4')
   t.ok(await core.has(0, 2), 'has 0 to 1')
   t.ok(await core.has(3, 5), 'has 3 to 4')
+})
+
+test('storage info', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const info = await core.info({ storage: true })
+
+  t.snapshot(info.storage)
+})
+
+test('storage info, off by default', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const info = await core.info()
+
+  t.is(info.storage, null)
+})
+
+test('indexedLength mirrors core length (linearised core compat)', async function (t) {
+  const core = await create()
+  t.is(core.length, 0)
+  t.is(core.indexedLength, core.length)
+
+  await core.append(['a', 'b'])
+  t.is(core.length, 2)
+  t.is(core.indexedLength, core.length)
+})
+
+test('key is set sync', async function (t) {
+  const key = b4a.from('a'.repeat(64), 'hex')
+
+  t.alike((new Hypercore(RAM, key)).key, key)
+  t.is((new Hypercore(RAM)).key, null)
+
+  t.alike((new Hypercore(RAM, { key })).key, key)
+  t.is((new Hypercore(RAM, { })).key, null)
+
+  t.alike((new Hypercore({ key })).key, key)
+  t.is((new Hypercore({ })).key, null)
+})
+
+test('writable option', async function (t) {
+  t.plan(7)
+
+  const a = new Hypercore(RAM)
+  await a.ready()
+  t.is(a.writable, true)
+  await a.append('abc')
+
+  const b = new Hypercore(RAM)
+  const b1 = b.session()
+  await b1.ready()
+  t.is(b1.writable, true)
+  await b1.append('abc')
+
+  const c = new Hypercore(RAM, { writable: false })
+  await c.ready()
+  t.is(c.writable, false)
+  try {
+    await c.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
+
+  const d = new Hypercore(RAM)
+  const d1 = d.session({ writable: false })
+  await d1.ready()
+  t.is(d1.writable, false)
+  try {
+    await d1.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
+
+  const e = new Hypercore(RAM)
+  const e1 = e.session({ writable: false })
+  const e2 = e1.session()
+  try {
+    await e2.append('abc')
+    t.fail('should have failed')
+  } catch (err) {
+    t.pass(err.code, 'SESSION_NOT_WRITABLE')
+  }
 })

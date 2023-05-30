@@ -1,5 +1,7 @@
 # Hypercore
 
+### [See the full API docs at docs.holepunch.to](https://docs.holepunch.to/building-blocks/hypercore)
+
 Hypercore is a secure, distributed append-only log.
 
 Built for sharing large datasets and streams of real time data
@@ -70,13 +72,14 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
   encryptionKey: k, // optionally pass an encryption key to enable block encryption
-  onwait: () => {} // hook that is called if gets are waiting for download
+  onwait: () => {}, // hook that is called if gets are waiting for download
+  writable: true // disable appends and truncates
 }
 ```
 
 You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
 
-valueEncodings will be applied to individually blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
+valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 #### `const { length, byteLength } = await core.append(block)`
 
@@ -107,14 +110,15 @@ const blockIfFast = await core.get(43, { timeout: 5000 })
 const blockLocal = await core.get(44, { wait: false })
 ```
 
-Additional options include
+`options` include:
 
 ``` js
 {
   wait: true, // wait for block to be downloaded
   onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
-  valueEncoding: 'json' | 'utf-8' | 'binary' // defaults to the core's valueEncoding
+  valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to the core's valueEncoding
+  decrypt: true // automatically decrypts the block if encrypted
 }
 ```
 
@@ -122,10 +126,9 @@ Additional options include
 
 Check if the core has all blocks between `start` and `end`.
 
-#### `const updated = await core.update()`
+#### `const updated = await core.update([options])`
 
-Wait for the core to try and find a signed update to it's length.
-Does not download any data from peers except for a proof of the new core length.
+Waits for initial proof of the new core length until all `findingPeers` calls has finished.
 
 ``` js
 const updated = await core.update()
@@ -133,11 +136,21 @@ const updated = await core.update()
 console.log('core was updated?', updated, 'length is', core.length)
 ```
 
-#### `const [index, relativeOffset] = await core.seek(byteOffset)`
+`options` include:
+
+``` js
+{
+  wait: false
+}
+```
+
+Use `core.findingPeers()` or `{ wait: true }` to make `await core.update()` blocking.
+
+#### `const [index, relativeOffset] = await core.seek(byteOffset, [options])`
 
 Seek to a byte offset.
 
-Returns `[index, relativeOffset]`, where `index` is the data block the byteOffset is contained in and `relativeOffset` is
+Returns `[index, relativeOffset]`, where `index` is the data block the `byteOffset` is contained in and `relativeOffset` is
 the relative byte offset in the data block.
 
 ``` js
@@ -146,6 +159,13 @@ await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
 const first = await core.seek(1) // returns [0, 1]
 const second = await core.seek(3) // returns [1, 0]
 const third = await core.seek(5) // returns [2, 1]
+```
+
+``` js
+{
+  wait: true, // wait for data to be downloaded
+  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+}
 ```
 
 #### `const stream = core.createReadStream([options])`
@@ -167,7 +187,7 @@ for await (const data of fullStream) {
 }
 ```
 
-Additional options include:
+`options` include:
 
 ``` js
 {
@@ -178,7 +198,37 @@ Additional options include:
 }
 ```
 
-#### `await core.clear(start, [end])`
+#### `const bs = core.createByteStream([options])`
+
+Make a byte stream to read a range of bytes.
+
+``` js
+// Read the full core
+const fullStream = core.createByteStream()
+
+// Read from byte 3, and from there read 50 bytes
+const partialStream = core.createByteStream({ byteOffset: 3, byteLength: 50 })
+
+// Consume it as an async iterator
+for await (const data of fullStream) {
+  console.log('data:', data)
+}
+
+// Or pipe it somewhere like any stream:
+partialStream.pipe(process.stdout)
+```
+
+`options` include:
+
+``` js
+{
+  byteOffset: 0,
+  byteLength: core.byteLength - options.byteOffset,
+  prefetch: 32
+}
+```
+
+#### `const cleared = await core.clear(start, [end], [options])`
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.
 
@@ -189,12 +239,23 @@ await core.clear(0, 10) // clear block 0-10 from your local cache
 
 The core will also gossip to peers it is connected to, that is no longer has these blocks.
 
+`options` include:
+```js
+{
+  diff: false // Returned `cleared` bytes object is null unless you enable this
+}
+```
+
 #### `await core.truncate(newLength, [forkId])`
 
 Truncate the core to a smaller length.
 
 Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
 Note that the fork id should be monotonely incrementing.
+
+#### `await core.purge()`
+
+Purge the hypercore from your storage, completely removing all data.
 
 #### `const hash = await core.treeHash([length])`
 
@@ -242,7 +303,7 @@ To cancel downloading a range simply destroy the range instance.
 range.destroy()
 ```
 
-#### `const info = await core.info()`
+#### `const info = await core.info([options])`
 
 Get information about this core, such as its total size in bytes.
 
@@ -256,7 +317,21 @@ Info {
   contiguousLength: 16,
   byteLength: 742,
   fork: 0,
-  padding: 8
+  padding: 8,
+  storage: {
+    oplog: 8192, 
+    tree: 4096, 
+    blocks: 4096, 
+    bitfield: 4096 
+  }
+}
+```
+
+`options` include:
+
+```js
+{
+  storage: false // get storage estimates in bytes, disabled by default
 }
 ```
 
@@ -266,7 +341,7 @@ Fully close this core.
 
 #### `core.on('close')`
 
-Emitted when then core has been fully closed.
+Emitted when the core has been fully closed.
 
 #### `await core.ready()`
 
@@ -279,7 +354,7 @@ as all internals await this themself.
 
 #### `core.on('ready')`
 
-Emitted after the core has initially opened all it's internal state.
+Emitted after the core has initially opened all its internal state.
 
 #### `core.writable`
 
@@ -383,3 +458,11 @@ Emitted when the core has been appended to (i.e. has a new length / byteLength),
 #### `core.on('truncate', ancestors, forkId)`
 
 Emitted when the core has been truncated, either locally or remotely.
+
+#### `core.on('peer-add')`
+
+Emitted when a new connection has been established with a peer.
+
+#### `core.on('peer-remove')`
+
+Emitted when a peer's connection has been closed.

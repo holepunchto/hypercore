@@ -15,7 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { ReadStream, WriteStream } = require('./lib/streams')
+const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
   BATCH_ALREADY_EXISTS,
@@ -35,10 +35,10 @@ module.exports = class Hypercore extends EventEmitter {
     if (isOptions(storage)) {
       opts = storage
       storage = null
-      key = null
+      key = opts.key || null
     } else if (isOptions(key)) {
       opts = key
-      key = null
+      key = opts.key || null
     }
 
     if (key && typeof key === 'string') {
@@ -81,6 +81,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.autoClose = !!opts.autoClose
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
+    this.timeout = opts.timeout || 0
+    this._readonly = opts.writable === false
 
     this.closing = null
     this.opening = this._openSession(key, storage, opts)
@@ -181,13 +183,14 @@ module.exports = class Hypercore extends EventEmitter {
     const directory = storage
     const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
     const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
+    const rmdir = !!opts.rmdir
 
     return createFile
 
     function createFile (name) {
       const lock = toLock === null ? false : isFile(name, toLock)
       const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool })
+      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir })
     }
 
     function isFile (name, n) {
@@ -208,13 +211,17 @@ module.exports = class Hypercore extends EventEmitter {
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
+    const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
+    const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const Clz = opts.class || Hypercore
     const s = new Clz(this.storage, this.key, {
       ...opts,
       sparse,
       wait,
       onwait,
+      timeout,
+      writable,
       _opening: this.opening,
       _sessions: this.sessions,
       _batch: this._batch
@@ -243,7 +250,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !!(this.auth && this.auth.sign)
+    this.writable = !this._readonly && !!(this.auth && this.auth.sign)
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -301,7 +308,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !!this.auth.sign
+    this.writable = !this._readonly && !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -334,7 +341,8 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       auth: opts.auth,
-      onupdate: this._oncoreupdate.bind(this)
+      onupdate: this._oncoreupdate.bind(this),
+      onconflict: this._oncoreconflict.bind(this)
     })
 
     if (opts.userData) {
@@ -387,14 +395,14 @@ module.exports = class Hypercore extends EventEmitter {
     return prev.length !== next.length || prev.fork !== next.fork
   }
 
-  close () {
+  close (err) {
     if (this.closing) return this.closing
-    this.closing = this._close()
+    this.closing = this._close(err || null)
     return this.closing
   }
 
-  async _close () {
-    await this.opening
+  async _close (err) {
+    if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
     if (i === -1) return
@@ -413,17 +421,21 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
-      this.replicator.clearRequests(this.activeRequests)
+      this.replicator.clearRequests(this.activeRequests, err)
     }
 
     this._findingPeers = 0
 
     if (this.sessions.length) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close()
+      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
+    }
+
+    if (this.replicator !== null) {
+      this.replicator.destroy()
     }
 
     await this.core.close()
@@ -474,6 +486,10 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.tree.length
   }
 
+  get indexedLength () {
+    return this.length
+  }
+
   /**
    * Deprecated. Use `const { byteLength } = await core.info()`.
    */
@@ -518,6 +534,25 @@ module.exports = class Hypercore extends EventEmitter {
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('upload', index, byteLength, from)
     }
+  }
+
+  async _oncoreconflict (proof, from) {
+    await this.replicator.onconflict(from)
+
+    for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
+
+    const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
+    await this._closeAllSessions(err)
+  }
+
+  async _closeAllSessions (err) {
+    // this.sessions modifies itself when a session closes
+    // This way we ensure we indeed iterate over all sessions
+    const sessions = [...this.sessions]
+
+    const all = []
+    for (const s of sessions) all.push(s.close(err))
+    await Promise.allSettled(all)
   }
 
   _oncoreupdate (status, bitfield, value, from) {
@@ -624,10 +659,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  async info () {
+  async info (opts) {
     if (this.opened === false) await this.opening
 
-    return Info.from(this)
+    return Info.from(this, opts)
   }
 
   async update (opts) {
@@ -639,20 +674,19 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-    const req = this.replicator.addUpgrade(activeRequests)
+    const remoteWait = this._shouldWait(opts, this.replicator.findingPeers > 0)
 
-    let upgraded = await req.promise
+    let upgraded = false
 
-    if (!this.sparse) {
-      // Download all available blocks in non-sparse mode
-      const start = this.length
-      const end = this.core.tree.length
-      const contig = this.contiguousLength
+    if (await this.replicator.applyPendingReorg()) {
+      upgraded = true
+    }
 
-      await this.download({ start, end, ifAvailable: true }).done()
+    if (!upgraded && remoteWait) {
+      const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+      const req = this.replicator.addUpgrade(activeRequests)
 
-      if (!upgraded) upgraded = this.contiguousLength !== contig
+      upgraded = await req.promise
     }
 
     if (!upgraded) return false
@@ -677,8 +711,13 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.closing !== null) throw SESSION_CLOSED()
 
+    if (!this._shouldWait(opts, this.wait)) return null
+
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.replicator.addSeek(activeRequests, s)
+
+    const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
+    if (timeout) req.context.setTimeout(req, timeout)
 
     return req.promise
   }
@@ -707,7 +746,7 @@ module.exports = class Hypercore extends EventEmitter {
     let block = await req
     if (!block) return null
 
-    if (this.encryption) {
+    if (this.encryption && (!opts || opts.decrypt !== false)) {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
@@ -726,9 +765,18 @@ module.exports = class Hypercore extends EventEmitter {
       end = start + 1
     }
 
-    if (start >= end) return
+    const cleared = (opts && opts.diff) ? { blocks: 0 } : null
 
-    await this.core.clear(start, end)
+    if (start >= end) return cleared
+
+    await this.core.clear(start, end, cleared)
+
+    return cleared
+  }
+
+  async purge () {
+    await this._closeAllSessions(null)
+    await this.core.purge()
   }
 
   async _get (index, opts) {
@@ -739,14 +787,17 @@ module.exports = class Hypercore extends EventEmitter {
 
       if (this.cache) this.cache.set(index, block)
     } else {
-      if (opts && opts.wait === false) return null
-      if (this.wait === false && (!opts || !opts.wait)) return null
+      if (!this._shouldWait(opts, this.wait)) return null
+
       if (opts && opts.onwait) opts.onwait(index, this)
       if (this.onwait) this.onwait(index, this)
 
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
       const req = this.replicator.addBlock(activeRequests, index)
+
+      const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
+      if (timeout) req.context.setTimeout(req, timeout)
 
       block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
     }
@@ -764,12 +815,24 @@ module.exports = class Hypercore extends EventEmitter {
     return block
   }
 
+  _shouldWait (opts, defaultValue) {
+    if (opts) {
+      if (opts.wait === false) return false
+      if (opts.wait === true) return true
+    }
+    return defaultValue
+  }
+
   createReadStream (opts) {
     return new ReadStream(this, opts)
   }
 
   createWriteStream (opts) {
     return new WriteStream(this, opts)
+  }
+
+  createByteStream (opts) {
+    return new ByteStream(this, opts)
   }
 
   download (range) {
@@ -828,7 +891,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return await this.core.append(buffers, this.auth, { preappend })
+    return this.core.append(buffers, this.auth, { preappend })
   }
 
   async treeHash (length) {

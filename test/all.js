@@ -13,6 +13,7 @@ async function runTests () {
   await import('./cache.js')
   await import('./clear.js')
   await import('./compat.js')
+  await import('./conflicts.js')
   await import('./core.js')
   await import('./encodings.js')
   await import('./encryption.js')
@@ -27,7 +28,9 @@ async function runTests () {
   await import('./snapshots.js')
   await import('./storage.js')
   await import('./streams.js')
+  await import('./timeouts.js')
   await import('./user-data.js')
+  await import('./purge.js')
 
   test.resume()
 }

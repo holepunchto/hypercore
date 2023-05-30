@@ -387,6 +387,59 @@ test('seeking while replicating', async function (t) {
   t.alike(await b.seek(6), [1, 1])
 })
 
+test('seek with no wait', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  t.is(await a.seek(6, { wait: false }), null)
+
+  await a.append(['hello', 'this', 'is', 'test', 'data'])
+
+  t.alike(await a.seek(6, { wait: false }), [1, 1])
+})
+
+test('seek with timeout', async function (t) {
+  t.plan(1)
+
+  const a = await create()
+
+  try {
+    await a.seek(6, { timeout: 1 })
+    t.fail('should have timeout')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
+})
+
+test('seek with session options', async function (t) {
+  t.plan(3)
+
+  const a = await create()
+
+  const s1 = a.session({ wait: false })
+
+  t.is(await s1.seek(6), null)
+  await s1.append(['hello', 'this', 'is', 'test', 'data'])
+  t.alike(await s1.seek(6, { wait: false }), [1, 1])
+
+  await s1.close()
+
+  const s2 = a.session({ timeout: 1 })
+
+  try {
+    await s2.seek(100)
+    t.fail('should have timeout')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
+
+  await s2.close()
+})
+
 test('multiplexing multiple times over the same stream', async function (t) {
   const a1 = await create()
 
@@ -404,9 +457,9 @@ test('multiplexing multiple times over the same stream', async function (t) {
   b1.replicate(n2, { keepAlive: false })
   b1.replicate(n2, { keepAlive: false })
 
-  t.ok(await b1.update(), 'update once')
-  t.absent(await a1.update(), 'writer up to date')
-  t.absent(await b1.update(), 'update again')
+  t.ok(await b1.update({ wait: true }), 'update once')
+  t.absent(await a1.update({ wait: true }), 'writer up to date')
+  t.absent(await b1.update({ wait: true }), 'update again')
 
   t.is(b1.length, a1.length, 'same length')
   t.end()
@@ -817,49 +870,6 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
-test('non-sparse snapshot during replication', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { sparse: false })
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await b.update()
-
-  const s = b.snapshot()
-
-  await a.append(['f', 'g', 'h', 'i', 'j'])
-  await s.update()
-
-  t.is(s.contiguousLength, s.length)
-})
-
-test('non-sparse snapshot during partial replication', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key, { sparse: false })
-
-  replicate(a, b, t)
-  replicate(b, c, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  await b.download({ start: 0, end: 3 }).done()
-  await c.update()
-
-  const s = c.snapshot()
-  t.is(s.contiguousLength, s.length)
-
-  await s.update()
-  t.is(s.contiguousLength, s.length)
-
-  await b.download({ start: 3, end: 5 }).done()
-  t.is(s.contiguousLength, s.length)
-
-  await s.update()
-  t.is(s.contiguousLength, s.length)
-})
-
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
@@ -932,7 +942,7 @@ test('force update writable cores', async function (t) {
   t.is(a.length, 5)
   t.is(b.length, 0, "new device didn't bootstrap its state from the network")
 
-  await b.update({ force: true })
+  await b.update({ force: true, wait: true })
 
   t.is(
     b.length,
@@ -1038,4 +1048,59 @@ test('replication session keeps the core open', async function (t) {
   const blk = await b.get(2)
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
+})
+
+test('replicate range that fills initial size of bitfield page', async function (t) {
+  const a = await create()
+  await a.append(new Array(2 ** 15).fill('a'))
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ start: 0, end: a.length })
+  await r.done()
+
+  t.is(d, a.length)
+})
+
+test('replicate range that overflows initial size of bitfield page', async function (t) {
+  const a = await create()
+  await a.append(new Array(2 ** 15 + 1).fill('a'))
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const r = b.download({ start: 0, end: a.length })
+  await r.done()
+
+  t.is(d, a.length)
+})
+
+test('replicate ranges in reverse order', async function (t) {
+  const a = await create()
+  await a.append(['a', 'b'])
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  const ranges = [[1, 1], [0, 1]] // Order is important
+
+  for (const [start, length] of ranges) {
+    const r = b.download({ start, length })
+    await r.done()
+  }
+
+  t.is(d, a.length)
 })

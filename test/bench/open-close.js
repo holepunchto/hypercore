@@ -3,7 +3,7 @@ const { createTmpDir } = require('../helpers')
 const Hypercore = require('../../index.js')
 
 test('open and close', async function (t) {
-  const tmpDir = createTmpDir(t.teardown)
+  const tmpDir = createTmpDir(t)
 
   const core = new Hypercore(tmpDir)
   for (let i = 0; i < 100; i++) {
