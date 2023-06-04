@@ -298,17 +298,25 @@ module.exports = class Hypercore extends EventEmitter {
       this.auth = Core.createAuth(this.crypto, keyPair)
     }
 
+    if (isFirst) await this._openCapabilities(keyPair, storage, opts)
+
+    // Hidden option only used by Corestore that can load a name from userData before 'ready' is emitted.
+    if (opts._preready) {
+      const o = await opts._preready(this)
+      // Can overwrite
+      if (o && o.auth) this.auth = o.auth
+    }
+
+    if (!this.auth) this.auth = this.core.defaultAuth
+    this.writable = !this._readonly && !!this.auth.sign
+
     if (isFirst) {
-      await this._openCapabilities(keyPair, storage, opts)
       // Only the root session should pass capabilities to other sessions.
       for (let i = 0; i < this.sessions.length; i++) {
         const s = this.sessions[i]
         if (s !== this) s._passCapabilities(this)
       }
     }
-
-    if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !this._readonly && !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -319,10 +327,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     // Start continous replication if not in sparse mode.
     if (!this.sparse) this.download({ start: 0, end: -1 })
-
-    // This is a hidden option that's only used by Corestore.
-    // It's required so that corestore can load a name from userData before 'ready' is emitted.
-    if (opts._preready) await opts._preready(this)
 
     this.opened = true
     this.emit('ready')
