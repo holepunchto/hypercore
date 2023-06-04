@@ -641,6 +641,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   async getUserData (key) {
     if (this.opened === false) await this.opening
+    return this._getUserData(key)
+  }
+
+  _getUserData (key) {
     for (const { key: savedKey, value } of this.core.header.userData) {
       if (key === savedKey) return value
     }
