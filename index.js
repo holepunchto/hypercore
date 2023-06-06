@@ -184,13 +184,14 @@ module.exports = class Hypercore extends EventEmitter {
     const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
     const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
     const rmdir = !!opts.rmdir
+    const writable = opts.writable !== false
 
     return createFile
 
     function createFile (name) {
       const lock = toLock === null ? false : isFile(name, toLock)
       const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir })
+      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir, writable })
     }
 
     function isFile (name, n) {
@@ -331,11 +332,13 @@ module.exports = class Hypercore extends EventEmitter {
   async _openCapabilities (keyPair, storage, opts) {
     if (opts.from) return this._openFromExisting(opts.from, opts)
 
-    this.storage = Hypercore.defaultStorage(opts.storage || storage)
+    const unlocked = !!opts.unlocked
+    this.storage = Hypercore.defaultStorage(opts.storage || storage, { unlocked, writable: !unlocked })
 
     this.core = await Core.open(this.storage, {
       force: opts.force,
       createIfMissing: opts.createIfMissing,
+      readonly: unlocked,
       overwrite: opts.overwrite,
       keyPair,
       crypto: this.crypto,
