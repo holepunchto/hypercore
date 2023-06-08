@@ -28,6 +28,23 @@ test('encrypted storage layout', async function (t) {
   snapshot(t, core)
 })
 
+test.solo('readonly storage', async function (t) {
+  const os = require('os')
+  const path = require('path')
+
+  const corePath = path.join(os.tmpdir(), 'core')
+
+  const core = new Hypercore(corePath)
+  await core.append(['hello', 'world'])
+  await core.close()
+
+  const coreClone = new Hypercore(corePath, { unlocked: true })
+  await coreClone.ready()
+  await coreClone.close()
+
+  t.pass('storage works')
+})
+
 function snapshot (t, core) {
   t.snapshot(core.core.blocks.storage.toBuffer().toString('base64'), 'blocks')
   t.snapshot(core.core.tree.storage.toBuffer().toString('base64'), 'tree')
