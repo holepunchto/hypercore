@@ -633,9 +633,9 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  async setUserData (key, value) {
+  async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
-    return this.core.userData(key, value)
+    return this.core.userData(key, value, flush)
   }
 
   async getUserData (key) {
