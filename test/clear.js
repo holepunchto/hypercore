@@ -1,7 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const RAM = require('random-access-memory')
-const { create, replicate, eventFlush } = require('./helpers')
+const { create, replicate, eventFlush, createTmpDir } = require('./helpers')
 
 const Hypercore = require('../')
 
@@ -95,4 +95,56 @@ test('clear blocks with diff option', async function (t) {
   t.is(cleared3.blocks, 0)
 
   await core.close()
+})
+
+test.solo('oplog drop', async function (t) {
+  const storageWriter = createTmpDir(t)
+  const storageReader = createTmpDir(t)
+
+  console.log('Creating writer')
+  {
+    const core = new Hypercore(storageWriter)
+    await core.ready()
+    await core.append(['a', 'b', 'c'])
+    await core.close()
+  }
+
+  console.log('Re-creating writer')
+  const core = new Hypercore(storageWriter)
+  await core.ready()
+  await core.append(['a', 'b', 'c'])
+
+  {
+    console.log('Creating reader')
+    const b = new Hypercore(storageReader, core.key)
+    await b.ready()
+    replicate(core, b, t)
+    console.log(b.contiguousLength)
+    await b.get(0)
+    await b.get(1)
+    await b.get(2)
+    console.log(b.contiguousLength)
+    await b.close()
+  }
+
+  {
+    console.log('Re-creating reader')
+    const b = new Hypercore(storageReader, core.key)
+    await b.ready()
+    replicate(core, b, t)
+    console.log(b.contiguousLength)
+    await b.clear(0)
+    await b.clear(1)
+    await b.clear(2)
+    console.log(b.contiguousLength)
+    await b.close()
+  }
+
+  {
+    console.log('Re-creating reader again')
+    const b = new Hypercore(storageReader, core.key)
+    await b.ready()
+    console.log(b.contiguousLength)
+    await b.close()
+  }
 })
