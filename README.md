@@ -73,6 +73,7 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   keyPair: kp, // optionally pass the public key and secret key as a key pair
   encryptionKey: k, // optionally pass an encryption key to enable block encryption
   onwait: () => {}, // hook that is called if gets are waiting for download
+  timeout: 0, // wait at max some milliseconds (0 means no timeout)
   writable: true // disable appends and truncates
 }
 ```
