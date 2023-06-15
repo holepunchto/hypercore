@@ -30,6 +30,8 @@
   "homepage": "https://github.com/holepunchto/hypercore#readme",
   "files": [
     "index.js",
+    "errors.js",
+    "messages.js",
     "lib/**.js"
   ],
   "dependencies": {
