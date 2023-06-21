@@ -4,13 +4,13 @@ const byteSize = require('tiny-byte-size')
 const { create } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 
-test('replication speed - localhost', async function (t) {
+async function setup (t, opts = {}) {
   const a = await create()
   const b = await create(a.key)
 
-  await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
+  await a.append(new Array(opts.append).fill().map(() => Math.random().toString(16).substr(2)))
 
-  const [n1, n2] = makeStreamPair(t, { latency: [0, 0] }) // Note: stream.rtt will be around doubl this value
+  const [n1, n2] = makeStreamPair(t, { latency: opts.latency }) // Note: stream.rtt will be around double this value
   a.replicate(n1)
   b.replicate(n2)
 
@@ -22,9 +22,9 @@ test('replication speed - localhost', async function (t) {
   b.on('upload', onchange)
   b.download()
 
-  await sleep(5000)
-  await b.close()
-  await a.close()
+  if (opts.sleep) await sleep(opts.sleep)
+
+  return [a, b]
 
   function onchange () {
     if (b.replicator.peers.length !== 1) throw new Error('Different number of peers')
@@ -35,105 +35,22 @@ test('replication speed - localhost', async function (t) {
     const peer = b.replicator.peers[0]
     t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
   }
+}
+
+test('replication speed - localhost', async function (t) {
+  await setup(t, { append: 15000, latency: [0, 0], sleep: 5000 })
 })
 
 test('replication speed - nearby', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-
-  await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
-
-  const [n1, n2] = makeStreamPair(t, { latency: [25, 25] }) // Note: stream.rtt will be around doubl this value
-  a.replicate(n1)
-  b.replicate(n2)
-
-  const info = track(b)
-  let started = Date.now()
-
-  t.comment('Starting to download')
-  b.on('download', onchange)
-  b.on('upload', onchange)
-  b.download()
-
-  await sleep(10000)
-  await b.close()
-  await a.close()
-
-  function onchange () {
-    if (b.replicator.peers.length !== 1) throw new Error('Different number of peers')
-
-    if (Date.now() - started < 500) return
-    started = Date.now()
-
-    const peer = b.replicator.peers[0]
-    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
-  }
+  await setup(t, { append: 15000, latency: [25, 25], sleep: 10000 })
 })
 
 test('replication speed - different country', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-
-  await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
-
-  const [n1, n2] = makeStreamPair(t, { latency: [75, 75] }) // Note: stream.rtt will be around doubl this value
-  a.replicate(n1)
-  b.replicate(n2)
-
-  const info = track(b)
-  let started = Date.now()
-
-  t.comment('Starting to download')
-  b.on('download', onchange)
-  b.on('upload', onchange)
-  b.download()
-
-  await sleep(10000)
-  await b.close()
-  await a.close()
-
-  function onchange () {
-    if (b.replicator.peers.length !== 1) throw new Error('Different number of peers')
-
-    if (Date.now() - started < 500) return
-    started = Date.now()
-
-    const peer = b.replicator.peers[0]
-    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
-  }
+  await setup(t, { append: 15000, latency: [75, 75], sleep: 10000 })
 })
 
 test('replication speed - far away', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-
-  await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
-
-  const [n1, n2] = makeStreamPair(t, { latency: [250, 250] }) // Note: stream.rtt will be around doubl this value
-  a.replicate(n1)
-  b.replicate(n2)
-
-  const info = track(b)
-  let started = Date.now()
-
-  t.comment('Starting to download')
-  b.on('download', onchange)
-  b.on('upload', onchange)
-  b.download()
-
-  await sleep(10000)
-  await b.close()
-  await a.close()
-
-  function onchange () {
-    if (b.replicator.peers.length !== 1) throw new Error('Different number of peers')
-
-    if (Date.now() - started < 500) return
-    started = Date.now()
-
-    const peer = b.replicator.peers[0]
-    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
-  }
+  await setup(t, { append: 15000, latency: [250, 250], sleep: 10000 })
 })
 
 function track (core) {
