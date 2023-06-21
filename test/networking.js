@@ -8,9 +8,6 @@ test.solo('replication speed', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
-  t.teardown(() => a.close())
-  t.teardown(() => b.close())
-
   await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
 
   const [n1, n2] = makeStreamPair(t, { latency: [25, 25] }) // Note: stream.rtt will be around doubl this value
