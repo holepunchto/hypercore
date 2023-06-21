@@ -13,7 +13,7 @@ test.solo('replication speed', async function (t) {
 
   await a.append(new Array(15000).fill().map(() => Math.random().toString(16).substr(2)))
 
-  const [n1, n2] = makeStreamPair(t, { latency: [25, 25] }) // Note: stream.rtt will be around twice this value
+  const [n1, n2] = makeStreamPair(t, { latency: [25, 25] }) // Note: stream.rtt will be around doubl this value
   a.replicate(n1)
   b.replicate(n2)
 
@@ -38,7 +38,6 @@ test.solo('replication speed', async function (t) {
   }
 })
 
-// It could be built in Hypercore, at least a simpler version
 function track (core) {
   const info = {
     blocks: { down: speedometer(), up: speedometer() },
