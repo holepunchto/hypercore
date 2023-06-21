@@ -43,7 +43,7 @@ test.solo('replication speed', { timeout: 99999999 }, async function (t) {
   b.download()
 
   function onchange () {
-    if (Date.now() - started < 1000) {
+    if (Date.now() - started < 250) {
       return
     }
 
