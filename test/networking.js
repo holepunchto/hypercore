@@ -34,7 +34,7 @@ test.solo('replication speed', async function (t) {
     if (Date.now() - started < 500) return
     started = Date.now()
 
-    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'Max inflight', b.replicator.peers[0].maxInflight)
+    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'Max inflight', b.replicator.peers[0].getMaxInflight())
   }
 })
 
