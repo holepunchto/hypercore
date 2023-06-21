@@ -34,7 +34,7 @@ async function setup (t, opts = {}) {
     started = Date.now()
 
     const peer = b.replicator.peers[0]
-    t.comment('Blocks', '↓ ' + Math.ceil(info.blocks.down()), 'Network', '↓ ' + byteSize(info.network.down()), 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
+    t.comment('Blocks', Math.ceil(info.blocks.down()), '(' + byteSize(info.network.down()) + ' bytes)', 'RTT', peer.stream.rawStream.rtt, 'Max inflight', peer.getMaxInflight())
   }
 }
 
