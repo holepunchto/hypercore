@@ -35,6 +35,7 @@ test.solo('replication speed', { timeout: 99999999 }, async function (t) {
   swarm.join(b.discoveryKey, { server: false, client: true })
   swarm.flush().then(done, done)
 
+  let started = Date.now()
   let cache = ''
 
   b.on('download', onchange)
@@ -42,11 +43,19 @@ test.solo('replication speed', { timeout: 99999999 }, async function (t) {
   b.download()
 
   function onchange () {
-    // console.log('Blocks', '↓ ' + Math.ceil(info.blocks.down()), '↑ ' + Math.ceil(info.blocks.up()), 'Network', '↓ ' + byteSize(info.network.down()), '↑ ' + byteSize(info.network.up()))
+    if (Date.now() - started < 1000) {
+      return
+    }
 
-    const id = 's' + info.blocks.down.max + info.blocks.up.max + info.network.down.max + info.network.up.max
+    started = Date.now()
+
+    console.log('Blocks', '↓ ' + Math.ceil(info.blocks.down()), '↑ ' + Math.ceil(info.blocks.up()), 'Network', '↓ ' + byteSize(info.network.down()), '↑ ' + byteSize(info.network.up()))
+
+    const id = 's' + Math.ceil(info.blocks.down.max || 0) + Math.ceil(info.blocks.up.max || 0) + byteSize(info.network.down.max || 0) + byteSize(info.network.up.max || 0)
     if (cache === id) return
     cache = id
+
+    return
 
     // TODO: auto-detect when it repeats the same values 5 times to finish
     console.log(
