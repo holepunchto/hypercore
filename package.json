@@ -43,6 +43,7 @@
     "events": "^3.3.0",
     "flat-tree": "^1.9.0",
     "hypercore-crypto": "^3.2.1",
+    "hyperswarm": "^4.3.6",
     "is-options": "^1.0.1",
     "protomux": "^3.4.0",
     "quickbit-universal": "^2.1.1",
