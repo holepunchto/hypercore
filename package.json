@@ -56,10 +56,7 @@
   },
   "devDependencies": {
     "brittle": "^3.0.0",
-    "debugging-stream": "^2.0.0",
     "hypercore-id-encoding": "^1.1.0",
-    "hyperdht": "^6.6.1",
-    "hyperswarm": "^4.5.1",
     "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
     "range-parser": "^1.2.1",
