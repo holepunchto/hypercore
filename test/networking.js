@@ -10,7 +10,8 @@ async function setup (t, opts = {}) {
 
   await a.append(new Array(opts.append).fill().map(() => Math.random().toString(16).substr(2)))
 
-  const [n1, n2] = makeStreamPair(t, { latency: opts.latency }) // Note: stream.rtt will be around double this value
+  // Note: stream.rtt will be around double this latency value
+  const [n1, n2] = makeStreamPair(t, { latency: opts.latency })
   a.replicate(n1)
   b.replicate(n2)
 
@@ -51,6 +52,10 @@ test('replication speed - different country', async function (t) {
 
 test('replication speed - far away', async function (t) {
   await setup(t, { append: 15000, latency: [250, 250], sleep: 10000 })
+})
+
+test('replication speed - space', async function (t) {
+  await setup(t, { append: 15000, latency: [500, 500], sleep: 10000 })
 })
 
 function track (core) {
