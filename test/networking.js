@@ -1,6 +1,7 @@
 const test = require('brittle')
 const speedometer = require('speedometer')
 const byteSize = require('tiny-byte-size')
+const b4a = require('b4a')
 const { create } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 
@@ -8,7 +9,7 @@ async function setup (t, opts = {}) {
   const a = await create()
   const b = await create(a.key)
 
-  await a.append(new Array(opts.append).fill().map(() => Math.random().toString(16).substr(2)))
+  await a.append(new Array(opts.append).fill().map(() => b4a.alloc(16).fill('a')))
 
   // Note: stream.rtt will be around double this latency value
   const [n1, n2] = makeStreamPair(t, { latency: opts.latency })
@@ -54,7 +55,7 @@ test('replication speed - far away', async function (t) {
   await setup(t, { append: 15000, latency: [250, 250], sleep: 10000 })
 })
 
-test('replication speed - space', async function (t) {
+test('replication speed - orbit', async function (t) {
   await setup(t, { append: 15000, latency: [500, 500], sleep: 10000 })
 })
 
