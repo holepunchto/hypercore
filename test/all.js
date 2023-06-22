@@ -20,7 +20,6 @@ async function runTests () {
   await import('./extension.js')
   await import('./merkle-tree.js')
   await import('./mutex.js')
-  await import('./networking.js')
   await import('./oplog.js')
   await import('./preload.js')
   await import('./remote-bitfield.js')

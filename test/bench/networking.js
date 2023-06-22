@@ -2,10 +2,12 @@ const test = require('brittle')
 const speedometer = require('speedometer')
 const byteSize = require('tiny-byte-size')
 const b4a = require('b4a')
-const { create } = require('./helpers')
-const { makeStreamPair } = require('./helpers/networking.js')
+const { create } = require('../helpers')
+const { makeStreamPair } = require('../helpers/networking.js')
 
 async function setup (t, opts = {}) {
+  t.timeout(60 * 1000)
+
   const a = await create()
   const b = await create(a.key)
 
@@ -22,9 +24,7 @@ async function setup (t, opts = {}) {
   t.comment('Starting to download')
   b.on('download', onchange)
   b.on('upload', onchange)
-  b.download()
-
-  if (opts.sleep) await sleep(opts.sleep)
+  await b.download({ start: 0, end: a.length }).done()
 
   return [a, b]
 
@@ -40,23 +40,23 @@ async function setup (t, opts = {}) {
 }
 
 test('replication speed - localhost', async function (t) {
-  await setup(t, { append: 15000, latency: [0, 0], sleep: 5000 })
+  await setup(t, { append: 5000, latency: [0, 0] })
 })
 
 test('replication speed - nearby', async function (t) {
-  await setup(t, { append: 15000, latency: [25, 25], sleep: 10000 })
+  await setup(t, { append: 5000, latency: [25, 25] })
 })
 
 test('replication speed - different country', async function (t) {
-  await setup(t, { append: 15000, latency: [75, 75], sleep: 10000 })
+  await setup(t, { append: 5000, latency: [75, 75] })
 })
 
 test('replication speed - far away', async function (t) {
-  await setup(t, { append: 15000, latency: [250, 250], sleep: 10000 })
+  await setup(t, { append: 5000, latency: [250, 250] })
 })
 
 test('replication speed - orbit', async function (t) {
-  await setup(t, { append: 15000, latency: [500, 500], sleep: 10000 })
+  await setup(t, { append: 5000, latency: [500, 500] })
 })
 
 function track (core) {
