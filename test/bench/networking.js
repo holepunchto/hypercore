@@ -81,7 +81,3 @@ function onspeed (eventName, info, index, byteLength, from) {
   if (block.max === undefined || blocks > block.max) block.max = blocks
   if (network.max === undefined || networks > network.max) network.max = networks
 }
-
-function sleep (ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
