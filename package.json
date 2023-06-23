@@ -45,6 +45,7 @@
     "flat-tree": "^1.9.0",
     "hypercore-crypto": "^3.2.1",
     "is-options": "^1.0.1",
+    "promaphore": "^1.0.0",
     "protomux": "^3.4.0",
     "quickbit-universal": "^2.1.1",
     "random-access-file": "^4.0.0",
