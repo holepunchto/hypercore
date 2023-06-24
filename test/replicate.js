@@ -2,6 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
+const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
 test('basic replication', async function (t) {
@@ -1104,3 +1105,77 @@ test('replicate ranges in reverse order', async function (t) {
 
   t.is(d, a.length)
 })
+
+test('cancel block', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c'])
+
+  const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
+  a.replicate(n1)
+  b.replicate(n2)
+
+  const session = b.session()
+  const cancelling = waitForRequestBlock(session).then(() => session.close())
+  try {
+    await session.get(0)
+    t.fail('Should have failed')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_CANCELLED')
+  }
+  await cancelling
+
+  t.alike(await b.get(1), b4a.from('b'))
+
+  await a.close()
+  await b.close()
+})
+
+test('try cancel block from a different session', async function (t) {
+  t.plan(3)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append(['a', 'b', 'c'])
+
+  const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
+  a.replicate(n1)
+  b.replicate(n2)
+
+  const s1 = b.session()
+  const s2 = b.session()
+
+  const cancelling = waitForRequestBlock(s1).then(() => s1.close())
+
+  const b1 = s1.get(0)
+  const b2 = s2.get(0)
+
+  try {
+    await b1
+    t.fail('Should have failed')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_CANCELLED')
+  }
+
+  await cancelling
+
+  t.alike(await b2, b4a.from('a'))
+  t.alike(await s2.get(1), b4a.from('b'))
+  await s2.close()
+
+  await a.close()
+  await b.close()
+})
+
+async function waitForRequestBlock (core) {
+  while (true) {
+    const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
+    if (reqBlock) break
+
+    await new Promise(resolve => setTimeout(resolve, 1))
+  }
+}
