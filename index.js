@@ -609,8 +609,8 @@ module.exports = class Hypercore extends EventEmitter {
     if (bitfield) {
       const contig = this.core.header.contiguousLength
 
-      if (bitfield.start < contig) {
-        this.replicator.onhave(0, contig, bitfield.drop)
+      if (bitfield.start < contig && !bitfield.drop) {
+        this.replicator.onhave(0, contig, false)
       } else {
         this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
       }
