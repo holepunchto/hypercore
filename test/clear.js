@@ -97,54 +97,26 @@ test('clear blocks with diff option', async function (t) {
   await core.close()
 })
 
-test.solo('oplog drop', async function (t) {
+test.solo('clear - could not load node', async function (t) {
   const storageWriter = createTmpDir(t)
   const storageReader = createTmpDir(t)
 
-  console.log('Creating writer')
-  {
-    const core = new Hypercore(storageWriter)
-    await core.ready()
-    await core.append(['a', 'b', 'c'])
-    await core.close()
-  }
+  t.comment('Creating writer')
+  const writer1 = new Hypercore(storageWriter)
+  await writer1.append(['a', 'b', 'c', 'd']) // => 'Error: Could not load node: 1'
+  // await writer1.append(['a', 'b', 'c', 'd', 'e']) // This works
+  // await writer1.append(['a', 'b', 'c', 'd', 'e', 'f']) // => 'Error: Could not load node: 8'
 
-  console.log('Re-creating writer')
-  const core = new Hypercore(storageWriter)
-  await core.ready()
-  await core.append(['a', 'b', 'c'])
+  t.comment('Creating reader')
+  const clone = new Hypercore(storageReader, writer1.key)
+  await clone.ready()
 
-  {
-    console.log('Creating reader')
-    const b = new Hypercore(storageReader, core.key)
-    await b.ready()
-    replicate(core, b, t)
-    console.log(b.contiguousLength)
-    await b.get(0)
-    await b.get(1)
-    await b.get(2)
-    console.log(b.contiguousLength)
-    await b.close()
-  }
+  // Needs replicate and the three clears for error to happen
+  replicate(writer1, clone, t)
+  await clone.clear(0)
+  await clone.clear(1)
+  await clone.clear(2)
 
-  {
-    console.log('Re-creating reader')
-    const b = new Hypercore(storageReader, core.key)
-    await b.ready()
-    replicate(core, b, t)
-    console.log(b.contiguousLength)
-    await b.clear(0)
-    await b.clear(1)
-    await b.clear(2)
-    console.log(b.contiguousLength)
-    await b.close()
-  }
-
-  {
-    console.log('Re-creating reader again')
-    const b = new Hypercore(storageReader, core.key)
-    await b.ready()
-    console.log(b.contiguousLength)
-    await b.close()
-  }
+  await writer1.close()
+  await clone.close()
 })
