@@ -58,6 +58,7 @@
   },
   "devDependencies": {
     "brittle": "^3.0.0",
+    "byte-size": "^8.1.1",
     "hyperswarm": "^4.3.6",
     "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
@@ -65,6 +66,7 @@
     "speedometer": "^1.1.0",
     "standard": "^17.0.0",
     "tiny-byte-size": "^1.1.0",
+    "tiny-crayon": "^1.0.5",
     "tmp-promise": "^3.0.2",
     "udx-native": "^1.6.1"
   }
