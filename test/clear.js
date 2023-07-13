@@ -101,13 +101,11 @@ test.solo('clear - could not load node', async function (t) {
   const storageWriter = createTmpDir(t)
   const storageReader = createTmpDir(t)
 
-  t.comment('Creating writer')
   const writer1 = new Hypercore(storageWriter)
   await writer1.append(['a', 'b', 'c', 'd']) // => 'Error: Could not load node: 1'
   // await writer1.append(['a', 'b', 'c', 'd', 'e']) // This works
   // await writer1.append(['a', 'b', 'c', 'd', 'e', 'f']) // => 'Error: Could not load node: 8'
 
-  t.comment('Creating reader')
   const clone = new Hypercore(storageReader, writer1.key)
   await clone.ready()
 
