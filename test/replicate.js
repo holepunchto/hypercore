@@ -1172,6 +1172,8 @@ test('try cancel block from a different session', async function (t) {
 })
 
 test.solo('closing last session should stop replication', async function (t) {
+  t.plan(5)
+
   const a = await create()
   await a.append(['a', 'b', 'c'])
 
@@ -1185,12 +1187,17 @@ test.solo('closing last session should stop replication', async function (t) {
 
   await sessionA.close()
   // await a.close()
-  // await new Promise(resolve => setTimeout(resolve, 100))
+  // await new Promise(resolve => setTimeout(resolve, 500))
 
-  console.log(s1.destroying)
-  console.log(s2.destroying)
+  t.is(s1.destroying, false)
+  t.is(s2.destroying, false)
 
-  t.alike(await b.get(2), b4a.from('c'))
+  try {
+    await b.get(2, { timeout: 500 })
+    t.fail('Should have failed')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
 })
 
 async function waitForRequestBlock (core) {
