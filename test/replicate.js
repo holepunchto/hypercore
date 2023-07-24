@@ -1172,7 +1172,7 @@ test('try cancel block from a different session', async function (t) {
 })
 
 test.solo('closing last session should stop replication', async function (t) {
-  t.plan(5)
+  t.plan(7)
 
   const a = await create()
   await a.append(['a', 'b', 'c'])
@@ -1180,7 +1180,10 @@ test.solo('closing last session should stop replication', async function (t) {
   const b = await create(a.key)
 
   const sessionA = a.session()
-  const [s1, s2] = replicate(sessionA, b, t)
+
+  const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+  const s1 = sessionA.replicate(n1)
+  const s2 = b.replicate(n2)
 
   t.alike(await b.get(0), b4a.from('a'))
   t.alike(await b.get(1), b4a.from('b'))
@@ -1188,6 +1191,9 @@ test.solo('closing last session should stop replication', async function (t) {
   await sessionA.close()
   // await a.close()
   // await new Promise(resolve => setTimeout(resolve, 500))
+
+  t.is(n2.destroying, false)
+  t.is(n2.destroying, false)
 
   t.is(s1.destroying, false)
   t.is(s2.destroying, false)
