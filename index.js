@@ -23,7 +23,7 @@ const {
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE
-} = require('./lib/errors')
+} = require('hypercore-errors')
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
