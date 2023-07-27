@@ -258,7 +258,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _openFromExisting (from, opts) {
-    await from.opening
+    if (!from.opened) await from.opening
 
     // includes ourself as well, so the loop below also updates us
     const sessions = this.sessions
@@ -279,7 +279,7 @@ module.exports = class Hypercore extends EventEmitter {
     const isFirst = !opts._opening
 
     if (!isFirst) await opts._opening
-    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
+    if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
 
     const keyPair = (key && opts.keyPair)
       ? { ...opts.keyPair, publicKey: key }
@@ -327,6 +327,18 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.opened = true
     this.emit('ready')
+  }
+
+  async _retryPreload (preload) {
+    while (true) { // TODO: better long term fix is allowing lib/core.js creation from the outside...
+      const result = await preload()
+      const from = result && result.from
+      if (from) {
+        if (!from.opened) await from.ready()
+        if (from.closing) continue
+      }
+      return result
+    }
   }
 
   async _openCapabilities (keyPair, storage, opts) {
