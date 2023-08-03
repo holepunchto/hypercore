@@ -1171,6 +1171,41 @@ test('try cancel block from a different session', async function (t) {
   await b.close()
 })
 
+test.solo('closing last session should stop replication', async function (t) {
+  t.plan(7)
+
+  const a = await create()
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(a.key)
+
+  const sessionA = a.session()
+
+  const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+  const s1 = sessionA.replicate(n1)
+  const s2 = b.replicate(n2)
+
+  t.alike(await b.get(0), b4a.from('a'))
+  t.alike(await b.get(1), b4a.from('b'))
+
+  await sessionA.close()
+  // await a.close()
+  // await new Promise(resolve => setTimeout(resolve, 500))
+
+  t.is(n2.destroying, false)
+  t.is(n2.destroying, false)
+
+  t.is(s1.destroying, false)
+  t.is(s2.destroying, false)
+
+  try {
+    await b.get(2, { timeout: 500 })
+    t.fail('Should have failed')
+  } catch (err) {
+    t.is(err.code, 'REQUEST_TIMEOUT')
+  }
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
