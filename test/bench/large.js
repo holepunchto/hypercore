@@ -4,7 +4,6 @@ const RAM = require('random-access-memory')
 const { replicate, createTmpDir } = require('../helpers')
 const speedometer = require('speedometer')
 const byteSize = require('byte-size')
-const crayon = require('tiny-crayon')
 
 test('large core with two non-sparse readers', { timeout: 999999999 }, async function (t) {
   const dir = createTmpDir(t)
@@ -55,10 +54,10 @@ function intervalSpeed (t, core, name) {
   const id = setInterval(() => {
     t.comment(
       name,
-      crayon.green('↓') + ' ' + crayon.yellow(Math.ceil(info.blocks.down())),
-      crayon.cyan('↑') + ' ' + crayon.yellow(Math.ceil(info.blocks.up())) + ' blks/s',
-      crayon.green('↓') + ' ' + crayon.yellow(byteSize(info.network.down())),
-      crayon.cyan('↑') + ' ' + crayon.yellow(byteSize(info.network.up()))
+      '↓ ' + Math.ceil(info.blocks.down()),
+      '↑ ' + Math.ceil(info.blocks.up()) + ' blks/s',
+      '↓ ' + byteSize(info.network.down()),
+      '↑ ' + byteSize(info.network.up())
     )
   }, 1000)
 

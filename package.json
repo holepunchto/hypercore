@@ -66,7 +66,6 @@
     "speedometer": "^1.1.0",
     "standard": "^17.0.0",
     "tiny-byte-size": "^1.1.0",
-    "tiny-crayon": "^1.0.5",
     "tmp-promise": "^3.0.2",
     "udx-native": "^1.6.1"
   }
