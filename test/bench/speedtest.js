@@ -34,8 +34,11 @@ test('speedtest replication with many peers', { timeout: 120000 }, async functio
     if (++count % 10000 === 0) t.comment('Downloaded ' + count + ' blocks after ' + (Date.now() - started) + ' ms')
   }
 
-  clone2.download({ start: 0, end: core.length })
+  const d1 = clone1.download({ start: 0, end: core.length })
+  const d2 = clone2.download({ start: 0, end: core.length })
 
-  await clone1.download({ start: 0, end: core.length }).done()
+  await d1.done()
+  await d2.done()
+
   t.comment('Done in ' + (Date.now() - started) + ' ms')
 })
