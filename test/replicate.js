@@ -1171,7 +1171,56 @@ test('try cancel block from a different session', async function (t) {
   await b.close()
 })
 
-async function waitForRequestBlock (core) {
+test('retry failed block requests to another peer', async function (t) {
+  t.plan(6)
+
+  const a = await create()
+  const b = await create(a.key)
+  const c = await create(a.key)
+
+  await a.append(['1', '2', '3'])
+
+  const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
+  a.replicate(n1)
+  b.replicate(n2)
+
+  const [n3, n4] = makeStreamPair(t, { latency: [50, 50] })
+  a.replicate(n3)
+  c.replicate(n4)
+
+  const [n5, n6] = makeStreamPair(t, { latency: [50, 50] })
+  b.replicate(n5)
+  c.replicate(n6)
+
+  await b.download({ start: 0, end: a.length }).done()
+
+  t.is(a.contiguousLength, 3)
+  t.is(b.contiguousLength, 3)
+  t.is(c.contiguousLength, 0)
+
+  let once = false
+
+  // "c" will make a block request, then whoever gets the request first "a" or "b" we destroy that replication stream
+  a.once('upload', onupload.bind(null, a, 'a'))
+  b.once('upload', onupload.bind(null, b, 'b'))
+
+  t.alike(await c.get(0), b4a.from('1'))
+
+  async function onupload (core, name) {
+    t.pass('onupload: ' + name + ' (' + (once ? 'allow' : 'deny') + ')')
+
+    if (once) return
+    once = true
+
+    if (name === 'a') {
+      await unreplicate([n1, n2, n3, n4])
+    } else {
+      await unreplicate([n1, n2, n5, n6])
+    }
+  }
+})
+
+async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
     if (reqBlock) break
