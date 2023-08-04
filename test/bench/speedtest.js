@@ -24,22 +24,18 @@ test('speedtest replication with many peers', { timeout: 120000 }, async functio
   replicate(clone1, clone2, t)
   replicate(clone1, clone3, t)
 
-  await new Promise(resolve => setTimeout(resolve, 500))
-  t.comment(core)
-
+  const started = Date.now()
   let count = 0
-  clone1.on('download', function () {
-    if (++count % 10000 === 0) t.comment(count)
-  })
-  clone2.on('download', function () {
-    if (++count % 10000 === 0) t.comment(count)
-  })
+
+  clone1.on('download', ondownload)
+  clone2.on('download', ondownload)
+
+  function ondownload () {
+    if (++count % 10000 === 0) t.comment('Downloaded ' + count + ' blocks after ' + (Date.now() - started) + ' ms')
+  }
 
   clone2.download({ start: 0, end: core.length })
 
-  const d = clone1.download({ start: 0, end: core.length })
-
-  const started = Date.now()
-  await d.done()
+  await clone1.download({ start: 0, end: core.length }).done()
   t.comment('Done in ' + (Date.now() - started) + ' ms')
 })
