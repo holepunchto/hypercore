@@ -512,6 +512,43 @@ test('check if a length is upgradeable', async function (t) {
   t.is(await clone.upgradeable(5), true)
 })
 
+test('clone a batch', async t => {
+  const a = await create(5)
+
+  const b = a.batch()
+  const c = b.clone()
+
+  t.is(b.fork, c.fork)
+  t.not(b.roots, c.roots)
+  t.is(b.roots.length, c.roots.length)
+  t.is(b.length, c.length)
+  t.is(b.byteLength, c.byteLength)
+  t.is(b.signature, c.signature)
+  t.is(b.treeLength, c.treeLength)
+  t.is(b.treeFork, c.treeFork)
+  t.is(b.tree, c.tree)
+  t.not(b.nodes, c.nodes)
+  t.is(b.nodes.length, c.nodes.length)
+  t.is(b.upgraded, c.upgraded)
+
+  b.append(Buffer.from('bigger'))
+  b.append(Buffer.from('block'))
+  b.append(Buffer.from('tiny'))
+  b.append(Buffer.from('s'))
+  b.append(Buffer.from('another'))
+
+  b.commit()
+
+  let same = b.roots.length === c.roots.length
+  for (let i = 0; i < b.roots.length; i++) {
+    if (b.roots[i].index !== c.roots[i].index) same = false
+    if (!same) break
+  }
+
+  t.absent(same)
+  t.not(b.nodes.length, c.nodes.length)
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
