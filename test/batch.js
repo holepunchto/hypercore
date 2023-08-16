@@ -219,3 +219,25 @@ test('batched tree batch contains new nodes', async function (t) {
 
   t.alike(node, batchNode)
 })
+
+test('batched tree batch proofs are equivalent', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append(['a', 'b', 'c'])
+
+  const batchTreeBatch = b.createTreeBatch()
+  const batchProof = await batchTreeBatch.proof({ upgrade: { start: 0, length: 2 } })
+
+  await b.flush()
+
+  const treeBatch = core.createTreeBatch()
+  const proof = await treeBatch.proof({ upgrade: { start: 0, length: 2 } })
+  const treeProof = await core.core.tree.proof({ upgrade: { start: 0, length: 2 } })
+
+  treeProof.upgrade.signature = null
+
+  t.alike(proof, batchProof)
+  t.alike(treeProof, batchProof)
+})
