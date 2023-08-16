@@ -878,7 +878,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async truncate (newLength = 0, fork = -1) {
-    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
+    if (this._batch) throw BATCH_UNFLUSHED()
+
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -890,7 +891,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts) {
-    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
+    if (this._batch && this !== this._batch.session) throw BATCH_UNFLUSHED()
+
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 

@@ -9,6 +9,7 @@ async function runTests () {
 
   await import('./auth.js')
   await import('./basic.js')
+  await import('./batch.js')
   await import('./bitfield.js')
   await import('./cache.js')
   await import('./clear.js')
@@ -22,7 +23,9 @@ async function runTests () {
   await import('./mutex.js')
   await import('./oplog.js')
   await import('./preload.js')
+  await import('./purge.js')
   await import('./remote-bitfield.js')
+  await import('./remote-length.js')
   await import('./replicate.js')
   await import('./sessions.js')
   await import('./snapshots.js')
@@ -30,7 +33,6 @@ async function runTests () {
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')
-  await import('./purge.js')
 
   test.resume()
 }
