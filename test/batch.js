@@ -67,7 +67,7 @@ test('batch truncate', async function (t) {
   await b.truncate(4)
 
   t.alike(await b.get(3), b4a.from('de'))
-  t.alike(await b.get(4), null)
+  await t.exception(b.get(4))
 
   await b.flush()
   t.is(core.length, 4)
@@ -91,7 +91,7 @@ test('batch truncate committed', async function (t) {
 
   const b = core.batch()
   await b.append(['de', 'fg'])
-  t.exception(b.truncate(2))
+  await t.exception(b.truncate(2))
 })
 
 test('batch close', async function (t) {
@@ -113,7 +113,7 @@ test('batch close after flush', async function (t) {
 
   const b = core.batch()
   await b.flush()
-  t.exception(b.close())
+  await b.close()
 })
 
 test('batch flush after close', async function (t) {
@@ -122,7 +122,7 @@ test('batch flush after close', async function (t) {
 
   const b = core.batch()
   await b.close()
-  t.exception(b.flush())
+  await t.exception(b.flush())
 })
 
 test('batch info', async function (t) {
@@ -148,4 +148,38 @@ test('simultaneous batches', async function (t) {
   const b = core.batch()
   await t.exception(() => core.batch())
   await b.flush()
+})
+
+test('partial flush', async function (t) {
+  const core = await create()
+
+  const b = core.batch({ autoClose: false })
+
+  await b.append(['a', 'b', 'c', 'd'])
+
+  await b.flush(2)
+
+  t.is(core.length, 2)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 3)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.close()
 })
