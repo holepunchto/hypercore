@@ -889,7 +889,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator.updateAll()
   }
 
-  async append (blocks) {
+  async append (blocks, opts) {
     if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
@@ -906,7 +906,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, this.auth, { preappend })
+    return this.core.append(buffers, (opts && opts.auth) || this.auth, { preappend })
   }
 
   async treeHash (length) {
