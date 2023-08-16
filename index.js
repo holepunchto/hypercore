@@ -658,6 +658,10 @@ module.exports = class Hypercore extends EventEmitter {
     return null
   }
 
+  createTreeBatch () {
+    return this.core.tree.batch()
+  }
+
   findingPeers () {
     this._findingPeers++
     if (this.replicator !== null && !this.closing) this.replicator.findingPeers++
