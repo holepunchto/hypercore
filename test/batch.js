@@ -149,3 +149,37 @@ test('simultaneous batches', async function (t) {
   await t.exception(() => core.batch())
   await b.flush()
 })
+
+test('partial flush', async function (t) {
+  const core = await create()
+
+  const b = core.batch({ autoClose: false })
+
+  await b.append(['a', 'b', 'c', 'd'])
+
+  await b.flush(2)
+
+  t.is(core.length, 2)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 3)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.close()
+})
