@@ -709,9 +709,9 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
-  batch () {
+  batch ({ autoClose = true } = {}) {
     if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
-    const batch = new Batch(this)
+    const batch = new Batch(this.session(), autoClose)
     for (const session of this.sessions) session._batch = batch
     return batch
   }
