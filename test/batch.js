@@ -183,3 +183,21 @@ test('partial flush', async function (t) {
 
   await b.close()
 })
+
+test('can make a tree batch', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append('a')
+
+  const batchTreeBatch = b.createTreeBatch()
+  const batchHash = batchTreeBatch.hash()
+
+  await b.flush()
+
+  const treeBatch = core.createTreeBatch()
+  const hash = treeBatch.hash()
+
+  t.alike(hash, batchHash)
+})
