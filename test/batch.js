@@ -67,7 +67,7 @@ test('batch truncate', async function (t) {
   await b.truncate(4)
 
   t.alike(await b.get(3), b4a.from('de'))
-  t.alike(await b.get(4), null)
+  await t.exception(b.get(4))
 
   await b.flush()
   t.is(core.length, 4)
@@ -91,7 +91,7 @@ test('batch truncate committed', async function (t) {
 
   const b = core.batch()
   await b.append(['de', 'fg'])
-  t.exception(b.truncate(2))
+  await t.exception(b.truncate(2))
 })
 
 test('batch close', async function (t) {
@@ -113,7 +113,7 @@ test('batch close after flush', async function (t) {
 
   const b = core.batch()
   await b.flush()
-  t.exception(b.close())
+  await b.close()
 })
 
 test('batch flush after close', async function (t) {
@@ -122,7 +122,7 @@ test('batch flush after close', async function (t) {
 
   const b = core.batch()
   await b.close()
-  t.exception(b.flush())
+  await t.exception(b.flush())
 })
 
 test('batch info', async function (t) {
@@ -148,4 +148,181 @@ test('simultaneous batches', async function (t) {
   const b = core.batch()
   await t.exception(() => core.batch())
   await b.flush()
+})
+
+test('multiple batches', async function (t) {
+  const core = await create()
+  const session = core.session()
+
+  const b = core.batch()
+  await b.append('a')
+  await b.flush()
+
+  const b2 = session.batch()
+  await b2.append('b')
+  await b2.flush()
+
+  t.is(core.length, 2)
+})
+
+test('partial flush', async function (t) {
+  const core = await create()
+
+  const b = core.batch({ autoClose: false })
+
+  await b.append(['a', 'b', 'c', 'd'])
+
+  await b.flush(2)
+
+  t.is(core.length, 2)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 3)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.flush(1)
+
+  t.is(core.length, 4)
+  t.is(b.length, 4)
+  t.is(b.byteLength, 4)
+
+  await b.close()
+})
+
+test('can make a tree batch', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append('a')
+
+  const batchTreeBatch = b.createTreeBatch()
+  const batchHash = batchTreeBatch.hash()
+
+  await b.flush()
+
+  const treeBatch = core.createTreeBatch()
+  const hash = treeBatch.hash()
+
+  t.alike(hash, batchHash)
+})
+
+test('batched tree batch contains new nodes', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append('a')
+
+  const batchTreeBatch = b.createTreeBatch()
+  const batchNode = await batchTreeBatch.get(0)
+
+  await b.flush()
+
+  const treeBatch = core.createTreeBatch()
+  const node = await treeBatch.get(0)
+
+  t.alike(node, batchNode)
+})
+
+test('batched tree batch proofs are equivalent', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append(['a', 'b', 'c'])
+
+  const batchTreeBatch = b.createTreeBatch()
+  const batchProof = await batchTreeBatch.proof({ upgrade: { start: 0, length: 2 } })
+
+  await b.flush()
+
+  const treeBatch = core.createTreeBatch()
+  const proof = await treeBatch.proof({ upgrade: { start: 0, length: 2 } })
+  const treeProof = await core.core.tree.proof({ upgrade: { start: 0, length: 2 } })
+
+  treeProof.upgrade.signature = null
+
+  t.alike(proof, batchProof)
+  t.alike(treeProof, batchProof)
+})
+
+test('create tree batches', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append('a')
+  await b.append('b')
+  await b.append('c')
+
+  const blocks = [
+    b4a.from('d'),
+    b4a.from('e'),
+    b4a.from('f'),
+    b4a.from('g')
+  ]
+
+  const t1 = b.createTreeBatch(1)
+  const t2 = b.createTreeBatch(2)
+  const t3 = b.createTreeBatch(3)
+  const t4 = b.createTreeBatch(4, blocks)
+  const t5 = b.createTreeBatch(5, blocks)
+
+  t.is(t1.length, 1)
+  t.is(t2.length, 2)
+  t.is(t3.length, 3)
+  t.is(t4.length, 4)
+  t.is(t5.length, 5)
+
+  t2.append(b4a.from('c'))
+
+  t.alike(t3.signable(), t2.signable())
+
+  const t4s = t4.signable()
+
+  await b.append('d')
+  t.alike(b.createTreeBatch().signable(), t4s)
+
+  await b.append('e')
+  t.alike(b.createTreeBatch().signable(), t5.signable())
+
+  // remove appended values
+  blocks.shift()
+  blocks.shift()
+
+  t.absent(b.createTreeBatch(6))
+  t.absent(b.createTreeBatch(8, blocks))
+
+  await b.flush()
+
+  t.is(core.length, 5)
+
+  const b2 = core.batch()
+  await b2.ready()
+
+  t.absent(b2.createTreeBatch(3))
+  t.alike(t4.signable(), t4s)
+
+  const t6 = b2.createTreeBatch(6, blocks)
+  const t7 = b2.createTreeBatch(7, blocks)
+
+  t.is(t6.length, 6)
+  t.is(t7.length, 7)
+
+  await b2.append('f')
+  t.alike(b2.createTreeBatch().signable(), t6.signable())
+
+  await b2.append('g')
+  t.alike(b2.createTreeBatch().signable(), t7.signable())
 })

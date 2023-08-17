@@ -658,6 +658,10 @@ module.exports = class Hypercore extends EventEmitter {
     return null
   }
 
+  createTreeBatch () {
+    return this.core.tree.batch()
+  }
+
   findingPeers () {
     this._findingPeers++
     if (this.replicator !== null && !this.closing) this.replicator.findingPeers++
@@ -709,9 +713,9 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
-  batch () {
+  batch ({ autoClose = true, session = true } = {}) {
     if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
-    const batch = new Batch(this)
+    const batch = new Batch(session ? this.session() : this, autoClose)
     for (const session of this.sessions) session._batch = batch
     return batch
   }
@@ -878,7 +882,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async truncate (newLength = 0, fork = -1) {
-    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
+    if (this._batch) throw BATCH_UNFLUSHED()
+
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -889,8 +894,9 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator.updateAll()
   }
 
-  async append (blocks) {
-    if (this._batch && !this._batch.flushed) throw BATCH_UNFLUSHED()
+  async append (blocks, opts) {
+    if (this._batch && this !== this._batch.session) throw BATCH_UNFLUSHED()
+
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
@@ -906,7 +912,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, this.auth, { preappend })
+    return this.core.append(buffers, (opts && opts.auth) || this.auth, { preappend })
   }
 
   async treeHash (length) {
