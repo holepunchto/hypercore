@@ -241,3 +241,56 @@ test('batched tree batch proofs are equivalent', async function (t) {
   t.alike(proof, batchProof)
   t.alike(treeProof, batchProof)
 })
+
+test('create tree batches', async function (t) {
+  const core = await create()
+
+  const b = core.batch()
+
+  await b.append('a')
+  await b.append('b')
+  await b.append('c')
+
+  const blocks = [
+    b4a.from('d'),
+    b4a.from('e'),
+    b4a.from('f'),
+    b4a.from('g')
+  ]
+
+  const b1 = b.createTreeBatch(null, 1)
+  const b2 = b.createTreeBatch(null, 2)
+  const b3 = b.createTreeBatch(null, 3)
+  const b4 = b.createTreeBatch(blocks, 4)
+  const b5 = b.createTreeBatch(blocks, 5)
+
+  t.is(b1.length, 1)
+  t.is(b2.length, 2)
+  t.is(b3.length, 3)
+  t.is(b4.length, 4)
+  t.is(b5.length, 5)
+
+  b2.append(b4a.from('c'))
+
+  t.alike(b3.signable(), b2.signable())
+
+  const b4s = b4.signable()
+
+  await b.append('d')
+  t.alike(b.createTreeBatch().signable(), b4s)
+
+  await b.append('e')
+  t.alike(b.createTreeBatch().signable(), b5.signable())
+
+  // remove appended values
+  blocks.shift()
+  blocks.shift()
+
+  t.absent(b.createTreeBatch(null, 6))
+  t.absent(b.createTreeBatch(blocks, 8))
+
+  await b.flush()
+  t.absent(b.createTreeBatch(null, 3))
+
+  t.alike(b4.signable(), b4s)
+})
