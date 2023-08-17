@@ -150,6 +150,21 @@ test('simultaneous batches', async function (t) {
   await b.flush()
 })
 
+test('multiple batches', async function (t) {
+  const core = await create()
+  const session = core.session()
+
+  const b = core.batch()
+  await b.append('a')
+  await b.flush()
+
+  const b2 = session.batch()
+  await b2.append('b')
+  await b2.flush()
+
+  t.is(core.length, 2)
+})
+
 test('partial flush', async function (t) {
   const core = await create()
 
