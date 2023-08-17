@@ -273,11 +273,11 @@ test('create tree batches', async function (t) {
     b4a.from('g')
   ]
 
-  const t1 = b.createTreeBatch(null, 1)
-  const t2 = b.createTreeBatch(null, 2)
-  const t3 = b.createTreeBatch(null, 3)
-  const t4 = b.createTreeBatch(blocks, 4)
-  const t5 = b.createTreeBatch(blocks, 5)
+  const t1 = b.createTreeBatch(1)
+  const t2 = b.createTreeBatch(2)
+  const t3 = b.createTreeBatch(3)
+  const t4 = b.createTreeBatch(4, blocks)
+  const t5 = b.createTreeBatch(5, blocks)
 
   t.is(t1.length, 1)
   t.is(t2.length, 2)
@@ -301,8 +301,8 @@ test('create tree batches', async function (t) {
   blocks.shift()
   blocks.shift()
 
-  t.absent(b.createTreeBatch(null, 6))
-  t.absent(b.createTreeBatch(blocks, 8))
+  t.absent(b.createTreeBatch(6))
+  t.absent(b.createTreeBatch(8, blocks))
 
   await b.flush()
 
@@ -311,11 +311,11 @@ test('create tree batches', async function (t) {
   const b2 = core.batch()
   await b2.ready()
 
-  t.absent(b2.createTreeBatch(null, 3))
+  t.absent(b2.createTreeBatch(3))
   t.alike(t4.signable(), t4s)
 
-  const t6 = b2.createTreeBatch(blocks, 6)
-  const t7 = b2.createTreeBatch(blocks, 7)
+  const t6 = b2.createTreeBatch(6, blocks)
+  const t7 = b2.createTreeBatch(7, blocks)
 
   t.is(t6.length, 6)
   t.is(t7.length, 7)
