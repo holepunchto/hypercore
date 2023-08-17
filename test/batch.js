@@ -258,29 +258,29 @@ test('create tree batches', async function (t) {
     b4a.from('g')
   ]
 
-  const b1 = b.createTreeBatch(null, 1)
-  const b2 = b.createTreeBatch(null, 2)
-  const b3 = b.createTreeBatch(null, 3)
-  const b4 = b.createTreeBatch(blocks, 4)
-  const b5 = b.createTreeBatch(blocks, 5)
+  const t1 = b.createTreeBatch(null, 1)
+  const t2 = b.createTreeBatch(null, 2)
+  const t3 = b.createTreeBatch(null, 3)
+  const t4 = b.createTreeBatch(blocks, 4)
+  const t5 = b.createTreeBatch(blocks, 5)
 
-  t.is(b1.length, 1)
-  t.is(b2.length, 2)
-  t.is(b3.length, 3)
-  t.is(b4.length, 4)
-  t.is(b5.length, 5)
+  t.is(t1.length, 1)
+  t.is(t2.length, 2)
+  t.is(t3.length, 3)
+  t.is(t4.length, 4)
+  t.is(t5.length, 5)
 
-  b2.append(b4a.from('c'))
+  t2.append(b4a.from('c'))
 
-  t.alike(b3.signable(), b2.signable())
+  t.alike(t3.signable(), t2.signable())
 
-  const b4s = b4.signable()
+  const t4s = t4.signable()
 
   await b.append('d')
-  t.alike(b.createTreeBatch().signable(), b4s)
+  t.alike(b.createTreeBatch().signable(), t4s)
 
   await b.append('e')
-  t.alike(b.createTreeBatch().signable(), b5.signable())
+  t.alike(b.createTreeBatch().signable(), t5.signable())
 
   // remove appended values
   blocks.shift()
@@ -290,7 +290,24 @@ test('create tree batches', async function (t) {
   t.absent(b.createTreeBatch(blocks, 8))
 
   await b.flush()
-  t.absent(b.createTreeBatch(null, 3))
 
-  t.alike(b4.signable(), b4s)
+  t.is(core.length, 5)
+
+  const b2 = core.batch()
+  await b2.ready()
+
+  t.absent(b2.createTreeBatch(null, 3))
+  t.alike(t4.signable(), t4s)
+
+  const t6 = b2.createTreeBatch(blocks, 6)
+  const t7 = b2.createTreeBatch(blocks, 7)
+
+  t.is(t6.length, 6)
+  t.is(t7.length, 7)
+
+  await b2.append('f')
+  t.alike(b2.createTreeBatch().signable(), t6.signable())
+
+  await b2.append('g')
+  t.alike(b2.createTreeBatch().signable(), t7.signable())
 })
