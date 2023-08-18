@@ -472,8 +472,19 @@ module.exports = class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Cannot clone a fork')
     }
 
-    const key = opts.key === undefined ? this.key : opts.key
-    const auth = opts.auth === undefined ? this.core.defaultAuth : opts.auth
+    const key = opts.key === undefined ? opts.keyPair ? null : this.key : opts.key
+    const keyPair = (opts.auth || opts.keyPair === undefined) ? null : opts.keyPair
+
+    let auth = this.core.defaultAuth
+    if (opts.auth) {
+      auth = opts.auth
+    } else if (opts.sign && keyPair) {
+      auth = Core.createAuth(this.crypto, keyPair, opts)
+    } else if (opts.sign) {
+      auth.sign = opts.sign
+    } else if (keyPair && keyPair.secretKey) {
+      auth = Core.createAuth(this.crypto, keyPair)
+    }
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
