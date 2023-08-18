@@ -296,7 +296,7 @@ test('core - clone', async function (t) {
     Buffer.from('world')
   ])
 
-  const sig = Buffer.from(copy.tree.signature)
+  const signature = copy.tree.signature
   const roots = copy.tree.roots.map(r => r.index)
 
   for (let i = 0; i <= core.tree.length * 2; i++) {
@@ -309,13 +309,13 @@ test('core - clone', async function (t) {
   await core.append([Buffer.from('c')])
 
   // copy should be independent
-  t.alike(copy.tree.signature, sig)
+  t.alike(copy.tree.signature, signature)
   t.alike(copy.tree.roots.map(r => r.index), roots)
 })
 
 test('core - clone verify', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: copy } = await create({ keyPair: core.header.signer })
   const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
 
   await core.append([Buffer.from('a'), Buffer.from('b')])
@@ -344,7 +344,7 @@ test('core - clone verify', async function (t) {
 
 test('clone - truncate original', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: copy } = await create({ keyPair: core.header.signer })
 
   await core.append([
     Buffer.from('hello'),
