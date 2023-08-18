@@ -1,5 +1,7 @@
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
+const tmpDir = require('test-tmp')
+const Hypercore = require('../')
 const RAM = require('random-access-memory')
 
 const { create, replicate } = require('./helpers')
@@ -138,4 +140,211 @@ test('clone - sparse', async function (t) {
 
   await t.execution(clone.core.tree.verify(proof))
   await t.execution(clone.append('final'))
+})
+
+test('clone - replicate clones', async function (t) {
+  const core = await create()
+
+  const keyPair = crypto.keyPair()
+
+  const clone = await core.clone(RAM)
+  await clone.ready()
+
+  await core.append('hello')
+  await core.append('world')
+  await core.append('goodbye')
+  await core.append('home')
+
+  const batch = await core.core.tree.batch()
+  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const full = await core.clone(RAM)
+  await full.ready()
+
+  replicate(clone, full)
+
+  t.alike(await clone.get(3), await core.get(3))
+  t.is(clone.length, 4)
+})
+
+test('clone - replicate clones new key', async function (t) {
+  const core = await create()
+
+  const keyPair = crypto.keyPair()
+
+  const clone = await core.clone(RAM, { keyPair })
+  await clone.ready()
+
+  await core.append('hello')
+  await core.append('world')
+  await core.append('goodbye')
+  await core.append('home')
+
+  const batch = await core.core.tree.batch()
+  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const full = await core.clone(RAM, { keyPair, signature })
+  await full.ready()
+
+  replicate(clone, full)
+
+  await clone.get(0)
+  await clone.get(3)
+
+  t.is(core.length, 4)
+  t.is(clone.length, 4)
+
+  t.alike(await clone.get(0), await core.get(0))
+  t.alike(await clone.get(3), await core.get(3))
+
+  const proof = await core.core.tree.proof({
+    block: { index: 3, nodes: 2 }
+  })
+
+  // need to populate proof, see lib/replicator
+  proof.block.value = await core.core.blocks.get(proof.block.index)
+
+  await t.execution(clone.core.tree.verify(proof))
+  await t.execution(clone.append('final'))
+})
+
+test('clone - replicate sparse clone with new key', async function (t) {
+  const core = await create()
+  const replica = await create(core.key, { auth: core.core.defaultAuth, sparse: true })
+
+  const keyPair = crypto.keyPair()
+
+  await core.append('hello')
+  await core.append('world')
+  await core.append('goodbye')
+  await core.append('home')
+
+  const batch = await core.core.tree.batch()
+  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const full = await core.clone(RAM, { keyPair, signature })
+  await full.ready()
+
+  replicate(core, replica)
+
+  await replica.get(0)
+  await replica.get(3)
+
+  t.is(replica.length, 4)
+
+  const clone = await replica.clone(RAM, { keyPair, signature })
+  await clone.ready()
+
+  t.is(clone.length, 4)
+
+  replicate(clone, full)
+
+  t.alike(await clone.get(1), await core.get(1))
+  t.alike(await clone.get(2), await core.get(2))
+})
+
+test('clone - persist clone to disk', async function (t) {
+  const core = await create()
+  const storage = await tmpDir(t)
+
+  const keyPair = crypto.keyPair()
+
+  await core.append('hello')
+  await core.append('world')
+  await core.append('goodbye')
+  await core.append('home')
+
+  const batch = await core.core.tree.batch()
+  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const clone = await core.clone(storage, { keyPair, signature })
+  await clone.ready()
+
+  t.is(clone.length, 4)
+
+  await clone.close()
+
+  const reopened = new Hypercore(storage)
+  await reopened.ready()
+
+  t.alike(await reopened.get(0), await core.get(0))
+  t.alike(await reopened.get(1), await core.get(1))
+  t.alike(await reopened.get(2), await core.get(2))
+  t.alike(await reopened.get(3), await core.get(3))
+})
+
+test('clone - persisted clone can replicate', async function (t) {
+  const core = await create()
+  const storage = await tmpDir(t)
+
+  await core.append('hello')
+  await core.append('world')
+
+  const clone = await core.clone(storage)
+  await clone.ready()
+
+  await core.append('goodbye')
+  await core.append('home')
+
+  t.is(clone.length, 2)
+
+  await clone.close()
+
+  const reopened = new Hypercore(storage)
+  await reopened.ready()
+
+  t.is(reopened.length, 2)
+
+  replicate(reopened, core)
+
+  t.alike(await reopened.get(0), await core.get(0))
+  t.alike(await reopened.get(1), await core.get(1))
+  t.alike(await reopened.get(2), await core.get(2))
+  t.alike(await reopened.get(3), await core.get(3))
+
+  t.is(reopened.length, 4)
+})
+
+test('clone - persisted clone with new key can replicate', async function (t) {
+  const core = await create()
+  const storage = await tmpDir(t)
+
+  const keyPair = crypto.keyPair()
+
+  await core.append('hello')
+  await core.append('world')
+
+  let batch = await core.core.tree.batch()
+  let signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const clone = await core.clone(storage, { keyPair, signature })
+  await clone.ready()
+
+  await core.append('goodbye')
+  await core.append('home')
+
+  batch = await core.core.tree.batch()
+  signature = crypto.sign(batch.signable(), keyPair.secretKey)
+
+  const fullClone = await core.clone(RAM, { keyPair, signature })
+  await fullClone.ready()
+
+  t.is(clone.length, 2)
+  t.is(fullClone.length, 4)
+
+  await clone.close()
+
+  const reopened = new Hypercore(storage)
+  await reopened.ready()
+
+  t.is(reopened.length, 2)
+
+  replicate(reopened, fullClone)
+
+  t.alike(await reopened.get(0), await core.get(0))
+  t.alike(await reopened.get(1), await core.get(1))
+  t.alike(await reopened.get(2), await core.get(2))
+  t.alike(await reopened.get(3), await core.get(3))
+
+  t.is(reopened.length, 4)
 })
