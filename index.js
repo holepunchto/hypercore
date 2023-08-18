@@ -310,8 +310,9 @@ module.exports = class Hypercore extends EventEmitter {
 
       // copy state over
       if (this._clone) {
-        await this._clone.opening
-        await this.core.copyFrom(this._clone.core)
+        const { base, upgrade } = this._clone
+        await base.opening
+        await this.core.copyFrom(base.core, upgrade)
         this._clone = null
       }
     }
@@ -486,6 +487,9 @@ module.exports = class Hypercore extends EventEmitter {
       auth = Core.createAuth(this.crypto, keyPair)
     }
 
+    // TODO: corestore compat need to get pubkey/verify
+    const upgrade = opts.upgrade === undefined ? null : opts.upgrade
+
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === false ? false : !this._readonly
@@ -501,7 +505,10 @@ module.exports = class Hypercore extends EventEmitter {
       timeout,
       auth,
       writable,
-      clone: this
+      clone: {
+        base: this,
+        upgrade
+      }
     })
   }
 
