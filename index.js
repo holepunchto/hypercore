@@ -467,7 +467,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.emit('close', true)
   }
 
-  clone (opts = {}) {
+  clone (storage, opts = {}) {
     // TODO: current limitation is no forking
     if ((opts.fork && opts.fork !== 0) || this.fork !== 0) {
       throw BAD_ARGUMENT('Cannot clone a fork')
@@ -497,7 +497,7 @@ module.exports = class Hypercore extends EventEmitter {
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
 
     const Clz = this.constructor
-    return new Clz(opts.storage, key, {
+    return new Clz(storage, key, {
       ...opts,
       sparse,
       wait,
