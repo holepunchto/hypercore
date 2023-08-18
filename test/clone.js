@@ -2,7 +2,7 @@ const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const RAM = require('random-access-memory')
 
-const { create } = require('./helpers')
+const { create, replicate } = require('./helpers')
 
 test('clone', async function (t) {
   const core = await create()
@@ -102,5 +102,40 @@ test('clone - pass new keypair', async function (t) {
   t.is(clone.length, 4)
   t.not(clone.key, core.key)
 
+  await t.execution(clone.append('final'))
+})
+
+test('clone - sparse', async function (t) {
+  const core = await create()
+  const replica = await create(core.key, { auth: core.core.defaultAuth, sparse: true })
+
+  await core.append('hello')
+  await core.append('world')
+  await core.append('goodbye')
+  await core.append('home')
+
+  replicate(core, replica)
+
+  await replica.get(0)
+  await replica.get(3)
+
+  t.is(replica.length, 4)
+
+  const clone = await replica.clone(RAM)
+  await clone.ready()
+
+  t.is(clone.length, 4)
+
+  t.alike(await clone.get(0), await core.get(0))
+  t.alike(await clone.get(3), await core.get(3))
+
+  const proof = await core.core.tree.proof({
+    block: { index: 3, nodes: 2 }
+  })
+
+  // need to populate proof, see lib/replicator
+  proof.block.value = await core.core.blocks.get(proof.block.index)
+
+  await t.execution(clone.core.tree.verify(proof))
   await t.execution(clone.append('final'))
 })
