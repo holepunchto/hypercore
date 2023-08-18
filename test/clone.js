@@ -145,8 +145,6 @@ test('clone - sparse', async function (t) {
 test('clone - replicate clones', async function (t) {
   const core = await create()
 
-  const keyPair = crypto.keyPair()
-
   const clone = await core.clone(RAM)
   await clone.ready()
 
@@ -154,9 +152,6 @@ test('clone - replicate clones', async function (t) {
   await core.append('world')
   await core.append('goodbye')
   await core.append('home')
-
-  const batch = await core.core.tree.batch()
-  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
   const full = await core.clone(RAM)
   await full.ready()
