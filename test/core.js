@@ -273,6 +273,111 @@ test('core - update hook is triggered', async function (t) {
   t.is(ran, 255, 'ran all')
 })
 
+test('core - clone', async function (t) {
+  const { core } = await create()
+  const { core: copy } = (await create())
+
+  await core.userData('hello', Buffer.from('world'))
+
+  await core.append([
+    Buffer.from('hello'),
+    Buffer.from('world')
+  ])
+
+  await copy.copyFrom(core)
+
+  t.alike(copy.header.userData, [{ key: 'hello', value: Buffer.from('world') }])
+
+  t.alike([
+    await copy.blocks.get(0),
+    await copy.blocks.get(1)
+  ], [
+    Buffer.from('hello'),
+    Buffer.from('world')
+  ])
+
+  const sig = Buffer.from(copy.tree.signature)
+  const roots = copy.tree.roots.map(r => r.index)
+
+  for (let i = 0; i <= core.tree.length * 2; i++) {
+    t.alike(
+      await copy.tree.get(i, false),
+      await core.tree.get(i, false)
+    )
+  }
+
+  await core.append([Buffer.from('c')])
+
+  // copy should be independent
+  t.alike(copy.tree.signature, sig)
+  t.alike(copy.tree.roots.map(r => r.index), roots)
+})
+
+test('core - clone verify', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+
+  await core.append([Buffer.from('a'), Buffer.from('b')])
+  await copy.copyFrom(core)
+
+  t.is(copy.header.signer.publicKey, core.header.signer.publicKey)
+  t.is(copy.header.signer.publicKey, clone.header.signer.publicKey)
+
+  // copy should be independent
+  await core.append([Buffer.from('c')])
+
+  {
+    const p = await copy.tree.proof({ upgrade: { start: 0, length: 2 } })
+    t.ok(await clone.verify(p))
+  }
+
+  t.is(clone.header.tree.length, 2)
+  t.alike(clone.header.tree.signature, copy.header.tree.signature)
+
+  {
+    const p = await copy.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+    p.block.value = await copy.blocks.get(1)
+    await clone.verify(p)
+  }
+})
+
+test('clone - truncate original', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+
+  await core.append([
+    Buffer.from('hello'),
+    Buffer.from('world'),
+    Buffer.from('fo'),
+    Buffer.from('ooo')
+  ])
+
+  await copy.copyFrom(core)
+  const signature = copy.tree.signature
+
+  await core.truncate(3, 1)
+
+  t.is(copy.tree.length, 4)
+  t.is(copy.tree.byteLength, 15)
+  t.is(copy.tree.fork, 0)
+  t.alike(copy.tree.signature, signature)
+
+  await core.append([
+    Buffer.from('a'),
+    Buffer.from('b'),
+    Buffer.from('c'),
+    Buffer.from('d')
+  ])
+
+  t.is(copy.tree.length, 4)
+  t.is(copy.tree.byteLength, 15)
+  t.is(copy.tree.fork, 0)
+  t.alike(copy.tree.signature, signature)
+
+  await core.truncate(2, 3)
+})
+
 async function create (opts) {
   const storage = new Map()
 
