@@ -482,12 +482,12 @@ module.exports = class Hypercore extends EventEmitter {
     } else if (opts.sign && keyPair) {
       auth = Core.createAuth(this.crypto, keyPair, opts)
     } else if (opts.sign) {
+      // TODO: dangerous to just update sign?
       auth.sign = opts.sign
     } else if (keyPair && keyPair.secretKey) {
       auth = Core.createAuth(this.crypto, keyPair)
     }
 
-    // TODO: corestore compat need to get pubkey/verify
     const upgrade = opts.upgrade === undefined ? null : opts.upgrade
 
     const sparse = opts.sparse === false ? false : this.sparse
