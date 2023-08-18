@@ -492,7 +492,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
-    const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
 
@@ -504,7 +503,7 @@ module.exports = class Hypercore extends EventEmitter {
       onwait,
       timeout,
       auth,
-      writable,
+      overwrite: true,
       clone: {
         from: this,
         upgrade
