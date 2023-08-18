@@ -94,10 +94,9 @@ test('clone - pass new keypair', async function (t) {
   const keyPair = crypto.keyPair()
 
   const batch = await core.core.tree.batch()
-  batch.signature = crypto.sign(batch.signable(), keyPair.secretKey)
-  const upgrade = await batch.proof({ upgrade: { start: 0, length: batch.length } })
+  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const clone = await core.clone({ storage: RAM, keyPair, upgrade })
+  const clone = await core.clone({ storage: RAM, keyPair, signature })
   await clone.ready()
 
   t.is(clone.length, 4)
