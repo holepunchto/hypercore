@@ -310,9 +310,9 @@ module.exports = class Hypercore extends EventEmitter {
 
       // copy state over
       if (this._clone) {
-        const { base, upgrade } = this._clone
-        await base.opening
-        await this.core.copyFrom(base.core, upgrade)
+        const { from, upgrade } = this._clone
+        await from.opening
+        await this.core.copyFrom(from.core, upgrade)
         this._clone = null
       }
     }
@@ -506,7 +506,7 @@ module.exports = class Hypercore extends EventEmitter {
       auth,
       writable,
       clone: {
-        base: this,
+        from: this,
         upgrade
       }
     })
