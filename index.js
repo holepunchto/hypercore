@@ -82,6 +82,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this._clone = opts.clone || null
     this._readonly = opts.writable === false
 
     this.closing = null
@@ -306,6 +307,13 @@ module.exports = class Hypercore extends EventEmitter {
         const s = this.sessions[i]
         if (s !== this) s._passCapabilities(this)
       }
+
+      // copy state over
+      if (this._clone) {
+        await this._clone.opening
+        await this.core.copyFrom(this._clone.core)
+        this._clone = null
+      }
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
@@ -456,6 +464,34 @@ module.exports = class Hypercore extends EventEmitter {
     await this.core.close()
 
     this.emit('close', true)
+  }
+
+  clone (opts = {}) {
+    // TODO: current limitation is no forking
+    if ((opts.fork && opts.fork !== 0) || this.fork !== 0) {
+      throw BAD_ARGUMENT('Cannot clone a fork')
+    }
+
+    const key = opts.key === undefined ? this.key : opts.key
+    const auth = opts.auth === undefined ? this.core.defaultAuth : opts.auth
+
+    const sparse = opts.sparse === false ? false : this.sparse
+    const wait = opts.wait === false ? false : this.wait
+    const writable = opts.writable === false ? false : !this._readonly
+    const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
+    const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
+
+    const Clz = this.constructor
+    return new Clz(opts.storage, key, {
+      ...opts,
+      sparse,
+      wait,
+      onwait,
+      timeout,
+      auth,
+      writable,
+      clone: this
+    })
   }
 
   replicate (isInitiator, opts = {}) {
