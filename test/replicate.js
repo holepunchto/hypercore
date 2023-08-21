@@ -1,6 +1,9 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
+const Hyperswarm = require('hyperswarm')
+const createTestnet = require('hyperdht/testnet')
+const tmp = require('test-tmp')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
@@ -1217,6 +1220,49 @@ test('retry failed block requests to another peer', async function (t) {
     } else {
       await unreplicate([n1, n2, n5, n6])
     }
+  }
+})
+
+test.solo('delay initial replicate call', async function (t) {
+  t.plan(1)
+
+  const testnet = await createTestnet(3)
+  t.teardown(() => testnet.destroy(), { order: Infinity })
+
+  const swarm1 = new Hyperswarm({ bootstrap: testnet.bootstrap })
+  const swarm2 = new Hyperswarm({ bootstrap: testnet.bootstrap })
+  t.teardown(() => swarm1.destroy())
+  t.teardown(() => swarm2.destroy())
+
+  const storageWriter = await tmp(t)
+  const storageReader = await tmp(t)
+
+  const writer = new Hypercore(storageWriter)
+  await writer.ready()
+
+  const discovery = swarm1.join(writer.discoveryKey)
+  swarm1.on('connection', c => writer.replicate(c))
+  await discovery.flushed()
+
+  const reader = new Hypercore(storageReader, writer.key)
+  await reader.ready()
+
+  const done = reader.findingPeers()
+  swarm2.join(reader.discoveryKey)
+  swarm2.on('connection', function (socket) {
+    socket.on('error', function (err) {
+      console.error(err)
+      t.fail()
+    })
+
+    setTimeout(() => reader.replicate(socket), 5500)
+  })
+  swarm2.flush().then(done, done)
+
+  await reader.update()
+
+  for await (const block of reader.createReadStream({ start: reader.length })) { // eslint-disable-line
+    break
   }
 })
 
