@@ -1,4 +1,5 @@
 const test = require('brittle')
+const tmp = require('test-tmp')
 const b4a = require('b4a')
 const RAM = require('random-access-memory')
 const { create, replicate, eventFlush } = require('./helpers')
@@ -95,4 +96,26 @@ test('clear blocks with diff option', async function (t) {
   t.is(cleared3.blocks, 0)
 
   await core.close()
+})
+
+test('clear - no side effect from clearing unknown nodes', async function (t) {
+  const storageWriter = await tmp(t)
+  const storageReader = await tmp(t)
+
+  const writer1 = new Hypercore(storageWriter)
+  await writer1.append(['a', 'b', 'c', 'd']) // => 'Error: Could not load node: 1'
+
+  const clone = new Hypercore(storageReader, writer1.key)
+  await clone.ready()
+
+  // Needs replicate and the three clears for error to happen
+  replicate(writer1, clone, t)
+  await clone.clear(0)
+  await clone.clear(1)
+  await clone.clear(2)
+
+  await writer1.close()
+  await clone.close()
+
+  t.pass('did not crash')
 })
