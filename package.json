@@ -64,6 +64,7 @@
     "range-parser": "^1.2.1",
     "speedometer": "^1.1.0",
     "standard": "^17.0.0",
+    "test-tmp": "^1.0.2",
     "tiny-byte-size": "^1.1.0",
     "tmp-promise": "^3.0.2",
     "udx-native": "^1.6.1"
