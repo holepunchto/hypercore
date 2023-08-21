@@ -1,6 +1,6 @@
 const test = require('brittle')
 const Hypercore = require('../')
-const tmp = require('tmp-promise')
+const tmp = require('test-tmp')
 const { create } = require('./helpers')
 
 test('userdata - can set through setUserData', async function (t) {
@@ -21,9 +21,9 @@ test('userdata - can set through constructor option', async function (t) {
 })
 
 test('userdata - persists across restarts', async function (t) {
-  const dir = await tmp.dir()
+  const dir = await tmp(t)
 
-  let core = new Hypercore(dir.path, {
+  let core = new Hypercore(dir, {
     userData: {
       hello: Buffer.from('world')
     }
@@ -31,7 +31,7 @@ test('userdata - persists across restarts', async function (t) {
   await core.ready()
 
   await core.close()
-  core = new Hypercore(dir.path, {
+  core = new Hypercore(dir, {
     userData: {
       other: Buffer.from('another')
     }
