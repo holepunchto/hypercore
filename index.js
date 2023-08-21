@@ -840,6 +840,7 @@ module.exports = class Hypercore extends EventEmitter {
     const cleared = (opts && opts.diff) ? { blocks: 0 } : null
 
     if (start >= end) return cleared
+    if (start >= this.length) return cleared
 
     await this.core.clear(start, end, cleared)
 
