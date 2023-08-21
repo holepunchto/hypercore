@@ -1,6 +1,3 @@
-const fs = require('fs')
-const path = require('path')
-const os = require('os')
 const Hypercore = require('../../')
 const RAM = require('random-access-memory')
 
@@ -46,11 +43,4 @@ exports.unreplicate = function unreplicate (streams) {
 
 exports.eventFlush = async function eventFlush () {
   await new Promise(resolve => setImmediate(resolve))
-}
-
-exports.createTmpDir = function createTmpDir (t) {
-  const tmpdir = path.join(os.tmpdir(), 'hypercore-test-')
-  const dir = fs.mkdtempSync(tmpdir)
-  if (t) t.teardown(() => fs.promises.rm(dir, { recursive: true }))
-  return dir
 }

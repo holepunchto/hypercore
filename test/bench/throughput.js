@@ -1,11 +1,12 @@
 const test = require('brittle')
-const { create, replicate, createTmpDir } = require('../helpers')
+const tmp = require('test-tmp')
+const { create, replicate } = require('../helpers')
 const Hypercore = require('../../index.js')
 
 test('throughput from disk', async function (t) {
-  const tmp = createTmpDir(t)
+  const dir = await tmp(t)
 
-  const a = new Hypercore(tmp)
+  const a = new Hypercore(dir)
   await a.append(new Array(20000).fill().map(() => Buffer.alloc(1)))
 
   const b = await create(a.key)
