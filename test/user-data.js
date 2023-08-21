@@ -39,4 +39,6 @@ test('userdata - persists across restarts', async function (t) {
 
   t.alike(await core.getUserData('hello'), Buffer.from('world'))
   t.alike(await core.getUserData('other'), Buffer.from('another'))
+
+  await core.close()
 })
