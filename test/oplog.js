@@ -364,12 +364,18 @@ test('oplog - header overflow', async function (t) {
   const log = new Oplog(storage)
   await log.open()
 
+  const padding = 8 // Additional bytes owned by the oplog
+
+  await log.flush(Buffer.alloc(4096 - padding))
+
   try {
-    await log.flush(Buffer.alloc(8192))
+    await log.flush(Buffer.alloc(4096 - padding + 1))
     t.fail('flush should fail')
   } catch (err) {
     t.is(err.code, 'OPLOG_HEADER_OVERFLOW')
   }
+
+  await cleanup(storage)
 })
 
 function testStorage () {
