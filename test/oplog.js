@@ -358,6 +358,20 @@ test('oplog - multi append is atomic', async function (t) {
   await cleanup(storage)
 })
 
+test('oplog - header overflow', async function (t) {
+  const storage = testStorage()
+
+  const log = new Oplog(storage)
+  await log.open()
+
+  try {
+    await log.flush(Buffer.alloc(8192))
+    t.fail('flush should fail')
+  } catch (err) {
+    t.is(err.code, 'OPLOG_HEADER_OVERFLOW')
+  }
+})
+
 function testStorage () {
   return new RAF(STORAGE_FILE_NAME, { directory: __dirname, lock: true })
 }
