@@ -964,7 +964,14 @@ module.exports = class Hypercore extends EventEmitter {
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
-    const preappend = this.encryption && this._preappend
+    const encrypt = this.encryption && this._preappend
+    let preappend = null
+    if (encrypt || opts.preappend) {
+      preappend = async (values) => {
+        if (opts.preappend) await opts.preappend(values)
+        if (encrypt) encrypt(values)
+      }
+    }
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
