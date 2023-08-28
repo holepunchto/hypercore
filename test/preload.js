@@ -35,7 +35,7 @@ test('preload - from another core', async function (t) {
 
 test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(RAM, keyPair.publicKey, {
+  const core = new Hypercore(RAM, {
     preload: () => {
       return { keyPair }
     }
@@ -43,7 +43,7 @@ test('preload - custom keypair', async function (t) {
   await core.ready()
 
   t.ok(core.writable)
-  t.is(core.key, keyPair.publicKey)
+  t.is(core.core.header.manifest.signer.publicKey, keyPair.publicKey)
 })
 
 test('preload - sign/storage', async function (t) {

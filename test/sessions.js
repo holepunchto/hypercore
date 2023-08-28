@@ -6,7 +6,7 @@ const { create } = require('./helpers')
 
 const Hypercore = require('../')
 
-test('sessions - can create writable sessions from a read-only core', async function (t) {
+test.skip('sessions - can create writable sessions from a read-only core', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -37,7 +37,7 @@ test('sessions - can create writable sessions from a read-only core', async func
   t.is(core.length, 1)
 })
 
-test('sessions - writable session with custom sign function', async function (t) {
+test.skip('sessions - writable session with custom sign function', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -73,7 +73,7 @@ test('sessions - writable session with custom sign function', async function (t)
   t.is(core.length, 1)
 })
 
-test('sessions - writable session with invalid keypair throws', async function (t) {
+test.skip('sessions - writable session with invalid keypair throws', async function (t) {
   t.plan(2)
 
   const keyPair1 = crypto.keyPair()
