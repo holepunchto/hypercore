@@ -358,7 +358,7 @@ module.exports = class Hypercore extends EventEmitter {
       readonly: unlocked,
       overwrite: opts.overwrite,
       key,
-      keyPair: opts.keyPair || null,
+      keyPair: opts.keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
       auth: opts.auth,
