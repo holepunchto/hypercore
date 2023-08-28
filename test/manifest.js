@@ -1,4 +1,5 @@
 const test = require('brittle')
+const c = require('compact-encoding')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 
@@ -34,14 +35,17 @@ test('create auth - single signer', async function (t) {
 test('create auth - single signer', async function (t) {
   const keyPair = crypto.keyPair()
 
+  const namespace = b4a.alloc(32, 2)
+  const entropy = b4a.alloc(32, 3)
+
   const manifest = {
     version: 0,
-    // namespace: <0x...>,
+    namespace,
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
       signature: 'ED_25519',
-      // entropy: <0x...>,
+      entropy,
       publicKey: keyPair.publicKey
     }
   }
@@ -61,13 +65,18 @@ test('create auth - single signer', async function (t) {
   t.absent(auth.verify(signable, signature))
 })
 
-test('create auth - mult signer', async function (t) {
+test('create auth - multi signer', async function (t) {
   const a = crypto.keyPair()
   const b = crypto.keyPair()
 
+  const signable = b4a.alloc(32, 1)
+  const namespace = b4a.alloc(32, 2)
+  const aEntropy = b4a.alloc(32, 3)
+  const bEntropy = b4a.alloc(32, 4)
+
   const manifest = {
     version: 0,
-    // namespace: <0x...>,
+    namespace,
     // hash: BLAKE_2B,
     type: 'MULTI_SIGNERS',
     multiSigners: {
@@ -75,34 +84,25 @@ test('create auth - mult signer', async function (t) {
       quorum: 2,
       signers: [{
         publicKey: a.publicKey,
-        // entropy: <0x...>,
+        entropy: aEntropy,
         signature: 'ED_25519'
       }, {
         publicKey: b.publicKey,
-        // entropy: <0x...>,
+        entropy: bEntropy,
         signature: 'ED_25519'        
       }]
     }
   }
 
-  const signable = b4a.alloc(32, 1)
+  const namespaced = entropy => b4a.concat([namespace, entropy, signable])
 
-  const asig = crypto.sign(signable, a.secretKey)
-  const bsig = crypto.sign(signable, b.secretKey)
+  const asig = crypto.sign(namespaced(aEntropy), a.secretKey)
+  const bsig = crypto.sign(namespaced(bEntropy), b.secretKey)
 
-  const signature = {
-    proofs: [
-      { signature: asig },
-      { signature: bsig }
-    ]
-  }
+  const enc = c.array(c.fixed64)
 
-  const badSignature = {
-    proofs: [
-      { signature: asig },
-      { signature: asig }
-    ]
-  }
+  const signature = c.encode(enc, [asig, bsig])
+  const badSignature = c.encode(enc, [asig, asig])
 
   const auth = createAuth(manifest)
 
