@@ -35,7 +35,7 @@ test('preload - from another core', async function (t) {
 
 test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(RAM, {
+  const core = new Hypercore(RAM, keyPair.publicKey, {
     preload: () => {
       return { keyPair }
     }
