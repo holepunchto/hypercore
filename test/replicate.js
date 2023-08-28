@@ -894,7 +894,7 @@ test('sparse replication without gossiping', async function (t) {
   await t.test('block', async function (t) {
     const c = await create(a.key)
 
-    s = replicate(b, c)
+    s = replicate(b, c, t)
     t.teardown(() => unreplicate(s))
 
     t.alike(await c.get(4), Buffer.from('e'))

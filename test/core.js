@@ -127,9 +127,9 @@ test('core - user data', async function (t) {
 
 test('core - verify', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
-  t.is(clone.header.signer.publicKey, core.header.signer.publicKey)
+  t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b')])
 
@@ -150,9 +150,9 @@ test('core - verify', async function (t) {
 
 test('core - verify parallel upgrades', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
-  t.is(clone.header.signer.publicKey, core.header.signer.publicKey)
+  t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
   await core.append([Buffer.from('a'), Buffer.from('b'), Buffer.from('c'), Buffer.from('d')])
 
@@ -173,7 +173,7 @@ test('core - verify parallel upgrades', async function (t) {
 
 test('core - update hook is triggered', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   let ran = 0
 
@@ -315,14 +315,14 @@ test('core - clone', async function (t) {
 
 test('core - clone verify', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.signer })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.signer.publicKey } })
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   await core.append([Buffer.from('a'), Buffer.from('b')])
   await copy.copyFrom(core)
 
-  t.is(copy.header.signer.publicKey, core.header.signer.publicKey)
-  t.is(copy.header.signer.publicKey, clone.header.signer.publicKey)
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
 
   // copy should be independent
   await core.append([Buffer.from('c')])
@@ -344,7 +344,7 @@ test('core - clone verify', async function (t) {
 
 test('clone - truncate original', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.signer })
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
 
   await core.append([
     Buffer.from('hello'),

@@ -9,7 +9,7 @@ test('one forks', async function (t) {
 
   const b = await create(a.key)
 
-  const c = await create({ keyPair: a.core.header.signer })
+  const c = await create({ keyPair: a.core.header.keyPair })
   await c.append(['a', 'b', 'c', 'd', 'f', 'e'])
 
   const streams = replicate(a, b, t)

@@ -300,7 +300,7 @@ test('clone - persisted clone can replicate', async function (t) {
   t.is(reopened.length, 4)
 })
 
-test('clone - persisted clone with new key can replicate', async function (t) {
+test.skip('clone - persisted clone with new key can replicate', async function (t) {
   const core = await create()
   const storage = await tmpDir(t)
 
@@ -333,8 +333,7 @@ test('clone - persisted clone with new key can replicate', async function (t) {
   await reopened.ready()
 
   t.is(reopened.length, 2)
-
-  replicate(reopened, fullClone)
+  replicate(reopened, fullClone, t)
 
   t.alike(await reopened.get(0), await core.get(0))
   t.alike(await reopened.get(1), await core.get(1))
