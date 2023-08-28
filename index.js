@@ -252,7 +252,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly && !!(this.auth && this.auth.sign)
+    this.writable = !this._readonly && !!(this.core && this.core.isWritable())
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -282,26 +282,22 @@ module.exports = class Hypercore extends EventEmitter {
     if (!isFirst) await opts._opening
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
 
-    const keyPair = (key && opts.keyPair)
-      ? { ...opts.keyPair, publicKey: key }
-      : key
-        ? { publicKey: key, secretKey: null }
-        : opts.keyPair
+    // const keyPair = opts.keyPair
 
     // This only works if the hypercore was fully loaded,
     // but we only do this to validate the keypair to help catch bugs so yolo
-    if (this.key && keyPair) keyPair.publicKey = this.key
+    // if (this.key && keyPair) keyPair.publicKey = this.key
 
-    if (opts.auth) {
-      this.auth = opts.auth
-    } else if (opts.sign) {
-      this.auth = Core.createAuth(this.crypto, keyPair, opts)
-    } else if (keyPair && keyPair.secretKey) {
-      this.auth = Core.createAuth(this.crypto, keyPair)
-    }
+    // if (opts.auth) {
+    //   this.auth = opts.auth
+    // } else if (opts.sign) {
+    //   this.auth = Core.createAuth(this.crypto, keyPair, opts)
+    // } else if (keyPair && keyPair.secretKey) {
+    //   this.auth = Core.createAuth(this.crypto, keyPair)
+    // }
 
     if (isFirst) {
-      await this._openCapabilities(keyPair, storage, opts)
+      await this._openCapabilities(key, storage, opts)
       // Only the root session should pass capabilities to other sessions.
       for (let i = 0; i < this.sessions.length; i++) {
         const s = this.sessions[i]
@@ -318,7 +314,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !this._readonly && !!this.auth.sign
+    this.writable = !this._readonly && !!this.core.isWritable()
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -350,7 +346,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  async _openCapabilities (keyPair, storage, opts) {
+  async _openCapabilities (key, storage, opts) {
     if (opts.from) return this._openFromExisting(opts.from, opts)
 
     const unlocked = !!opts.unlocked
@@ -361,7 +357,8 @@ module.exports = class Hypercore extends EventEmitter {
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
       overwrite: opts.overwrite,
-      keyPair,
+      key,
+      keyPair: opts.keyPair || null,
       crypto: this.crypto,
       legacy: opts.legacy,
       auth: opts.auth,
@@ -375,8 +372,8 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    this.key = this.core.header.signer.publicKey
-    this.keyPair = this.core.header.signer
+    this.key = this.core.header.key
+    this.keyPair = this.core.header.keyPair
     this.id = z32.encode(this.key)
 
     this.replicator = new Replicator(this.core, this.key, {
