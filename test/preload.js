@@ -43,7 +43,7 @@ test('preload - custom keypair', async function (t) {
   await core.ready()
 
   t.ok(core.writable)
-  t.is(core.core.header.manifest.signer.publicKey, keyPair.publicKey)
+  t.is(core.key, keyPair.publicKey)
 })
 
 test('preload - sign/storage', async function (t) {
