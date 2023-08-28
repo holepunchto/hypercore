@@ -2,7 +2,7 @@ const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 
-const createAuth = require('../lib/auth')
+const createAuth = require('../lib/manifest')
 
 test('create auth - single signer', async function (t) {
   const treeHash = b4a.alloc(32, 1)
