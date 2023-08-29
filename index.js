@@ -338,8 +338,8 @@ module.exports = class Hypercore extends EventEmitter {
       const result = await preload()
       const from = result && result.from
       if (from) {
-        if (!from.opened) await from.ready()
-        if (from.closing) continue
+        if (!from.opened) await from.ready().catch(noop)
+        if (!from.opened || from.closing) continue
       }
       return result
     }
