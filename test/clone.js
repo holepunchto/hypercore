@@ -304,7 +304,7 @@ test('clone - persisted clone can replicate', async function (t) {
   await reopened.close()
 })
 
-test.skip('clone - persisted clone with new key can replicate', async function (t) {
+test('clone - persisted clone with new key can replicate', async function (t) {
   const core = await create()
   const storage = await tmpDir(t)
 
