@@ -697,8 +697,8 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.userData(key, value, flush)
   }
 
-  async getUserData (key) {
-    if (this.opened === false) await this.opening
+  async getUserData (key, opts) {
+    if (this.opened === false && !(opts && opts.force)) await this.opening
     for (const { key: savedKey, value } of this.core.header.userData) {
       if (key === savedKey) return value
     }
