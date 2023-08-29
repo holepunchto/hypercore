@@ -266,6 +266,8 @@ test('clone - persist clone to disk', async function (t) {
   t.alike(await reopened.get(1), await core.get(1))
   t.alike(await reopened.get(2), await core.get(2))
   t.alike(await reopened.get(3), await core.get(3))
+
+  await reopened.close()
 })
 
 test('clone - persisted clone can replicate', async function (t) {
@@ -298,6 +300,8 @@ test('clone - persisted clone can replicate', async function (t) {
   t.alike(await reopened.get(3), await core.get(3))
 
   t.is(reopened.length, 4)
+
+  await reopened.close()
 })
 
 test.skip('clone - persisted clone with new key can replicate', async function (t) {
@@ -341,4 +345,6 @@ test.skip('clone - persisted clone with new key can replicate', async function (
   t.alike(await reopened.get(3), await core.get(3))
 
   t.is(reopened.length, 4)
+
+  await reopened.close()
 })

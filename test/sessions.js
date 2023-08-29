@@ -6,7 +6,7 @@ const { create } = require('./helpers')
 
 const Hypercore = require('../')
 
-test.skip('sessions - can create writable sessions from a read-only core', async function (t) {
+test('sessions - can create writable sessions from a read-only core', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -37,7 +37,7 @@ test.skip('sessions - can create writable sessions from a read-only core', async
   t.is(core.length, 1)
 })
 
-test.skip('sessions - writable session with custom sign function', async function (t) {
+test('sessions - writable session with custom sign function', async function (t) {
   t.plan(5)
 
   const keyPair = crypto.keyPair()
@@ -71,30 +71,6 @@ test.skip('sessions - writable session with custom sign function', async functio
   }
 
   t.is(core.length, 1)
-})
-
-test.skip('sessions - writable session with invalid keypair throws', async function (t) {
-  t.plan(2)
-
-  const keyPair1 = crypto.keyPair()
-  const keyPair2 = crypto.keyPair()
-
-  try {
-    const core = new Hypercore(RAM, keyPair2.publicKey) // Create a new core in read-only mode.
-    const session = core.session({ keyPair: keyPair1 })
-    await session.ready()
-    t.fail('invalid keypair did not throw')
-  } catch {
-    t.pass('invalid keypair threw')
-  }
-
-  try {
-    const core = new Hypercore(RAM, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
-    await core.ready()
-    t.fail('invalid keypair did not throw')
-  } catch {
-    t.pass('invalid keypair threw')
-  }
 })
 
 test('sessions - auto close', async function (t) {
