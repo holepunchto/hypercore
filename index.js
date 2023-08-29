@@ -353,6 +353,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = Hypercore.defaultStorage(opts.storage || storage, { unlocked, writable: !unlocked })
 
     this.core = await Core.open(this.storage, {
+      compat: opts.compat !== false, // default to true for now
       force: opts.force,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
