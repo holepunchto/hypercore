@@ -2,10 +2,7 @@ const test = require('brittle')
 const c = require('compact-encoding')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
-const tmpDir = require('test-tmp')
-const ram = require('random-access-memory')
 
-const Hypercore = require('../')
 const createAuth = require('../lib/manifest')
 
 test('create auth - static signer', async function (t) {
@@ -47,7 +44,7 @@ test('create auth - single signer no sign', async function (t) {
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
-      signature: 'ED_25519',
+      signature: 'ed25519',
       entropy,
       publicKey: keyPair.publicKey
     }
@@ -81,7 +78,7 @@ test('create auth - single signer', async function (t) {
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
-      signature: 'ED_25519',
+      signature: 'ed25519',
       entropy,
       publicKey: keyPair.publicKey
     }
@@ -122,11 +119,11 @@ test('create auth - multi signer', async function (t) {
       signers: [{
         publicKey: a.publicKey,
         entropy: aEntropy,
-        signature: 'ED_25519'
+        signature: 'ed25519'
       }, {
         publicKey: b.publicKey,
         entropy: bEntropy,
-        signature: 'ED_25519'        
+        signature: 'ed25519'
       }]
     }
   }
@@ -153,15 +150,13 @@ test('create auth - multi signer', async function (t) {
 test('create auth - defaults', async function (t) {
   const keyPair = crypto.keyPair()
 
-  const entropy = b4a.alloc(32, 0)
-
   const manifest = {
     version: 0,
     // namespace,
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
-      signature: 'ED_25519',
+      signature: 'ed25519',
       publicKey: keyPair.publicKey
     }
   }
@@ -191,7 +186,7 @@ test('create auth - invalid input', async function (t) {
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
-      signature: 'ED_25519',
+      signature: 'ed25519',
       publicKey: keyPair.publicKey
     }
   }
@@ -228,7 +223,7 @@ test('create auth - compat signer', async function (t) {
     // hash: BLAKE_2B,
     type: 'SIGNER',
     signer: {
-      signature: 'ED_25519',
+      signature: 'ed25519',
       entropy,
       publicKey: keyPair.publicKey
     }
