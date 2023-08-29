@@ -12,10 +12,7 @@ test('create auth - static signer', async function (t) {
     version: 0,
     // namespace: <0x...>,
     // hash: BLAKE_2B,
-    type: 'STATIC',
-    static: {
-      treeHash
-    }
+    static: treeHash
   }
 
   const auth = createAuth(manifest)
@@ -36,16 +33,13 @@ test('create auth - single signer no sign', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
-  const entropy = b4a.alloc(32, 3)
 
   const manifest = {
     version: 0,
-    namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'ed25519',
-      entropy,
+      namespace,
       publicKey: keyPair.publicKey
     }
   }
@@ -56,7 +50,7 @@ test('create auth - single signer no sign', async function (t) {
   t.absent(auth.sign)
 
   const signable = b4a.alloc(32, 1)
-  const namespaced = b4a.concat([namespace, entropy, signable])
+  const namespaced = b4a.concat([namespace, signable])
   const signature = crypto.sign(namespaced, keyPair.secretKey)
 
   t.ok(auth.verify(signable, signature))
@@ -70,16 +64,13 @@ test('create auth - single signer', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
-  const entropy = b4a.alloc(32, 3)
 
   const manifest = {
     version: 0,
-    namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'ed25519',
-      entropy,
+      namespace,
       publicKey: keyPair.publicKey
     }
   }
@@ -104,31 +95,28 @@ test('create auth - multi signer', async function (t) {
   const b = crypto.keyPair()
 
   const signable = b4a.alloc(32, 1)
-  const namespace = b4a.alloc(32, 2)
-  const aEntropy = b4a.alloc(32, 3)
-  const bEntropy = b4a.alloc(32, 4)
+  const aEntropy = b4a.alloc(32, 2)
+  const bEntropy = b4a.alloc(32, 3)
 
   const manifest = {
     version: 0,
-    namespace,
     // hash: BLAKE_2B,
-    type: 'MULTI_SIGNERS',
     multiSigners: {
       allowPatched: false,
       quorum: 2,
       signers: [{
         publicKey: a.publicKey,
-        entropy: aEntropy,
+        namespace: aEntropy,
         signature: 'ed25519'
       }, {
         publicKey: b.publicKey,
-        entropy: bEntropy,
+        namespace: bEntropy,
         signature: 'ed25519'
       }]
     }
   }
 
-  const namespaced = entropy => b4a.concat([namespace, entropy, signable])
+  const namespaced = entropy => b4a.concat([entropy, signable])
 
   const asig = crypto.sign(namespaced(aEntropy), a.secretKey)
   const bsig = crypto.sign(namespaced(bEntropy), b.secretKey)
@@ -152,9 +140,7 @@ test('create auth - defaults', async function (t) {
 
   const manifest = {
     version: 0,
-    // namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'ed25519',
       publicKey: keyPair.publicKey
@@ -182,9 +168,7 @@ test('create auth - invalid input', async function (t) {
 
   const manifest = {
     version: 0,
-    // namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'ed25519',
       publicKey: keyPair.publicKey
@@ -199,9 +183,7 @@ test('create auth - unsupported curve', async function (t) {
 
   const manifest = {
     version: 0,
-    // namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'SECP_256K1',
       publicKey: keyPair.publicKey
@@ -215,16 +197,13 @@ test('create auth - compat signer', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
-  const entropy = b4a.alloc(32, 3)
 
   const manifest = {
     version: 0,
-    namespace,
     // hash: BLAKE_2B,
-    type: 'SIGNER',
     signer: {
       signature: 'ed25519',
-      entropy,
+      namespace,
       publicKey: keyPair.publicKey
     }
   }
