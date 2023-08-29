@@ -401,10 +401,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     return {
-      length: this.core.header.contiguousLength,
+      length: this.core.header.hints.contiguousLength,
       byteLength: 0,
       fork: this.core.tree.fork,
-      compatLength: this.core.header.contiguousLength
+      compatLength: this.core.header.hints.contiguousLength
     }
   }
 
@@ -563,7 +563,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get contiguousLength () {
-    return this.core === null ? 0 : this.core.header.contiguousLength
+    return this.core === null ? 0 : this.core.header.hints.contiguousLength
   }
 
   get contiguousByteLength () {
@@ -652,7 +652,7 @@ module.exports = class Hypercore extends EventEmitter {
         }
       }
 
-      const contig = this.core.header.contiguousLength
+      const contig = this.core.header.hints.contiguousLength
 
       // When the contig length catches up, broadcast the non-sparse length to peers
       if (appendedNonSparse && contig === this.core.tree.length) {
