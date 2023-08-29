@@ -42,3 +42,14 @@ test('userdata - persists across restarts', async function (t) {
 
   await core.close()
 })
+
+test('userdata - big userdata gets swapped to external header', async function (t) {
+  const core = await create()
+  await core.setUserData('hello', Buffer.alloc(20000))
+  await core.setUserData('world', Buffer.alloc(20000))
+  await core.setUserData('world2', Buffer.alloc(20000))
+
+  t.alike(await core.getUserData('hello'), Buffer.alloc(20000))
+  t.alike(await core.getUserData('world'), Buffer.alloc(20000))
+  t.alike(await core.getUserData('world2'), Buffer.alloc(20000))
+})
