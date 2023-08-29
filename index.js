@@ -243,6 +243,11 @@ module.exports = class Hypercore extends EventEmitter {
     return s
   }
 
+  setKeyPair (keyPair) {
+    this.auth = Core.createAuth(this.crypto, { keyPair })
+    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+  }
+
   _passCapabilities (o) {
     if (!this.auth) this.auth = o.auth
 
@@ -287,7 +292,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.auth) {
       this.auth = opts.auth
     } else if (keyPair && keyPair.secretKey) {
-      this.auth = Core.createAuth(this.crypto, { keyPair })
+      this.setKeyPair(keyPair)
     }
 
     if (isFirst) {
