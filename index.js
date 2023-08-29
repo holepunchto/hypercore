@@ -287,7 +287,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.auth) {
       this.auth = opts.auth
     } else if (keyPair && keyPair.secretKey) {
-      this.auth = Core.createAuth(this.crypto, { keyPair, manifest: { signer: { publicKey: keyPair.publicKey } } })
+      this.auth = Core.createAuth(this.crypto, { keyPair })
     }
 
     if (isFirst) {
