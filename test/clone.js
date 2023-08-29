@@ -325,7 +325,7 @@ test('clone - persisted clone with new key can replicate', async function (t) {
   batch = await core.core.tree.batch()
   signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const fullClone = await core.clone(RAM, { keyPair, signature })
+  const fullClone = await core.clone(RAM, { keyPair, signature, compat: true })
   await fullClone.ready()
 
   t.is(clone.length, 2)
