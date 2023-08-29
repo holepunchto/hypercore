@@ -297,7 +297,9 @@ module.exports = class Hypercore extends EventEmitter {
         }
       }
 
-      this.auth = Core.createAuth(header)
+      // default to compat
+      const compat = (opts && opts.compat) ? opts.compat !== false : this.core ? this.core.compat : true
+      this.auth = Core.createAuth(header, { compat })
     }
 
     if (isFirst) {
