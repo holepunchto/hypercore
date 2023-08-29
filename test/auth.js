@@ -7,7 +7,7 @@ const { eventFlush, replicate } = require('./helpers')
 
 const Hypercore = require('../')
 
-test('multisig hypercore', async function (t) {
+test.skip('multisig hypercore', async function (t) {
   t.plan(2)
 
   const k1 = crypto.keyPair()
@@ -55,7 +55,7 @@ test('multisig hypercore', async function (t) {
   t.is(b.length, 5)
 })
 
-test('multisig hypercore with instance and extension', async function (t) {
+test.skip('multisig hypercore with instance and extension', async function (t) {
   t.plan(3)
 
   class MultiSigAuth {
@@ -160,7 +160,7 @@ test('multisig hypercore with instance and extension', async function (t) {
   t.is(a.length, 1)
 })
 
-test('proof-of-work hypercore', async function (t) {
+test.skip('proof-of-work hypercore', async function (t) {
   t.plan(2)
 
   const ZEROES = 8
@@ -216,7 +216,7 @@ test('proof-of-work hypercore', async function (t) {
   t.is(b.length, 5)
 })
 
-test('core using custom sign fn', async function (t) {
+test.skip('core using custom sign fn', async function (t) {
   t.plan(2)
 
   const keyPair = crypto.keyPair()

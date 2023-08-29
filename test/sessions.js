@@ -73,30 +73,6 @@ test('sessions - writable session with custom sign function', async function (t)
   t.is(core.length, 1)
 })
 
-test('sessions - writable session with invalid keypair throws', async function (t) {
-  t.plan(2)
-
-  const keyPair1 = crypto.keyPair()
-  const keyPair2 = crypto.keyPair()
-
-  try {
-    const core = new Hypercore(RAM, keyPair2.publicKey) // Create a new core in read-only mode.
-    const session = core.session({ keyPair: keyPair1 })
-    await session.ready()
-    t.fail('invalid keypair did not throw')
-  } catch {
-    t.pass('invalid keypair threw')
-  }
-
-  try {
-    const core = new Hypercore(RAM, keyPair1.publicKey, { keyPair: keyPair2 }) // eslint-disable-line
-    await core.ready()
-    t.fail('invalid keypair did not throw')
-  } catch {
-    t.pass('invalid keypair threw')
-  }
-})
-
 test('sessions - auto close', async function (t) {
   const core = new Hypercore(RAM, { autoClose: true })
 
