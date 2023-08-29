@@ -252,7 +252,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly && !!(this.core && this.core.isWritable())
+    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -282,19 +282,13 @@ module.exports = class Hypercore extends EventEmitter {
     if (!isFirst) await opts._opening
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
 
-    // const keyPair = opts.keyPair
+    const keyPair = opts.keyPair
 
-    // This only works if the hypercore was fully loaded,
-    // but we only do this to validate the keypair to help catch bugs so yolo
-    // if (this.key && keyPair) keyPair.publicKey = this.key
-
-    // if (opts.auth) {
-    //   this.auth = opts.auth
-    // } else if (opts.sign) {
-    //   this.auth = Core.createAuth(this.crypto, keyPair, opts)
-    // } else if (keyPair && keyPair.secretKey) {
-    //   this.auth = Core.createAuth(this.crypto, keyPair)
-    // }
+    if (opts.auth) {
+      this.auth = opts.auth
+    } else if (keyPair && keyPair.secretKey) {
+      this.auth = Core.createAuth(this.crypto, { keyPair, manifest: { signer: { publicKey: keyPair.publicKey } } })
+    }
 
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
@@ -314,7 +308,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !this._readonly && !!this.core.isWritable()
+    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -474,17 +468,12 @@ module.exports = class Hypercore extends EventEmitter {
     const key = opts.key === undefined ? opts.keyPair ? null : this.key : opts.key
     const keyPair = (opts.auth || opts.keyPair === undefined) ? null : opts.keyPair
 
-    const auth = this.core.defaultAuth
-    // if (opts.auth) {
-    //   auth = opts.auth
-    // } else if (opts.sign && keyPair) {
-    //   auth = Core.createAuth(this.crypto, keyPair, opts)
-    // } else if (opts.sign) {
-    //   // TODO: dangerous to just update sign?
-    //   auth.sign = opts.sign
-    // } else if (keyPair && keyPair.secretKey) {
-    //   auth = Core.createAuth(this.crypto, keyPair)
-    // }
+    let auth = this.core.defaultAuth
+    if (opts.auth) {
+      auth = opts.auth
+    } else if (keyPair && keyPair.secretKey) {
+      auth = Core.createAuth(this.crypto, { keyPair, manifest: { signer: { publicKey: keyPair.publicKey } } })
+    }
 
     const upgrade = opts.upgrade === undefined ? null : opts.upgrade
 
