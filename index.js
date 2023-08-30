@@ -15,6 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
+const caps = require('./lib/caps')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -77,7 +78,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.snapshotted = !!opts.snapshot
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
-    this.auth = opts.auth || null
+    this.manifest = opts.manifest || null
     this.autoClose = !!opts.autoClose
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
@@ -284,22 +285,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     const keyPair = opts.keyPair
 
-    if (opts.auth) {
-      this.auth = opts.auth
-    } else if (keyPair && keyPair.secretKey) {
-      const header = this.core ? { ...this.core.header, keyPair } : { keyPair }
-      if (!this.core) {
-        header.manifest = {
-          signer: {
-            signature: 'ed25519',
-            publicKey: keyPair.publicKey
-          }
-        }
-      }
-
-      // default to compat
-      const compat = (opts && opts.compat) ? opts.compat !== false : this.core ? this.core.compat : true
-      this.auth = Core.createAuth(header, { compat })
+    if (opts.manifest) {
+      this.manifest = opts.manifest
+    } else if (keyPair && keyPair.secretKey && !this.manifest) {
+      this.manifest = Core.defaultSignerManifest(keyPair.publicKey)
     }
 
     if (isFirst) {
@@ -319,8 +308,8 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+    if (!this.manifest) this.manifest = this.core.header.manifest
+    this.writable = !this._readonly && this.core.isWritable()
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -368,7 +357,7 @@ module.exports = class Hypercore extends EventEmitter {
       keyPair: opts.keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
-      auth: opts.auth,
+      manifest: this.manifest,
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
@@ -506,12 +495,13 @@ module.exports = class Hypercore extends EventEmitter {
 
     return new Clz(storage, key, {
       ...opts,
+      compat: opts.compat !== false, // default to true for now
       keyPair,
       sparse,
       wait,
       onwait,
       timeout,
-      auth,
+      manifest,
       overwrite: true,
       clone: {
         from: this,
