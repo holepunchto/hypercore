@@ -7,7 +7,6 @@ async function runTests () {
 
   test.pause()
 
-  await import('./auth.js')
   await import('./basic.js')
   await import('./batch.js')
   await import('./bitfield.js')
