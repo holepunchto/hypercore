@@ -245,16 +245,16 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _passCapabilities (o) {
-    if (!this.auth) this.auth = o.auth
-
     this.crypto = o.crypto
     this.id = o.id
     this.key = o.key
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
     this.autoClose = o.autoClose
+
+    // if base not opened, this will be called again
+    if (this.core) this.writable = this.core.isWritable()
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
@@ -287,7 +287,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (opts.manifest) {
       this.manifest = opts.manifest
-    } else if (keyPair && keyPair.secretKey && !this.manifest) {
+    } else if (keyPair && keyPair.publicKey && !this.manifest) {
       this.manifest = Core.defaultSignerManifest(keyPair.publicKey)
     }
 
@@ -309,6 +309,8 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.manifest) this.manifest = this.core.header.manifest
+    if (keyPair && keyPair.secretKey) this.core.loadAuth(this.manifest, keyPair)
+
     this.writable = !this._readonly && this.core.isWritable()
 
     if (opts.valueEncoding) {
