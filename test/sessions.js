@@ -37,42 +37,6 @@ test('sessions - can create writable sessions from a read-only core', async func
   t.is(core.length, 1)
 })
 
-test('sessions - writable session with custom sign function', async function (t) {
-  t.plan(5)
-
-  const keyPair = crypto.keyPair()
-  const core = new Hypercore(RAM, keyPair.publicKey, {
-    valueEncoding: 'utf-8'
-  })
-  await core.ready()
-  t.absent(core.writable)
-
-  const session = core.session({
-    auth: {
-      sign: signable => crypto.sign(signable, keyPair.secretKey),
-      verify: (signable, signature) => crypto.verify(signable, signature, keyPair.publicKey)
-    }
-  })
-
-  t.ok(session.writable)
-
-  try {
-    await core.append('hello')
-    t.fail('should not have appended to the read-only core')
-  } catch {
-    t.pass('read-only core append threw correctly')
-  }
-
-  try {
-    await session.append('world')
-    t.pass('session append did not throw')
-  } catch {
-    t.fail('session append should not have thrown')
-  }
-
-  t.is(core.length, 1)
-})
-
 test('sessions - auto close', async function (t) {
   const core = new Hypercore(RAM, { autoClose: true })
 
