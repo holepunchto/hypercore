@@ -153,18 +153,17 @@ test('high latency reorg', async function (t) {
 test('invalid signature fails', async function (t) {
   t.plan(2)
 
-  const a = await create(null, {
-    auth: {
-      sign () {
-        return Buffer.alloc(64)
-      },
-      verify (s, sig) {
-        return false
-      }
-    }
-  })
-
+  const a = await create(null)
   const b = await create(a.key)
+
+  a.core.defaultAuth = {
+    sign () {
+      return Buffer.alloc(64)
+    },
+    verify (s, sig) {
+      return false
+    }
+  }
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
