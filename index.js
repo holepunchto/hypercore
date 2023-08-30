@@ -309,7 +309,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.manifest) this.manifest = this.core.header.manifest
-    if (keyPair && keyPair.secretKey) this.core.loadAuth(this.manifest, keyPair)
+    if ((keyPair && keyPair.secretKey) || opts.sign) this.core.loadAuth(this.manifest, opts)
 
     this.writable = !this._readonly && this.core.isWritable()
 
