@@ -460,28 +460,26 @@ module.exports = class Hypercore extends EventEmitter {
     this.emit('close', true)
   }
 
-  clone (storage, opts = {}) {
+  clone (keyPair, storage, opts = {}) {
     // TODO: current limitation is no forking
     if ((opts.fork && opts.fork !== 0) || this.fork !== 0) {
       throw BAD_ARGUMENT('Cannot clone a fork')
     }
 
-    const key = opts.key === undefined ? opts.keyPair ? null : this.key : opts.key
-    const keyPair = (opts.auth || opts.keyPair === undefined) ? null : opts.keyPair
-
-    let auth = this.core.defaultAuth
-    if (opts.auth) {
-      auth = opts.auth
+    let manifest = null
+    if (opts.manifest) {
+      manifest = opts.manifest
     } else if (keyPair && keyPair.secretKey) {
-      auth = Core.createAuth({
-        keyPair,
-        manifest: {
-          signer: {
-            signature: 'ed25519',
-            publicKey: keyPair.publicKey
-          }
-        }
-      }, opts)
+      manifest = Core.defaultSignerManifest(keyPair.publicKey)
+    }
+
+    if (!manifest && !opts.key) {
+      throw BAD_ARGUMENT('Clone must specify verfication info.')
+    }
+
+    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : caps.manifestHash(manifest))
+    if (b4a.equals(key, this.key)) {
+      throw BAD_ARGUMENT('Clone cannot share verification information.')
     }
 
     const upgrade = opts.upgrade === undefined ? null : opts.upgrade
