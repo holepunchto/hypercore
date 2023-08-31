@@ -71,7 +71,6 @@ test('sessions - writable session with custom sign function', async function (t)
   t.is(core.length, 1)
 })
 
-
 test('sessions - auto close', async function (t) {
   const core = new Hypercore(RAM, { autoClose: true })
 
