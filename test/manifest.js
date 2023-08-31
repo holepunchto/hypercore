@@ -5,10 +5,9 @@ const b4a = require('b4a')
 const tmpDir = require('test-tmp')
 const ram = require('random-access-memory')
 
-const aggregate = require('hypercore-crypto-multisig/lib/aggregate')
+const { assemble, partialSignature } = require('hypercore-crypto-multisig')
 
 const Hypercore = require('../')
-const { multisignature } = require('../lib/messages')
 const createAuth = require('../lib/manifest')
 const caps = require('../lib/caps')
 
@@ -243,10 +242,10 @@ test('multisig -  append', async t => {
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append(b4a.from('0')))
 
@@ -291,10 +290,10 @@ test('multisig -  batch failed', async t => {
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append(b4a.from('hello')))
 
@@ -335,10 +334,10 @@ test('multisig -  patches', async t => {
 
   await signers[1].append(b4a.from('0'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append(b4a.from('0')))
 
@@ -388,10 +387,10 @@ test('multisig -  batch append', async t => {
   await signers[1].append(b4a.from('2'))
   await signers[1].append(b4a.from('3'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append([
     b4a.from('0'),
@@ -451,10 +450,10 @@ test('multisig -  batch append with patches', async t => {
   await signers[1].append(b4a.from('2'))
   await signers[1].append(b4a.from('3'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append([
     b4a.from('0'),
@@ -513,10 +512,10 @@ test('multisig -  cannot divide batch', async t => {
   await signers[1].append(b4a.from('2'))
   await signers[1].append(b4a.from('3'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append([
     b4a.from('0'),
@@ -565,18 +564,18 @@ test('multisig -  multiple appends', async t => {
   await signers[1].append(b4a.from('0'))
   await signers[1].append(b4a.from('1'))
 
-  multisig1 = c.encode(multisignature, aggregate([
-    await signature(signers[0], signers[1].length),
-    await signature(signers[1])
-  ], 2))
+  multisig1 = assemble([
+    await partialSignature(signers[0], signers[1].length),
+    await partialSignature(signers[1])
+  ])
 
   await signers[1].append(b4a.from('2'))
   await signers[1].append(b4a.from('3'))
 
-  multisig2 = c.encode(multisignature, aggregate([
-    await signature(signers[0], signers[1].length),
-    await signature(signers[1])
-  ], 2))
+  multisig2 = assemble([
+    await partialSignature(signers[0], signers[1].length),
+    await partialSignature(signers[1])
+  ])
 
   const core2 = new Hypercore(ram, { manifest, sign: () => multisig2 })
 
@@ -633,10 +632,10 @@ test('multisig -  persist to disk', async t => {
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append(b4a.from('0')))
 
@@ -701,15 +700,15 @@ test('multisig -  overlapping appends', async t => {
   await signers[2].append(b4a.from('1'))
   await signers[2].append(b4a.from('2'))
 
-  multisig1 = c.encode(multisignature, aggregate([
-    await signature(signers[1]),
-    await signature(signers[0], signers[1].length)
-  ], 2))
+  multisig1 = assemble([
+    await partialSignature(signers[1]),
+    await partialSignature(signers[0], signers[1].length)
+  ])
 
-  multisig2 = c.encode(multisignature, aggregate([
-    await signature(signers[2]),
-    await signature(signers[0], signers[2].length)
-  ], 2))
+  multisig2 = assemble([
+    await partialSignature(signers[2]),
+    await partialSignature(signers[0], signers[2].length)
+  ])
 
   await core.append([
     b4a.from('0'),
@@ -836,10 +835,10 @@ test('multisig - normal operating mode', async t => {
     return {
       sign: () => sig,
       presign: async (batch) => {
-        sig = c.encode(multisignature, aggregate([
-          await signature(w1, w2.length),
-          await signature(w2, w1.length)
-        ], 2))
+        sig = assemble([
+          await partialSignature(w1, w2.length),
+          await partialSignature(w2, w1.length)
+        ])
       }
     }
   }
@@ -863,10 +862,10 @@ test('multisig -  large patches', async t => {
 
   await signers[1].append(b4a.from('0'))
 
-  const proof = await signature(signers[0], signers[1].length)
-  const proof2 = await signature(signers[1])
+  const proof = await partialSignature(signers[0], signers[1].length)
+  const proof2 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof, proof2], 2))
+  multisig = assemble([proof, proof2])
 
   await t.execution(core.append(b4a.from('0')))
 
@@ -904,10 +903,10 @@ test('multisig -  large patches', async t => {
     await signers[0].append(b4a.from(i.toString(10)))
   }
 
-  const proof3 = await signature(signers[0], signers[1].length)
-  const proof4 = await signature(signers[1])
+  const proof3 = await partialSignature(signers[0], signers[1].length)
+  const proof4 = await partialSignature(signers[1])
 
-  multisig = c.encode(multisignature, aggregate([proof3, proof4], 2))
+  multisig = assemble([proof3, proof4])
 
   const p2 = new Promise((resolve, reject) => {
     s1.on('error', reject)
@@ -924,24 +923,6 @@ test('multisig -  large patches', async t => {
 
   t.is(core2.length, core.length)
 })
-
-async function signature (core, patch) {
-  if (patch >= core.core.tree.length) patch = null
-
-  return {
-    length: core.core.tree.length,
-    signature: b4a.from(core.core.tree.signature),
-    patch: await upgrade(core, patch)
-  }
-}
-
-async function upgrade (core, from) {
-  if (!from && from !== 0) return null
-
-  const tree = core.core.tree
-  const p = await tree.proof({ upgrade: { start: from, length: tree.length - from } })
-  return p.upgrade
-}
 
 function createMultiManifest (signers) {
   return {
