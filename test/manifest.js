@@ -101,7 +101,7 @@ test('create auth - multi signer', async function (t) {
   const manifest = {
     version: 0,
     // hash: BLAKE_2B,
-    multiSigners: {
+    multipleSigners: {
       allowPatched: false,
       quorum: 2,
       signers: [{
