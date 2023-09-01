@@ -293,9 +293,9 @@ module.exports = class Hypercore extends EventEmitter {
 
       // copy state over
       if (this._clone) {
-        const { from, upgrade } = this._clone
+        const { from, signature } = this._clone
         await from.opening
-        await this.core.copyFrom(from.core, upgrade)
+        await this.core.copyFrom(from.core, signature)
         this._clone = null
       }
     } else if (opts.keyPair) {
@@ -481,7 +481,9 @@ module.exports = class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Clone cannot share verification information.')
     }
 
-    const upgrade = opts.upgrade === undefined ? null : opts.upgrade
+    const signature = opts.signature === undefined
+      ? this.core.defaultAuth.sign(this.core.tree.signable(), keyPair)
+      : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
@@ -502,7 +504,7 @@ module.exports = class Hypercore extends EventEmitter {
       overwrite: true,
       clone: {
         from: this,
-        upgrade
+        signature
       }
     })
   }
