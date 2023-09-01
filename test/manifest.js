@@ -84,10 +84,8 @@ test('create auth - single signer', async function (t) {
 
   t.ok(auth.verify)
 
-  const sign = s => crypto.sign(s, keyPair.secretKey)
-
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable, null, sign)
+  const signature = auth.sign(signable, keyPair)
 
   t.ok(auth.verify(signable, signature))
 
@@ -158,7 +156,7 @@ test('create auth - defaults', async function (t) {
   t.ok(auth.verify)
 
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable, null, sign)
+  const signature = auth.sign(signable, keyPair)
 
   t.ok(auth.verify(signable, signature))
 
@@ -223,7 +221,7 @@ test('create auth - compat signer', async function (t) {
 
   const signature = crypto.sign(signable, keyPair.secretKey)
 
-  t.alike(auth.sign(signable, null, sign), signature)
+  t.alike(auth.sign(signable, keyPair), signature)
   t.ok(auth.verify(signable, signature))
 })
 
@@ -236,7 +234,7 @@ test('multisig -  append', async t => {
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -247,7 +245,7 @@ test('multisig -  append', async t => {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('0')))
+  await t.execution(core.append(b4a.from('0'), { signature: multisig }))
 
   t.is(core.length, 1)
 
@@ -284,7 +282,7 @@ test('multisig -  batch failed', async t => {
 
   const manifest = createMultiManifest(signers)
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -295,7 +293,7 @@ test('multisig -  batch failed', async t => {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('hello')))
+  await t.execution(core.append(b4a.from('hello'), { signature: multisig }))
 
   const core2 = new Hypercore(ram, { manifest })
 
@@ -323,7 +321,7 @@ test('multisig -  patches', async t => {
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -339,7 +337,7 @@ test('multisig -  patches', async t => {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('0')))
+  await t.execution(core.append(b4a.from('0'), { signature: multisig }))
 
   t.is(core.length, 1)
 
@@ -374,7 +372,7 @@ test('multisig -  batch append', async t => {
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -397,7 +395,9 @@ test('multisig -  batch append', async t => {
     b4a.from('1'),
     b4a.from('2'),
     b4a.from('3')
-  ]))
+  ], {
+    signature: multisig
+  }))
 
   t.is(core.length, 4)
 
@@ -435,7 +435,7 @@ test('multisig -  batch append with patches', async t => {
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -460,7 +460,9 @@ test('multisig -  batch append with patches', async t => {
     b4a.from('1'),
     b4a.from('2'),
     b4a.from('3')
-  ]))
+  ], {
+    signature: multisig
+  }))
 
   t.is(core.length, 4)
 
@@ -499,7 +501,7 @@ test('multisig -  cannot divide batch', async t => {
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -520,7 +522,9 @@ test('multisig -  cannot divide batch', async t => {
   await t.execution(core.append([
     b4a.from('0'),
     b4a.from('1')
-  ]))
+  ], {
+    signature: multisig
+  }))
 
   const core2 = new Hypercore(ram, { manifest })
 
@@ -551,7 +555,7 @@ test('multisig -  multiple appends', async t => {
   let multisig1 = null
   let multisig2 = null
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig1 })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -577,7 +581,7 @@ test('multisig -  multiple appends', async t => {
     await partialSignature(signers[1])
   ])
 
-  const core2 = new Hypercore(ram, { manifest, sign: () => multisig2 })
+  const core2 = new Hypercore(ram, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -592,7 +596,9 @@ test('multisig -  multiple appends', async t => {
   core.append([
     b4a.from('0'),
     b4a.from('1')
-  ])
+  ], {
+    signature: multisig1
+  })
 
   await t.execution(p)
 
@@ -607,7 +613,9 @@ test('multisig -  multiple appends', async t => {
   core2.append([
     b4a.from('2'),
     b4a.from('3')
-  ])
+  ], {
+    signature: multisig2
+  })
 
   await t.execution(p2)
 
@@ -626,7 +634,7 @@ test('multisig -  persist to disk', async t => {
 
   let multisig = null
 
-  const core = new Hypercore(storage, { manifest, sign: () => multisig })
+  const core = new Hypercore(storage, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -637,13 +645,13 @@ test('multisig -  persist to disk', async t => {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('0')))
+  await t.execution(core.append(b4a.from('0'), { signature: multisig }))
 
   t.is(core.length, 1)
 
   await core.close()
 
-  const clone = new Hypercore(storage, { manifest, sign: () => multisig })
+  const clone = new Hypercore(storage, { manifest })
   await t.execution(clone.ready())
 
   const core2 = new Hypercore(ram, { manifest })
@@ -680,10 +688,10 @@ test('multisig -  overlapping appends', async t => {
   let multisig1 = null
   let multisig2 = null
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig1 })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
-  const core2 = new Hypercore(ram, { manifest, sign: () => multisig2 })
+  const core2 = new Hypercore(ram, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -713,13 +721,17 @@ test('multisig -  overlapping appends', async t => {
   await core.append([
     b4a.from('0'),
     b4a.from('1')
-  ])
+  ], {
+    signature: multisig1
+  })
 
   await core2.append([
     b4a.from('0'),
     b4a.from('1'),
     b4a.from('2')
-  ])
+  ], {
+    signature: multisig2
+  })
 
   t.is(core.length, 2)
   t.is(core2.length, 3)
@@ -799,8 +811,7 @@ test('multisig - normal operating mode', async t => {
 
       const p = new Promise(resolve => core2.once('append', resolve))
 
-      await signer1.presign()
-      core.append(inputs.slice(core.length, m1s))
+      core.append(inputs.slice(core.length, m1s), { signature: await signer1() })
 
       await p
     } else {
@@ -809,8 +820,7 @@ test('multisig - normal operating mode', async t => {
 
       const p = new Promise(resolve => core.once('append', resolve))
 
-      await signer2.presign()
-      core2.append(inputs.slice(core2.length, m2s))
+      core2.append(inputs.slice(core2.length, m2s), { signature: await signer2() })
 
       await p
     }
@@ -830,16 +840,11 @@ test('multisig - normal operating mode', async t => {
   t.pass()
 
   function signer (w1, w2) {
-    let sig = null
-
-    return {
-      sign: () => sig,
-      presign: async (batch) => {
-        sig = assemble([
-          await partialSignature(w1, w2.length),
-          await partialSignature(w2, w1.length)
-        ])
-      }
+    return async (batch) => {
+      return assemble([
+        await partialSignature(w1, w2.length),
+        await partialSignature(w2, w1.length)
+      ])
     }
   }
 })
@@ -853,7 +858,7 @@ test('multisig -  large patches', async t => {
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest, sign: () => multisig })
+  const core = new Hypercore(ram, { manifest })
   await core.ready()
 
   for (let i = 0; i < 10000; i++) {
@@ -867,7 +872,7 @@ test('multisig -  large patches', async t => {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('0')))
+  await t.execution(core.append(b4a.from('0'), { signature: multisig }))
 
   t.is(core.length, 1)
 
@@ -915,7 +920,7 @@ test('multisig -  large patches', async t => {
     core2.on('append', resolve)
   })
 
-  await t.execution(core.append(batch))
+  await t.execution(core.append(batch, { signature: multisig }))
 
   t.is(core.length, 1000)
 
