@@ -53,7 +53,6 @@ test('create auth - single signer no sign', async function (t) {
   const auth = createAuth(manifest)
 
   t.ok(auth.verify)
-  t.absent(auth.sign)
 
   const signable = b4a.alloc(32, 1)
   const namespaced = b4a.concat([namespace, signable])
@@ -84,10 +83,11 @@ test('create auth - single signer', async function (t) {
   const auth = createAuth(manifest, { keyPair })
 
   t.ok(auth.verify)
-  t.ok(auth.sign)
+
+  const sign = s => crypto.sign(s, keyPair.secretKey)
 
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable)
+  const signature = auth.sign(signable, null, sign)
 
   t.ok(auth.verify(signable, signature))
 
@@ -135,7 +135,6 @@ test('create auth - multi signer', async function (t) {
   const auth = createAuth(manifest)
 
   t.ok(auth.verify)
-  t.absent(auth.sign)
 
   t.ok(auth.verify(signable, signature))
   t.absent(auth.verify(signable, badSignature))
@@ -153,13 +152,13 @@ test('create auth - defaults', async function (t) {
     }
   }
 
+  const sign = s => crypto.sign(s, keyPair.secretKey)
   const auth = createAuth(manifest, { keyPair })
 
   t.ok(auth.verify)
-  t.ok(auth.sign)
 
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable)
+  const signature = auth.sign(signable, null, sign)
 
   t.ok(auth.verify(signable, signature))
 
@@ -219,11 +218,12 @@ test('create auth - compat signer', async function (t) {
   t.ok(auth.verify)
   t.ok(auth.sign)
 
+  const sign = s => crypto.sign(s, keyPair.secretKey)
   const signable = b4a.alloc(32, 1)
 
   const signature = crypto.sign(signable, keyPair.secretKey)
 
-  t.alike(auth.sign(signable), signature)
+  t.alike(auth.sign(signable, null, sign), signature)
   t.ok(auth.verify(signable, signature))
 })
 
