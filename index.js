@@ -253,8 +253,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
+    this.writable = !this._readonly || !!(this.keyPair && this.keyPair.secretKey)
     this.autoClose = o.autoClose
-    this.writable = o.writable || !!(this.keyPair && this.keyPair.secretKey)
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
@@ -303,7 +303,6 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.manifest) this.manifest = this.core.header.manifest
-
     this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
 
     if (opts.valueEncoding) {
@@ -366,10 +365,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.key = this.core.header.key
     this.keyPair = this.core.header.keyPair
     this.id = z32.encode(this.key)
-
-    if (this.keyPair && this.keyPair.secretKey) {
-      this.sign = signable => this.crypto.sign(signable, this.keyPair.secretKey)
-    }
 
     this.replicator = new Replicator(this.core, this.key, {
       eagerUpgrade: true,
