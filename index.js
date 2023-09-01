@@ -933,14 +933,17 @@ module.exports = class Hypercore extends EventEmitter {
     // Do nothing for now
   }
 
-  async truncate (newLength = 0, fork = -1, signature) {
+  async truncate (newLength = 0, fork = -1, opts = {}) {
     if (this._batch) throw BATCH_UNFLUSHED()
 
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
+    if (!opts.keyPair) opts.keyPair = this.keyPair
+
     if (fork === -1) fork = this.core.tree.fork + 1
-    await this.core.truncate(newLength, fork, { signature, keyPair: this.keyPair })
+
+    await this.core.truncate(newLength, fork, opts)
 
     // TODO: Should propagate from an event triggered by the oplog
     this.replicator.updateAll()
@@ -951,6 +954,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
+
+    if (!opts.keyPair) opts.keyPair = this.keyPair
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
@@ -964,7 +969,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, { signature: opts.signature, keyPair: this.keyPair }, { preappend })
+    return this.core.append(buffers, opts, { preappend })
   }
 
   async treeHash (length) {

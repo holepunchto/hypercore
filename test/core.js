@@ -275,7 +275,7 @@ test('core - update hook is triggered', async function (t) {
 
 test('core - clone', async function (t) {
   const { core } = await create()
-  const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey }}))
+  const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
 
   await core.userData('hello', Buffer.from('world'))
 
