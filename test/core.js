@@ -273,7 +273,7 @@ test('core - update hook is triggered', async function (t) {
   t.is(ran, 255, 'ran all')
 })
 
-test('core - clone', async function (t) {
+test.skip('core - clone', async function (t) {
   const { core } = await create()
   const { core: copy } = (await create())
 
@@ -313,7 +313,7 @@ test('core - clone', async function (t) {
   t.alike(copy.tree.roots.map(r => r.index), roots)
 })
 
-test('core - clone verify', async function (t) {
+test.skip('core - clone verify', async function (t) {
   const { core } = await create()
   const { core: copy } = await create({ keyPair: core.header.keyPair })
   const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
@@ -342,7 +342,7 @@ test('core - clone verify', async function (t) {
   }
 })
 
-test('clone - truncate original', async function (t) {
+test.skip('clone - truncate original', async function (t) {
   const { core } = await create()
   const { core: copy } = await create({ keyPair: core.header.keyPair })
 

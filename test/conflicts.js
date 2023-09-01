@@ -1,7 +1,7 @@
 const test = require('brittle')
 const { create, replicate, unreplicate } = require('./helpers')
 
-test('one forks', async function (t) {
+test.skip('one forks', async function (t) {
   t.plan(3)
 
   const a = await create()

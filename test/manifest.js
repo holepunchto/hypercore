@@ -150,7 +150,6 @@ test('create auth - defaults', async function (t) {
     }
   }
 
-  const sign = s => crypto.sign(s, keyPair.secretKey)
   const auth = createAuth(manifest, { keyPair })
 
   t.ok(auth.verify)
@@ -216,7 +215,6 @@ test('create auth - compat signer', async function (t) {
   t.ok(auth.verify)
   t.ok(auth.sign)
 
-  const sign = s => crypto.sign(s, keyPair.secretKey)
   const signable = b4a.alloc(32, 1)
 
   const signature = crypto.sign(signable, keyPair.secretKey)

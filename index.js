@@ -283,14 +283,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (!isFirst) await opts._opening
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
 
-    const keyPair = opts.keyPair
-
-    if (opts.manifest) {
-      this.manifest = opts.manifest
-    } else if (keyPair && keyPair.publicKey && !manifest) {
-      this.manifest = Core.defaultSignerManifest(keyPair.publicKey)
-    }
-
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
       // Only the root session should pass capabilities to other sessions.
@@ -306,13 +298,13 @@ module.exports = class Hypercore extends EventEmitter {
         await this.core.copyFrom(from.core, upgrade)
         this._clone = null
       }
-    } else if (keyPair) {
-      this.keyPair = keyPair
+    } else if (opts.keyPair) {
+      this.keyPair = opts.keyPair
     }
 
     if (!this.manifest) this.manifest = this.core.header.manifest
 
-    this.writable = !this._readonly && this.keyPair && !!this.keyPair.secretKey
+    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -357,10 +349,10 @@ module.exports = class Hypercore extends EventEmitter {
       readonly: unlocked,
       overwrite: opts.overwrite,
       key,
-      keyPair: this.keyPair,
+      keyPair: opts.keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
-      manifest: this.manifest,
+      manifest: opts.manifest,
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
