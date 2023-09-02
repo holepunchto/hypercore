@@ -123,6 +123,7 @@ module.exports = class Hypercore extends EventEmitter {
     else peers = '[ ' + opts.stylize(0, 'number') + ' ]'
 
     return this.constructor.name + '(\n' +
+      indent + '  id: ' + opts.stylize(this.id, 'string') + '\n' +
       indent + '  key: ' + opts.stylize(toHex(this.key), 'string') + '\n' +
       indent + '  discoveryKey: ' + opts.stylize(toHex(this.discoveryKey), 'string') + '\n' +
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
