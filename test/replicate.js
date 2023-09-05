@@ -1220,6 +1220,31 @@ test('retry failed block requests to another peer', async function (t) {
   }
 })
 
+test('idle replication sessions auto gc', async function (t) {
+  const a = await create()
+  const b = await create(a.key, { autoClose: true })
+
+  await a.append('test')
+
+  const [s1, s2] = replicate(a, b, t, { session: true })
+
+  t.alike(await b.get(0), b4a.from('test'), 'replicates')
+
+  await eventFlush()
+
+  let closed = false
+  b.on('close', function () {
+    closed = true
+  })
+
+  a.replicator.setDownloading(false)
+  b.replicator.setDownloading(false)
+
+  await eventFlush()
+
+  t.ok(closed, 'replication session gced')
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
