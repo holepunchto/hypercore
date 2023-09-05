@@ -1226,7 +1226,7 @@ test('idle replication sessions auto gc', async function (t) {
 
   await a.append('test')
 
-  const [s1, s2] = replicate(a, b, t, { session: true })
+  replicate(a, b, t, { session: true })
 
   t.alike(await b.get(0), b4a.from('test'), 'replicates')
 
