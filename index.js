@@ -257,7 +257,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   setKeyPair (keyPair) {
     this.keyPair = keyPair
-    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
+    this.writable = this._isWritable()
   }
 
   _passCapabilities (o) {
@@ -268,7 +268,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
+    this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -318,7 +318,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!this.manifest) this.manifest = this.core.header.manifest
-    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
+    this.writable = this._isWritable()
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -419,6 +419,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (!prev) return true
     return prev.length !== next.length || prev.fork !== next.fork
+  }
+
+  _isWritable () {
+    return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
   close (err) {
