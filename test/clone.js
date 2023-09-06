@@ -109,7 +109,7 @@ test('clone - pass new keypair', async function (t) {
 
 test('clone - sparse', async function (t) {
   const core = await create()
-  const replica = await create(core.key, { auth: core.core.defaultAuth, sparse: true })
+  const replica = await create(core.key, { manifest: core.core.header.manifest, sparse: true })
 
   await core.append('hello')
   await core.append('world')
@@ -185,7 +185,7 @@ test('clone - replicate clones new key', async function (t) {
 
 test('clone - replicate sparse clone with new key', async function (t) {
   const core = await create()
-  const replica = await create(core.key, { auth: core.core.defaultAuth, sparse: true })
+  const replica = await create(core.key, { manifest: core.core.header.manifest, sparse: true })
 
   const keyPair = crypto.keyPair()
 

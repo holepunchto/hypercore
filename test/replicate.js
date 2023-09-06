@@ -156,7 +156,7 @@ test('invalid signature fails', async function (t) {
   const a = await create(null)
   const b = await create(a.key)
 
-  a.core.defaultAuth = {
+  a.core.verifier = {
     sign () {
       return Buffer.alloc(64)
     },
@@ -931,7 +931,7 @@ test('sparse replication without gossiping', async function (t) {
 
 test('force update writable cores', async function (t) {
   const a = await create()
-  const b = await create(a.key, { auth: a.auth })
+  const b = await create(a.key, { header: a.core.header.manifest })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 

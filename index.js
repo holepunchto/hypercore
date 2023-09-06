@@ -492,7 +492,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const signature = opts.signature === undefined
-      ? this.core.defaultAuth.sign(this.core.tree.signable(), keyPair)
+      ? this.core.verifier.sign(this.core.tree.signable(), keyPair)
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
