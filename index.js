@@ -140,6 +140,10 @@ module.exports = class Hypercore extends EventEmitter {
       indent + ')'
   }
 
+  static keyFromManifest (manifest) {
+    return caps.manifestHash(manifest)
+  }
+
   static getProtocolMuxer (stream) {
     return stream.noiseStream.userData
   }
