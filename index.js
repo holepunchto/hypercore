@@ -943,17 +943,20 @@ module.exports = class Hypercore extends EventEmitter {
     // Do nothing for now
   }
 
-  async truncate (newLength = 0, fork = -1, opts = {}) {
-    if (this._batch) throw BATCH_UNFLUSHED()
-
+  async truncate (newLength = 0, opts = {}) {
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
-    if (!opts.keyPair) opts.keyPair = this.keyPair
+    const {
+      fork = this.core.tree.fork + 1,
+      force = false,
+      keyPair = this.keyPair,
+      signature = null
+    } = typeof opts === 'number' ? { fork: opts } : opts
 
-    if (fork === -1) fork = this.core.tree.fork + 1
+    if (this._batch && !force) throw BATCH_UNFLUSHED()
 
-    await this.core.truncate(newLength, fork, opts)
+    await this.core.truncate(newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
     this.replicator.updateAll()
