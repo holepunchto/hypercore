@@ -141,8 +141,13 @@ module.exports = class Hypercore extends EventEmitter {
       indent + ')'
   }
 
-  static keyFromManifest (manifest) {
+  static key (manifest, opts = {}) {
+    if (opts.compat) return manifest.signer.publicKey
     return caps.manifestHash(manifest)
+  }
+
+  static discoveryKey (key) {
+    return hypercoreCrypto.discoveryKey(key)
   }
 
   static getProtocolMuxer (stream) {
