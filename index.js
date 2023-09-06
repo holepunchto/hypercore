@@ -256,8 +256,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   setKeyPair (keyPair) {
-    this.auth = Core.createAuth(this.crypto, { keyPair })
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+    this.keyPair = keyPair
+    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
   _passCapabilities (o) {
