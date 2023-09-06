@@ -75,7 +75,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = false
     this.opened = false
     this.closed = false
-    this.sign = null
     this.snapshotted = !!opts.snapshot
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
@@ -268,7 +267,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly || !!(this.keyPair && this.keyPair.secretKey)
+    this.writable = !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
