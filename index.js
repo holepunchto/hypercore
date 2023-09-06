@@ -84,17 +84,18 @@ module.exports = class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this.closing = null
+    this.opening = null
+
     this._clone = opts.clone || null
     this._readonly = opts.writable === false
-
-    this.closing = null
-    this.opening = this._openSession(key, storage, opts)
-    this.opening.catch(noop)
-
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._batch = opts._batch || null
     this._findingPeers = 0
+
+    this.opening = this._openSession(key, storage, opts)
+    this.opening.catch(noop)
   }
 
   [inspect] (depth, opts) {
