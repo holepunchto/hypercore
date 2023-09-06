@@ -930,13 +930,13 @@ module.exports = class Hypercore extends EventEmitter {
     // Do nothing for now
   }
 
-  async truncate (newLength = 0, fork = -1) {
-    if (this._batch) throw BATCH_UNFLUSHED()
-
+  async truncate (newLength = 0, opts = {}) {
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
-    if (fork === -1) fork = this.core.tree.fork + 1
+    const { fork = this.core.tree.fork + 1, force = false } = typeof opts === 'number' ? { fork: opts } : opts
+    if (this._batch && !force) throw BATCH_UNFLUSHED()
+
     await this.core.truncate(newLength, fork, this.auth)
 
     // TODO: Should propagate from an event triggered by the oplog
