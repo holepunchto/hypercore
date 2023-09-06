@@ -125,6 +125,7 @@ module.exports = class Hypercore extends EventEmitter {
     else peers = '[ ' + opts.stylize(0, 'number') + ' ]'
 
     return this.constructor.name + '(\n' +
+      indent + '  id: ' + opts.stylize(this.id, 'string') + '\n' +
       indent + '  key: ' + opts.stylize(toHex(this.key), 'string') + '\n' +
       indent + '  discoveryKey: ' + opts.stylize(toHex(this.discoveryKey), 'string') + '\n' +
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
@@ -247,6 +248,11 @@ module.exports = class Hypercore extends EventEmitter {
     this.sessions.push(s)
 
     return s
+  }
+
+  setKeyPair (keyPair) {
+    this.auth = Core.createAuth(this.crypto, { keyPair })
+    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
   }
 
   _passCapabilities (o) {
@@ -395,10 +401,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     return {
-      length: this.core.header.contiguousLength,
+      length: this.core.header.hints.contiguousLength,
       byteLength: 0,
       fork: this.core.tree.fork,
-      compatLength: this.core.header.contiguousLength
+      compatLength: this.core.header.hints.contiguousLength
     }
   }
 
@@ -566,7 +572,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get contiguousLength () {
-    return this.core === null ? 0 : this.core.header.contiguousLength
+    return this.core === null ? 0 : this.core.header.hints.contiguousLength
   }
 
   get contiguousByteLength () {
@@ -655,7 +661,7 @@ module.exports = class Hypercore extends EventEmitter {
         }
       }
 
-      const contig = this.core.header.contiguousLength
+      const contig = this.core.header.hints.contiguousLength
 
       // When the contig length catches up, broadcast the non-sparse length to peers
       if (appendedNonSparse && contig === this.core.tree.length) {
