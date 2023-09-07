@@ -354,7 +354,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = Hypercore.defaultStorage(opts.storage || storage, { unlocked, writable: !unlocked })
 
     this.core = await Core.open(this.storage, {
-      compat: opts.compat !== false && (!opts.manifest || opts.manifest.signer), // default to true for now
+      compat: opts.compat !== false && !opts.manifest, // default to true for now if no manifest is provided
       force: opts.force,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
