@@ -660,6 +660,8 @@ test('multisig -  persist to disk', async t => {
   await core2.download({ start: 0, end: clone.length }).downloaded()
 
   t.alike(await core2.get(0), b4a.from('0'))
+
+  await clone.close()
 })
 
 test('multisig -  overlapping appends', async t => {
