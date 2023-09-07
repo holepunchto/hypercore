@@ -15,7 +15,6 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const caps = require('./lib/caps')
 const { manifestHash } = require('./lib/manifest')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
@@ -487,7 +486,7 @@ module.exports = class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Clone must specify verfication info')
     }
 
-    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : caps.manifestHash(manifest))
+    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
     if (b4a.equals(key, this.key)) {
       throw BAD_ARGUMENT('Clone cannot share verification information')
     }
