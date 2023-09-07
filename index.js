@@ -973,8 +973,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
-    if (!opts.keyPair) opts.keyPair = this.keyPair
-
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const preappend = this.encryption && this._preappend
@@ -987,7 +985,8 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, opts, { preappend })
+    const { keyPair = this.keyPair, signature = null } = opts
+    return this.core.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {
