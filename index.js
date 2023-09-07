@@ -939,7 +939,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   async truncate (newLength = 0, opts = {}) {
     if (this.opened === false) await this.opening
-    if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
     const {
       fork = this.core.tree.fork + 1,
@@ -948,6 +947,9 @@ module.exports = class Hypercore extends EventEmitter {
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
 
+    const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
+
+    if (writable === false) throw SESSION_NOT_WRITABLE()
     if (this._batch && !force) throw BATCH_UNFLUSHED()
 
     await this.core.truncate(newLength, fork, { keyPair, signature })
@@ -960,7 +962,11 @@ module.exports = class Hypercore extends EventEmitter {
     if (this._batch && this !== this._batch.session) throw BATCH_UNFLUSHED()
 
     if (this.opened === false) await this.opening
-    if (this.writable === false) throw SESSION_NOT_WRITABLE()
+
+    const { keyPair = this.keyPair, signature = null } = opts
+    const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
+
+    if (writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
@@ -974,7 +980,6 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    const { keyPair = this.keyPair, signature = null } = opts
     return this.core.append(buffers, { keyPair, signature, preappend })
   }
 
