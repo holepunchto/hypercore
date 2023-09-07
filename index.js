@@ -79,7 +79,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.snapshotted = !!opts.snapshot
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
-    this.manifest = opts.manifest || null
     this.autoClose = !!opts.autoClose
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
@@ -87,6 +86,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.closing = null
     this.opening = null
 
+    this._manifest = opts.manifest || null
     this._clone = opts.clone || null
     this._readonly = opts.writable === false
     this._preappend = preappend.bind(this)
@@ -317,7 +317,6 @@ module.exports = class Hypercore extends EventEmitter {
       this.keyPair = opts.keyPair
     }
 
-    if (!this.manifest) this.manifest = this.core.header.manifest
     this.writable = this._isWritable()
 
     if (opts.valueEncoding) {
@@ -557,6 +556,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   get discoveryKey () {
     return this.replicator === null ? null : this.replicator.discoveryKey
+  }
+
+  get manifest () {
+    return this._manifest || (this.core === null ? null : this.core.header.manifest)
   }
 
   get length () {
