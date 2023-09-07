@@ -483,7 +483,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const signature = opts.signature === undefined
-      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.signable(), keyPair)
+      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.batch(), keyPair)
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse

@@ -96,7 +96,7 @@ test('clone - pass new keypair', async function (t) {
   const keyPair = crypto.keyPair()
 
   const batch = core.core.tree.batch()
-  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  const signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const clone = core.clone(keyPair, RAM, { signature })
   await clone.ready()
@@ -156,7 +156,7 @@ test('clone - replicate clones new key', async function (t) {
   await core.append('home')
 
   const batch = core.core.tree.batch()
-  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  const signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
@@ -195,7 +195,7 @@ test('clone - replicate sparse clone with new key', async function (t) {
   await core.append('home')
 
   const batch = core.core.tree.batch()
-  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  const signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
@@ -230,7 +230,7 @@ test('clone - persist clone to disk', async function (t) {
   await core.append('home')
 
   const batch = core.core.tree.batch()
-  const signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  const signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const clone = core.clone(keyPair, storage, { signature })
   await clone.ready()
@@ -260,7 +260,7 @@ test('clone - persisted clone with new key can replicate', async function (t) {
   await core.append('world')
 
   let batch = core.core.tree.batch()
-  let signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  let signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const clone = core.clone(keyPair, storage, { signature })
   await clone.ready()
@@ -269,7 +269,7 @@ test('clone - persisted clone with new key can replicate', async function (t) {
   await core.append('home')
 
   batch = core.core.tree.batch()
-  signature = crypto.sign(batch.signable(), keyPair.secretKey)
+  signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
   const fullClone = core.clone(keyPair, RAM, { signature, compat: true })
   await fullClone.ready()

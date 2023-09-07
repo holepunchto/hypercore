@@ -10,6 +10,27 @@ const { assemble, partialSignature } = require('../lib/multisig')
 const { createVerifier, createManifest } = require('../lib/manifest')
 const caps = require('../lib/caps')
 
+// TODO: move this to be actual tree batches instead - less future surprises
+// for now this is just to get the tests to work as they test important things
+class AssertionTreeBatch {
+  constructor (hash, signable) {
+    this._hash = hash
+    this._signable = signable
+  }
+
+  hash () {
+    return this._hash
+  }
+
+  signable (ns) {
+    return b4a.concat([ns, this._signable])
+  }
+
+  signableCompat () {
+    return this._signable
+  }
+}
+
 test('create verifier - static signer', async function (t) {
   const treeHash = b4a.alloc(32, 1)
 
@@ -19,13 +40,13 @@ test('create verifier - static signer', async function (t) {
 
   const verifier = createVerifier(manifest)
 
-  const signable = b4a.alloc(32, 1)
+  const batch = new AssertionTreeBatch(b4a.alloc(32, 1), null)
 
-  t.ok(verifier.verify(signable))
+  t.ok(verifier.verify(batch))
 
-  signable[0] ^= 0xff
+  batch._hash[0] ^= 0xff
 
-  t.absent(verifier.verify(signable))
+  t.absent(verifier.verify(batch))
 })
 
 test('create verifier - single signer no sign', async function (t) {
@@ -43,15 +64,15 @@ test('create verifier - single signer no sign', async function (t) {
 
   const verifier = createVerifier(manifest)
 
-  const signable = b4a.alloc(32, 1)
-  const namespaced = b4a.concat([namespace, signable])
-  const signature = crypto.sign(namespaced, keyPair.secretKey)
+  const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  t.ok(verifier.verify(signable, signature))
+  const signature = crypto.sign(batch.signable(namespace), keyPair.secretKey)
+
+  t.ok(verifier.verify(batch, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(verifier.verify(signable, signature))
+  t.absent(verifier.verify(batch, signature))
 })
 
 test('create verifier - single signer', async function (t) {
@@ -69,14 +90,14 @@ test('create verifier - single signer', async function (t) {
 
   const verifier = createVerifier(manifest)
 
-  const signable = b4a.alloc(32, 1)
-  const signature = verifier.sign(signable, keyPair)
+  const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
+  const signature = verifier.sign(batch, keyPair)
 
-  t.ok(verifier.verify(signable, signature))
+  t.ok(verifier.verify(batch, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(verifier.verify(signable, signature))
+  t.absent(verifier.verify(batch, signature))
 })
 
 test('create verifier - multi signer', async function (t) {
@@ -103,10 +124,10 @@ test('create verifier - multi signer', async function (t) {
     }
   }
 
-  const namespaced = entropy => b4a.concat([entropy, signable])
+  const batch = new AssertionTreeBatch(null, signable)
 
-  const asig = crypto.sign(namespaced(aEntropy), a.secretKey)
-  const bsig = crypto.sign(namespaced(bEntropy), b.secretKey)
+  const asig = crypto.sign(batch.signable(aEntropy), a.secretKey)
+  const bsig = crypto.sign(batch.signable(bEntropy), b.secretKey)
 
   const enc = c.array(c.fixed64)
 
@@ -115,8 +136,8 @@ test('create verifier - multi signer', async function (t) {
 
   const verifier = createVerifier(manifest)
 
-  t.ok(verifier.verify(signable, signature))
-  t.absent(verifier.verify(signable, badSignature))
+  t.ok(verifier.verify(batch, signature))
+  t.absent(verifier.verify(batch, badSignature))
 })
 
 test('create verifier - defaults', async function (t) {
@@ -131,14 +152,14 @@ test('create verifier - defaults', async function (t) {
 
   const verifier = createVerifier(manifest)
 
-  const signable = b4a.alloc(32, 1)
-  const signature = verifier.sign(signable, keyPair)
+  const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
+  const signature = verifier.sign(batch, keyPair)
 
-  t.ok(verifier.verify(signable, signature))
+  t.ok(verifier.verify(batch, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(verifier.verify(signable, signature))
+  t.absent(verifier.verify(batch, signature))
 })
 
 test('create verifier - unsupported curve', async function (t) {
@@ -181,15 +202,12 @@ test('create verifier - compat signer', async function (t) {
 
   const verifier = createVerifier(manifest, { compat: true })
 
-  t.ok(verifier.verify)
-  t.ok(verifier.sign)
+  const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signable = b4a.alloc(32, 1)
+  const signature = crypto.sign(batch.signableCompat(), keyPair.secretKey)
 
-  const signature = crypto.sign(signable, keyPair.secretKey)
-
-  t.alike(verifier.sign(signable, keyPair), signature)
-  t.ok(verifier.verify(signable, signature))
+  t.alike(verifier.sign(batch, keyPair), signature)
+  t.ok(verifier.verify(batch, signature))
 })
 
 test('multisig -  append', async t => {
