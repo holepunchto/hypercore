@@ -15,7 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash } = require('./lib/manifest')
+const { manifestHash, defaultSignerManifest } = require('./lib/manifest')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -479,7 +479,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.manifest) {
       manifest = opts.manifest
     } else if (keyPair && keyPair.secretKey) {
-      manifest = Core.defaultSignerManifest(keyPair.publicKey)
+      manifest = defaultSignerManifest(keyPair.publicKey)
     }
 
     if (!manifest && !opts.key) {
