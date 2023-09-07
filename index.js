@@ -15,7 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash, defaultSignerManifest } = require('./lib/manifest')
+const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isCompat } = require('./lib/manifest')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -475,24 +475,15 @@ module.exports = class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Cannot clone a fork')
     }
 
-    let manifest = null
-    if (opts.manifest) {
-      manifest = opts.manifest
-    } else if (keyPair && keyPair.secretKey) {
-      manifest = defaultSignerManifest(keyPair.publicKey)
-    }
-
-    if (!manifest && !opts.key) {
-      throw BAD_ARGUMENT('Clone must specify verfication info')
-    }
-
+    const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
     const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
+
     if (b4a.equals(key, this.key)) {
       throw BAD_ARGUMENT('Clone cannot share verification information')
     }
 
     const signature = opts.signature === undefined
-      ? this.core.verifier.sign(this.core.tree.signable(), keyPair)
+      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.signable(), keyPair)
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
