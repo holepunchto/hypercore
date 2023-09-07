@@ -15,6 +15,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
+const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isCompat } = require('./lib/manifest')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -69,7 +70,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.id = null
     this.key = key || null
-    this.keyPair = null
+    this.keyPair = opts.keyPair || null
     this.readable = true
     this.writable = false
     this.opened = false
@@ -77,22 +78,23 @@ module.exports = class Hypercore extends EventEmitter {
     this.snapshotted = !!opts.snapshot
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
-    this.auth = opts.auth || null
     this.autoClose = !!opts.autoClose
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this.closing = null
+    this.opening = null
+
+    this._manifest = opts.manifest || null
     this._clone = opts.clone || null
     this._readonly = opts.writable === false
-
-    this.closing = null
-    this.opening = this._openSession(key, storage, opts)
-    this.opening.catch(noop)
-
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._batch = opts._batch || null
     this._findingPeers = 0
+
+    this.opening = this._openSession(key, storage, opts)
+    this.opening.catch(noop)
   }
 
   [inspect] (depth, opts) {
@@ -137,6 +139,14 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  activeRequests: [ ' + opts.stylize(this.activeRequests.length, 'number') + ' ]\n' +
       indent + '  peers: ' + peers + '\n' +
       indent + ')'
+  }
+
+  static key (manifest, { compat } = {}) {
+    return compat ? manifest.signer.publicKey : manifestHash(manifest)
+  }
+
+  static discoveryKey (key) {
+    return hypercoreCrypto.discoveryKey(key)
   }
 
   static getProtocolMuxer (stream) {
@@ -245,20 +255,19 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   setKeyPair (keyPair) {
-    this.auth = Core.createAuth(this.crypto, { keyPair })
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+    this.keyPair = keyPair
+    this.writable = this._isWritable()
   }
 
   _passCapabilities (o) {
-    if (!this.auth) this.auth = o.auth
-
+    if (!this.keyPair) this.keyPair = o.keyPair
     this.crypto = o.crypto
     this.id = o.id
     this.key = o.key
     this.core = o.core
     this.replicator = o.replicator
     this.encryption = o.encryption
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+    this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -288,14 +297,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (!isFirst) await opts._opening
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
 
-    const keyPair = opts.keyPair
-
-    if (opts.auth) {
-      this.auth = opts.auth
-    } else if (keyPair && keyPair.secretKey) {
-      this.setKeyPair(keyPair)
-    }
-
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
       // Only the root session should pass capabilities to other sessions.
@@ -306,15 +307,14 @@ module.exports = class Hypercore extends EventEmitter {
 
       // copy state over
       if (this._clone) {
-        const { from, upgrade } = this._clone
+        const { from, signature } = this._clone
         await from.opening
-        await this.core.copyFrom(from.core, upgrade)
+        await this.core.copyFrom(from.core, signature)
         this._clone = null
       }
     }
 
-    if (!this.auth) this.auth = this.core.defaultAuth
-    this.writable = !this._readonly && !!this.auth && !!this.auth.sign
+    this.writable = this._isWritable()
 
     if (opts.valueEncoding) {
       this.valueEncoding = c.from(opts.valueEncoding)
@@ -353,7 +353,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = Hypercore.defaultStorage(opts.storage || storage, { unlocked, writable: !unlocked })
 
     this.core = await Core.open(this.storage, {
-      compat: opts.compat !== false, // default to true for now
+      compat: opts.compat,
       force: opts.force,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
@@ -362,7 +362,7 @@ module.exports = class Hypercore extends EventEmitter {
       keyPair: opts.keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
-      auth: opts.auth,
+      manifest: opts.manifest,
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
@@ -417,6 +417,10 @@ module.exports = class Hypercore extends EventEmitter {
     return prev.length !== next.length || prev.fork !== next.fork
   }
 
+  _isWritable () {
+    return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
+  }
+
   close (err) {
     if (this.closing) return this.closing
     this.closing = this._close(err || null)
@@ -465,23 +469,22 @@ module.exports = class Hypercore extends EventEmitter {
     this.emit('close', true)
   }
 
-  clone (storage, opts = {}) {
+  clone (keyPair, storage, opts = {}) {
     // TODO: current limitation is no forking
     if ((opts.fork && opts.fork !== 0) || this.fork !== 0) {
       throw BAD_ARGUMENT('Cannot clone a fork')
     }
 
-    const key = opts.key === undefined ? opts.keyPair ? null : this.key : opts.key
-    const keyPair = (opts.auth || opts.keyPair === undefined) ? null : opts.keyPair
+    const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
+    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
 
-    let auth = this.core.defaultAuth
-    if (opts.auth) {
-      auth = opts.auth
-    } else if (keyPair && keyPair.secretKey) {
-      auth = Core.createAuth(this.crypto, { keyPair, manifest: { signer: { publicKey: keyPair.publicKey } } })
+    if (b4a.equals(key, this.key)) {
+      throw BAD_ARGUMENT('Clone cannot share verification information')
     }
 
-    const upgrade = opts.upgrade === undefined ? null : opts.upgrade
+    const signature = opts.signature === undefined
+      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.batch(), keyPair)
+      : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
@@ -497,11 +500,11 @@ module.exports = class Hypercore extends EventEmitter {
       wait,
       onwait,
       timeout,
-      auth,
+      manifest,
       overwrite: true,
       clone: {
         from: this,
-        upgrade
+        signature
       }
     })
   }
@@ -540,6 +543,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   get discoveryKey () {
     return this.replicator === null ? null : this.replicator.discoveryKey
+  }
+
+  get manifest () {
+    return this._manifest || (this.core === null ? null : this.core.header.manifest)
   }
 
   get length () {
@@ -934,16 +941,22 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (this.writable === false) throw SESSION_NOT_WRITABLE()
 
-    const { fork = this.core.tree.fork + 1, force = false } = typeof opts === 'number' ? { fork: opts } : opts
+    const {
+      fork = this.core.tree.fork + 1,
+      force = false,
+      keyPair = this.keyPair,
+      signature = null
+    } = typeof opts === 'number' ? { fork: opts } : opts
+
     if (this._batch && !force) throw BATCH_UNFLUSHED()
 
-    await this.core.truncate(newLength, fork, this.auth)
+    await this.core.truncate(newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
     this.replicator.updateAll()
   }
 
-  async append (blocks, opts) {
+  async append (blocks, opts = {}) {
     if (this._batch && this !== this._batch.session) throw BATCH_UNFLUSHED()
 
     if (this.opened === false) await this.opening
@@ -961,7 +974,8 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, (opts && opts.auth) || this.auth, { preappend })
+    const { keyPair = this.keyPair, signature = null } = opts
+    return this.core.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {

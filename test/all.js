@@ -7,7 +7,6 @@ async function runTests () {
 
   test.pause()
 
-  await import('./auth.js')
   await import('./basic.js')
   await import('./batch.js')
   await import('./bitfield.js')
@@ -20,6 +19,7 @@ async function runTests () {
   await import('./encodings.js')
   await import('./encryption.js')
   await import('./extension.js')
+  await import('./manifest.js')
   await import('./merkle-tree.js')
   await import('./mutex.js')
   await import('./oplog.js')

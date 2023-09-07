@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 
+const NS = b4a.alloc(32)
 const { create } = require('./helpers')
 
 test('batch append', async function (t) {
@@ -172,25 +173,25 @@ test('partial flush', async function (t) {
 
   await b.append(['a', 'b', 'c', 'd'])
 
-  await b.flush(2)
+  await b.flush({ length: 2 })
 
   t.is(core.length, 2)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush(1)
+  await b.flush({ length: 1 })
 
   t.is(core.length, 3)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush(1)
+  await b.flush({ length: 1 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush(1)
+  await b.flush({ length: 1 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
@@ -287,15 +288,15 @@ test('create tree batches', async function (t) {
 
   t2.append(b4a.from('c'))
 
-  t.alike(t3.signable(), t2.signable())
+  t.alike(t3.signable(NS), t2.signable(NS))
 
-  const t4s = t4.signable()
+  const t4s = t4.signable(NS)
 
   await b.append('d')
-  t.alike(b.createTreeBatch().signable(), t4s)
+  t.alike(b.createTreeBatch().signable(NS), t4s)
 
   await b.append('e')
-  t.alike(b.createTreeBatch().signable(), t5.signable())
+  t.alike(b.createTreeBatch().signable(NS), t5.signable(NS))
 
   // remove appended values
   blocks.shift()
@@ -312,7 +313,7 @@ test('create tree batches', async function (t) {
   await b2.ready()
 
   t.absent(b2.createTreeBatch(3))
-  t.alike(t4.signable(), t4s)
+  t.alike(t4.signable(NS), t4s)
 
   const t6 = b2.createTreeBatch(6, blocks)
   const t7 = b2.createTreeBatch(7, blocks)
@@ -321,8 +322,8 @@ test('create tree batches', async function (t) {
   t.is(t7.length, 7)
 
   await b2.append('f')
-  t.alike(b2.createTreeBatch().signable(), t6.signable())
+  t.alike(b2.createTreeBatch().signable(NS), t6.signable(NS))
 
   await b2.append('g')
-  t.alike(b2.createTreeBatch().signable(), t7.signable())
+  t.alike(b2.createTreeBatch().signable(NS), t7.signable(NS))
 })

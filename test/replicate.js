@@ -153,18 +153,17 @@ test('high latency reorg', async function (t) {
 test('invalid signature fails', async function (t) {
   t.plan(2)
 
-  const a = await create(null, {
-    auth: {
-      sign () {
-        return Buffer.alloc(64)
-      },
-      verify (s, sig) {
-        return false
-      }
-    }
-  })
-
+  const a = await create(null)
   const b = await create(a.key)
+
+  a.core.verifier = {
+    sign () {
+      return Buffer.alloc(64)
+    },
+    verify (s, sig) {
+      return false
+    }
+  }
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -187,6 +186,63 @@ test('invalid signature fails', async function (t) {
     function onclose () {
       if (--missing === 0) resolve()
     }
+  })
+})
+
+test('more invalid signatures fails', async function (t) {
+  const a = await create(null)
+
+  await a.append(['a', 'b'], { signature: b4a.alloc(64) })
+
+  await t.test('replication fails after bad append', async function (sub) {
+    sub.plan(2)
+
+    const b = await create(a.key)
+    const [s1, s2] = replicate(a, b, sub)
+
+    s1.on('error', (err) => {
+      sub.ok(err, 'stream closed')
+    })
+
+    s2.on('error', (err) => {
+      sub.is(err.code, 'INVALID_SIGNATURE')
+    })
+
+    b.get(0).then(() => sub.fail('should not get block'), () => {})
+    sub.teardown(() => b.close())
+  })
+
+  await a.truncate(1, { signature: b4a.alloc(64) })
+
+  await t.test('replication fails after bad truncate', async function (sub) {
+    sub.plan(2)
+
+    const b = await create(a.key)
+    const [s1, s2] = replicate(a, b, sub)
+
+    s1.on('error', (err) => {
+      sub.ok(err, 'stream closed')
+    })
+
+    s2.on('error', (err) => {
+      sub.is(err.code, 'INVALID_SIGNATURE')
+    })
+
+    b.get(0).then(() => sub.fail('should not get block'), () => {})
+    sub.teardown(() => b.close())
+  })
+
+  await a.append('good')
+
+  await t.test('replication works again', async function (sub) {
+    const b = await create(a.key)
+    replicate(a, b, sub)
+
+    await new Promise(resolve => setImmediate(resolve))
+
+    sub.alike(await b.get(0), b4a.from('a'), 'got block')
+
+    sub.teardown(() => b.close())
   })
 })
 
@@ -932,7 +988,7 @@ test('sparse replication without gossiping', async function (t) {
 
 test('force update writable cores', async function (t) {
   const a = await create()
-  const b = await create(a.key, { auth: a.auth })
+  const b = await create(a.key, { header: a.core.header.manifest })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
