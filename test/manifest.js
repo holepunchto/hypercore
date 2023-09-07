@@ -5,44 +5,35 @@ const b4a = require('b4a')
 const tmpDir = require('test-tmp')
 const ram = require('random-access-memory')
 
-const { assemble, partialSignature } = require('hypercore-crypto-multisig')
-
 const Hypercore = require('../')
-const createAuth = require('../lib/manifest')
+const { assemble, partialSignature } = require('../lib/multisig')
+const { createVerifier, createManifest } = require('../lib/manifest')
 const caps = require('../lib/caps')
 
-test('create auth - static signer', async function (t) {
+test('create verifier - static signer', async function (t) {
   const treeHash = b4a.alloc(32, 1)
 
   const manifest = {
-    version: 0,
-    // namespace: <0x...>,
-    // hash: BLAKE_2B,
     static: treeHash
   }
 
-  const auth = createAuth(manifest)
-
-  t.ok(auth.verify)
-  t.absent(auth.sign)
+  const verifier = createVerifier(manifest)
 
   const signable = b4a.alloc(32, 1)
 
-  t.ok(auth.verify(signable))
+  t.ok(verifier.verify(signable))
 
   signable[0] ^= 0xff
 
-  t.absent(auth.verify(signable))
+  t.absent(verifier.verify(signable))
 })
 
-test('create auth - single signer no sign', async function (t) {
+test('create verifier - single signer no sign', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
     signer: {
       signature: 'ed25519',
       namespace,
@@ -50,29 +41,25 @@ test('create auth - single signer no sign', async function (t) {
     }
   }
 
-  const auth = createAuth(manifest)
-
-  t.ok(auth.verify)
+  const verifier = createVerifier(manifest)
 
   const signable = b4a.alloc(32, 1)
   const namespaced = b4a.concat([namespace, signable])
   const signature = crypto.sign(namespaced, keyPair.secretKey)
 
-  t.ok(auth.verify(signable, signature))
+  t.ok(verifier.verify(signable, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(auth.verify(signable, signature))
+  t.absent(verifier.verify(signable, signature))
 })
 
-test('create auth - single signer', async function (t) {
+test('create verifier - single signer', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
     signer: {
       signature: 'ed25519',
       namespace,
@@ -80,21 +67,19 @@ test('create auth - single signer', async function (t) {
     }
   }
 
-  const auth = createAuth(manifest, { keyPair })
-
-  t.ok(auth.verify)
+  const verifier = createVerifier(manifest)
 
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable, keyPair)
+  const signature = verifier.sign(signable, keyPair)
 
-  t.ok(auth.verify(signable, signature))
+  t.ok(verifier.verify(signable, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(auth.verify(signable, signature))
+  t.absent(verifier.verify(signable, signature))
 })
 
-test('create auth - multi signer', async function (t) {
+test('create verifier - multi signer', async function (t) {
   const a = crypto.keyPair()
   const b = crypto.keyPair()
 
@@ -103,8 +88,6 @@ test('create auth - multi signer', async function (t) {
   const bEntropy = b4a.alloc(32, 3)
 
   const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
     multipleSigners: {
       allowPatched: false,
       quorum: 2,
@@ -130,79 +113,65 @@ test('create auth - multi signer', async function (t) {
   const signature = c.encode(enc, [asig, bsig])
   const badSignature = c.encode(enc, [asig, asig])
 
-  const auth = createAuth(manifest)
+  const verifier = createVerifier(manifest)
 
-  t.ok(auth.verify)
-
-  t.ok(auth.verify(signable, signature))
-  t.absent(auth.verify(signable, badSignature))
+  t.ok(verifier.verify(signable, signature))
+  t.absent(verifier.verify(signable, badSignature))
 })
 
-test('create auth - defaults', async function (t) {
+test('create verifier - defaults', async function (t) {
   const keyPair = crypto.keyPair()
 
-  const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
+  const manifest = createManifest({
     signer: {
       signature: 'ed25519',
       publicKey: keyPair.publicKey
     }
-  }
+  })
 
-  const auth = createAuth(manifest, { keyPair })
-
-  t.ok(auth.verify)
+  const verifier = createVerifier(manifest)
 
   const signable = b4a.alloc(32, 1)
-  const signature = auth.sign(signable, keyPair)
+  const signature = verifier.sign(signable, keyPair)
 
-  t.ok(auth.verify(signable, signature))
+  t.ok(verifier.verify(signable, signature))
 
   signature[0] ^= 0xff
 
-  t.absent(auth.verify(signable, signature))
+  t.absent(verifier.verify(signable, signature))
 })
 
-test('create auth - invalid input', async function (t) {
-  const keyPair = crypto.keyPair()
-  const keyPair2 = crypto.keyPair()
+test('create verifier - unsupported curve', async function (t) {
+  t.plan(2)
 
-  const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
-    signer: {
-      signature: 'ed25519',
-      publicKey: keyPair.publicKey
-    }
-  }
-
-  t.exception(() => createAuth(manifest, { keyPair: keyPair2 }))
-})
-
-test('create auth - unsupported curve', async function (t) {
   const keyPair = crypto.keyPair()
 
   const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
     signer: {
       signature: 'SECP_256K1',
       publicKey: keyPair.publicKey
     }
   }
 
-  t.exception(() => createAuth(manifest))
+  try {
+    createManifest(manifest)
+  } catch {
+    t.pass('threw')
+  }
+
+  try {
+    createVerifier(manifest)
+  } catch {
+    t.pass('also threw')
+  }
 })
 
-test('create auth - compat signer', async function (t) {
+test('create verifier - compat signer', async function (t) {
   const keyPair = crypto.keyPair()
 
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    version: 0,
-    // hash: BLAKE_2B,
     signer: {
       signature: 'ed25519',
       namespace,
@@ -210,17 +179,17 @@ test('create auth - compat signer', async function (t) {
     }
   }
 
-  const auth = createAuth(manifest, { keyPair, compat: true })
+  const verifier = createVerifier(manifest, { compat: true })
 
-  t.ok(auth.verify)
-  t.ok(auth.sign)
+  t.ok(verifier.verify)
+  t.ok(verifier.sign)
 
   const signable = b4a.alloc(32, 1)
 
   const signature = crypto.sign(signable, keyPair.secretKey)
 
-  t.alike(auth.sign(signable, keyPair), signature)
-  t.ok(auth.verify(signable, signature))
+  t.alike(verifier.sign(signable, keyPair), signature)
+  t.ok(verifier.verify(signable, signature))
 })
 
 test('multisig -  append', async t => {
@@ -929,7 +898,6 @@ test('multisig -  large patches', async t => {
 
 function createMultiManifest (signers) {
   return {
-    version: 0,
     hash: 'blake2b',
     multipleSigners: {
       quorum: (signers.length >> 1) + 1,

@@ -12,7 +12,7 @@ test('clone', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const clone = await core.clone(crypto.keyPair(), RAM)
+  const clone = core.clone(crypto.keyPair(), RAM)
   await clone.ready()
 
   const info = await clone.info()
@@ -29,7 +29,7 @@ test('clone - append after clone', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const clone = await core.clone(crypto.keyPair(), RAM)
+  const clone = core.clone(crypto.keyPair(), RAM)
   await clone.ready()
 
   const hash = clone.core.tree.hash()
@@ -49,7 +49,7 @@ test('clone - src appends after clone', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const clone = await core.clone(crypto.keyPair(), RAM)
+  const clone = core.clone(crypto.keyPair(), RAM)
   await clone.ready()
 
   const hash = clone.core.tree.hash()
@@ -71,7 +71,7 @@ test('clone - truncate src after', async function (t) {
   await core.append('goodbye')
   await core.append('home')
 
-  const clone = await core.clone(crypto.keyPair(), RAM)
+  const clone = core.clone(crypto.keyPair(), RAM)
   await clone.ready()
 
   const hash = clone.core.tree.hash()
@@ -95,10 +95,10 @@ test('clone - pass new keypair', async function (t) {
 
   const keyPair = crypto.keyPair()
 
-  const batch = await core.core.tree.batch()
+  const batch = core.core.tree.batch()
   const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const clone = await core.clone(keyPair, RAM, { signature })
+  const clone = core.clone(keyPair, RAM, { signature })
   await clone.ready()
 
   t.is(clone.length, 4)
@@ -109,21 +109,21 @@ test('clone - pass new keypair', async function (t) {
 
 test('clone - sparse', async function (t) {
   const core = await create()
-  const replica = await create(core.key, { manifest: core.core.header.manifest, sparse: true })
+  const replica = await create(core.key, { manifest: core.manifest, sparse: true })
 
   await core.append('hello')
   await core.append('world')
   await core.append('goodbye')
   await core.append('home')
 
-  replicate(core, replica)
+  replicate(core, replica, t)
 
   await replica.get(0)
   await replica.get(3)
 
   t.is(replica.length, 4)
 
-  const clone = await replica.clone(crypto.keyPair(), RAM)
+  const clone = replica.clone(crypto.keyPair(), RAM)
   await clone.ready()
 
   t.is(clone.length, 4)
@@ -147,7 +147,7 @@ test('clone - replicate clones new key', async function (t) {
 
   const keyPair = crypto.keyPair()
 
-  const clone = await core.clone(keyPair, RAM)
+  const clone = core.clone(keyPair, RAM)
   await clone.ready()
 
   await core.append('hello')
@@ -155,10 +155,10 @@ test('clone - replicate clones new key', async function (t) {
   await core.append('goodbye')
   await core.append('home')
 
-  const batch = await core.core.tree.batch()
+  const batch = core.core.tree.batch()
   const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const full = await core.clone(keyPair, RAM, { signature })
+  const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
 
   replicate(clone, full)
@@ -194,10 +194,10 @@ test('clone - replicate sparse clone with new key', async function (t) {
   await core.append('goodbye')
   await core.append('home')
 
-  const batch = await core.core.tree.batch()
+  const batch = core.core.tree.batch()
   const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const full = await core.clone(keyPair, RAM, { signature })
+  const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
 
   replicate(core, replica)
@@ -207,7 +207,7 @@ test('clone - replicate sparse clone with new key', async function (t) {
 
   t.is(replica.length, 4)
 
-  const clone = await replica.clone(keyPair, RAM, { signature })
+  const clone = replica.clone(keyPair, RAM, { signature })
   await clone.ready()
 
   t.is(clone.length, 4)
@@ -229,10 +229,10 @@ test('clone - persist clone to disk', async function (t) {
   await core.append('goodbye')
   await core.append('home')
 
-  const batch = await core.core.tree.batch()
+  const batch = core.core.tree.batch()
   const signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const clone = await core.clone(keyPair, storage, { signature })
+  const clone = core.clone(keyPair, storage, { signature })
   await clone.ready()
 
   t.is(clone.length, 4)
@@ -259,19 +259,19 @@ test('clone - persisted clone with new key can replicate', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  let batch = await core.core.tree.batch()
+  let batch = core.core.tree.batch()
   let signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const clone = await core.clone(keyPair, storage, { signature })
+  const clone = core.clone(keyPair, storage, { signature })
   await clone.ready()
 
   await core.append('goodbye')
   await core.append('home')
 
-  batch = await core.core.tree.batch()
+  batch = core.core.tree.batch()
   signature = crypto.sign(batch.signable(), keyPair.secretKey)
 
-  const fullClone = await core.clone(keyPair, RAM, { signature, compat: true })
+  const fullClone = core.clone(keyPair, RAM, { signature, compat: true })
   await fullClone.ready()
 
   t.is(clone.length, 2)
