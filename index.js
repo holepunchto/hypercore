@@ -71,7 +71,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.id = null
     this.key = key || null
-    this.keyPair = null
+    this.keyPair = opts.keyPair || null
     this.readable = true
     this.writable = false
     this.opened = false
@@ -313,8 +313,6 @@ module.exports = class Hypercore extends EventEmitter {
         await this.core.copyFrom(from.core, signature)
         this._clone = null
       }
-    } else if (opts.keyPair) {
-      this.keyPair = opts.keyPair
     }
 
     this.writable = this._isWritable()
