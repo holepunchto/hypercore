@@ -487,12 +487,12 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (!manifest && !opts.key) {
-      throw BAD_ARGUMENT('Clone must specify verfication info.')
+      throw BAD_ARGUMENT('Clone must specify verfication info')
     }
 
     const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : caps.manifestHash(manifest))
     if (b4a.equals(key, this.key)) {
-      throw BAD_ARGUMENT('Clone cannot share verification information.')
+      throw BAD_ARGUMENT('Clone cannot share verification information')
     }
 
     const signature = opts.signature === undefined
