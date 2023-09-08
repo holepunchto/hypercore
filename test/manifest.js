@@ -230,8 +230,8 @@ test('multisig -  append', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -282,8 +282,8 @@ test('multisig -  batch failed', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -330,8 +330,8 @@ test('multisig -  patches', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -387,8 +387,8 @@ test('multisig -  batch append', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -456,8 +456,8 @@ test('multisig -  batch append with patches', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -524,8 +524,8 @@ test('multisig -  cannot divide batch', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -583,8 +583,8 @@ test('multisig -  multiple appends', async function (t) {
   t.is(len, 2)
 
   multisig1 = assemble([
-    await partialSignature(signers[0], 0, len),
-    await partialSignature(signers[1], 1, len)
+    await partialSignature(signers[0].core.tree, 0, len),
+    await partialSignature(signers[1].core.tree, 1, len)
   ])
 
   await signers[1].append(b4a.from('2'))
@@ -595,8 +595,8 @@ test('multisig -  multiple appends', async function (t) {
   t.is(len, 4)
 
   multisig2 = assemble([
-    await partialSignature(signers[0], 0, len),
-    await partialSignature(signers[1], 1, len)
+    await partialSignature(signers[0].core.tree, 0, len),
+    await partialSignature(signers[1].core.tree, 1, len)
   ])
 
   const core2 = new Hypercore(ram, { manifest })
@@ -662,8 +662,8 @@ test('multisig -  persist to disk', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -737,13 +737,13 @@ test('multisig -  overlapping appends', async function (t) {
   t.is(len, 3)
 
   multisig1 = assemble([
-    await partialSignature(signers[1], 0, 2),
-    await partialSignature(signers[0], 2, 2)
+    await partialSignature(signers[1].core.tree, 0, 2),
+    await partialSignature(signers[0].core.tree, 2, 2)
   ])
 
   multisig2 = assemble([
-    await partialSignature(signers[2], 2, len),
-    await partialSignature(signers[0], 0, len)
+    await partialSignature(signers[2].core.tree, 2, len),
+    await partialSignature(signers[0].core.tree, 0, len)
   ])
 
   await core.append([
@@ -875,8 +875,8 @@ test('multisig - normal operating mode', async function (t) {
       const len = signableLength([w1.length, w2.length], 2)
 
       return assemble([
-        await partialSignature(w1, a, len),
-        await partialSignature(w2, b, len)
+        await partialSignature(w1.core.tree, a, len),
+        await partialSignature(w2.core.tree, b, len)
       ])
     }
   }
@@ -903,8 +903,8 @@ test('multisig -  large patches', async function (t) {
   let len = signableLength([signers[0].length, signers[1].length], 2)
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0], 0, len)
-  const proof2 = await partialSignature(signers[1], 1, len)
+  const proof = await partialSignature(signers[0].core.tree, 0, len)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof, proof2])
 
@@ -947,8 +947,8 @@ test('multisig -  large patches', async function (t) {
   len = signableLength([signers[0].length, signers[1].length], 2)
   t.is(len, 1000)
 
-  const proof3 = await partialSignature(signers[0], 0, len)
-  const proof4 = await partialSignature(signers[1], 1, len)
+  const proof3 = await partialSignature(signers[0].core.tree, 0, len)
+  const proof4 = await partialSignature(signers[1].core.tree, 1, len)
 
   multisig = assemble([proof3, proof4])
 
