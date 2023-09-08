@@ -1301,6 +1301,19 @@ test('idle replication sessions auto gc', async function (t) {
   t.ok(closed, 'replication session gced')
 })
 
+test('manifests eagerly sync', async function (t) {
+  t.plan(1)
+
+  const a = await create({ compat: false })
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  b.on('manifest', function () {
+    t.alike(b.manifest, a.manifest)
+  })
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)

@@ -640,6 +640,13 @@ module.exports = class Hypercore extends EventEmitter {
         this.replicator.onupgrade()
       }
 
+      if (status & 0b10000) {
+        for (let i = 0; i < this.sessions.length; i++) {
+          const s = this.sessions[i]
+          if (!s._manifest) s.emit('manifest')
+        }
+      }
+
       for (let i = 0; i < this.sessions.length; i++) {
         const s = this.sessions[i]
 
