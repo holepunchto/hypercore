@@ -85,7 +85,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.closing = null
     this.opening = null
 
-    this._manifest = opts.manifest || null
     this._clone = opts.clone || null
     this._readonly = opts.writable === false
     this._preappend = preappend.bind(this)
@@ -546,7 +545,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get manifest () {
-    return this._manifest || (this.core === null ? null : this.core.header.manifest)
+    return this.core === null ? null : this.core.header.manifest
   }
 
   get length () {
@@ -642,8 +641,7 @@ module.exports = class Hypercore extends EventEmitter {
 
       if (status & 0b10000) {
         for (let i = 0; i < this.sessions.length; i++) {
-          const s = this.sessions[i]
-          if (!s._manifest) s.emit('manifest')
+          this.sessions[i].emit('manifest')
         }
       }
 
