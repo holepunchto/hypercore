@@ -8,6 +8,7 @@ const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const z32 = require('z32')
+const id = require('hypercore-id-encoding')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -42,15 +43,8 @@ module.exports = class Hypercore extends EventEmitter {
       key = opts.key || null
     }
 
-    if (key && typeof key === 'string') {
-      key = b4a.from(key, 'hex')
-    }
-
+    if (key && typeof key === 'string') key = id.decode(key)
     if (!opts) opts = {}
-
-    if (!opts.crypto && key && key.byteLength !== 32) {
-      throw BAD_ARGUMENT('Hypercore key should be 32 bytes')
-    }
 
     if (!storage) storage = opts.storage
 
