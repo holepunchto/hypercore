@@ -135,7 +135,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static key (manifest, { compat } = {}) {
-    return compat ? manifest.signer.publicKey : manifestHash(manifest)
+    return compat ? manifest.signer.publicKey : manifestHash(createManifest(manifest))
   }
 
   static discoveryKey (key) {
