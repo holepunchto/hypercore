@@ -2,7 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 
 const NS = b4a.alloc(32)
-const { create } = require('./helpers')
+const { create, replicate } = require('./helpers')
 
 test('batch append', async function (t) {
   const core = await create()
@@ -179,19 +179,19 @@ test('partial flush', async function (t) {
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 3 })
 
   t.is(core.length, 3)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 4 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 4 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
@@ -326,4 +326,62 @@ test('create tree batches', async function (t) {
 
   await b2.append('g')
   t.alike(b2.createTreeBatch().signable(NS), t7.signable(NS))
+})
+
+test('flush with bg activity', async function (t) {
+  const core = await create()
+  const clone = await create(core.key)
+
+  replicate(core, clone, t)
+
+  await core.append('a')
+  await clone.get(0)
+
+  const b = clone.batch({ autoClose: false })
+
+  // bg
+  await core.append('b')
+  await clone.get(1)
+
+  await core.append('c')
+  await clone.get(2)
+
+  await b.append('b')
+
+  t.absent(await b.flush(), 'core is ahead, not flushing')
+
+  await b.append('c')
+
+  t.ok(await b.flush(), 'flushed!')
+})
+
+test('flush with conflicting bg activity', async function (t) {
+  const core = await create()
+  const clone = await create(core.key)
+
+  replicate(core, clone, t)
+
+  await core.append('a')
+  await clone.get(0)
+
+  const b = clone.batch({ autoClose: false })
+
+  // bg
+  await core.append('b')
+  await clone.get(1)
+
+  await core.append('c')
+  await clone.get(2)
+
+  await b.append('c')
+  await b.append('c')
+
+  let error = null
+  try {
+    await b.flush()
+  } catch (e) {
+    error = e
+  }
+
+  t.ok(error, 'failed with error')
 })
