@@ -179,19 +179,19 @@ test('partial flush', async function (t) {
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 3 })
 
   t.is(core.length, 3)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 4 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await b.flush({ length: 1 })
+  await b.flush({ length: 4 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
