@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "10.24.8",
+  "version": "10.24.9",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
