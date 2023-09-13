@@ -1339,8 +1339,10 @@ test('idle replication sessions auto gc with timing', async function (t) {
 
   await eventFlush()
 
-  t.absent(a.closed, 'a closed due to inactivity')
-  t.absent(b.closed, 'b closed due to inactivity')
+  t.is(a.peers.length, 0, 'no peers')
+
+  t.absent(a.closed, 'a not closed')
+  t.ok(b.closed, 'b closed due to inactivity')
 })
 
 test('manifests eagerly sync', async function (t) {
