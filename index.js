@@ -629,7 +629,7 @@ module.exports = class Hypercore extends EventEmitter {
         this.replicator.ontruncate(bitfield.start)
       }
 
-      if ((status & 0b0011) !== 0) {
+      if ((status & 0b10011) !== 0) {
         this.replicator.onupgrade()
       }
 
