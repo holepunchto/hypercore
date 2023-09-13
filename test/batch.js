@@ -2,7 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 
 const NS = b4a.alloc(32)
-const { create, replicate } = require('./helpers')
+const { create, replicate, eventFlush } = require('./helpers')
 
 test('batch append', async function (t) {
   const core = await create()
@@ -353,6 +353,35 @@ test('flush with bg activity', async function (t) {
   await b.append('c')
 
   t.ok(await b.flush(), 'flushed!')
+})
+
+test('flush with bg activity persists non conflicting values', async function (t) {
+  const core = await create()
+  const clone = await create(core.key)
+
+  replicate(core, clone, t)
+
+  await core.append('a')
+  await clone.get(0)
+
+  const b = clone.batch()
+
+  // bg
+  await core.append('b')
+  await core.append('c')
+
+  await b.append('b')
+  await b.append('c')
+
+  await eventFlush()
+
+  t.ok(await b.flush(), 'flushed!')
+
+  t.alike(await clone.get(0, { wait: false }), b4a.from('a'))
+  t.alike(await clone.get(1, { wait: false }), b4a.from('b'))
+  t.alike(await clone.get(2, { wait: false }), b4a.from('c'))
+
+  t.is(b.byteLength, clone.byteLength)
 })
 
 test('flush with conflicting bg activity', async function (t) {
