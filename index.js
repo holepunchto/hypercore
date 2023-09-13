@@ -958,12 +958,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts = {}) {
-    if (this._batch && this !== this._batch.session) throw BATCH_UNFLUSHED()
-
-    // if a batched append, run unlocked as it already locked...
-    const lock = !this._batch
-
     if (this.opened === false) await this.opening
+    if (this._batch) throw BATCH_UNFLUSHED()
 
     const { keyPair = this.keyPair, signature = null } = opts
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
@@ -982,7 +978,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, { lock, keyPair, signature, preappend })
+    return this.core.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {

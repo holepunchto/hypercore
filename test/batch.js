@@ -382,6 +382,7 @@ test('flush with bg activity persists non conflicting values', async function (t
   t.alike(await clone.get(2, { wait: false }), b4a.from('c'))
 
   t.is(b.byteLength, clone.byteLength)
+  t.is(b.indexedLength, b.length, 'nothing buffered')
 })
 
 test('flush with conflicting bg activity', async function (t) {
@@ -405,12 +406,5 @@ test('flush with conflicting bg activity', async function (t) {
   await b.append('c')
   await b.append('c')
 
-  let error = null
-  try {
-    await b.flush()
-  } catch (e) {
-    error = e
-  }
-
-  t.ok(error, 'failed with error')
+  t.absent(await b.flush(), 'cannot flush a batch with conflicts')
 })
