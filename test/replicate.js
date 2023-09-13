@@ -1277,24 +1277,23 @@ test('retry failed block requests to another peer', async function (t) {
 })
 
 test('idle replication sessions auto gc', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { autoClose: true })
+  const a = await create({ active: false })
+  const b = await create(a.key, { autoClose: true, active: false })
 
   await a.append('test')
+  const s = a.session()
 
   replicate(a, b, t, { session: true })
 
-  t.alike(await b.get(0), b4a.from('test'), 'replicates')
-
-  await eventFlush()
+  t.alike(await s.get(0), b4a.from('test'), 'replicates')
 
   let closed = false
   b.on('close', function () {
     closed = true
   })
 
-  a.replicator.setDownloading(false)
-  b.replicator.setDownloading(false)
+  await s.close()
+  await eventFlush()
 
   await eventFlush()
 

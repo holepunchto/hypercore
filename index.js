@@ -85,6 +85,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._snapshot = null
     this._batch = opts._batch || null
     this._findingPeers = 0
+    this._active = opts.active !== false
 
     this.opening = this._openSession(key, storage, opts)
     this.opening.catch(noop)
@@ -323,6 +324,8 @@ module.exports = class Hypercore extends EventEmitter {
     // It's required so that corestore can load a name from userData before 'ready' is emitted.
     if (opts._preready) await opts._preready(this)
 
+    this.replicator.updateActivity(this._active ? 1 : 0)
+
     this.opened = true
     this.emit('ready')
   }
@@ -441,6 +444,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
       this.replicator.clearRequests(this.activeRequests, err)
+      this.replicator.updateActivity(this._active ? -1 : 0)
     }
 
     this._findingPeers = 0
@@ -530,7 +534,7 @@ module.exports = class Hypercore extends EventEmitter {
   _attachToMuxerOpened (mux, useSession) {
     // If the user wants to, we can make this replication run in a session
     // that way the core wont close "under them" during replication
-    const session = useSession ? this.session() : null
+    const session = useSession ? this.session({ active: false }) : null
     this.replicator.attachTo(mux, session)
   }
 
