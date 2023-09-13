@@ -324,7 +324,7 @@ module.exports = class Hypercore extends EventEmitter {
     // It's required so that corestore can load a name from userData before 'ready' is emitted.
     if (opts._preready) await opts._preready(this)
 
-    this.replicator.updateActivity(this._active ? 1 : 0)
+    this.replicator.updateActivity(this._active ? 1 : 0, this)
 
     this.opened = true
     this.emit('ready')
@@ -444,7 +444,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
       this.replicator.clearRequests(this.activeRequests, err)
-      this.replicator.updateActivity(this._active ? -1 : 0)
+      this.replicator.updateActivity(this._active ? -1 : 0, this)
     }
 
     this._findingPeers = 0

@@ -1281,7 +1281,7 @@ test('idle replication sessions auto gc', async function (t) {
   const b = await create(a.key, { autoClose: true, active: false })
 
   await a.append('test')
-  const s = a.session()
+  const s = b.session()
 
   replicate(a, b, t, { session: true })
 
@@ -1298,6 +1298,49 @@ test('idle replication sessions auto gc', async function (t) {
   await eventFlush()
 
   t.ok(closed, 'replication session gced')
+})
+
+test('idle replication sessions auto gc with timing', async function (t) {
+  const a = await create({ active: false })
+  const b = await create(a.key, { autoClose: true, active: false })
+
+  await a.append('test')
+  await a.append('test')
+
+  const s1 = b.session()
+  const s2 = a.session()
+
+  replicate(a, b, t, { session: true })
+
+  t.alike(await s1.get(0), b4a.from('test'), 'replicates')
+
+  await s1.close()
+
+  await eventFlush()
+
+  let s3 = null
+
+  // ensure tough timing
+  const bgSession = b.sessions[0] === b ? b.sessions[1] : b.sessions[0]
+  const close = bgSession.close
+  bgSession.close = function (...args) {
+    s3 = b.session()
+    return close.call(this, ...args)
+  }
+
+  await s2.close()
+
+  await eventFlush()
+
+  t.alike(await s3.get(1), b4a.from('test'), 'still replicates')
+  t.is(s3.peers.length, 1, 'has peer')
+
+  await s3.close()
+
+  await eventFlush()
+
+  t.absent(a.closed, 'a closed due to inactivity')
+  t.absent(b.closed, 'b closed due to inactivity')
 })
 
 test('manifests eagerly sync', async function (t) {
