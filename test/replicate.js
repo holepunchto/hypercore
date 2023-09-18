@@ -1377,6 +1377,38 @@ test('manifests gossip eagerly sync', async function (t) {
   })
 })
 
+test('remote has larger tree', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+  const c = await create(a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  {
+    const [s1, s2] = replicate(a, b, t)
+    await b.get(2)
+    await b.get(3)
+    await b.get(4)
+    s1.destroy()
+    s2.destroy()
+  }
+
+  await a.append('f')
+
+  {
+    const [s1, s2] = replicate(a, c, t)
+    await eventFlush()
+    s1.destroy()
+    s2.destroy()
+  }
+
+  replicate(b, c, t)
+  c.get(4) // unresolvable but should not crash anything
+  await eventFlush()
+  t.ok(!!(await c.get(2)), 'got block #2')
+  t.ok(!!(await c.get(3)), 'got block #3')
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
