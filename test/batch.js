@@ -408,3 +408,28 @@ test('flush with conflicting bg activity', async function (t) {
 
   t.absent(await b.flush(), 'cannot flush a batch with conflicts')
 })
+
+test('checkout batch', async function (t) {
+  const core = await create()
+
+  await core.append(['a', 'b'])
+  const hash = core.createTreeBatch().hash()
+  await core.append(['c', 'd'])
+
+  const b = core.batch({ checkout: 2, autoClose: false })
+
+  await b.ready()
+
+  t.is(b.length, 2)
+  t.is(b.byteLength, 2)
+
+  const batch = b.createTreeBatch()
+  t.alike(batch.hash(), hash)
+
+  await b.append(['c', 'z'])
+  t.absent(await b.flush())
+
+  await b.truncate(3, b.fork)
+  await b.append('d')
+  t.ok(await b.flush())
+})
