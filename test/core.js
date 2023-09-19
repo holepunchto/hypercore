@@ -390,7 +390,7 @@ test('core - partial clone', async function (t) {
   await core.append([Buffer.from('2')])
   await core.append([Buffer.from('3')])
 
-  await copy.copyFrom(core, signature, 2)
+  await copy.copyFrom(core, signature, { length: 2 })
 
   t.is(core.tree.length, 4)
   t.is(copy.tree.length, 2)
