@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 
 const { create, replicate } = require('../helpers')
 
@@ -8,7 +9,7 @@ test('range download, single block missing', async function (t) {
 
   const n = 100000
 
-  for (let i = 0; i < n; i++) await a.append(Buffer.of(0))
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
 
   replicate(a, b, t)
 
@@ -28,7 +29,7 @@ test('range download, repeated', async function (t) {
 
   const n = 100000
 
-  for (let i = 0; i < n; i++) await a.append(Buffer.of(0))
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
 
   replicate(a, b, t)
 

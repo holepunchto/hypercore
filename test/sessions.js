@@ -2,6 +2,7 @@ const test = require('brittle')
 const RAM = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 const c = require('compact-encoding')
+const b4a = require('b4a')
 const { create } = require('./helpers')
 
 const Hypercore = require('../')
@@ -117,7 +118,7 @@ test('sessions - close with from option', async function (t) {
   await core2.close()
 
   t.absent(core1.closed)
-  t.alike(await core1.get(0), Buffer.from('hello world'))
+  t.alike(await core1.get(0), b4a.from('hello world'))
 })
 
 test('sessions - custom valueEncoding on session', async function (t) {

@@ -1,9 +1,10 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
 const Hypercore = require('..')
 const { create, replicate } = require('./helpers')
 
-const encryptionKey = Buffer.alloc(32, 'hello world')
+const encryptionKey = b4a.alloc(32, 'hello world')
 
 test('encrypted append and get', async function (t) {
   const a = await create({ encryptionKey })
@@ -17,7 +18,7 @@ test('encrypted append and get', async function (t) {
   t.is(a.core.tree.byteLength, 5 + a.padding)
 
   const unencrypted = await a.get(0)
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
 
   const encrypted = await a.core.blocks.get(0)
   t.absent(encrypted.includes('hello'))
@@ -29,7 +30,7 @@ test('get with decrypt option', async function (t) {
   await a.append('hello')
 
   const unencrypted = await a.get(0, { decrypt: true })
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
 
   const encrypted = await a.get(0, { decrypt: false })
   t.absent(encrypted.includes('hello'))
@@ -114,12 +115,12 @@ test('encrypted session', async function (t) {
   const s = a.session()
 
   t.alike(a.encryptionKey, s.encryptionKey)
-  t.alike(await s.get(0), Buffer.from('hello'))
+  t.alike(await s.get(0), b4a.from('hello'))
 
   await s.append(['world'])
 
   const unencrypted = await s.get(1)
-  t.alike(unencrypted, Buffer.from('world'))
+  t.alike(unencrypted, b4a.from('world'))
   t.alike(await a.get(1), unencrypted)
 
   const encrypted = await s.core.blocks.get(1)
@@ -136,7 +137,7 @@ test('encrypted session before ready core', async function (t) {
   t.alike(a.encryptionKey, s.encryptionKey)
 
   await a.append(['hello'])
-  t.alike(await s.get(0), Buffer.from('hello'))
+  t.alike(await s.get(0), b4a.from('hello'))
 })
 
 test('encrypted session on unencrypted core', async function (t) {
@@ -149,7 +150,7 @@ test('encrypted session on unencrypted core', async function (t) {
   await s.append(['hello'])
 
   const unencrypted = await s.get(0)
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
 
   const encrypted = await a.get(0)
   t.absent(encrypted.includes('hello'))
@@ -164,20 +165,20 @@ test('encrypted session on encrypted core, same key', async function (t) {
   await s.append(['hello'])
 
   const unencrypted = await s.get(0)
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
   t.alike(unencrypted, await a.get(0))
 })
 
 test('encrypted session on encrypted core, different keys', async function (t) {
-  const a = await create({ encryptionKey: Buffer.alloc(32, 'a') })
-  const s = a.session({ encryptionKey: Buffer.alloc(32, 's') })
+  const a = await create({ encryptionKey: b4a.alloc(32, 'a') })
+  const s = a.session({ encryptionKey: b4a.alloc(32, 's') })
 
   t.unlike(s.encryptionKey, a.encryptionKey)
 
   await s.append(['hello'])
 
   const unencrypted = await s.get(0)
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
 
   const encrypted = await a.get(0)
   t.absent(encrypted.includes('hello'))
@@ -195,11 +196,11 @@ test('multiple gets to replicated, encrypted block', async function (t) {
   const q = b.get(0)
 
   t.alike(await p, await q)
-  t.alike(await p, Buffer.from('a'))
+  t.alike(await p, b4a.from('a'))
 })
 
 test('encrypted core from existing unencrypted core', async function (t) {
-  const a = await create({ encryptionKey: Buffer.alloc(32, 'a') })
+  const a = await create({ encryptionKey: b4a.alloc(32, 'a') })
   const b = await create({ from: a, encryptionKey })
 
   t.alike(b.key, a.key)
@@ -208,5 +209,5 @@ test('encrypted core from existing unencrypted core', async function (t) {
   await b.append(['hello'])
 
   const unencrypted = await b.get(0)
-  t.alike(unencrypted, Buffer.from('hello'))
+  t.alike(unencrypted, b4a.from('hello'))
 })

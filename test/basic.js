@@ -28,7 +28,7 @@ test('basic', async function (t) {
 })
 
 test('core id', async function (t) {
-  const key = Buffer.alloc(32).fill('a')
+  const key = b4a.alloc(32).fill('a')
 
   const core = new Hypercore(RAM, key)
   t.is(core.id, null)
@@ -38,7 +38,7 @@ test('core id', async function (t) {
 })
 
 test('session id', async function (t) {
-  const key = Buffer.alloc(32).fill('a')
+  const key = b4a.alloc(32).fill('a')
   const core = new Hypercore(RAM, key)
 
   const session = core.session()
@@ -54,8 +54,8 @@ test('session', async function (t) {
   const session = core.session()
 
   await session.append('test')
-  t.alike(await core.get(0), Buffer.from('test'))
-  t.alike(await session.get(0), Buffer.from('test'))
+  t.alike(await core.get(0), b4a.from('test'))
+  t.alike(await session.get(0), b4a.from('test'))
 })
 
 test('close', async function (t) {
@@ -93,13 +93,13 @@ test('close multiple', async function (t) {
 test('storage options', async function (t) {
   const core = new Hypercore({ storage: RAM })
   await core.append('hello')
-  t.alike(await core.get(0), Buffer.from('hello'))
+  t.alike(await core.get(0), b4a.from('hello'))
 })
 
 test(
   'allow publicKeys with different byteLength that 32, if opts.crypto were passed',
   function (t) {
-    const key = Buffer.alloc(33).fill('a')
+    const key = b4a.alloc(33).fill('a')
 
     const core = new Hypercore(RAM, key, { crypto: {} })
 
@@ -237,7 +237,7 @@ test('read ahead', async function (t) {
 test('defaults for wait', async function (t) {
   t.plan(5)
 
-  const core = new Hypercore(RAM, Buffer.alloc(32), { valueEncoding: 'utf-8' })
+  const core = new Hypercore(RAM, b4a.alloc(32), { valueEncoding: 'utf-8' })
 
   const a = core.get(1)
 

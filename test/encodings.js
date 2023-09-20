@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 const { create } = require('./helpers')
 
 test('encodings - supports built ins', async function (t) {
@@ -10,7 +11,7 @@ test('encodings - supports built ins', async function (t) {
 })
 
 test('encodings - supports custom encoding', async function (t) {
-  const a = await create(null, { valueEncoding: { encode () { return Buffer.from('foo') }, decode () { return 'bar' } } })
+  const a = await create(null, { valueEncoding: { encode () { return b4a.from('foo') }, decode () { return 'bar' } } })
 
   await a.append({ hello: 'world' })
   t.is(await a.get(0), 'bar')
@@ -20,7 +21,7 @@ test('encodings - supports custom encoding', async function (t) {
 test('encodings - supports custom batch encoding', async function (t) {
   const a = await create(null, {
     encodeBatch: batch => {
-      return [Buffer.from(batch.map(b => b.toString()).join('-'))]
+      return [b4a.from(batch.join('-'))]
     },
     valueEncoding: 'utf-8'
   })

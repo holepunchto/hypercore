@@ -158,7 +158,7 @@ test('invalid signature fails', async function (t) {
 
   a.core.verifier = {
     sign () {
-      return Buffer.alloc(64)
+      return b4a.alloc(64)
     },
     verify (s, sig) {
       return false
@@ -301,10 +301,10 @@ test('basic multiplexing', async function (t) {
   a.pipe(b).pipe(a)
 
   await a1.append('hi')
-  t.alike(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
-  t.alike(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), b4a.from('ho'))
 })
 
 test('async multiplexing', async function (t) {
@@ -329,7 +329,7 @@ test('async multiplexing', async function (t) {
   await new Promise(resolve => b2.once('peer-add', resolve))
 
   t.is(b2.peers.length, 1)
-  t.alike(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), b4a.from('ho'))
 })
 
 test('multiplexing with external noise stream', async function (t) {
@@ -349,10 +349,10 @@ test('multiplexing with external noise stream', async function (t) {
   b2.replicate(n2, { keepAlive: false })
 
   await a1.append('hi')
-  t.alike(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
-  t.alike(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), b4a.from('ho'))
 })
 
 test('multiplexing with createProtocolStream (ondiscoverykey is not called)', async function (t) {
@@ -385,10 +385,10 @@ test('multiplexing with createProtocolStream (ondiscoverykey is not called)', as
   b2.replicate(stream2, { keepAlive: false })
 
   await a1.append('hi')
-  t.alike(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
-  t.alike(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), b4a.from('ho'))
 })
 
 test('multiplexing with createProtocolStream (ondiscoverykey is called)', async function (t) {
@@ -427,10 +427,10 @@ test('multiplexing with createProtocolStream (ondiscoverykey is called)', async 
   b2.replicate(stream2, { keepAlive: false })
 
   await a1.append('hi')
-  t.alike(await b1.get(0), Buffer.from('hi'))
+  t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
-  t.alike(await b2.get(0), Buffer.from('ho'))
+  t.alike(await b2.get(0), b4a.from('ho'))
 })
 
 test('seeking while replicating', async function (t) {
@@ -525,7 +525,7 @@ test('multiplexing multiple times over the same stream', async function (t) {
 test('destroying a stream and re-replicating works', async function (t) {
   const core = await create()
 
-  while (core.length < 33) await core.append(Buffer.from('#' + core.length))
+  while (core.length < 33) await core.append(b4a.from('#' + core.length))
 
   const clone = await create(core.key)
 
@@ -575,9 +575,9 @@ test('replicate discrete range', async function (t) {
   await r.done()
 
   t.is(d, 3)
-  t.alike(await b.get(0), Buffer.from('a'))
-  t.alike(await b.get(2), Buffer.from('c'))
-  t.alike(await b.get(3), Buffer.from('d'))
+  t.alike(await b.get(0), b4a.from('a'))
+  t.alike(await b.get(2), b4a.from('c'))
+  t.alike(await b.get(3), b4a.from('d'))
 })
 
 test('replicate discrete empty range', async function (t) {
@@ -953,7 +953,7 @@ test('sparse replication without gossiping', async function (t) {
     s = replicate(b, c, t)
     t.teardown(() => unreplicate(s))
 
-    t.alike(await c.get(4), Buffer.from('e'))
+    t.alike(await c.get(4), b4a.from('e'))
   })
 
   await t.test('range', async function (t) {

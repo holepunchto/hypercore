@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 
 const { create } = require('./helpers')
 
@@ -15,7 +16,7 @@ test('basic read stream', async function (t) {
   await core.append(expected)
 
   for await (const data of core.createReadStream()) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
@@ -37,7 +38,7 @@ test('read stream with start / end', async function (t) {
     const expected = datas.slice(1)
 
     for await (const data of core.createReadStream({ start: 1 })) {
-      t.alike(data.toString(), expected.shift())
+      t.alike(b4a.toString(data), expected.shift())
     }
 
     t.is(expected.length, 0)
@@ -47,7 +48,7 @@ test('read stream with start / end', async function (t) {
     const expected = datas.slice(2, 3)
 
     for await (const data of core.createReadStream({ start: 2, end: 3 })) {
-      t.alike(data.toString(), expected.shift())
+      t.alike(b4a.toString(data), expected.shift())
     }
 
     t.is(expected.length, 0)
@@ -72,7 +73,7 @@ test('basic write+read stream', async function (t) {
   await new Promise(resolve => ws.on('finish', resolve))
 
   for await (const data of core.createReadStream()) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
@@ -91,7 +92,7 @@ test('basic byte stream', async function (t) {
   await core.append(expected)
 
   for await (const data of core.createByteStream()) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
@@ -114,7 +115,7 @@ test('basic byte stream with byteOffset / byteLength', async function (t) {
   ]
 
   for await (const data of core.createByteStream(opts)) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
@@ -136,7 +137,7 @@ test('byte stream with lower byteLength than byteOffset', async function (t) {
   ]
 
   for await (const data of core.createByteStream(opts)) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
@@ -159,7 +160,7 @@ test('basic byte stream with custom byteOffset but default byteLength', async fu
   ]
 
   for await (const data of core.createByteStream(opts)) {
-    t.alike(data.toString(), expected.shift())
+    t.alike(b4a.toString(data), expected.shift())
   }
 
   t.is(expected.length, 0)
