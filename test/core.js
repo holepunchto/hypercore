@@ -378,6 +378,32 @@ test.skip('clone - truncate original', async function (t) {
   await core.truncate(2, 3)
 })
 
+test('core - partial clone', async function (t) {
+  const { core } = await create()
+  const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
+
+  await core.append([Buffer.from('0')])
+  await core.append([Buffer.from('1')])
+
+  const signature = Buffer.from(core.tree.signature)
+
+  await core.append([Buffer.from('2')])
+  await core.append([Buffer.from('3')])
+
+  await copy.copyFrom(core, signature, { length: 2 })
+
+  t.is(core.tree.length, 4)
+  t.is(copy.tree.length, 2)
+
+  t.alike([
+    await copy.blocks.get(0),
+    await copy.blocks.get(1)
+  ], [
+    Buffer.from('0'),
+    Buffer.from('1')
+  ])
+})
+
 async function create (opts) {
   const storage = new Map()
 
