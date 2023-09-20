@@ -511,6 +511,9 @@ module.exports = class Hypercore extends EventEmitter {
     // because it doesn't really make a lot of sense.
     if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator, opts)
 
+    // if same stream is passed twice, ignore the 2nd one before we make sessions etc
+    if (isStream(isInitiator) && this._isAttached(isInitiator)) return isInitiator
+
     const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
     const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
@@ -519,6 +522,10 @@ module.exports = class Hypercore extends EventEmitter {
     this._attachToMuxer(protocol, useSession)
 
     return protocolStream
+  }
+
+  _isAttached (stream) {
+    return stream.userData && this.replicator && this.replicator.attached(stream.userData)
   }
 
   _attachToMuxer (mux, useSession) {
