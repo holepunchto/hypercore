@@ -211,8 +211,8 @@ module.exports = class Hypercore extends EventEmitter {
 
   session (opts = {}) {
     if (this.closing) {
-      // This makes the closing logic alot easier. If this turns out to be a problem
-      // in practive, open an issue and we'll try to make a solution for it.
+      // This makes the closing logic a lot easier. If this turns out to be a problem
+      // in practice, open an issue and we'll try to make a solution for it.
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
@@ -1100,7 +1100,7 @@ function preappend (blocks) {
 
 function ensureEncryption (core, opts) {
   if (!opts.encryptionKey) return
-  // Only override the block encryption if its either not already set or if
+  // Only override the block encryption if it's either not already set or if
   // the caller provided a different key.
   if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey)) return
   core.encryption = new BlockEncryption(opts.encryptionKey, core.key)

@@ -283,15 +283,15 @@ A range can have the following properties:
 }
 ```
 
-To download the full core continously (often referred to as non sparse mode) do
+To download the full core continuously (often referred to as non sparse mode) do
 
 ``` js
-// Note that this will never be consider downloaded as the range
+// Note that this will never be considered downloaded as the range
 // will keep waiting for new blocks to be appended.
 core.download({ start: 0, end: -1 })
 ```
 
-To downloaded a discrete range of blocks pass a list of indices.
+To download a discrete range of blocks pass a list of indices.
 
 ```js
 core.download({ blocks: [4, 9, 7] })
@@ -434,7 +434,7 @@ How much padding is applied to each block of this core? Will be `0` unless block
 
 Create a replication stream. You should pipe this to another Hypercore instance.
 
-The `isInitiator` argument is a boolean indicating whether you are the iniatior of the connection (ie the client)
+The `isInitiator` argument is a boolean indicating whether you are the initiator of the connection (ie the client)
 or if you are the passive part (ie the server).
 
 If you are using a P2P swarm like [Hyperswarm](https://github.com/hyperswarm/hyperswarm) you can know this by checking if the swarm connection is a client socket or server socket. In Hyperswarm you can check that using the [client property on the peer details object](https://github.com/hyperswarm/hyperswarm#swarmonconnection-socket-details--)
