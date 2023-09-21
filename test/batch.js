@@ -433,3 +433,32 @@ test('checkout batch', async function (t) {
   await b.append('d')
   t.ok(await b.flush())
 })
+
+test('encryption and batches', async function (t) {
+  const core = await create({ encryptionKey: b4a.alloc(32) })
+
+  await core.append(['a', 'b'])
+  const batch = core.batch()
+
+  t.alike(await batch.get(0), b4a.from('a'))
+  t.alike(await batch.get(1), b4a.from('b'))
+
+  const pre = batch.createTreeBatch(3, [b4a.from('c')])
+  await batch.append('c')
+  const post = batch.createTreeBatch(3)
+
+  t.is(batch.byteLength, 3)
+  t.alike(await batch.get(2), b4a.from('c'))
+
+  await batch.flush()
+
+  t.is(core.byteLength, 3)
+  t.is(core.length, 3)
+
+  t.alike(await core.get(2), b4a.from('c'))
+
+  const final = core.createTreeBatch()
+
+  t.alike(pre.hash(), final.hash())
+  t.alike(post.hash(), final.hash())
+})
