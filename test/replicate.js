@@ -1409,6 +1409,39 @@ test('remote has larger tree', async function (t) {
   t.ok(!!(await c.get(3)), 'got block #3')
 })
 
+test('range download, single block missing', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  const n = 100
+
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
+
+  replicate(a, b, t)
+
+  await b.download({ start: 0, end: n }).done()
+  await b.clear(n - 1)
+
+  await b.download({ start: 0, end: n }).done()
+})
+
+test('range download, repeated', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  const n = 100
+
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
+
+  replicate(a, b, t)
+
+  await b.download({ start: 0, end: n }).done()
+
+  for (let i = 0; i < 1000; i++) {
+    await b.download({ start: 0, end: n }).done()
+  }
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
