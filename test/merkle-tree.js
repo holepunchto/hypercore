@@ -572,7 +572,7 @@ async function audit (tree) {
 
     if (!nl && !nr) return true
 
-    return tree.crypto.parent(nl, nr).equals(node.hash) && await check(nl) && await check(nr)
+    return b4a.equals(tree.crypto.parent(nl, nr), node.hash) && await check(nl) && await check(nr)
   }
 }
 

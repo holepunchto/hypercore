@@ -24,7 +24,7 @@ for (const abi of abis) {
     for (let i = 0; i < 1000; i++) {
       const block = await core.get(i)
 
-      if (!block.equals(b4a.from([i]))) {
+      if (!b4a.equals(block, b4a.from([i]))) {
         return t.fail(`block ${i} diverges`)
       }
     }

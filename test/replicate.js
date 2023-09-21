@@ -142,7 +142,7 @@ test('high latency reorg', async function (t) {
   for (let i = 0; i < a.length; i++) {
     const ba = await a.get(i)
     const bb = await b.get(i)
-    if (ba.equals(bb)) same++
+    if (b4a.equals(ba, bb)) same++
   }
 
   t.is(a.fork, 1)
@@ -406,12 +406,12 @@ test('multiplexing with createProtocolStream (ondiscoverykey is called)', async 
 
   const stream1 = Hypercore.createProtocolStream(n1, {
     ondiscoverykey: function (discoveryKey) {
-      if (a1.discoveryKey.equals(discoveryKey)) {
+      if (b4a.equals(a1.discoveryKey, discoveryKey)) {
         a1.replicate(stream1, { keepAlive: false })
         t.pass()
       }
 
-      if (a2.discoveryKey.equals(discoveryKey)) {
+      if (b4a.equals(a2.discoveryKey, discoveryKey)) {
         a2.replicate(stream1, { keepAlive: false })
         t.pass()
       }
