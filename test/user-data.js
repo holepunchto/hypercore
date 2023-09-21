@@ -1,23 +1,24 @@
 const test = require('brittle')
-const Hypercore = require('../')
 const tmp = require('test-tmp')
+const b4a = require('b4a')
 const { create } = require('./helpers')
+const Hypercore = require('../')
 
 test('userdata - can set through setUserData', async function (t) {
   const core = await create()
-  await core.setUserData('hello', Buffer.from('world'))
+  await core.setUserData('hello', b4a.from('world'))
 
-  t.alike(await core.getUserData('hello'), Buffer.from('world'))
+  t.alike(await core.getUserData('hello'), b4a.from('world'))
 })
 
 test('userdata - can set through constructor option', async function (t) {
   const core = await create({
     userData: {
-      hello: Buffer.from('world')
+      hello: b4a.from('world')
     }
   })
 
-  t.alike(await core.getUserData('hello'), Buffer.from('world'))
+  t.alike(await core.getUserData('hello'), b4a.from('world'))
 })
 
 test('userdata - persists across restarts', async function (t) {
@@ -25,7 +26,7 @@ test('userdata - persists across restarts', async function (t) {
 
   let core = new Hypercore(dir, {
     userData: {
-      hello: Buffer.from('world')
+      hello: b4a.from('world')
     }
   })
   await core.ready()
@@ -33,23 +34,23 @@ test('userdata - persists across restarts', async function (t) {
   await core.close()
   core = new Hypercore(dir, {
     userData: {
-      other: Buffer.from('another')
+      other: b4a.from('another')
     }
   })
 
-  t.alike(await core.getUserData('hello'), Buffer.from('world'))
-  t.alike(await core.getUserData('other'), Buffer.from('another'))
+  t.alike(await core.getUserData('hello'), b4a.from('world'))
+  t.alike(await core.getUserData('other'), b4a.from('another'))
 
   await core.close()
 })
 
 test('userdata - big userdata gets swapped to external header', async function (t) {
   const core = await create()
-  await core.setUserData('hello', Buffer.alloc(20000))
-  await core.setUserData('world', Buffer.alloc(20000))
-  await core.setUserData('world2', Buffer.alloc(20000))
+  await core.setUserData('hello', b4a.alloc(20000))
+  await core.setUserData('world', b4a.alloc(20000))
+  await core.setUserData('world2', b4a.alloc(20000))
 
-  t.alike(await core.getUserData('hello'), Buffer.alloc(20000))
-  t.alike(await core.getUserData('world'), Buffer.alloc(20000))
-  t.alike(await core.getUserData('world2'), Buffer.alloc(20000))
+  t.alike(await core.getUserData('hello'), b4a.alloc(20000))
+  t.alike(await core.getUserData('world'), b4a.alloc(20000))
+  t.alike(await core.getUserData('world2'), b4a.alloc(20000))
 })

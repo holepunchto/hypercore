@@ -2,6 +2,7 @@ const test = require('brittle')
 const path = require('path')
 const RAF = require('random-access-file')
 const RAO = require('random-access-memory-overlay')
+const b4a = require('b4a')
 const Hypercore = require('..')
 
 const abis = [
@@ -23,7 +24,7 @@ for (const abi of abis) {
     for (let i = 0; i < 1000; i++) {
       const block = await core.get(i)
 
-      if (!block.equals(Buffer.of(i))) {
+      if (!b4a.equals(block, b4a.from([i]))) {
         return t.fail(`block ${i} diverges`)
       }
     }

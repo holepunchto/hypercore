@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 const { create, replicate } = require('./helpers')
 
 test('basic peer remote contiguous length', async function (t) {
@@ -64,5 +65,5 @@ test('peer truncates the remote contiguous length', async function (t) {
 
 // "A" wants to know if "B" is finished syncing, so find the corresponding peer
 function getPeer (a, b) {
-  return a.replicator.peers.find(peer => peer.remotePublicKey.equals(b.replicator.peers[0].stream.publicKey))
+  return a.replicator.peers.find(peer => b4a.equals(peer.remotePublicKey, b.replicator.peers[0].stream.publicKey))
 }

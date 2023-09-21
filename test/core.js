@@ -1,5 +1,6 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
 const Core = require('../lib/core')
 
 test('core - append', async function (t) {
@@ -7,8 +8,8 @@ test('core - append', async function (t) {
 
   {
     const info = await core.append([
-      Buffer.from('hello'),
-      Buffer.from('world')
+      b4a.from('hello'),
+      b4a.from('world')
     ])
 
     t.alike(info, { length: 2, byteLength: 10 })
@@ -18,14 +19,14 @@ test('core - append', async function (t) {
       await core.blocks.get(0),
       await core.blocks.get(1)
     ], [
-      Buffer.from('hello'),
-      Buffer.from('world')
+      b4a.from('hello'),
+      b4a.from('world')
     ])
   }
 
   {
     const info = await core.append([
-      Buffer.from('hej')
+      b4a.from('hej')
     ])
 
     t.alike(info, { length: 3, byteLength: 13 })
@@ -36,9 +37,9 @@ test('core - append', async function (t) {
       await core.blocks.get(1),
       await core.blocks.get(2)
     ], [
-      Buffer.from('hello'),
-      Buffer.from('world'),
-      Buffer.from('hej')
+      b4a.from('hello'),
+      b4a.from('world'),
+      b4a.from('hej')
     ])
   }
 })
@@ -47,10 +48,10 @@ test('core - append and truncate', async function (t) {
   const { core, reopen } = await create()
 
   await core.append([
-    Buffer.from('hello'),
-    Buffer.from('world'),
-    Buffer.from('fo'),
-    Buffer.from('ooo')
+    b4a.from('hello'),
+    b4a.from('world'),
+    b4a.from('fo'),
+    b4a.from('ooo')
   ])
 
   await core.truncate(3, 1)
@@ -61,10 +62,10 @@ test('core - append and truncate', async function (t) {
   t.alike(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
 
   await core.append([
-    Buffer.from('a'),
-    Buffer.from('b'),
-    Buffer.from('c'),
-    Buffer.from('d')
+    b4a.from('a'),
+    b4a.from('b'),
+    b4a.from('c'),
+    b4a.from('d')
   ])
 
   await core.truncate(3, 2)
@@ -78,16 +79,16 @@ test('core - append and truncate', async function (t) {
 
   t.alike(core.header.hints.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
 
-  await core.append([Buffer.from('a')])
+  await core.append([b4a.from('a')])
   await core.truncate(2, 4)
 
-  await core.append([Buffer.from('a')])
+  await core.append([b4a.from('a')])
   await core.truncate(2, 5)
 
-  await core.append([Buffer.from('a')])
+  await core.append([b4a.from('a')])
   await core.truncate(2, 6)
 
-  await core.append([Buffer.from('a')])
+  await core.append([b4a.from('a')])
   await core.truncate(2, 7)
 
   t.is(core.header.hints.reorgs.length, 4)
@@ -104,25 +105,25 @@ test('core - append and truncate', async function (t) {
 test('core - user data', async function (t) {
   const { core, reopen } = await create()
 
-  await core.userData('hello', Buffer.from('world'))
-  t.alike(core.header.userData, [{ key: 'hello', value: Buffer.from('world') }])
+  await core.userData('hello', b4a.from('world'))
+  t.alike(core.header.userData, [{ key: 'hello', value: b4a.from('world') }])
 
-  await core.userData('hej', Buffer.from('verden'))
+  await core.userData('hej', b4a.from('verden'))
   t.alike(core.header.userData, [
-    { key: 'hello', value: Buffer.from('world') },
-    { key: 'hej', value: Buffer.from('verden') }
+    { key: 'hello', value: b4a.from('world') },
+    { key: 'hej', value: b4a.from('verden') }
   ])
 
   await core.userData('hello', null)
-  t.alike(core.header.userData, [{ key: 'hej', value: Buffer.from('verden') }])
+  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('verden') }])
 
-  await core.userData('hej', Buffer.from('world'))
-  t.alike(core.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
+  await core.userData('hej', b4a.from('world'))
+  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('world') }])
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.alike(coreReopen.header.userData, [{ key: 'hej', value: Buffer.from('world') }])
+  t.alike(coreReopen.header.userData, [{ key: 'hej', value: b4a.from('world') }])
 })
 
 test('core - verify', async function (t) {
@@ -131,7 +132,7 @@ test('core - verify', async function (t) {
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
-  await core.append([Buffer.from('a'), Buffer.from('b')])
+  await core.append([b4a.from('a'), b4a.from('b')])
 
   {
     const p = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
@@ -154,7 +155,7 @@ test('core - verify parallel upgrades', async function (t) {
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
-  await core.append([Buffer.from('a'), Buffer.from('b'), Buffer.from('c'), Buffer.from('d')])
+  await core.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
 
   {
     const p1 = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
@@ -184,7 +185,7 @@ test('core - update hook is triggered', async function (t) {
     ran |= 1
   }
 
-  await core.append([Buffer.from('a'), Buffer.from('b'), Buffer.from('c'), Buffer.from('d')])
+  await core.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
 
   const peer = {}
 
@@ -192,7 +193,7 @@ test('core - update hook is triggered', async function (t) {
     t.ok(status & 0b01, 'was appended')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 1, length: 1 })
-    t.alike(value, Buffer.from('b'))
+    t.alike(value, b4a.from('b'))
     ran |= 2
   }
 
@@ -206,7 +207,7 @@ test('core - update hook is triggered', async function (t) {
     t.is(status, 0b00, 'no append or truncate')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 3, length: 1 })
-    t.alike(value, Buffer.from('d'))
+    t.alike(value, b4a.from('d'))
     ran |= 4
   }
 
@@ -232,7 +233,7 @@ test('core - update hook is triggered', async function (t) {
     ran |= 16
   }
 
-  await core.append([Buffer.from('e')])
+  await core.append([b4a.from('e')])
 
   clone.onupdate = (status, bitfield, value, from) => {
     t.ok(status & 0b11, 'was appended and truncated')
@@ -277,23 +278,23 @@ test('core - clone', async function (t) {
   const { core } = await create()
   const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
 
-  await core.userData('hello', Buffer.from('world'))
+  await core.userData('hello', b4a.from('world'))
 
   await core.append([
-    Buffer.from('hello'),
-    Buffer.from('world')
+    b4a.from('hello'),
+    b4a.from('world')
   ])
 
   await copy.copyFrom(core, core.tree.signature)
 
-  t.alike(copy.header.userData, [{ key: 'hello', value: Buffer.from('world') }])
+  t.alike(copy.header.userData, [{ key: 'hello', value: b4a.from('world') }])
 
   t.alike([
     await copy.blocks.get(0),
     await copy.blocks.get(1)
   ], [
-    Buffer.from('hello'),
-    Buffer.from('world')
+    b4a.from('hello'),
+    b4a.from('world')
   ])
 
   const signature = copy.tree.signature
@@ -306,7 +307,7 @@ test('core - clone', async function (t) {
     )
   }
 
-  await core.append([Buffer.from('c')])
+  await core.append([b4a.from('c')])
 
   // copy should be independent
   t.alike(copy.tree.signature, signature)
@@ -318,14 +319,14 @@ test('core - clone verify', async function (t) {
   const { core: copy } = await create({ keyPair: core.header.keyPair })
   const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
-  await core.append([Buffer.from('a'), Buffer.from('b')])
+  await core.append([b4a.from('a'), b4a.from('b')])
   await copy.copyFrom(core, core.tree.signature)
 
   t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
   t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
 
   // copy should be independent
-  await core.append([Buffer.from('c')])
+  await core.append([b4a.from('c')])
 
   {
     const p = await copy.tree.proof({ upgrade: { start: 0, length: 2 } })
@@ -347,10 +348,10 @@ test.skip('clone - truncate original', async function (t) {
   const { core: copy } = await create({ keyPair: core.header.keyPair })
 
   await core.append([
-    Buffer.from('hello'),
-    Buffer.from('world'),
-    Buffer.from('fo'),
-    Buffer.from('ooo')
+    b4a.from('hello'),
+    b4a.from('world'),
+    b4a.from('fo'),
+    b4a.from('ooo')
   ])
 
   await copy.copyFrom(core)
@@ -364,10 +365,10 @@ test.skip('clone - truncate original', async function (t) {
   t.alike(copy.tree.signature, signature)
 
   await core.append([
-    Buffer.from('a'),
-    Buffer.from('b'),
-    Buffer.from('c'),
-    Buffer.from('d')
+    b4a.from('a'),
+    b4a.from('b'),
+    b4a.from('c'),
+    b4a.from('d')
   ])
 
   t.is(copy.tree.length, 4)
@@ -382,13 +383,13 @@ test('core - partial clone', async function (t) {
   const { core } = await create()
   const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
 
-  await core.append([Buffer.from('0')])
-  await core.append([Buffer.from('1')])
+  await core.append([b4a.from('0')])
+  await core.append([b4a.from('1')])
 
-  const signature = Buffer.from(core.tree.signature)
+  const signature = b4a.from(core.tree.signature)
 
-  await core.append([Buffer.from('2')])
-  await core.append([Buffer.from('3')])
+  await core.append([b4a.from('2')])
+  await core.append([b4a.from('3')])
 
   await copy.copyFrom(core, signature, { length: 2 })
 
@@ -399,8 +400,8 @@ test('core - partial clone', async function (t) {
     await copy.blocks.get(0),
     await copy.blocks.get(1)
   ], [
-    Buffer.from('0'),
-    Buffer.from('1')
+    b4a.from('0'),
+    b4a.from('1')
   ])
 })
 

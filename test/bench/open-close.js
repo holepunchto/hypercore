@@ -1,5 +1,6 @@
 const test = require('brittle')
 const tmp = require('test-tmp')
+const b4a = require('b4a')
 const Hypercore = require('../../index.js')
 
 test('open and close', async function (t) {
@@ -7,7 +8,7 @@ test('open and close', async function (t) {
 
   const core = new Hypercore(tmpDir)
   for (let i = 0; i < 100; i++) {
-    await core.append(Buffer.of(0))
+    await core.append(b4a.from([0]))
   }
   await core.close()
 

@@ -1,6 +1,7 @@
 const crypto = require('hypercore-crypto')
 const test = require('brittle')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
 const Hypercore = require('../')
 
 test('preload - storage', async function (t) {
@@ -13,7 +14,7 @@ test('preload - storage', async function (t) {
 
   await core.append('hello world')
   t.is(core.length, 1)
-  t.alike(await core.get(0), Buffer.from('hello world'))
+  t.alike(await core.get(0), b4a.from('hello world'))
 })
 
 test('preload - from another core', async function (t) {

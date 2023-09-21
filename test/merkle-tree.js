@@ -1,6 +1,7 @@
 const test = require('brittle')
-const Tree = require('../lib/merkle-tree')
 const RAM = require('random-access-memory')
+const b4a = require('b4a')
+const Tree = require('../lib/merkle-tree')
 
 test('nodes', async function (t) {
   const tree = await create()
@@ -8,7 +9,7 @@ test('nodes', async function (t) {
   const b = tree.batch()
 
   for (let i = 0; i < 8; i++) {
-    b.append(Buffer.from([i]))
+    b.append(b4a.from([i]))
   }
 
   b.commit()
@@ -244,7 +245,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   }
 
   const b = tree.batch()
-  b.append(Buffer.from('#5'))
+  b.append(b4a.from('#5'))
   b.commit()
 
   {
@@ -292,13 +293,13 @@ test('lowest common ancestor - simple fork', async function (t) {
 
   {
     const b = tree.batch()
-    b.append(Buffer.from('fork #1'))
+    b.append(b4a.from('fork #1'))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    b.append(Buffer.from('fork #2'))
+    b.append(b4a.from('fork #2'))
     b.commit()
   }
 
@@ -314,25 +315,25 @@ test('lowest common ancestor - long fork', async function (t) {
 
   {
     const b = tree.batch()
-    b.append(Buffer.from('fork #1'))
+    b.append(b4a.from('fork #1'))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    b.append(Buffer.from('fork #2'))
+    b.append(b4a.from('fork #2'))
     b.commit()
   }
 
   {
     const b = tree.batch()
-    for (let i = 0; i < 100; i++) b.append(Buffer.from('#' + i))
+    for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
     b.commit()
   }
 
   {
     const b = clone.batch()
-    for (let i = 0; i < 100; i++) b.append(Buffer.from('#' + i))
+    for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
     b.commit()
   }
 
@@ -355,7 +356,7 @@ test('tree hash', async function (t) {
   {
     const b = a.batch()
     t.alike(b.hash(), a.hash())
-    b.append(Buffer.from('hi'))
+    b.append(b4a.from('hi'))
     const h = b.hash()
     t.unlike(h, a.hash())
     b.commit()
@@ -364,7 +365,7 @@ test('tree hash', async function (t) {
 
   {
     const ba = b.batch()
-    ba.append(Buffer.from('hi'))
+    ba.append(b4a.from('hi'))
     const h = ba.hash()
     t.unlike(h, b.hash())
     t.alike(h, a.hash())
@@ -378,11 +379,11 @@ test('basic tree seeks', async function (t) {
 
   {
     const b = a.batch()
-    b.append(Buffer.from('bigger'))
-    b.append(Buffer.from('block'))
-    b.append(Buffer.from('tiny'))
-    b.append(Buffer.from('s'))
-    b.append(Buffer.from('another'))
+    b.append(b4a.from('bigger'))
+    b.append(b4a.from('block'))
+    b.append(b4a.from('tiny'))
+    b.append(b4a.from('s'))
+    b.append(b4a.from('another'))
     b.commit()
   }
 
@@ -438,9 +439,9 @@ test('get older roots', async function (t) {
 
   {
     const b = a.batch()
-    b.append(Buffer.from('next'))
-    b.append(Buffer.from('next'))
-    b.append(Buffer.from('next'))
+    b.append(b4a.from('next'))
+    b.append(b4a.from('next'))
+    b.append(b4a.from('next'))
     b.commit()
   }
 
@@ -454,7 +455,7 @@ test('get older roots', async function (t) {
     expected.push([...a.roots])
     {
       const b = a.batch()
-      b.append(Buffer.from('tick'))
+      b.append(b4a.from('tick'))
       b.commit()
     }
   }
@@ -531,11 +532,11 @@ test('clone a batch', async t => {
   t.is(b.nodes.length, c.nodes.length)
   t.is(b.upgraded, c.upgraded)
 
-  b.append(Buffer.from('bigger'))
-  b.append(Buffer.from('block'))
-  b.append(Buffer.from('tiny'))
-  b.append(Buffer.from('s'))
-  b.append(Buffer.from('another'))
+  b.append(b4a.from('bigger'))
+  b.append(b4a.from('block'))
+  b.append(b4a.from('tiny'))
+  b.append(b4a.from('s'))
+  b.append(b4a.from('another'))
 
   b.commit()
 
@@ -571,7 +572,7 @@ async function audit (tree) {
 
     if (!nl && !nr) return true
 
-    return tree.crypto.parent(nl, nr).equals(node.hash) && await check(nl) && await check(nr)
+    return b4a.equals(tree.crypto.parent(nl, nr), node.hash) && await check(nl) && await check(nr)
   }
 }
 
@@ -594,7 +595,7 @@ async function create (length = 0) {
   const tree = await Tree.open(new RAM())
   const b = tree.batch()
   for (let i = 0; i < length; i++) {
-    b.append(Buffer.from('#' + i))
+    b.append(b4a.from('#' + i))
   }
   b.commit()
   return tree

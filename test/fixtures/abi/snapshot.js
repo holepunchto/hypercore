@@ -2,6 +2,7 @@
 
 const path = require('path')
 const crypto = require('hypercore-crypto')
+const b4a = require('b4a')
 const Hypercore = require('../../../')
 
 const { version } = require('../../../package.json')
@@ -13,7 +14,7 @@ const core = new Hypercore(path.join(__dirname, `v${version}`), {
 core.ready().then(
   async () => {
     for (let i = 0; i < 1000; i++) {
-      await core.append(Buffer.from([i]))
+      await core.append(b4a.from([i]))
     }
   },
   (err) => {

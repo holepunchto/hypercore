@@ -1,5 +1,6 @@
 const test = require('brittle')
 const Xache = require('xache')
+const b4a = require('b4a')
 const { create, replicate } = require('./helpers')
 
 test('cache', async function (t) {
@@ -61,8 +62,8 @@ test('clear cache on truncate', async function (t) {
 
   const q = a.get(0)
 
-  t.alike(await p, Buffer.from('a'))
-  t.alike(await q, Buffer.from('d'))
+  t.alike(await p, b4a.from('a'))
+  t.alike(await q, b4a.from('d'))
 })
 
 test('cache on replicate', async function (t) {
@@ -94,6 +95,6 @@ test('session cache with different encodings', async function (t) {
   const p = a.get(0)
   const q = s.get(0)
 
-  t.alike(await p, Buffer.from('a'))
+  t.alike(await p, b4a.from('a'))
   t.is(await q, 'a')
 })
