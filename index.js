@@ -248,6 +248,11 @@ module.exports = class Hypercore extends EventEmitter {
     return s
   }
 
+  async setEncryptionKey (key) {
+    if (!this.opened) await this.opening
+    this.encryption = key ? new BlockEncryption(key, this.key) : null
+  }
+
   setKeyPair (keyPair) {
     this.keyPair = keyPair
     this.writable = this._isWritable()
