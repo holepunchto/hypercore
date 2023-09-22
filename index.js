@@ -248,9 +248,9 @@ module.exports = class Hypercore extends EventEmitter {
     return s
   }
 
-  async setEncryptionKey (key) {
+  async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
-    this.encryption = key ? new BlockEncryption(key, this.key) : null
+    this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
   }
 
   setKeyPair (keyPair) {
@@ -388,7 +388,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator.findingPeers += this._findingPeers
 
     if (!this.encryption && opts.encryptionKey) {
-      this.encryption = new BlockEncryption(opts.encryptionKey, this.key)
+      this.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
     }
   }
 
@@ -651,7 +651,12 @@ module.exports = class Hypercore extends EventEmitter {
 
       if (status & 0b10000) {
         for (let i = 0; i < this.sessions.length; i++) {
-          this.sessions[i].emit('manifest')
+          const s = this.sessions[i]
+
+          s.emit('manifest')
+          if (s.encryption && s.encryption.compat !== this.core.compat) {
+            s.encryption = new BlockEncryption(s.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: s.isBlockKey })
+          }
         }
       }
 
@@ -1108,5 +1113,5 @@ function ensureEncryption (core, opts) {
   // Only override the block encryption if it's either not already set or if
   // the caller provided a different key.
   if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey)) return
-  core.encryption = new BlockEncryption(opts.encryptionKey, core.key)
+  core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core.compat, isBlockKey: opts.isBlockKey })
 }
