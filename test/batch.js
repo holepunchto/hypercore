@@ -462,3 +462,36 @@ test('encryption and batches', async function (t) {
   t.alike(pre.hash(), final.hash())
   t.alike(post.hash(), final.hash())
 })
+
+test('encryption and bigger batches', async function (t) {
+  const core = await create({ encryptionKey: b4a.alloc(32) })
+
+  await core.append(['a', 'b'])
+  const batch = core.batch()
+
+  t.alike(await batch.get(0), b4a.from('a'))
+  t.alike(await batch.get(1), b4a.from('b'))
+
+  const pre = batch.createTreeBatch(5, [b4a.from('c'), b4a.from('d'), b4a.from('e')])
+  await batch.append(['c', 'd', 'e'])
+  const post = batch.createTreeBatch(5)
+
+  t.is(batch.byteLength, 5)
+  t.alike(await batch.get(2), b4a.from('c'))
+  t.alike(await batch.get(3), b4a.from('d'))
+  t.alike(await batch.get(4), b4a.from('e'))
+
+  await batch.flush()
+
+  t.is(core.byteLength, 5)
+  t.is(core.length, 5)
+
+  t.alike(await core.get(2), b4a.from('c'))
+  t.alike(await core.get(3), b4a.from('d'))
+  t.alike(await core.get(4), b4a.from('e'))
+
+  const final = core.createTreeBatch()
+
+  t.alike(pre.hash(), final.hash())
+  t.alike(post.hash(), final.hash())
+})
