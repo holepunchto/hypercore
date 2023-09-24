@@ -167,13 +167,14 @@ module.exports = class Hypercore extends EventEmitter {
     if (!noiseStream.userData) {
       const protocol = Protomux.from(noiseStream)
 
-      if (opts.ondiscoverykey) {
-        protocol.pair({ protocol: 'hypercore/alpha' }, opts.ondiscoverykey)
-      }
       if (opts.keepAlive !== false) {
         noiseStream.setKeepAlive(5000)
       }
       noiseStream.userData = protocol
+    }
+
+    if (opts.ondiscoverykey) {
+      noiseStream.userData.pair({ protocol: 'hypercore/alpha' }, opts.ondiscoverykey)
     }
 
     return outerStream
