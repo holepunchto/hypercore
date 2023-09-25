@@ -356,7 +356,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.core = await Core.open(this.storage, {
       compat: opts.compat,
-      encrypted: !!opts.encryptionKey || !!opts.encrypted,
       force: opts.force,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
@@ -479,7 +478,7 @@ module.exports = class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Cannot clone a fork')
     }
 
-    const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey, !!opts.encryptionKey)
+    const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
     const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
 
     if (b4a.equals(key, this.key)) {
