@@ -21,6 +21,18 @@ test('batch append', async function (t) {
   t.is(core.length, 5)
 })
 
+test('batch has', async function (t) {
+  const core = await create()
+  await core.append(['a', 'b', 'c'])
+
+  const b = core.batch()
+  await b.append(['de', 'fg'])
+
+  for (let i = 0; i < b.length; i++) {
+    t.ok(await b.has(i))
+  }
+})
+
 test('append to core during batch', async function (t) {
   const core = await create()
   await core.append(['a', 'b', 'c'])
