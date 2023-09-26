@@ -56,7 +56,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.encryption = null
     this.extensions = new Map()
-    this.cache = opts.cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (opts.cache || null)
+    this.cache = createCache(opts.cache)
 
     this.valueEncoding = null
     this.encodeBatch = null
@@ -296,6 +296,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (!isFirst) await opts._opening
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
+    if (this.cache === null && opts.cache) this.cache = createCache(opts.cache)
 
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
@@ -1115,4 +1116,8 @@ function ensureEncryption (core, opts) {
   // the caller provided a different key.
   if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey)) return
   core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core.compat, isBlockKey: opts.isBlockKey })
+}
+
+function createCache (cache) {
+  return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
 }
