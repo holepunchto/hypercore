@@ -98,3 +98,9 @@ test('session cache with different encodings', async function (t) {
   t.alike(await p, b4a.from('a'))
   t.is(await q, 'a')
 })
+
+test('cache is set through preload', async function (t) {
+  const a = await create({ async preload () { return { cache: true } } })
+
+  t.ok(a.cache)
+})
