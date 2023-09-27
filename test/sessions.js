@@ -173,3 +173,23 @@ test('session on a from instance, pre-ready', async function (t) {
   t.is(a.sessions, b.sessions)
   t.is(a.sessions, c.sessions)
 })
+
+test('session on a from instance does not inject itself to other sessions', async function (t) {
+  const a = await create({ })
+
+  const b = new Hypercore({ from: a, encryptionKey: null })
+  await b.ready()
+
+  const c = new Hypercore({ from: a, encryptionKey: null })
+  await c.ready()
+  await c.setEncryptionKey(b4a.alloc(32))
+
+  const d = new Hypercore({ from: a, encryptionKey: null })
+  await d.ready()
+
+  t.absent(a.encryption)
+  t.absent(b.encryption)
+  t.ok(c.encryption)
+  t.absent(d.encryption)
+})
+
