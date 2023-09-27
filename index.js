@@ -300,18 +300,22 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
-      // Only the root session should pass capabilities to other sessions.
-      for (let i = 0; i < this.sessions.length; i++) {
-        const s = this.sessions[i]
-        if (s !== this) s._passCapabilities(this)
-      }
 
-      // copy state over
-      if (this._clone) {
-        const { from, signature } = this._clone
-        await from.opening
-        await this.core.copyFrom(from.core, signature)
-        this._clone = null
+      // check we are the actual root and not a opts.from session
+      if (!opts.from) {
+        // Only the root session should pass capabilities to other sessions.
+        for (let i = 0; i < this.sessions.length; i++) {
+          const s = this.sessions[i]
+          if (s !== this) s._passCapabilities(this)
+        }
+
+        // copy state over
+        if (this._clone) {
+          const { from, signature } = this._clone
+          await from.opening
+          await this.core.copyFrom(from.core, signature)
+          this._clone = null
+        }
       }
     }
 
