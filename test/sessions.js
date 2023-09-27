@@ -192,4 +192,3 @@ test('session on a from instance does not inject itself to other sessions', asyn
   t.ok(c.encryption)
   t.absent(d.encryption)
 })
-
