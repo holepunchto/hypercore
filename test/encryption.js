@@ -211,3 +211,25 @@ test('encrypted core from existing unencrypted core', async function (t) {
   const unencrypted = await b.get(0)
   t.alike(unencrypted, b4a.from('hello'))
 })
+
+test('from session sessions pass encryption', async function (t) {
+  const a = new Hypercore(RAM)
+  const b = new Hypercore({ from: a, encryptionKey })
+  const c = b.session()
+
+  await a.ready()
+  await b.ready()
+  await c.ready()
+
+  t.absent(a.encryptionKey)
+  t.ok(b.encryptionKey)
+  t.ok(c.encryptionKey)
+})
+
+test('session keeps encryption', async function (t) {
+  const a = new Hypercore(RAM)
+  const b = a.session({ encryptionKey })
+  await b.ready()
+
+  t.alike(b.encryptionKey, encryptionKey)
+})
