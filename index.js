@@ -242,7 +242,7 @@ module.exports = class Hypercore extends EventEmitter {
       s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
     }
 
-    ensureEncryption(s, opts)
+    if (this.opened) ensureEncryption(s, opts)
 
     this.sessions.push(s)
 
@@ -289,6 +289,11 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator.findingPeers += this._findingPeers
 
     ensureEncryption(this, opts)
+
+    // we need to manually fwd the encryption cap as the above removes it potentially
+    if (this.encryption && !from.encryption) {
+      for (const s of sessions) s.encryption = this.encryption
+    }
   }
 
   async _openSession (key, storage, opts) {
@@ -317,6 +322,8 @@ module.exports = class Hypercore extends EventEmitter {
           this._clone = null
         }
       }
+    } else {
+      ensureEncryption(this, opts)
     }
 
     this.writable = this._isWritable()
@@ -659,10 +666,13 @@ module.exports = class Hypercore extends EventEmitter {
         for (let i = 0; i < this.sessions.length; i++) {
           const s = this.sessions[i]
 
-          s.emit('manifest')
           if (s.encryption && s.encryption.compat !== this.core.compat) {
-            s.encryption = new BlockEncryption(s.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: s.isBlockKey })
+            s.encryption = new BlockEncryption(s.encryption.key, this.key, { compat: this.core.compat, isBlockKey: s.encryption.isBlockKey })
           }
+        }
+
+        for (let i = 0; i < this.sessions.length; i++) {
+          this.sessions[i].emit('manifest')
         }
       }
 
@@ -1118,8 +1128,8 @@ function ensureEncryption (core, opts) {
   if (!opts.encryptionKey) return
   // Only override the block encryption if it's either not already set or if
   // the caller provided a different key.
-  if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey)) return
-  core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core.compat, isBlockKey: opts.isBlockKey })
+  if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey) && core.encryption.compat === core.core.compat) return
+  core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core ? core.core.compat : true, isBlockKey: opts.isBlockKey })
 }
 
 function createCache (cache) {
