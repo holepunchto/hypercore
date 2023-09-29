@@ -20,8 +20,6 @@ const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isC
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
-  BATCH_ALREADY_EXISTS,
-  BATCH_UNFLUSHED,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE
@@ -83,7 +81,6 @@ module.exports = class Hypercore extends EventEmitter {
     this._readonly = opts.writable === false
     this._preappend = preappend.bind(this)
     this._snapshot = null
-    this._batch = opts._batch || null
     this._findingPeers = 0
     this._active = opts.active !== false
 
@@ -231,8 +228,7 @@ module.exports = class Hypercore extends EventEmitter {
       timeout,
       writable,
       _opening: this.opening,
-      _sessions: this.sessions,
-      _batch: this._batch
+      _sessions: this.sessions
     })
 
     s._passCapabilities(this)
@@ -805,10 +801,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   batch ({ checkout = -1, autoClose = true, session = true } = {}) {
-    if (this._batch !== null) throw BATCH_ALREADY_EXISTS()
-    const batch = new Batch(session ? this.session() : this, checkout, autoClose)
-    for (const session of this.sessions) session._batch = batch
-    return batch
+    return new Batch(session ? this.session() : this, checkout, autoClose)
   }
 
   async seek (bytes, opts) {
@@ -978,7 +971,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     const {
       fork = this.core.tree.fork + 1,
-      force = false,
       keyPair = this.keyPair,
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
@@ -986,7 +978,6 @@ module.exports = class Hypercore extends EventEmitter {
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
 
     if (writable === false) throw SESSION_NOT_WRITABLE()
-    if (this._batch && !force) throw BATCH_UNFLUSHED()
 
     await this.core.truncate(newLength, fork, { keyPair, signature })
 
@@ -996,7 +987,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   async append (blocks, opts = {}) {
     if (this.opened === false) await this.opening
-    if (this._batch) throw BATCH_UNFLUSHED()
 
     const { keyPair = this.keyPair, signature = null } = opts
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))

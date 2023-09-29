@@ -38,10 +38,10 @@ test('append to core during batch', async function (t) {
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
-  await t.exception(core.append('d'))
-  await b.flush()
-
   await core.append('d')
+  await b.append('e')
+  t.absent(await b.flush())
+
   t.is(core.length, 4)
 })
 
@@ -51,10 +51,10 @@ test('append to session during batch, create before batch', async function (t) {
 
   const s = core.session()
   const b = core.batch()
-  await t.exception(s.append('d'))
-  await b.flush()
-
+  await b.append('d')
   await s.append('d')
+
+  t.ok(await b.flush())
   t.is(s.length, 4)
 })
 
@@ -63,11 +63,11 @@ test('append to session during batch, create after batch', async function (t) {
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
+  await b.append('d')
   const s = core.session()
-  await t.exception(s.append('d'))
-  await b.flush()
-
   await s.append('d')
+
+  t.ok(await b.flush())
   t.is(s.length, 4)
 })
 
@@ -91,10 +91,9 @@ test('truncate core during batch', async function (t) {
   await core.append(['a', 'b', 'c'])
 
   const b = core.batch()
-  await t.exception(core.truncate(2))
-  await b.flush()
-
+  await b.append('a')
   await core.truncate(2)
+  t.absent(await b.flush())
   t.is(core.length, 2)
 })
 
@@ -159,8 +158,16 @@ test('simultaneous batches', async function (t) {
   const core = await create()
 
   const b = core.batch()
-  await t.exception(() => core.batch())
-  await b.flush()
+  const c = core.batch()
+  const d = core.batch()
+
+  await b.append('a')
+  await c.append(['a', 'c'])
+  await d.append('c')
+
+  t.ok(await b.flush())
+  t.ok(await c.flush())
+  t.absent(await d.flush())
 })
 
 test('multiple batches', async function (t) {
