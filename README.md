@@ -470,10 +470,14 @@ Emitted when the core has been appended to (i.e. has a new length / byteLength),
 
 Emitted when the core has been truncated, either locally or remotely.
 
-#### `core.on('peer-add')`
+#### `core.on('peer-add', peer)`
 
 Emitted when a new connection has been established with a peer.
 
-#### `core.on('peer-remove')`
+#### `core.on('peer-update', peer)`
+
+Emitted when a peer updates its properties like `peer.remoteContiguousLength`.
+
+#### `core.on('peer-remove', peer)`
 
 Emitted when a peer's connection has been closed.
