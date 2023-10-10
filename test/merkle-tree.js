@@ -107,7 +107,7 @@ test('proof block and seek, no upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    seek: { bytes: 8 },
+    seek: { bytes: 8, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
 
@@ -122,7 +122,7 @@ test('proof block and seek #2, no upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    seek: { bytes: 10 },
+    seek: { bytes: 10, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
 
@@ -137,7 +137,7 @@ test('proof block and seek #3, no upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    seek: { bytes: 13 },
+    seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
 
@@ -152,7 +152,7 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
   const tree = await create(16)
 
   const proof = await tree.proof({
-    seek: { bytes: 26 },
+    seek: { bytes: 26, padding: 0 },
     block: { index: 0, nodes: 4 }
   })
 
@@ -165,7 +165,7 @@ test('proof block and seek, with upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    seek: { bytes: 13 },
+    seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 },
     upgrade: { start: 8, length: 2 }
   })
@@ -184,7 +184,7 @@ test('proof seek with upgrade', async function (t) {
   const tree = await create(10)
 
   const proof = await tree.proof({
-    seek: { bytes: 13 },
+    seek: { bytes: 13, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
 
@@ -219,7 +219,7 @@ test('verify proof #2', async function (t) {
   const clone = await create()
 
   const p = await tree.proof({
-    seek: { bytes: 10 },
+    seek: { bytes: 10, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
 
