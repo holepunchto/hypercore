@@ -148,6 +148,19 @@ test('proof block and seek #3, no upgrade', async function (t) {
   t.alike(proof.block.nodes.map(n => n.index), [10])
 })
 
+test('proof seek with padding, no upgrade', async function (t) {
+  const tree = await create(16)
+
+  const proof = await tree.proof({
+    seek: { bytes: 7, padding: 1 },
+    block: { index: 0, nodes: 4 }
+  })
+
+  t.is(proof.upgrade, null)
+  t.alike(proof.block.nodes.map(n => n.index), [2, 5, 23])
+  t.alike(proof.seek.nodes.map(n => n.index), [12, 14, 9])
+})
+
 test('proof block and seek that results in tree, no upgrade', async function (t) {
   const tree = await create(16)
 
