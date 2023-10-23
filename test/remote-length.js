@@ -63,6 +63,25 @@ test('peer truncates the remote contiguous length', async function (t) {
   t.is(getPeer(a, b).remoteContiguousLength, 1)
 })
 
+test('peer-update event is emitted when remote contiguous length changes', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  await a.append('a')
+
+  b.download()
+
+  t.is(getPeer(a, b).remoteContiguousLength, 0)
+
+  a.once('peer-update', function (peer) {
+    t.is(getPeer(a, b).remoteContiguousLength, 1)
+  })
+})
+
 // "A" wants to know if "B" is finished syncing, so find the corresponding peer
 function getPeer (a, b) {
   return a.replicator.peers.find(peer => b4a.equals(peer.remotePublicKey, b.replicator.peers[0].stream.publicKey))

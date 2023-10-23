@@ -391,6 +391,7 @@ module.exports = class Hypercore extends EventEmitter {
       eagerUpgrade: true,
       allowFork: opts.allowFork !== false,
       onpeerupdate: this._onpeerupdate.bind(this),
+      onpeerchange: this._onpeerchange.bind(this),
       onupload: this._onupload.bind(this)
     })
 
@@ -729,6 +730,12 @@ module.exports = class Hypercore extends EventEmitter {
           peer.extensions.set(ext.name, ext)
         }
       }
+    }
+  }
+
+  _onpeerchange (peer) {
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('peer-update', peer)
     }
   }
 
