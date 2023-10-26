@@ -817,7 +817,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (!this._shouldWait(opts, this.wait)) return null
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-    const req = this.replicator.addSeek(activeRequests, s)
+    const req = this.replicator.addSeek(activeRequests, s, opts)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
@@ -898,7 +898,7 @@ module.exports = class Hypercore extends EventEmitter {
 
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-      const req = this.replicator.addBlock(activeRequests, index)
+      const req = this.replicator.addBlock(activeRequests, index, opts)
 
       const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
       if (timeout) req.context.setTimeout(req, timeout)
