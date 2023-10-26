@@ -1442,6 +1442,41 @@ test('range download, repeated', async function (t) {
   }
 })
 
+test.solo('priority', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  const n = 2000
+
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
+
+  replicate(a, b, t)
+
+  const expected = [1000, 1001]
+
+  b.on('download', function (index) {
+    if (expected.length > 0) {
+      t.comment('download #' + index)
+
+      const b = expected.shift()
+      if (index === b) t.pass()
+      else t.fail()
+    }
+  })
+
+  const dl1 = b.download({ start: 0, end: 1000, priority: 0 })
+  const dl2 = b.download({ start: 1000, end: 1001, priority: 2 })
+  const get1 = b.get(1001, { priority: 2 })
+  // const seek1 = b.seek(1002, { priority: 0 }) // Uncommenting this fixes the test
+
+  await dl1.done()
+  await dl2.done()
+  await get1
+  // await seek1
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
