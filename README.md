@@ -119,7 +119,8 @@ const blockLocal = await core.get(44, { wait: false })
   onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to the core's valueEncoding
-  decrypt: true // automatically decrypts the block if encrypted
+  decrypt: true, // automatically decrypts the block if encrypted
+  priority: 1 // 0 = normal, 1 = high (default), 2 = very high
 }
 ```
 
@@ -165,7 +166,8 @@ const third = await core.seek(5) // returns [2, 1]
 ``` js
 {
   wait: true, // wait for data to be downloaded
-  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+  timeout: 0, // wait at max some milliseconds (0 means no timeout)
+  priority: 0 // 0 = normal (default), 1 = high, 2 = very high
 }
 ```
 
@@ -279,7 +281,8 @@ A range can have the following properties:
   start: startIndex,
   end: nonInclusiveEndIndex,
   blocks: [index1, index2, ...],
-  linear: false // download range linearly and not randomly
+  linear: false, // download range linearly and not randomly
+  priority: 0 // 0 = normal (default), 1 = high, 2 = very high
 }
 ```
 
