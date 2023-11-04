@@ -391,7 +391,8 @@ module.exports = class Hypercore extends EventEmitter {
       eagerUpgrade: true,
       allowFork: opts.allowFork !== false,
       onpeerupdate: this._onpeerupdate.bind(this),
-      onupload: this._onupload.bind(this)
+      onupload: this._onupload.bind(this),
+      oninvalid: this._oninvalid.bind(this)
     })
 
     this.replicator.findingPeers += this._findingPeers
@@ -621,6 +622,12 @@ module.exports = class Hypercore extends EventEmitter {
 
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('upload', index, byteLength, from)
+    }
+  }
+
+  _oninvalid (err, req, res, from) {
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('verification-error', err, req, res, from)
     }
   }
 

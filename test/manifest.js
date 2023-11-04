@@ -295,7 +295,7 @@ test('multisig -  batch failed', async function (t) {
   const s2 = core2.replicate(false)
 
   const p = new Promise((resolve, reject) => {
-    s2.on('error', reject)
+    core2.on('verification-error', reject)
 
     setImmediate(resolve)
   })
@@ -542,8 +542,8 @@ test('multisig -  cannot divide batch', async function (t) {
   const s2 = core2.replicate(false)
 
   const p = new Promise((resolve, reject) => {
-    s1.on('error', reject)
-    s2.on('error', reject)
+    core.once('verification-error', reject)
+    core2.once('verification-error', reject)
 
     core2.on('append', resolve)
   })

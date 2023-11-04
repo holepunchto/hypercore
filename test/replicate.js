@@ -151,7 +151,7 @@ test('high latency reorg', async function (t) {
 })
 
 test('invalid signature fails', async function (t) {
-  t.plan(2)
+  t.plan(1)
 
   const a = await create(null)
   const b = await create(a.key)
@@ -165,28 +165,13 @@ test('invalid signature fails', async function (t) {
     }
   }
 
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  const [s1, s2] = replicate(a, b, t)
-
-  s1.on('error', (err) => {
-    t.ok(err, 'stream closed')
-  })
-
-  s2.on('error', (err) => {
+  b.on('verification-error', function (err) {
     t.is(err.code, 'INVALID_SIGNATURE')
   })
 
-  return new Promise((resolve) => {
-    let missing = 2
+  await a.append(['a', 'b', 'c', 'd', 'e'])
 
-    s1.on('close', onclose)
-    s2.on('close', onclose)
-
-    function onclose () {
-      if (--missing === 0) resolve()
-    }
-  })
+  replicate(a, b, t)
 })
 
 test('more invalid signatures fails', async function (t) {
@@ -195,16 +180,12 @@ test('more invalid signatures fails', async function (t) {
   await a.append(['a', 'b'], { signature: b4a.alloc(64) })
 
   await t.test('replication fails after bad append', async function (sub) {
-    sub.plan(2)
+    sub.plan(1)
 
     const b = await create(a.key)
-    const [s1, s2] = replicate(a, b, sub)
+    replicate(a, b, sub)
 
-    s1.on('error', (err) => {
-      sub.ok(err, 'stream closed')
-    })
-
-    s2.on('error', (err) => {
+    b.on('verification-error', function (err) {
       sub.is(err.code, 'INVALID_SIGNATURE')
     })
 
@@ -215,16 +196,12 @@ test('more invalid signatures fails', async function (t) {
   await a.truncate(1, { signature: b4a.alloc(64) })
 
   await t.test('replication fails after bad truncate', async function (sub) {
-    sub.plan(2)
+    sub.plan(1)
 
     const b = await create(a.key)
-    const [s1, s2] = replicate(a, b, sub)
+    replicate(a, b, sub)
 
-    s1.on('error', (err) => {
-      sub.ok(err, 'stream closed')
-    })
-
-    s2.on('error', (err) => {
+    b.on('verification-error', function (err) {
       sub.is(err.code, 'INVALID_SIGNATURE')
     })
 
@@ -262,6 +239,7 @@ test('invalid capability fails', async function (t) {
     t.ok(err, 'stream closed')
   })
 
+  // TODO: move this to the verification-error handler like above...
   s2.on('error', (err) => {
     t.is(err.code, 'INVALID_CAPABILITY')
   })
