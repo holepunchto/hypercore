@@ -514,3 +514,88 @@ test('encryption and bigger batches', async function (t) {
   t.alike(pre.hash(), final.hash())
   t.alike(post.hash(), final.hash())
 })
+
+test('persistent batch', async function (t) {
+  const core = await create()
+
+  await core.append(['a', 'b', 'c'])
+
+  let batch = core.batch()
+
+  await batch.ready()
+  await batch.append(['d', 'e', 'f'])
+  await batch.flush({ pending: true })
+
+  batch = core.batch({ restore: true, autoClose: false })
+
+  await batch.ready()
+
+  t.is(batch.length, 6)
+  t.is(batch.byteLength, 6)
+  t.is(batch.indexedLength, 3)
+  t.alike(await batch.seek(4), [4, 0])
+
+  const clone = await create(core.key)
+
+  replicate(core, clone, t)
+
+  clone.download()
+
+  await t.test('download', async function (sub) {
+    const downloaded = []
+    clone.on('download', function (index) {
+      downloaded.push(index)
+    })
+    await eventFlush()
+    sub.alike(downloaded.sort(), [0, 1, 2], 'got non pending blocks')
+  })
+
+  await batch.flush({ length: 5 })
+
+  t.is(core.length, 5)
+
+  await t.test('download', async function (sub) {
+    const downloaded = []
+    clone.on('download', function (index) {
+      downloaded.push(index)
+    })
+    await eventFlush()
+    sub.alike(downloaded.sort(), [3, 4], 'got non pending blocks')
+  })
+
+  await batch.flush({ length: 6 })
+
+  t.is(core.length, 6)
+
+  await t.test('download', async function (sub) {
+    const downloaded = []
+    clone.on('download', function (index) {
+      downloaded.push(index)
+    })
+    await eventFlush()
+    sub.alike(downloaded.sort(), [5], 'got non pending blocks')
+  })
+
+  await batch.append('g')
+
+  t.is(batch.length, 7)
+
+  await batch.flush({ pending: true })
+
+  t.is(core.length, 6)
+
+  await batch.append('h')
+
+  t.is(batch.length, 8)
+
+  await batch.flush({ pending: true })
+
+  t.is(batch.length, 8)
+
+  t.is(core.length, 6)
+
+  await batch.flush()
+
+  t.is(batch.length, 8)
+  t.is(core.length, 8)
+})
