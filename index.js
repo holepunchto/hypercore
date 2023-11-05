@@ -807,14 +807,15 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
-  batch ({ checkout = -1, autoClose = true, session = true } = {}) {
-    return new Batch(session ? this.session() : this, checkout, autoClose)
+  batch ({ checkout = -1, autoClose = true, session = true, restore = false } = {}) {
+    return new Batch(session ? this.session() : this, checkout, autoClose, restore)
   }
 
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
 
-    const s = this.core.tree.seek(bytes, this.padding)
+    const tree = (opts && opts.tree) || this.core.tree
+    const s = tree.seek(bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -894,7 +895,8 @@ module.exports = class Hypercore extends EventEmitter {
     let block
 
     if (this.core.bitfield.get(index)) {
-      block = this.core.blocks.get(index)
+      const tree = (opts && opts.tree) || this.core.tree
+      block = this.core.blocks.get(index, tree)
 
       if (this.cache) this.cache.set(index, block)
     } else {
