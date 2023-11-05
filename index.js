@@ -590,7 +590,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get contiguousLength () {
-    return this.core === null ? 0 : this.core.header.hints.contiguousLength
+    return this.core === null ? 0 : Math.min(this.core.tree.length, this.core.header.hints.contiguousLength)
   }
 
   get contiguousByteLength () {
