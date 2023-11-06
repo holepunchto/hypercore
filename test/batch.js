@@ -598,4 +598,13 @@ test('persistent batch', async function (t) {
 
   t.is(batch.length, 8)
   t.is(core.length, 8)
+
+  await t.test('download', async function (sub) {
+    const downloaded = []
+    clone.on('download', function (index) {
+      downloaded.push(index)
+    })
+    await eventFlush()
+    sub.alike(downloaded.sort(), [6, 7], 'got non pending blocks')
+  })
 })
