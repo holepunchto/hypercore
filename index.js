@@ -658,7 +658,7 @@ module.exports = class Hypercore extends EventEmitter {
       const appended = (status & 0b0001) !== 0
 
       if (truncated) {
-        this.replicator.ontruncate(bitfield.start)
+        this.replicator.ontruncate(bitfield.start, bitfield.length)
       }
 
       if ((status & 0b10011) !== 0) {
