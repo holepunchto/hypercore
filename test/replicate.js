@@ -951,6 +951,7 @@ test('sparse replication without gossiping', async function (t) {
     t.teardown(() => unreplicate(s))
 
     await c.download({ blocks: [4, 6] }).done()
+
     t.pass('resolved')
   })
 
