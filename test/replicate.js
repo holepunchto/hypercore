@@ -1256,8 +1256,8 @@ test('retry failed block requests to another peer', async function (t) {
 })
 
 test('idle replication sessions auto gc', async function (t) {
-  const a = await create({ active: false })
-  const b = await create(a.key, { autoClose: true, active: false })
+  const a = await create({ active: false, notDownloadingLinger: 50 })
+  const b = await create(a.key, { autoClose: true, active: false, notDownloadingLinger: 50 })
 
   await a.append('test')
   const s = b.session()
@@ -1272,16 +1272,15 @@ test('idle replication sessions auto gc', async function (t) {
   })
 
   await s.close()
-  await eventFlush()
 
-  await eventFlush()
+  await pollUntil(() => closed, 75)
 
   t.ok(closed, 'replication session gced')
 })
 
 test('idle replication sessions auto gc with timing', async function (t) {
-  const a = await create({ active: false })
-  const b = await create(a.key, { autoClose: true, active: false })
+  const a = await create({ active: false, notDownloadingLinger: 0 })
+  const b = await create(a.key, { autoClose: true, active: false, notDownloadingLinger: 0 })
 
   await a.append('test')
   await a.append('test')
@@ -1427,5 +1426,12 @@ async function waitForRequestBlock (core, opts) {
     if (reqBlock) break
 
     await new Promise(resolve => setTimeout(resolve, 1))
+  }
+}
+
+async function pollUntil (fn, time) {
+  for (let i = 0; i < 5; i++) {
+    if (fn()) return
+    await new Promise(resolve => setTimeout(resolve, time))
   }
 }
