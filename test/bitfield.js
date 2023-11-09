@@ -238,3 +238,11 @@ test('bitfield - find last, ones around page boundary', async function (t) {
   t.is(b.lastUnset(32768), 32766)
   t.is(b.lastUnset(32769), 32769)
 })
+
+test('bitfield - set range on page boundary', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.setRange(2032, 26, true)
+
+  t.is(b.findFirst(true, 2048), 2048)
+})
