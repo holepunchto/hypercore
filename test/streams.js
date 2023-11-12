@@ -121,6 +121,30 @@ test('basic byte stream with byteOffset / byteLength', async function (t) {
   t.is(expected.length, 0)
 })
 
+test('basic byte stream with byteOffset / byteLength of a core that has valueEncoding', async function (t) {
+  const core = await create({valueEncoding: "utf8"})
+
+  await core.append([
+    'hello',
+    'world',
+    'verden',
+    'welt'
+  ])
+
+  const opts = { byteOffset: 5, byteLength: 11 }
+  const expected = [
+    'world',
+    'verden'
+  ]
+
+  for await (const data of core.createByteStream(opts)) {
+    t.ok(b4a.isBuffer(data));
+    t.alike(b4a.toString(data), expected.shift())
+  }
+
+  t.is(expected.length, 0)
+})
+
 test('byte stream with lower byteLength than byteOffset', async function (t) {
   const core = await create()
 
