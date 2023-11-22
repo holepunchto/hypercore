@@ -1420,6 +1420,25 @@ test('range download, repeated', async function (t) {
   }
 })
 
+test('replication updates on core copy', async function (t) {
+  const a = await create()
+
+  const b = await create(a.key)
+  const c = await create(a.key)
+
+  const n = 100
+
+  for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
+
+  replicate(b, c, t)
+
+  const promise = c.get(50)
+
+  b.core.copyFrom(a.core, b4a.from(a.core.tree.signature))
+
+  await t.execution(promise)
+})
+
 async function waitForRequestBlock (core, opts) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
