@@ -189,3 +189,47 @@ test('basic byte stream with custom byteOffset but default byteLength', async fu
 
   t.is(expected.length, 0)
 })
+
+test('read stream should not be interrupted if core has been cleared earlier', async function (t) {
+  const core = await create()
+
+  const append = ['a', 'b', 'c']
+  await core.append(append)
+
+  for await (const data of core.createReadStream()) {
+    t.alike(b4a.toString(data), append.shift())
+  }
+
+  t.is(core.contiguousLength, 3)
+
+  await core.clear(2)
+
+  t.is(core.contiguousLength, 2)
+
+  const afterClear = ['a', 'b']
+  for await (const data of core.createReadStream()) {
+    t.alike(b4a.toString(data), afterClear.shift())
+  }
+})
+
+test('read stream should return all non-cleared values', async function (t) {
+  const core = await create()
+
+  const append = ['a', 'b', 'c', 'd']
+  await core.append(append)
+
+  for await (const data of core.createReadStream()) {
+    t.alike(b4a.toString(data), append.shift())
+  }
+
+  t.is(core.contiguousLength, 4)
+
+  await core.clear(1, 2)
+
+  t.is(core.contiguousLength, 1)
+
+  const afterClear = ['a', 'c']
+  for await (const data of core.createReadStream()) {
+    t.alike(b4a.toString(data), afterClear.shift())
+  }
+})
