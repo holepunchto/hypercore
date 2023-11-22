@@ -812,6 +812,7 @@ test('download blocks if available', async function (t) {
   replicate(a, b, t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
+  await eventFlush()
 
   let d = 0
   b.on('download', () => d++)
@@ -829,6 +830,7 @@ test('download range if available', async function (t) {
   replicate(a, b, t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
+  await eventFlush()
 
   let d = 0
   b.on('download', () => d++)
@@ -846,6 +848,7 @@ test('download blocks if available, destroy midway', async function (t) {
   const s = replicate(a, b, t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
+  await eventFlush()
 
   let d = 0
   b.on('download', () => {
@@ -867,6 +870,7 @@ test('download blocks available from when only a partial set is available', asyn
   replicate(b, c, t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
+  await eventFlush()
 
   await b.get(2)
   await b.get(3)
