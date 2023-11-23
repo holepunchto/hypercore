@@ -224,12 +224,13 @@ test('read stream should return all non-cleared values', async function (t) {
 
   t.is(core.contiguousLength, 4)
 
-  await core.clear(1, 2)
+  await core.clear(1, 3)
 
   t.is(core.contiguousLength, 1)
 
-  const afterClear = ['a', 'c']
+  const afterClear = ['a', 'd']
   for await (const data of core.createReadStream()) {
-    t.alike(b4a.toString(data), afterClear.shift())
+    const v = afterClear.shift()
+    t.alike(b4a.toString(data), v, v)
   }
 })
