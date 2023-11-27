@@ -161,7 +161,7 @@ test('clone - replicate clones new key', async function (t) {
   const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
 
-  replicate(clone, full)
+  replicate(clone, full, t)
 
   await clone.get(0)
   await clone.get(3)
@@ -200,7 +200,7 @@ test('clone - replicate sparse clone with new key', async function (t) {
   const full = core.clone(keyPair, RAM, { signature })
   await full.ready()
 
-  replicate(core, replica)
+  replicate(core, replica, t)
 
   await replica.get(0)
   await replica.get(3)
@@ -212,7 +212,7 @@ test('clone - replicate sparse clone with new key', async function (t) {
 
   t.is(clone.length, 4)
 
-  replicate(clone, full)
+  replicate(clone, full, t)
 
   t.alike(await clone.get(1), await core.get(1))
   t.alike(await clone.get(2), await core.get(2))
