@@ -114,7 +114,7 @@ test('high latency reorg', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
-  const s = replicate(a, b, t)
+  const s = replicate(a, b, t, { teardown: false })
 
   for (let i = 0; i < 50; i++) await a.append('data')
 
@@ -283,6 +283,9 @@ test('basic multiplexing', async function (t) {
 
   await a2.append('ho')
   t.alike(await b2.get(0), b4a.from('ho'))
+
+  a.destroy()
+  b.destroy()
 })
 
 test('async multiplexing', async function (t) {
@@ -308,6 +311,9 @@ test('async multiplexing', async function (t) {
 
   t.is(b2.peers.length, 1)
   t.alike(await b2.get(0), b4a.from('ho'))
+
+  a.destroy()
+  b.destroy()
 })
 
 test('multiplexing with external noise stream', async function (t) {
@@ -321,16 +327,21 @@ test('multiplexing with external noise stream', async function (t) {
   const n2 = new NoiseSecretStream(false)
   n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
 
-  a1.replicate(n1, { keepAlive: false })
-  a2.replicate(n1, { keepAlive: false })
-  b1.replicate(n2, { keepAlive: false })
-  b2.replicate(n2, { keepAlive: false })
+  const s1 = a1.replicate(n1, { keepAlive: false })
+  const s2 = a2.replicate(n1, { keepAlive: false })
+  const s3 = b1.replicate(n2, { keepAlive: false })
+  const s4 = b2.replicate(n2, { keepAlive: false })
 
   await a1.append('hi')
   t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
   t.alike(await b2.get(0), b4a.from('ho'))
+
+  s1.destroy()
+  s2.destroy()
+  s3.destroy()
+  s4.destroy()
 })
 
 test('multiplexing with createProtocolStream (ondiscoverykey is not called)', async function (t) {
@@ -357,16 +368,21 @@ test('multiplexing with createProtocolStream (ondiscoverykey is not called)', as
     }
   })
 
-  a1.replicate(stream1, { keepAlive: false })
-  a2.replicate(stream1, { keepAlive: false })
-  b1.replicate(stream2, { keepAlive: false })
-  b2.replicate(stream2, { keepAlive: false })
+  const s1 = a1.replicate(stream1, { keepAlive: false })
+  const s2 = a2.replicate(stream1, { keepAlive: false })
+  const s3 = b1.replicate(stream2, { keepAlive: false })
+  const s4 = b2.replicate(stream2, { keepAlive: false })
 
   await a1.append('hi')
   t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
   t.alike(await b2.get(0), b4a.from('ho'))
+
+  s1.destroy()
+  s2.destroy()
+  s3.destroy()
+  s4.destroy()
 })
 
 test('multiplexing with createProtocolStream (ondiscoverykey is called)', async function (t) {
@@ -401,14 +417,17 @@ test('multiplexing with createProtocolStream (ondiscoverykey is called)', async 
     }
   })
 
-  b1.replicate(stream2, { keepAlive: false })
-  b2.replicate(stream2, { keepAlive: false })
+  const s1 = b1.replicate(stream2, { keepAlive: false })
+  const s2 = b2.replicate(stream2, { keepAlive: false })
 
   await a1.append('hi')
   t.alike(await b1.get(0), b4a.from('hi'))
 
   await a2.append('ho')
   t.alike(await b2.get(0), b4a.from('ho'))
+
+  s1.destroy()
+  s2.destroy()
 })
 
 test('seeking while replicating', async function (t) {
@@ -487,17 +506,19 @@ test('multiplexing multiple times over the same stream', async function (t) {
 
   n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
 
-  a1.replicate(n1, { keepAlive: false })
-
-  b1.replicate(n2, { keepAlive: false })
-  b1.replicate(n2, { keepAlive: false })
+  const s1 = a1.replicate(n1, { keepAlive: false })
+  const s2 = b1.replicate(n2, { keepAlive: false })
+  const s3 = b1.replicate(n2, { keepAlive: false })
 
   t.ok(await b1.update({ wait: true }), 'update once')
   t.absent(await a1.update({ wait: true }), 'writer up to date')
   t.absent(await b1.update({ wait: true }), 'update again')
 
   t.is(b1.length, a1.length, 'same length')
-  t.end()
+
+  s1.destroy()
+  s2.destroy()
+  s3.destroy()
 })
 
 test('destroying a stream and re-replicating works', async function (t) {
@@ -535,6 +556,9 @@ test('destroying a stream and re-replicating works', async function (t) {
   const blocks = await Promise.all(all)
 
   t.is(blocks.length, 33, 'downloaded 33 blocks')
+
+  s1.destroy()
+  s2.destroy()
 })
 
 test('replicate discrete range', async function (t) {
@@ -724,7 +748,7 @@ test('contiguous length after fork', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
-  const s = replicate(a, b, t)
+  const s = replicate(a, b, t, { teardown: false })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -845,7 +869,7 @@ test('download blocks if available, destroy midway', async function (t) {
   const a = await create()
   const b = await create(a.key)
 
-  const s = replicate(a, b, t)
+  const s = replicate(a, b, t, { teardown: false })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
   await eventFlush()
@@ -919,20 +943,20 @@ test('sparse replication without gossiping', async function (t) {
 
   let s
 
-  s = replicate(a, b)
+  s = replicate(a, b, t, { teardown: false })
   await b.download({ start: 0, end: 3 }).done()
   await unreplicate(s)
 
   await a.append(['d', 'e', 'f', 'd'])
 
-  s = replicate(a, b)
+  s = replicate(a, b, t, { teardown: false })
   await b.download({ start: 4, end: 7 }).done()
   await unreplicate(s)
 
   await t.test('block', async function (t) {
     const c = await create(a.key)
 
-    s = replicate(b, c, t)
+    s = replicate(b, c, t, { teardown: false })
     t.teardown(() => unreplicate(s))
 
     t.alike(await c.get(4), b4a.from('e'))
@@ -941,8 +965,7 @@ test('sparse replication without gossiping', async function (t) {
   await t.test('range', async function (t) {
     const c = await create(a.key)
 
-    s = replicate(b, c)
-    t.teardown(() => unreplicate(s))
+    replicate(b, c, t)
 
     await c.download({ start: 4, end: 6 }).done()
     t.pass('resolved')
@@ -951,8 +974,7 @@ test('sparse replication without gossiping', async function (t) {
   await t.test('discrete range', async function (t) {
     const c = await create(a.key)
 
-    s = replicate(b, c)
-    t.teardown(() => unreplicate(s))
+    replicate(b, c, t)
 
     await c.download({ blocks: [4, 6] }).done()
 
@@ -962,8 +984,7 @@ test('sparse replication without gossiping', async function (t) {
   await t.test('seek', async function (t) {
     const c = await create(a.key)
 
-    s = replicate(b, c)
-    t.teardown(() => unreplicate(s))
+    replicate(b, c, t)
 
     t.alike(await c.seek(4), [4, 0])
   })
@@ -1037,7 +1058,7 @@ test('replication session', async function (t) {
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const [s1, s2] = replicate(a, b, t, { session: true })
+  const [s1, s2] = replicate(a, b, t, { session: true, teardown: false })
 
   t.is(a.sessions.length, 2)
   t.is(b.sessions.length, 2)
@@ -1057,7 +1078,7 @@ test('replication session after stream opened', async function (t) {
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const [s1, s2] = replicate(a, b, t, { session: true })
+  const [s1, s2] = replicate(a, b, t, { session: true, teardown: false })
 
   await s1.noiseStream.opened
   await s2.noiseStream.opened
@@ -1367,7 +1388,7 @@ test('remote has larger tree', async function (t) {
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
   {
-    const [s1, s2] = replicate(a, b, t)
+    const [s1, s2] = replicate(a, b, t, { teardown: false })
     await b.get(2)
     await b.get(3)
     await b.get(4)
@@ -1378,7 +1399,7 @@ test('remote has larger tree', async function (t) {
   await a.append('f')
 
   {
-    const [s1, s2] = replicate(a, c, t)
+    const [s1, s2] = replicate(a, c, t, { teardown: false })
     await eventFlush()
     s1.destroy()
     s2.destroy()
