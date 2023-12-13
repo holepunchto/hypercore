@@ -970,9 +970,8 @@ test('multisig -  large patches', async function (t) {
   t.is(core2.length, core.length)
 })
 
-test.solo('minimum length', async function (t) {
+test('minimum length', async function (t) {
   const parent = new Hypercore(ram, { compat: false })
-  const manifest = new Hypercore(ram, { compat: false })
 
   for (let i = 0; i < 7; i++) {
     await parent.append(b4a.from([i]))
