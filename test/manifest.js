@@ -970,7 +970,7 @@ test('multisig -  large patches', async function (t) {
   t.is(core2.length, core.length)
 })
 
-test('minimum length', async function (t) {
+test('prologue', async function (t) {
   const parent = new Hypercore(ram, { compat: false })
 
   for (let i = 0; i < 7; i++) {
@@ -981,7 +981,7 @@ test('minimum length', async function (t) {
 
   const copy = new Hypercore(ram, {
     compat: false,
-    staticTree: {
+    prologue: {
       length: 7,
       hash
     }
@@ -991,7 +991,7 @@ test('minimum length', async function (t) {
 
   const clone = new Hypercore(ram, copy.key, {
     compat: false,
-    staticTree: {
+    prologue: {
       length: 7,
       hash
     }
