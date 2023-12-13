@@ -9,6 +9,8 @@ const { assemble, partialSignature, signableLength } = require('../lib/multisig'
 const { createVerifier, createManifest } = require('../lib/manifest')
 const caps = require('../lib/caps')
 
+const { replicate, unreplicate } = require('./helpers')
+
 // TODO: move this to be actual tree batches instead - less future surprises
 // for now this is just to get the tests to work as they test important things
 class AssertionTreeBatch {
@@ -966,6 +968,62 @@ test('multisig -  large patches', async function (t) {
   await t.execution(p2)
 
   t.is(core2.length, core.length)
+})
+
+test.solo('minimum length', async function (t) {
+  const parent = new Hypercore(ram, { compat: false })
+  const manifest = new Hypercore(ram, { compat: false })
+
+  for (let i = 0; i < 7; i++) {
+    await parent.append(b4a.from([i]))
+  }
+
+  const hash = b4a.from(parent.core.tree.hash())
+
+  const copy = new Hypercore(ram, {
+    compat: false,
+    staticTree: {
+      length: 7,
+      hash
+    }
+  })
+
+  await copy.ready()
+
+  const clone = new Hypercore(ram, copy.key, {
+    compat: false,
+    staticTree: {
+      length: 7,
+      hash
+    }
+  })
+
+  await clone.ready()
+
+  const signature = parent.core.verifier.sign(parent.core.tree, copy.keyPair)
+
+  // copy now has all state
+  await copy.core.copyFrom(parent.core, signature)
+
+  for (let i = 7; i < 10; i++) {
+    await copy.append(b4a.from([i]))
+  }
+
+  const streams2 = replicate(copy, clone, t)
+
+  const p2 = new Promise((resolve, reject) => {
+    streams2[0].on('error', reject)
+    clone.on('append', resolve)
+  })
+
+  await t.execution(p2)
+
+  await unreplicate(streams2)
+
+  await t.execution(clone.core.tree.proof({ upgrade: { start: 0, length: 7 } }))
+
+  t.is(clone.length, 10)
+  t.not(await clone.has(10))
 })
 
 function createMultiManifest (signers) {
