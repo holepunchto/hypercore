@@ -1114,6 +1114,8 @@ test('multisig - prologue verify hash', async function (t) {
 test('multisig - prologue morphs request', async function (t) {
   const signers = []
 
+  let multisig = null
+
   for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
@@ -1171,6 +1173,8 @@ test('multisig - prologue morphs request', async function (t) {
     remote.on('append', resolve)
   })
 
+  unreplicate(streams)
+
   t.is(remote.length, 5)
 
   await t.execution(remote.core.tree.proof({ upgrade: { start: 0, length: 4 } }))
@@ -1191,6 +1195,7 @@ test('multisig - append/truncate before prologue', async function (t) {
   const manifest = createMultiManifest(signers, { hash, length: 2 })
 
   let multisig = null
+  let partialMultisig = null
 
   const core = new Hypercore(ram, { manifest })
   await core.ready()
