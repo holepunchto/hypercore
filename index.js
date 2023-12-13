@@ -372,7 +372,6 @@ module.exports = class Hypercore extends EventEmitter {
       keyPair: opts.keyPair,
       crypto: this.crypto,
       legacy: opts.legacy,
-      prologue: opts.prologue,
       manifest: opts.manifest,
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
