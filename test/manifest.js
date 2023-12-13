@@ -970,7 +970,7 @@ test('multisig -  large patches', async function (t) {
   t.is(core2.length, core.length)
 })
 
-test('multisig -  prologue', async function (t) {
+test('multisig - prologue', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -1069,7 +1069,7 @@ test('multisig - prologue replicate', async function (t) {
   t.is(remote.length, 2)
 })
 
-test('multisig -  prologue verify hash', async function (t) {
+test('multisig - prologue verify hash', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -1111,7 +1111,7 @@ test('multisig -  prologue verify hash', async function (t) {
   t.is(remote.length, 2)
 })
 
-test('multisig -  prologue morphs request', async function (t) {
+test('multisig - prologue morphs request', async function (t) {
   const signers = []
 
   for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
@@ -1174,6 +1174,43 @@ test('multisig -  prologue morphs request', async function (t) {
   t.is(remote.length, 5)
 
   await t.execution(remote.core.tree.proof({ upgrade: { start: 0, length: 4 } }))
+})
+
+test('multisig - append/truncate before prologue', async function (t) {
+  const signers = []
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[1].append(b4a.from('0'))
+
+  await signers[0].append(b4a.from('1'))
+  await signers[1].append(b4a.from('1'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+  const manifest = createMultiManifest(signers, { hash, length: 2 })
+
+  let multisig = null
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  const proof = await partialSignature(signers[0].core.tree, 0, 2)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+
+  multisig = assemble([proof, proof2])
+
+  const partialProof = await partialSignature(signers[0].core.tree, 0, 1)
+  const partialProof2 = await partialSignature(signers[1].core.tree, 1, 1)
+
+  partialMultisig = assemble([partialProof, partialProof2])
+
+  await t.exception(core.append([b4a.from('0')], { signature: partialMultisig }))
+  await t.execution(core.append([b4a.from('0'), b4a.from('1')], { signature: multisig }))
+
+  t.is(core.length, 2)
+
+  await t.exception(core.truncate(1, { signature: partialMultisig }))
 })
 
 function createMultiManifest (signers, prologue = null) {
