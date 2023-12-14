@@ -9,6 +9,8 @@ const { assemble, partialSignature, signableLength } = require('../lib/multisig'
 const { createVerifier, createManifest } = require('../lib/manifest')
 const caps = require('../lib/caps')
 
+const { replicate, unreplicate } = require('./helpers')
+
 // TODO: move this to be actual tree batches instead - less future surprises
 // for now this is just to get the tests to work as they test important things
 class AssertionTreeBatch {
@@ -968,12 +970,261 @@ test('multisig -  large patches', async function (t) {
   t.is(core2.length, core.length)
 })
 
-function createMultiManifest (signers) {
+test('multisig - prologue', async function (t) {
+  const signers = []
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[0].append(b4a.from('1'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+
+  const manifest = createMultiManifest(signers)
+  const manifestWithPrologue = createMultiManifest(signers, { hash, length: 2 })
+
+  let multisig = null
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  const prologued = new Hypercore(ram, { manifest: manifestWithPrologue })
+  await prologued.ready()
+
+  await signers[1].append(b4a.from('0'))
+  await signers[1].append(b4a.from('1'))
+
+  const len = signableLength([signers[0].length, signers[1].length], 2)
+
+  t.is(len, 2)
+
+  {
+    const proof = await partialSignature(signers[0].core.tree, 0, 1)
+    const proof2 = await partialSignature(signers[1].core.tree, 1, 1)
+
+    multisig = assemble([proof, proof2])
+  }
+
+  await t.execution(core.append(b4a.from('0'), { signature: multisig }))
+  await t.exception(prologued.append(b4a.from('0'), { signature: multisig }))
+
+  t.is(core.length, 1)
+  t.is(prologued.length, 0)
+
+  {
+    const proof = await partialSignature(signers[0].core.tree, 0, 2)
+    const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+
+    multisig = assemble([proof, proof2])
+  }
+
+  await core.append(b4a.from('1'), { signature: multisig })
+  await t.execution(prologued.append([b4a.from('0'), b4a.from('1')], { signature: multisig }))
+
+  t.is(prologued.length, 2)
+})
+
+test('multisig - prologue replicate', async function (t) {
+  const signers = []
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[0].append(b4a.from('1'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+
+  const manifest = createMultiManifest(signers, { hash, length: 2 })
+
+  let multisig = null
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  const remote = new Hypercore(ram, { manifest })
+  await remote.ready()
+
+  await signers[1].append(b4a.from('0'))
+  await signers[1].append(b4a.from('1'))
+
+  const proof = await partialSignature(signers[0].core.tree, 0, 2)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+
+  multisig = assemble([proof, proof2])
+
+  await core.append([b4a.from('0'), b4a.from('1')], { signature: multisig })
+
+  t.is(core.length, 2)
+  t.is(remote.length, 0)
+
+  const streams = replicate(core, remote, t)
+
+  await new Promise((resolve, reject) => {
+    streams[0].on('error', reject)
+    streams[1].on('error', reject)
+
+    remote.on('append', resolve)
+  })
+
+  t.is(remote.length, 2)
+})
+
+test('multisig - prologue verify hash', async function (t) {
+  const signers = []
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[0].append(b4a.from('1'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+
+  const manifest = createMultiManifest(signers, { hash, length: 2 })
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  t.is(core.length, 0)
+
+  const proof = await signers[0].core.tree.proof({ upgrade: { start: 0, length: 2 } })
+  proof.upgrade.signature = null
+
+  await t.execution(core.core.verify(proof))
+
+  t.is(core.length, 2)
+
+  const remote = new Hypercore(ram, { manifest })
+  await remote.ready()
+
+  t.is(core.length, 2)
+  t.is(remote.length, 0)
+
+  const streams = replicate(core, remote, t)
+
+  await new Promise((resolve, reject) => {
+    streams[0].on('error', reject)
+    streams[1].on('error', reject)
+
+    remote.on('append', resolve)
+  })
+
+  t.is(remote.length, 2)
+})
+
+test('multisig - prologue morphs request', async function (t) {
+  const signers = []
+
+  let multisig = null
+
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[1].append(b4a.from('0'))
+
+  await signers[0].append(b4a.from('1'))
+  await signers[1].append(b4a.from('1'))
+
+  await signers[0].append(b4a.from('2'))
+  await signers[1].append(b4a.from('2'))
+
+  await signers[0].append(b4a.from('3'))
+  await signers[1].append(b4a.from('3'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+  const manifest = createMultiManifest(signers, { hash, length: 4 })
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  t.is(core.length, 0)
+
+  const proof = await signers[0].core.tree.proof({ upgrade: { start: 0, length: 4 } })
+  proof.upgrade.signature = null
+
+  await t.execution(core.core.verify(proof))
+
+  t.is(core.length, 4)
+
+  await signers[0].append(b4a.from('4'))
+  await signers[1].append(b4a.from('4'))
+
+  const proof2 = await partialSignature(signers[0].core.tree, 0, 5)
+  const proof3 = await partialSignature(signers[1].core.tree, 1, 5)
+
+  multisig = assemble([proof2, proof3])
+
+  await core.append(b4a.from('4'), { signature: multisig })
+
+  t.is(core.length, 5)
+
+  const remote = new Hypercore(ram, { manifest })
+  await remote.ready()
+
+  t.is(core.length, 5)
+  t.is(remote.length, 0)
+
+  const streams = replicate(core, remote, t)
+
+  await new Promise((resolve, reject) => {
+    streams[0].on('error', reject)
+    streams[1].on('error', reject)
+
+    remote.on('append', resolve)
+  })
+
+  unreplicate(streams)
+
+  t.is(remote.length, 5)
+
+  await t.execution(remote.core.tree.proof({ upgrade: { start: 0, length: 4 } }))
+})
+
+test('multisig - append/truncate before prologue', async function (t) {
+  const signers = []
+  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  await Promise.all(signers.map(s => s.ready()))
+
+  await signers[0].append(b4a.from('0'))
+  await signers[1].append(b4a.from('0'))
+
+  await signers[0].append(b4a.from('1'))
+  await signers[1].append(b4a.from('1'))
+
+  const hash = b4a.from(signers[0].core.tree.hash())
+  const manifest = createMultiManifest(signers, { hash, length: 2 })
+
+  let multisig = null
+  let partialMultisig = null
+
+  const core = new Hypercore(ram, { manifest })
+  await core.ready()
+
+  const proof = await partialSignature(signers[0].core.tree, 0, 2)
+  const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+
+  multisig = assemble([proof, proof2])
+
+  const partialProof = await partialSignature(signers[0].core.tree, 0, 1)
+  const partialProof2 = await partialSignature(signers[1].core.tree, 1, 1)
+
+  partialMultisig = assemble([partialProof, partialProof2])
+
+  await t.exception(core.append([b4a.from('0')], { signature: partialMultisig }))
+  await t.execution(core.append([b4a.from('0'), b4a.from('1')], { signature: multisig }))
+
+  t.is(core.length, 2)
+
+  await t.exception(core.truncate(1, { signature: partialMultisig }))
+})
+
+function createMultiManifest (signers, prologue = null) {
   return {
     hash: 'blake2b',
     multipleSigners: {
-      quorum: (signers.length >> 1) + 1,
       allowPatched: true,
+      prologue,
+      quorum: (signers.length >> 1) + 1,
       signers: signers.map(s => ({
         signature: 'ed25519',
         namespace: caps.DEFAULT_NAMESPACE,
