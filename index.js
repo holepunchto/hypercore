@@ -1,3 +1,7 @@
+const { setTraceFunction } = require('hypertrace')
+let tracesCount = 0
+setTraceFunction(() => { tracesCount++ })
+process.on('exit', () => console.log(`trace function called ${tracesCount} times`))
 const { EventEmitter } = require('events')
 const RAF = require('random-access-file')
 const isOptions = require('is-options')
@@ -9,6 +13,7 @@ const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const z32 = require('z32')
 const id = require('hypercore-id-encoding')
+const { createTracer } = require('hypertrace')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -48,6 +53,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this[promises] = true
 
+    this.tracer = createTracer(this)
     this.storage = null
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
@@ -846,6 +852,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async get (index, opts) {
+    this.tracer.trace()
     if (this.opened === false) await this.opening
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
@@ -950,6 +957,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
+    this.tracer.trace()
     const req = this._download(range)
 
     // do not crash in the background...
@@ -995,6 +1003,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts = {}) {
+    this.tracer.trace()
     if (this.opened === false) await this.opening
 
     const { keyPair = this.keyPair, signature = null } = opts
