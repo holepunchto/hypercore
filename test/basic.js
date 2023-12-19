@@ -101,7 +101,7 @@ test(
   function (t) {
     const key = b4a.alloc(33).fill('a')
 
-    const core = new Hypercore(RAM, key, { crypto: {} })
+    const core = new Hypercore(RAM, key, { crypto: { discoveryKey: () => key } })
 
     t.is(core.key, key)
     t.pass('creating a core with more than 32 byteLength key did not throw')
@@ -335,9 +335,6 @@ test('key is set sync', async function (t) {
 
   t.alike((new Hypercore(RAM, { key })).key, key)
   t.is((new Hypercore(RAM, { })).key, null)
-
-  t.alike((new Hypercore({ key })).key, key)
-  t.is((new Hypercore({ })).key, null)
 })
 
 test('disable writable option', async function (t) {
