@@ -969,7 +969,7 @@ module.exports = class Hypercore extends EventEmitter {
   async _download (range) {
     if (this.opened === false) await this.opening
 
-    this.tracer.trace('_download', { range })
+    this.tracer.trace('download', { range })
 
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
