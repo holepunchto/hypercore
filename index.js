@@ -1,7 +1,3 @@
-const { setTraceFunction } = require('hypertrace')
-let tracesCount = 0
-setTraceFunction(() => { tracesCount++ })
-process.on('exit', () => console.log(`trace function called ${tracesCount} times`))
 const { EventEmitter } = require('events')
 const RAF = require('random-access-file')
 const isOptions = require('is-options')
@@ -852,8 +848,10 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async get (index, opts) {
-    this.tracer.trace()
     if (this.opened === false) await this.opening
+
+    this.tracer.trace({ index })
+
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
@@ -957,7 +955,6 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    this.tracer.trace()
     const req = this._download(range)
 
     // do not crash in the background...
@@ -968,6 +965,8 @@ module.exports = class Hypercore extends EventEmitter {
 
   async _download (range) {
     if (this.opened === false) await this.opening
+
+    this.tracer.trace({ range })
 
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
@@ -1003,7 +1002,6 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts = {}) {
-    this.tracer.trace()
     if (this.opened === false) await this.opening
 
     const { keyPair = this.keyPair, signature = null } = opts
@@ -1012,6 +1010,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
+    this.tracer.trace({ blocks })
 
     const preappend = this.encryption && this._preappend
 
