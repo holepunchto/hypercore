@@ -268,6 +268,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
+    this.tracer.setParent(o.core?.tracer)
+
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
@@ -378,6 +380,7 @@ module.exports = class Hypercore extends EventEmitter {
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
+    this.tracer.setParent(this.core.tracer)
 
     if (opts.userData) {
       for (const [key, value] of Object.entries(opts.userData)) {
