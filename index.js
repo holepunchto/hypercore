@@ -850,7 +850,7 @@ module.exports = class Hypercore extends EventEmitter {
   async get (index, opts) {
     if (this.opened === false) await this.opening
 
-    this.tracer.trace({ index })
+    this.tracer.trace('get', { index })
 
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
@@ -966,7 +966,7 @@ module.exports = class Hypercore extends EventEmitter {
   async _download (range) {
     if (this.opened === false) await this.opening
 
-    this.tracer.trace({ range })
+    this.tracer.trace('_download', { range })
 
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
@@ -1010,7 +1010,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
-    this.tracer.trace({ blocks })
+    this.tracer.trace('append', { blocks })
 
     const preappend = this.encryption && this._preappend
 
