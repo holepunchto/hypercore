@@ -268,7 +268,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
-    this.tracer.setParent(o.core?.tracer)
+    if (o.core) this.tracer.setParent(o.core.tracer)
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
