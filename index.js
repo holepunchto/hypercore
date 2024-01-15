@@ -17,7 +17,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isCompat } = require('./lib/manifest')
+const { manifestHash, defaultSignerManifest, createManifest, isCompat, sign } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -501,7 +501,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const signature = opts.signature === undefined
-      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.batch(), keyPair)
+      ? sign(createManifest(manifest), this.core.tree.batch(), keyPair, { compat: isCompat(key, manifest) })
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
