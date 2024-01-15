@@ -135,7 +135,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static key (manifest, { compat } = {}) {
-    return compat ? manifest.signer.publicKey : manifestHash(createManifest(manifest))
+    return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
   }
 
   static discoveryKey (key) {
@@ -494,7 +494,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
-    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
+    const key = opts.key || (opts.compat !== false ? manifest.signers[0].publicKey : manifestHash(manifest))
 
     if (b4a.equals(key, this.key)) {
       throw BAD_ARGUMENT('Clone cannot share verification information')
