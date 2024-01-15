@@ -223,7 +223,8 @@ test.skip('create verifier - unsupported curve', async function (t) {
   }
 
   try {
-    new Verifier(manifest)
+    const v = new Verifier(manifest)
+    v.hash()
   } catch {
     t.pass('also threw')
   }
