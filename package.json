@@ -46,7 +46,7 @@
     "hypercore-crypto": "^3.2.1",
     "hypercore-errors": "^1.1.0",
     "hypercore-id-encoding": "^1.2.0",
-    "hypertrace": "^1.2.0",
+    "hypertrace": "^1.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.5.0",
     "quickbit-universal": "^2.2.0",
