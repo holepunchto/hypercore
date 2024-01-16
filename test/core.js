@@ -495,7 +495,6 @@ test('core - clone with additional, larger tree', async function (t) {
   t.is(clone.tree.byteLength, core.tree.byteLength)
   t.alike(clone.roots, core.roots)
 
-
   t.alike(await clone.blocks.get(0), b4a.from('a'))
   t.alike(await clone.blocks.get(1), b4a.from('b'))
   t.alike(await clone.blocks.get(2), b4a.from('c'))
