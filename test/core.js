@@ -403,6 +403,8 @@ test('core - partial clone', async function (t) {
     b4a.from('0'),
     b4a.from('1')
   ])
+
+  await t.exception(copy.blocks.get(2))
 })
 
 test('core - clone with additional', async function (t) {
