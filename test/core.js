@@ -405,6 +405,145 @@ test('core - partial clone', async function (t) {
   ])
 })
 
+test('core - clone with additional', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  await clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] })
+
+  t.is(clone.header.tree.length, 3)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+})
+
+test('core - clone with too many additional', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  await clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] })
+
+  t.is(clone.header.tree.length, 3)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+})
+
+test('core - clone with additional, larger tree', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  const additional = [
+    b4a.from('c'),
+    b4a.from('d'),
+    b4a.from('e'),
+    b4a.from('f'),
+    b4a.from('g'),
+    b4a.from('h'),
+    b4a.from('i'),
+    b4a.from('j')
+  ]
+
+  await core.append(additional)
+
+  // copy should be independent
+  await clone.copyFrom(copy, core.tree.signature, { length: core.tree.length, additional })
+
+  t.is(clone.header.tree.length, core.header.tree.length)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+  t.alike(await clone.blocks.get(3), b4a.from('d'))
+  t.alike(await clone.blocks.get(4), b4a.from('e'))
+  t.alike(await clone.blocks.get(5), b4a.from('f'))
+  t.alike(await clone.blocks.get(6), b4a.from('g'))
+  t.alike(await clone.blocks.get(7), b4a.from('h'))
+  t.alike(await clone.blocks.get(8), b4a.from('i'))
+  t.alike(await clone.blocks.get(9), b4a.from('j'))
+})
+
+test('core - clone with too many additional', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  await clone.copyFrom(copy, core.tree.signature, {
+    length: 3,
+    additional: [
+      b4a.from('c'),
+      b4a.from('d')
+    ]
+  })
+
+  t.is(clone.header.tree.length, 3)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+
+  await t.exception(clone.blocks.get(3))
+})
+
 async function create (opts) {
   const storage = new Map()
 
