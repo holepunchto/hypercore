@@ -203,8 +203,7 @@ test('create verifier - defaults', async function (t) {
   t.absent(verifier.verify(batch, signature))
 })
 
-// needs a tiny refactor to work
-test.skip('create verifier - unsupported curve', async function (t) {
+test('create verifier - unsupported curve', async function (t) {
   t.plan(2)
 
   const keyPair = crypto.keyPair()
@@ -224,7 +223,7 @@ test.skip('create verifier - unsupported curve', async function (t) {
 
   try {
     const v = new Verifier(manifest)
-    v.hash()
+    v.toString() // just to please standard
   } catch {
     t.pass('also threw')
   }
