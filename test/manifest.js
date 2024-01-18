@@ -5,8 +5,8 @@ const tmpDir = require('test-tmp')
 const ram = require('random-access-memory')
 
 const Hypercore = require('../')
+const Verifier = require('../lib/verifier')
 const { assemble, partialSignature, signableLength } = require('../lib/multisig')
-const { createVerifier, createManifest } = require('../lib/manifest')
 const caps = require('../lib/caps')
 
 const { replicate, unreplicate } = require('./helpers')
@@ -17,6 +17,7 @@ class AssertionTreeBatch {
   constructor (hash, signable) {
     this._hash = hash
     this._signable = signable
+    this.length = 1
   }
 
   hash () {
@@ -36,18 +37,54 @@ test('create verifier - static signer', async function (t) {
   const treeHash = b4a.alloc(32, 1)
 
   const manifest = {
-    static: treeHash
+    quorum: 0,
+    signers: [],
+    prologue: {
+      hash: treeHash,
+      length: 1
+    }
   }
 
-  const verifier = createVerifier(manifest)
-
+  const verifier = new Verifier(manifest)
   const batch = new AssertionTreeBatch(b4a.alloc(32, 1), null)
 
   t.ok(verifier.verify(batch))
 
+  batch.length = 2
+  t.absent(verifier.verify(batch))
+
+  batch.length = 1
   batch._hash[0] ^= 0xff
 
   t.absent(verifier.verify(batch))
+})
+
+test('create verifier - single signer no sign (v0)', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const namespace = b4a.alloc(32, 2)
+
+  const manifest = {
+    version: 0,
+    quorum: 1,
+    signers: [{
+      signature: 'ed25519',
+      namespace,
+      publicKey: keyPair.publicKey
+    }]
+  }
+
+  const verifier = new Verifier(manifest)
+
+  const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
+
+  const signature = crypto.sign(batch.signable(namespace), keyPair.secretKey)
+
+  t.ok(verifier.verify(batch, signature))
+
+  signature[5] ^= 0xff
+
+  t.absent(verifier.verify(batch, signature))
 })
 
 test('create verifier - single signer no sign', async function (t) {
@@ -56,22 +93,23 @@ test('create verifier - single signer no sign', async function (t) {
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    signer: {
+    quorum: 1,
+    signers: [{
       signature: 'ed25519',
       namespace,
       publicKey: keyPair.publicKey
-    }
+    }]
   }
 
-  const verifier = createVerifier(manifest)
+  const verifier = new Verifier(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = crypto.sign(batch.signable(namespace), keyPair.secretKey)
+  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(namespace), keyPair.secretKey), patch: null }])
 
   t.ok(verifier.verify(batch, signature))
 
-  signature[0] ^= 0xff
+  signature[5] ^= 0xff
 
   t.absent(verifier.verify(batch, signature))
 })
@@ -82,21 +120,22 @@ test('create verifier - single signer', async function (t) {
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    signer: {
+    quorum: 1,
+    signers: [{
       signature: 'ed25519',
       namespace,
       publicKey: keyPair.publicKey
-    }
+    }]
   }
 
-  const verifier = createVerifier(manifest)
+  const verifier = new Verifier(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
   const signature = verifier.sign(batch, keyPair)
 
   t.ok(verifier.verify(batch, signature))
 
-  signature[0] ^= 0xff
+  signature[5] ^= 0xff
 
   t.absent(verifier.verify(batch, signature))
 })
@@ -110,19 +149,17 @@ test('create verifier - multi signer', async function (t) {
   const bEntropy = b4a.alloc(32, 3)
 
   const manifest = {
-    multipleSigners: {
-      allowPatched: false,
-      quorum: 2,
-      signers: [{
-        publicKey: a.publicKey,
-        namespace: aEntropy,
-        signature: 'ed25519'
-      }, {
-        publicKey: b.publicKey,
-        namespace: bEntropy,
-        signature: 'ed25519'
-      }]
-    }
+    allowPatch: false,
+    quorum: 2,
+    signers: [{
+      publicKey: a.publicKey,
+      namespace: aEntropy,
+      signature: 'ed25519'
+    }, {
+      publicKey: b.publicKey,
+      namespace: bEntropy,
+      signature: 'ed25519'
+    }]
   }
 
   const batch = new AssertionTreeBatch(null, signable)
@@ -135,7 +172,7 @@ test('create verifier - multi signer', async function (t) {
   const secondBadSignature = assemble([{ signer: 0, signature: asig }, { signer: 0, signature: asig }])
   const thirdBadSignature = assemble([{ signer: 0, signature: asig }])
 
-  const verifier = createVerifier(manifest)
+  const verifier = new Verifier(manifest)
 
   t.ok(verifier.verify(batch, signature))
   t.absent(verifier.verify(batch, badSignature))
@@ -146,21 +183,22 @@ test('create verifier - multi signer', async function (t) {
 test('create verifier - defaults', async function (t) {
   const keyPair = crypto.keyPair()
 
-  const manifest = createManifest({
-    signer: {
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [{
       signature: 'ed25519',
       publicKey: keyPair.publicKey
-    }
+    }]
   })
 
-  const verifier = createVerifier(manifest)
+  const verifier = new Verifier(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
   const signature = verifier.sign(batch, keyPair)
 
   t.ok(verifier.verify(batch, signature))
 
-  signature[0] ^= 0xff
+  signature[5] ^= 0xff
 
   t.absent(verifier.verify(batch, signature))
 })
@@ -171,20 +209,21 @@ test('create verifier - unsupported curve', async function (t) {
   const keyPair = crypto.keyPair()
 
   const manifest = {
-    signer: {
+    signers: [{
       signature: 'SECP_256K1',
       publicKey: keyPair.publicKey
-    }
+    }]
   }
 
   try {
-    createManifest(manifest)
+    Verifier.createManifest(manifest)
   } catch {
     t.pass('threw')
   }
 
   try {
-    createVerifier(manifest)
+    const v = new Verifier(manifest)
+    v.toString() // just to please standard
   } catch {
     t.pass('also threw')
   }
@@ -196,14 +235,15 @@ test('create verifier - compat signer', async function (t) {
   const namespace = b4a.alloc(32, 2)
 
   const manifest = {
-    signer: {
+    quorum: 1,
+    signers: [{
       signature: 'ed25519',
       namespace,
       publicKey: keyPair.publicKey
-    }
+    }]
   }
 
-  const verifier = createVerifier(manifest, { compat: true })
+  const verifier = new Verifier(manifest, { compat: true })
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
@@ -1221,15 +1261,13 @@ test('multisig - append/truncate before prologue', async function (t) {
 function createMultiManifest (signers, prologue = null) {
   return {
     hash: 'blake2b',
-    multipleSigners: {
-      allowPatched: true,
-      prologue,
-      quorum: (signers.length >> 1) + 1,
-      signers: signers.map(s => ({
-        signature: 'ed25519',
-        namespace: caps.DEFAULT_NAMESPACE,
-        publicKey: s.manifest.signer.publicKey
-      }))
-    }
+    allowPatch: true,
+    quorum: (signers.length >> 1) + 1,
+    signers: signers.map(s => ({
+      signature: 'ed25519',
+      namespace: caps.DEFAULT_NAMESPACE,
+      publicKey: s.manifest.signers[0].publicKey
+    })),
+    prologue
   }
 }

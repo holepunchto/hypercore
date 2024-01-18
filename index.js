@@ -17,7 +17,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isCompat } = require('./lib/manifest')
+const { manifestHash, defaultSignerManifest, createManifest, isCompat, sign } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   BAD_ARGUMENT,
@@ -135,7 +135,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static key (manifest, { compat } = {}) {
-    return compat ? manifest.signer.publicKey : manifestHash(createManifest(manifest))
+    return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
   }
 
   static discoveryKey (key) {
@@ -494,14 +494,14 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
-    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
+    const key = opts.key || (opts.compat !== false ? manifest.signers[0].publicKey : manifestHash(manifest))
 
     if (b4a.equals(key, this.key)) {
       throw BAD_ARGUMENT('Clone cannot share verification information')
     }
 
     const signature = opts.signature === undefined
-      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.batch(), keyPair)
+      ? sign(createManifest(manifest), this.core.tree.batch(), keyPair, { compat: isCompat(key, manifest) })
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
