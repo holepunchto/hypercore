@@ -1258,6 +1258,73 @@ test('multisig - append/truncate before prologue', async function (t) {
   await t.exception(core.truncate(1, { signature: partialMultisig }))
 })
 
+test('create verifier - default quorum', async function (t) {
+  const keyPair = crypto.keyPair()
+  const keyPair2 = crypto.keyPair()
+
+  const namespace = b4a.alloc(32, 2)
+
+  const manifest = {
+    version: 0,
+    signers: [{
+      signature: 'ed25519',
+      namespace,
+      publicKey: keyPair.publicKey
+    }]
+  }
+
+  const manifestv1 = {
+    version: 1,
+    signers: [{
+      signature: 'ed25519',
+      namespace,
+      publicKey: keyPair.publicKey
+    }]
+  }
+
+  const manifestMultiple = {
+    version: 0,
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      },
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair2.publicKey
+      }
+    ]
+  }
+
+  const manifestMultiplev1 = {
+    version: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      },
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair2.publicKey
+      }
+    ]
+  }
+
+  const single = new Verifier(manifest)
+  const singlev1 = new Verifier(manifestv1)
+  const multiple = new Verifier(manifestMultiple)
+  const multiplev1 = new Verifier(manifestMultiplev1)
+
+  t.is(single.quorum, 1)
+  t.is(singlev1.quorum, 1)
+  t.is(multiple.quorum, 2)
+  t.is(multiplev1.quorum, 2)
+})
+
 function createMultiManifest (signers, prologue = null) {
   return {
     hash: 'blake2b',
