@@ -1275,56 +1275,26 @@ test('create verifier - default quorum', async function (t) {
     }]
   }
 
-  const manifestv1 = {
-    version: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
-  }
+  // single v0
+  t.is(new Verifier(manifest).quorum, 1)
 
-  const manifestMultiple = {
-    version: 0,
-    signers: [
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair.publicKey
-      },
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair2.publicKey
-      }
-    ]
-  }
+  // single v1
+  manifest.version = 1
+  t.is(new Verifier(manifest).quorum, 1)
 
-  const manifestMultiplev1 = {
-    version: 1,
-    signers: [
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair.publicKey
-      },
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair2.publicKey
-      }
-    ]
-  }
+  manifest.signers.push({
+    signature: 'ed25519',
+    namespace,
+    publicKey: keyPair2.publicKey
+  })
 
-  const single = new Verifier(manifest)
-  const singlev1 = new Verifier(manifestv1)
-  const multiple = new Verifier(manifestMultiple)
-  const multiplev1 = new Verifier(manifestMultiplev1)
+  // multiple v0
+  manifest.version = 0
+  t.is(new Verifier(manifest).quorum, 2)
 
-  t.is(single.quorum, 1)
-  t.is(singlev1.quorum, 1)
-  t.is(multiple.quorum, 2)
-  t.is(multiplev1.quorum, 2)
+  // multiple v1
+  manifest.version = 1
+  t.is(new Verifier(manifest).quorum, 2)
 })
 
 test('manifest encoding', t => {
