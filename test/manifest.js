@@ -3,11 +3,13 @@ const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 const tmpDir = require('test-tmp')
 const ram = require('random-access-memory')
+const c = require('compact-encoding')
 
 const Hypercore = require('../')
 const Verifier = require('../lib/verifier')
 const { assemble, partialSignature, signableLength } = require('../lib/multisig')
 const caps = require('../lib/caps')
+const enc = require('../lib/messages')
 
 const { replicate, unreplicate } = require('./helpers')
 
@@ -1273,56 +1275,129 @@ test('create verifier - default quorum', async function (t) {
     }]
   }
 
-  const manifestv1 = {
-    version: 1,
+  // single v0
+  t.is(new Verifier(manifest).quorum, 1)
+
+  // single v1
+  manifest.version = 1
+  t.is(new Verifier(manifest).quorum, 1)
+
+  manifest.signers.push({
+    signature: 'ed25519',
+    namespace,
+    publicKey: keyPair2.publicKey
+  })
+
+  // multiple v0
+  manifest.version = 0
+  t.is(new Verifier(manifest).quorum, 2)
+
+  // multiple v1
+  manifest.version = 1
+  t.is(new Verifier(manifest).quorum, 2)
+})
+
+test('manifest encoding', t => {
+  const keyPair = crypto.keyPair()
+  const keyPair2 = crypto.keyPair()
+
+  const manifest = {
+    version: 0,
+    hash: 'blake2b',
+    allowPatch: false,
+    prologue: null,
+    quorum: 1,
     signers: [{
       signature: 'ed25519',
-      namespace,
+      namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
     }]
   }
 
-  const manifestMultiple = {
-    version: 0,
-    signers: [
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair.publicKey
-      },
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair2.publicKey
-      }
-    ]
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.version = 1
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  // with prologue set
+  manifest.prologue = { hash: b4a.alloc(32, 3), length: 4 }
+  manifest.version = 1
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  // add signer
+  manifest.signers.push({
+    signature: 'ed25519',
+    namespace: b4a.alloc(32, 2),
+    publicKey: keyPair2.publicKey
+  })
+
+  // reset
+  manifest.version = 0
+  manifest.prologue = null
+  manifest.allowPatch = false
+  manifest.quorum = 2
+
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.version = 1
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  // with prologue set
+  manifest.prologue = { hash: b4a.alloc(32, 3), length: 4 }
+  manifest.version = 1
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  // now with partial quooum
+  manifest.version = 0
+  manifest.prologue = null
+  manifest.quorum = 1
+
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.version = 1
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  // with prologue set
+  manifest.prologue = { hash: b4a.alloc(32, 3), length: 4 }
+  manifest.version = 1
+
+  manifest.allowPatch = true
+  t.alike(reencode(manifest), manifest)
+
+  manifest.allowPatch = false
+  t.alike(reencode(manifest), manifest)
+
+  function reencode (m) {
+    return c.decode(enc.manifest, c.encode(enc.manifest, m))
   }
-
-  const manifestMultiplev1 = {
-    version: 1,
-    signers: [
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair.publicKey
-      },
-      {
-        signature: 'ed25519',
-        namespace,
-        publicKey: keyPair2.publicKey
-      }
-    ]
-  }
-
-  const single = new Verifier(manifest)
-  const singlev1 = new Verifier(manifestv1)
-  const multiple = new Verifier(manifestMultiple)
-  const multiplev1 = new Verifier(manifestMultiplev1)
-
-  t.is(single.quorum, 1)
-  t.is(singlev1.quorum, 1)
-  t.is(multiple.quorum, 2)
-  t.is(multiplev1.quorum, 2)
 })
 
 function createMultiManifest (signers, prologue = null) {
