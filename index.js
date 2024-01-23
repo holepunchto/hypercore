@@ -813,8 +813,8 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
-  batch ({ checkout = -1, autoClose = true, session = true, restore = false } = {}) {
-    return new Batch(session ? this.session() : this, checkout, autoClose, restore)
+  batch ({ checkout = -1, autoClose = true, session = true, restore = false, clear = false } = {}) {
+    return new Batch(session ? this.session() : this, checkout, autoClose, restore, clear)
   }
 
   async seek (bytes, opts) {
