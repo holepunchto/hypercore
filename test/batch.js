@@ -608,3 +608,38 @@ test('persistent batch', async function (t) {
     sub.alike(downloaded.sort(), [6, 7], 'got non pending blocks')
   })
 })
+
+test('clear', async function (t) {
+  const core = await create()
+
+  await core.append('hello')
+
+  const clone = await create(core.key)
+
+  const b = clone.batch()
+
+  await b.append('hello')
+  await b.flush()
+  await b.close()
+
+  const [s1, s2] = replicate(core, clone, t)
+
+  await eventFlush()
+  t.ok(!!(await clone.get(0)), 'got block 0 proof')
+
+  s1.destroy()
+  s2.destroy()
+
+  const b1 = clone.batch()
+  await b1.ready()
+  await b1.append('foo')
+  await b1.flush()
+  await b1.close()
+
+  t.is(clone.length, 1, 'clone length is still 1')
+
+  const b2 = clone.batch({ clear: true })
+  await b2.ready()
+
+  t.is(b2.length, 1, 'reset the batch')
+})
