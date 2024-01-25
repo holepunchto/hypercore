@@ -396,6 +396,7 @@ module.exports = class Hypercore extends EventEmitter {
       eagerUpgrade: true,
       notDownloadingLinger: opts.notDownloadingLinger,
       allowFork: opts.allowFork !== false,
+      initDownloading: this._active,
       onpeerupdate: this._onpeerupdate.bind(this),
       onupload: this._onupload.bind(this),
       oninvalid: this._oninvalid.bind(this)
