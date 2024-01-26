@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const RAM = require('random-access-memory')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, replicate, unreplicate, eventFlush } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
@@ -22,6 +23,27 @@ test('basic replication', async function (t) {
   await r.done()
 
   t.is(d, 5)
+})
+
+test('basic downloading is set immediately after ready', function (t) {
+  t.plan(2)
+
+  const a = new Hypercore(RAM)
+
+  a.on('ready', function () {
+    t.ok(a.replicator.downloading)
+  })
+
+  const b = new Hypercore(RAM, { active: false })
+
+  b.on('ready', function () {
+    t.absent(b.replicator.downloading)
+  })
+
+  t.teardown(async () => {
+    await a.close()
+    await b.close()
+  })
 })
 
 test('basic replication from fork', async function (t) {
