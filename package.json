@@ -34,7 +34,7 @@
     "messages.js",
     "lib/**.js"
   ],
-  "import": {
+  "imports": {
     "events": {
       "bare": "bare-events",
       "default": "events"
