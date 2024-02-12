@@ -307,15 +307,15 @@ test('create tree batches', async function (t) {
 
   t2.append(b4a.from('c'))
 
-  t.alike(t3.signable(NS), t2.signable(NS))
+  t.alike(t3.signable(NS, core.key), t2.signable(NS, core.key))
 
-  const t4s = t4.signable(NS)
+  const t4s = t4.signable(NS, core.key)
 
   await b.append('d')
-  t.alike(b.createTreeBatch().signable(NS), t4s)
+  t.alike(b.createTreeBatch().signable(NS, core.key), t4s)
 
   await b.append('e')
-  t.alike(b.createTreeBatch().signable(NS), t5.signable(NS))
+  t.alike(b.createTreeBatch().signable(NS, core.key), t5.signable(NS, core.key))
 
   // remove appended values
   blocks.shift()
@@ -332,7 +332,7 @@ test('create tree batches', async function (t) {
   await b2.ready()
 
   t.absent(b2.createTreeBatch(3))
-  t.alike(t4.signable(NS), t4s)
+  t.alike(t4.signable(NS, core.key), t4s)
 
   const t6 = b2.createTreeBatch(6, blocks)
   const t7 = b2.createTreeBatch(7, blocks)
@@ -341,10 +341,10 @@ test('create tree batches', async function (t) {
   t.is(t7.length, 7)
 
   await b2.append('f')
-  t.alike(b2.createTreeBatch().signable(NS), t6.signable(NS))
+  t.alike(b2.createTreeBatch().signable(NS, core.key), t6.signable(NS, core.key))
 
   await b2.append('g')
-  t.alike(b2.createTreeBatch().signable(NS), t7.signable(NS))
+  t.alike(b2.createTreeBatch().signable(NS, core.key), t7.signable(NS, core.key))
 })
 
 test('flush with bg activity', async function (t) {

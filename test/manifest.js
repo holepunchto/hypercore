@@ -26,7 +26,11 @@ class AssertionTreeBatch {
     return this._hash
   }
 
-  signable (ns) {
+  signable (ns, key) {
+    return b4a.concat([ns, key, this._signable])
+  }
+
+  signableV0 (ns) {
     return b4a.concat([ns, this._signable])
   }
 
@@ -80,7 +84,7 @@ test('create verifier - single signer no sign (v0)', async function (t) {
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = crypto.sign(batch.signable(namespace), keyPair.secretKey)
+  const signature = crypto.sign(batch.signableV0(namespace), keyPair.secretKey)
 
   t.ok(verifier.verify(batch, signature))
 
@@ -107,7 +111,7 @@ test('create verifier - single signer no sign', async function (t) {
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(namespace), keyPair.secretKey), patch: null }])
+  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(namespace, verifier.manifestHash), keyPair.secretKey), patch: null }])
 
   t.ok(verifier.verify(batch, signature))
 
@@ -165,16 +169,15 @@ test('create verifier - multi signer', async function (t) {
   }
 
   const batch = new AssertionTreeBatch(null, signable)
+  const verifier = new Verifier(manifest)
 
-  const asig = crypto.sign(batch.signable(aEntropy), a.secretKey)
-  const bsig = crypto.sign(batch.signable(bEntropy), b.secretKey)
+  const asig = crypto.sign(batch.signable(aEntropy, verifier.manifestHash), a.secretKey)
+  const bsig = crypto.sign(batch.signable(bEntropy, verifier.manifestHash), b.secretKey)
 
   const signature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: bsig }])
   const badSignature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: asig }])
   const secondBadSignature = assemble([{ signer: 0, signature: asig }, { signer: 0, signature: asig }])
   const thirdBadSignature = assemble([{ signer: 0, signature: asig }])
-
-  const verifier = new Verifier(manifest)
 
   t.ok(verifier.verify(batch, signature))
   t.absent(verifier.verify(batch, badSignature))
@@ -260,7 +263,7 @@ test('multisig -  append', async function (t) {
   for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
-  const manifest = createMultiManifest(signers)
+  const manifest = createMultiManifest(signers, 0)
 
   let multisig = null
 
