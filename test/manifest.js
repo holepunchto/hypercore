@@ -47,7 +47,7 @@ test('create verifier - static signer', async function (t) {
     }
   }
 
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
   const batch = new AssertionTreeBatch(b4a.alloc(32, 1), null)
 
   t.ok(verifier.verify(batch))
@@ -76,7 +76,7 @@ test('create verifier - single signer no sign (v0)', async function (t) {
     }]
   }
 
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
@@ -103,7 +103,7 @@ test('create verifier - single signer no sign', async function (t) {
     }]
   }
 
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
@@ -130,7 +130,7 @@ test('create verifier - single signer', async function (t) {
     }]
   }
 
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
   const signature = verifier.sign(batch, keyPair)
@@ -165,7 +165,7 @@ test('create verifier - multi signer', async function (t) {
   }
 
   const batch = new AssertionTreeBatch(null, signable)
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
 
   const asig = crypto.sign(batch.signable(verifier.manifestHash), a.secretKey)
   const bsig = crypto.sign(batch.signable(verifier.manifestHash), b.secretKey)
@@ -192,7 +192,7 @@ test('create verifier - defaults', async function (t) {
     }]
   })
 
-  const verifier = new Verifier(manifest)
+  const verifier = Verifier.fromManifest(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
   const signature = verifier.sign(batch, keyPair)
@@ -223,7 +223,7 @@ test('create verifier - unsupported curve', async function (t) {
   }
 
   try {
-    const v = new Verifier(manifest)
+    const v = Verifier.fromManifest(manifest)
     v.toString() // just to please standard
   } catch {
     t.pass('also threw')
@@ -244,7 +244,7 @@ test('create verifier - compat signer', async function (t) {
     }]
   }
 
-  const verifier = new Verifier(manifest, { compat: true })
+  const verifier = Verifier.fromManifest(manifest, { compat: true })
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
@@ -1288,11 +1288,11 @@ test('create verifier - default quorum', async function (t) {
   }
 
   // single v0
-  t.is(new Verifier(manifest).quorum, 1)
+  t.is(Verifier.fromManifest(manifest).quorum, 1)
 
   // single v1
   manifest.version = 1
-  t.is(new Verifier(manifest).quorum, 1)
+  t.is(Verifier.fromManifest(manifest).quorum, 1)
 
   manifest.signers.push({
     signature: 'ed25519',
@@ -1302,11 +1302,11 @@ test('create verifier - default quorum', async function (t) {
 
   // multiple v0
   manifest.version = 0
-  t.is(new Verifier(manifest).quorum, 2)
+  t.is(Verifier.fromManifest(manifest).quorum, 2)
 
   // multiple v1
   manifest.version = 1
-  t.is(new Verifier(manifest).quorum, 2)
+  t.is(Verifier.fromManifest(manifest).quorum, 2)
 })
 
 test('manifest encoding', t => {
