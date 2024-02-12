@@ -26,12 +26,8 @@ class AssertionTreeBatch {
     return this._hash
   }
 
-  signable (ns, key) {
-    return b4a.concat([ns, key, this._signable])
-  }
-
-  signableV0 (ns) {
-    return b4a.concat([ns, this._signable])
+  signable (key) {
+    return b4a.concat([key, this._signable])
   }
 
   signableCompat () {
@@ -84,7 +80,7 @@ test('create verifier - single signer no sign (v0)', async function (t) {
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = crypto.sign(batch.signableV0(namespace), keyPair.secretKey)
+  const signature = crypto.sign(batch.signable(namespace), keyPair.secretKey)
 
   t.ok(verifier.verify(batch, signature))
 
@@ -111,7 +107,7 @@ test('create verifier - single signer no sign', async function (t) {
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(namespace, verifier.manifestHash), keyPair.secretKey), patch: null }])
+  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(verifier.manifestHash), keyPair.secretKey), patch: null }])
 
   t.ok(verifier.verify(batch, signature))
 
@@ -171,8 +167,8 @@ test('create verifier - multi signer', async function (t) {
   const batch = new AssertionTreeBatch(null, signable)
   const verifier = new Verifier(manifest)
 
-  const asig = crypto.sign(batch.signable(aEntropy, verifier.manifestHash), a.secretKey)
-  const bsig = crypto.sign(batch.signable(bEntropy, verifier.manifestHash), b.secretKey)
+  const asig = crypto.sign(batch.signable(verifier.manifestHash), a.secretKey)
+  const bsig = crypto.sign(batch.signable(verifier.manifestHash), b.secretKey)
 
   const signature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: bsig }])
   const badSignature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: asig }])
@@ -258,7 +254,7 @@ test('create verifier - compat signer', async function (t) {
   t.ok(verifier.verify(batch, signature))
 })
 
-test('multisig -  append', async function (t) {
+test('multisig - append', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -393,20 +389,8 @@ test('multisig -  patches', async function (t) {
 
   t.is(len, 1)
 
-  const batch = signers[0].batch()
-  const batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  const sigBatch = batch.createTreeBatch()
-  const sigBatch2 = batch2.createTreeBatch()
-
-  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
-  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
-
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -462,20 +446,8 @@ test('multisig -  batch append', async function (t) {
 
   t.is(len, 4)
 
-  const batch = signers[0].batch()
-  const batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  const sigBatch = batch.createTreeBatch()
-  const sigBatch2 = batch2.createTreeBatch()
-
-  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
-  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
-
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -543,20 +515,8 @@ test('multisig -  batch append with patches', async function (t) {
 
   t.is(len, 4)
 
-  const batch = signers[0].batch()
-  const batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  const sigBatch = batch.createTreeBatch()
-  const sigBatch2 = batch2.createTreeBatch()
-
-  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
-  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
-
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -623,20 +583,8 @@ test('multisig -  cannot divide batch', async function (t) {
 
   t.is(len, 4)
 
-  const batch = signers[0].batch()
-  const batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  const sigBatch = batch.createTreeBatch()
-  const sigBatch2 = batch2.createTreeBatch()
-
-  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
-  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
-
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -693,18 +641,9 @@ test('multisig -  multiple appends', async function (t) {
 
   t.is(len, 2)
 
-  let batch = signers[0].batch()
-  let batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  let sig = await core.core.verifier.sign(batch.createTreeBatch(), signers[0].keyPair)
-  let sig2 = await core.core.verifier.sign(batch2.createTreeBatch(), signers[1].keyPair)
-
   multisig1 = assemble([
-    await partialSignature(signers[0].core.tree, 0, len, batch.length, sig),
-    await partialSignature(signers[1].core.tree, 1, len, batch2.length, sig2)
+    await partialCoreSignature(core, signers[0], len),
+    await partialCoreSignature(core, signers[1], len)
   ])
 
   await signers[1].append(b4a.from('2'))
@@ -714,18 +653,9 @@ test('multisig -  multiple appends', async function (t) {
 
   t.is(len, 4)
 
-  batch = signers[0].batch()
-  batch2 = signers[1].batch()
-
-  await batch.ready()
-  await batch2.ready()
-
-  sig = await core.core.verifier.sign(batch.createTreeBatch(), signers[0].keyPair)
-  sig2 = await core.core.verifier.sign(batch2.createTreeBatch(), signers[1].keyPair)
-
   multisig2 = assemble([
-    await partialSignature(signers[0].core.tree, 0, len, batch.length, sig),
-    await partialSignature(signers[1].core.tree, 1, len, batch2.length, sig2)
+    await partialCoreSignature(core, signers[0], len),
+    await partialCoreSignature(core, signers[1], len)
   ])
 
   const core2 = new Hypercore(ram, { manifest })
@@ -791,8 +721,8 @@ test('multisig -  persist to disk', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -866,13 +796,13 @@ test('multisig -  overlapping appends', async function (t) {
   t.is(len, 3)
 
   multisig1 = assemble([
-    await partialSignature(signers[1].core.tree, 0, 2),
-    await partialSignature(signers[0].core.tree, 2, 2)
+    await partialCoreSignature(core, signers[1], 2),
+    await partialCoreSignature(core, signers[0], 2)
   ])
 
   multisig2 = assemble([
-    await partialSignature(signers[2].core.tree, 2, len),
-    await partialSignature(signers[0].core.tree, 0, len)
+    await partialCoreSignature(core, signers[2], len),
+    await partialCoreSignature(core, signers[0], len)
   ])
 
   await core.append([
@@ -997,15 +927,12 @@ test('multisig - normal operating mode', async function (t) {
   t.pass()
 
   function signer (w1, w2) {
-    const a = signers.indexOf(w1)
-    const b = signers.indexOf(w2)
-
     return async (batch) => {
       const len = signableLength([w1.length, w2.length], 2)
 
       return assemble([
-        await partialSignature(w1.core.tree, a, len),
-        await partialSignature(w2.core.tree, b, len)
+        await partialCoreSignature(core, w1, len),
+        await partialCoreSignature(core, w2, len)
       ])
     }
   }
@@ -1032,8 +959,8 @@ test('multisig -  large patches', async function (t) {
   let len = signableLength([signers[0].length, signers[1].length], 2)
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof, proof2])
 
@@ -1076,8 +1003,8 @@ test('multisig -  large patches', async function (t) {
   len = signableLength([signers[0].length, signers[1].length], 2)
   t.is(len, 1000)
 
-  const proof3 = await partialSignature(signers[0].core.tree, 0, len)
-  const proof4 = await partialSignature(signers[1].core.tree, 1, len)
+  const proof3 = await partialCoreSignature(core, signers[0], len)
+  const proof4 = await partialCoreSignature(core, signers[1], len)
 
   multisig = assemble([proof3, proof4])
 
@@ -1126,8 +1053,8 @@ test('multisig - prologue', async function (t) {
   t.is(len, 2)
 
   {
-    const proof = await partialSignature(signers[0].core.tree, 0, 1)
-    const proof2 = await partialSignature(signers[1].core.tree, 1, 1)
+    const proof = await partialCoreSignature(core, signers[0], 1)
+    const proof2 = await partialCoreSignature(core, signers[1], 1)
 
     multisig = assemble([proof, proof2])
   }
@@ -1139,8 +1066,8 @@ test('multisig - prologue', async function (t) {
   t.is(prologued.length, 0)
 
   {
-    const proof = await partialSignature(signers[0].core.tree, 0, 2)
-    const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+    const proof = await partialCoreSignature(core, signers[0], 2)
+    const proof2 = await partialCoreSignature(core, signers[1], 2)
 
     multisig = assemble([proof, proof2])
   }
@@ -1174,8 +1101,8 @@ test('multisig - prologue replicate', async function (t) {
   await signers[1].append(b4a.from('0'))
   await signers[1].append(b4a.from('1'))
 
-  const proof = await partialSignature(signers[0].core.tree, 0, 2)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+  const proof = await partialCoreSignature(core, signers[0], 2)
+  const proof2 = await partialCoreSignature(core, signers[1], 2)
 
   multisig = assemble([proof, proof2])
 
@@ -1276,8 +1203,8 @@ test('multisig - prologue morphs request', async function (t) {
   await signers[0].append(b4a.from('4'))
   await signers[1].append(b4a.from('4'))
 
-  const proof2 = await partialSignature(signers[0].core.tree, 0, 5)
-  const proof3 = await partialSignature(signers[1].core.tree, 1, 5)
+  const proof2 = await partialCoreSignature(core, signers[0], 5)
+  const proof3 = await partialCoreSignature(core, signers[1], 5)
 
   multisig = assemble([proof2, proof3])
 
@@ -1497,4 +1424,14 @@ function createMultiManifest (signers, prologue = null) {
     })),
     prologue
   }
+}
+
+async function partialCoreSignature (core, s, len) {
+  const sig = await core.core.verifier.sign(s.createTreeBatch(), s.keyPair)
+  let index = 0
+  for (; index < core.manifest.signers.length; index++) {
+    if (b4a.equals(core.manifest.signers[index].publicKey, s.keyPair.publicKey)) break
+  }
+  const proof = await partialSignature(s.core.tree, index, len, s.core.tree.length, sig)
+  return proof
 }
