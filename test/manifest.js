@@ -277,8 +277,16 @@ test('multisig -  append', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = await core.batch()
+  await batch.append(b4a.from('0'))
+
+  const sigBatch = batch.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch, 1, len, sigBatch.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -329,8 +337,16 @@ test('multisig -  batch failed', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = await core.batch()
+  await batch.append(b4a.from('0'))
+
+  const sigBatch = batch.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch, 1, len, sigBatch.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -377,8 +393,20 @@ test('multisig -  patches', async function (t) {
 
   t.is(len, 1)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = signers[0].batch()
+  const batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  const sigBatch = batch.createTreeBatch()
+  const sigBatch2 = batch2.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -434,8 +462,20 @@ test('multisig -  batch append', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = signers[0].batch()
+  const batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  const sigBatch = batch.createTreeBatch()
+  const sigBatch2 = batch2.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -503,8 +543,20 @@ test('multisig -  batch append with patches', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = signers[0].batch()
+  const batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  const sigBatch = batch.createTreeBatch()
+  const sigBatch2 = batch2.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -571,8 +623,20 @@ test('multisig -  cannot divide batch', async function (t) {
 
   t.is(len, 4)
 
-  const proof = await partialSignature(signers[0].core.tree, 0, len)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, len)
+  const batch = signers[0].batch()
+  const batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  const sigBatch = batch.createTreeBatch()
+  const sigBatch2 = batch2.createTreeBatch()
+
+  const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
+  const sig2 = await core.core.verifier.sign(sigBatch2, signers[1].keyPair)
+
+  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(sigBatch2, 1, len, sigBatch2.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -629,9 +693,18 @@ test('multisig -  multiple appends', async function (t) {
 
   t.is(len, 2)
 
+  let batch = signers[0].batch()
+  let batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  let sig = await core.core.verifier.sign(batch.createTreeBatch(), signers[0].keyPair)
+  let sig2 = await core.core.verifier.sign(batch2.createTreeBatch(), signers[1].keyPair)
+
   multisig1 = assemble([
-    await partialSignature(signers[0].core.tree, 0, len),
-    await partialSignature(signers[1].core.tree, 1, len)
+    await partialSignature(signers[0].core.tree, 0, len, batch.length, sig),
+    await partialSignature(signers[1].core.tree, 1, len, batch2.length, sig2)
   ])
 
   await signers[1].append(b4a.from('2'))
@@ -641,9 +714,18 @@ test('multisig -  multiple appends', async function (t) {
 
   t.is(len, 4)
 
+  batch = signers[0].batch()
+  batch2 = signers[1].batch()
+
+  await batch.ready()
+  await batch2.ready()
+
+  sig = await core.core.verifier.sign(batch.createTreeBatch(), signers[0].keyPair)
+  sig2 = await core.core.verifier.sign(batch2.createTreeBatch(), signers[1].keyPair)
+
   multisig2 = assemble([
-    await partialSignature(signers[0].core.tree, 0, len),
-    await partialSignature(signers[1].core.tree, 1, len)
+    await partialSignature(signers[0].core.tree, 0, len, batch.length, sig),
+    await partialSignature(signers[1].core.tree, 1, len, batch2.length, sig2)
   ])
 
   const core2 = new Hypercore(ram, { manifest })
