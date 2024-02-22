@@ -1486,12 +1486,12 @@ test('replication updates on core copy', async function (t) {
   await t.execution(promise)
 })
 
-async function waitForRequestBlock (core, opts) {
+async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
     if (reqBlock) break
 
-    await new Promise(resolve => setTimeout(resolve, 1))
+    await new Promise(resolve => setImmediate(resolve))
   }
 }
 
