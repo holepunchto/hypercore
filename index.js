@@ -1031,7 +1031,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
     for (const b of buffers) {
-      if (b.byteLength >= MAX_SUGGESTED_BLOCK_SIZE) {
+      if (b.byteLength > MAX_SUGGESTED_BLOCK_SIZE) {
         throw BAD_ARGUMENT('Appended block exceeds the maximum suggested block size')
       }
     }

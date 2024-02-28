@@ -414,11 +414,16 @@ test('writable session on a readable only core', async function (t) {
 test('append above the max suggested block size', async function (t) {
   t.plan(1)
 
-  const key = b4a.alloc(32).fill('a')
-  const core = new Hypercore(RAM, key)
+  const core = new Hypercore(RAM)
 
   try {
-    await core.append(Buffer.alloc(32 * 1024 * 1024))
+    await core.append(Buffer.alloc(Hypercore.MAX_SUGGESTED_BLOCK_SIZE))
+  } catch (e) {
+    t.fail('should not throw')
+  }
+
+  try {
+    await core.append(Buffer.alloc(Hypercore.MAX_SUGGESTED_BLOCK_SIZE + 1))
   } catch {
     t.pass('should throw')
   }
