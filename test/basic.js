@@ -410,3 +410,16 @@ test('writable session on a readable only core', async function (t) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
 })
+
+test('append above the max suggested block size', async function (t) {
+  t.plan(1)
+
+  const key = b4a.alloc(32).fill('a')
+  const core = new Hypercore(RAM, key)
+
+  try {
+    await core.append(Buffer.alloc(32 * 1024 * 1024))
+  } catch {
+    t.pass('should throw')
+  }
+})
