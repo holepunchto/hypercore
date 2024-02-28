@@ -29,6 +29,10 @@ const {
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
+// Hypercore actually does not have any notion of max/min block sizes
+// but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
+const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
+
 module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
@@ -133,6 +137,8 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  peers: ' + peers + '\n' +
       indent + ')'
   }
+
+  static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
 
   static key (manifest, { compat } = {}) {
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
@@ -1022,6 +1028,11 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.encodeBatch === null) {
       for (let i = 0; i < blocks.length; i++) {
         buffers[i] = this._encode(this.valueEncoding, blocks[i])
+      }
+    }
+    for (const b of buffers) {
+      if (b.byteLength > MAX_SUGGESTED_BLOCK_SIZE) {
+        throw BAD_ARGUMENT('Appended block exceeds the maximum suggested block size')
       }
     }
 
