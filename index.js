@@ -20,6 +20,7 @@ const Batch = require('./lib/batch')
 const { manifestHash, defaultSignerManifest, createManifest, isCompat, sign } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
+  ASSERTION,
   BAD_ARGUMENT,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
@@ -825,6 +826,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
     const tree = (opts && opts.tree) || this.core.tree
     const s = tree.seek(bytes, this.padding)
@@ -847,10 +849,9 @@ module.exports = class Hypercore extends EventEmitter {
 
   async has (start, end = start + 1) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
-    const length = end - start
-    if (length <= 0) return false
-    if (length === 1) return this.core.bitfield.get(start)
+    if (end === start + 1) return this.core.bitfield.get(start)
 
     const i = this.core.bitfield.firstUnset(start)
     return i === -1 || i >= end
@@ -858,6 +859,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(index)) throw ASSERTION('block index is invalid')
 
     this.tracer.trace('get', { index })
 
@@ -890,6 +892,8 @@ module.exports = class Hypercore extends EventEmitter {
       opts = end
       end = start + 1
     }
+
+    if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('clear range is invalid')
 
     const cleared = (opts && opts.diff) ? { blocks: 0 } : null
 
@@ -1155,4 +1159,8 @@ function ensureEncryption (core, opts) {
 
 function createCache (cache) {
   return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
+}
+
+function isValidIndex (index) {
+  return index === 0 || index > 0
 }
