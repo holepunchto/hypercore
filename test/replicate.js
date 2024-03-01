@@ -2,7 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const RAM = require('random-access-memory')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const { create, replicate, unreplicate, eventFlush } = require('./helpers')
+const { create, replicate, unreplicate, eventFlush, createStored } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
@@ -1484,6 +1484,57 @@ test('replication updates on core copy', async function (t) {
   b.core.copyFrom(a.core, b4a.from(a.core.tree.signature))
 
   await t.execution(promise)
+})
+
+test('get undefined block should not fail', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append('Hello') // Strictly one value is required for this
+
+  replicate(a, b, t)
+
+  t.alike(await b.get(0), b4a.from('Hello'))
+
+  try {
+    await b.get(undefined)
+  } catch (err) {
+    console.error(err) // Error: Could not satisfy length (EPARTIALREAD when using RAF)
+    t.fail()
+  }
+})
+
+test.skip('get undefined block should not allow corruption on the writer', async function (t) {
+  const createWriter = createStored()
+
+  const a = createWriter()
+  await a.append(['Hello', 'World']) // Strictly two values is required for this
+
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  await b.update({ wait: true })
+
+  t.alike(await b.get(0), b4a.from('Hello'))
+
+  await b.get(undefined) // This triggers 100% CPU usage
+
+  // TODO: Check that writer can still write two values without corrupting itself? (unfinished due the glitch above)
+  /* await a.close()
+  await b.close()
+
+  const core = createWriter()
+  await core.append(['Hello', 'World']) // Strictly two values is required for this
+
+  const clone = await create(core.key)
+
+  replicate(core, clone, t)
+
+  await clone.update({ wait: true })
+
+  t.alike(await b.get(0), b4a.from('Hello'))
+  await b.get(undefined) // TODO: Over here triggers "Error: Could not load node: X" */
 })
 
 async function waitForRequestBlock (core) {
