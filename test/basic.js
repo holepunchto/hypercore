@@ -428,3 +428,16 @@ test('append above the max suggested block size', async function (t) {
     t.pass('should throw')
   }
 })
+
+test('get undefined block is not allowed', async function (t) {
+  t.plan(1)
+
+  const core = new Hypercore(RAM)
+
+  try {
+    await core.get(undefined)
+    t.fail()
+  } catch (err) {
+    t.pass(err.code, 'ERR_ASSERTION')
+  }
+})
