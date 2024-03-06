@@ -560,6 +560,54 @@ test('core - clone fills in with additional', async function (t) {
   t.alike(await clone.blocks.get(1), b4a.from('b'))
 })
 
+test('core - clone with different fork', async function (t) {
+  const { core } = await create()
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core: clone2 } = await create({ compat: false })
+  const { core: fail } = await create({ manifest: clone2.header.manifest })
+
+  t.alike(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.unlike(clone2.header.keyPair.publicKey, core.header.keyPair.publicKey)
+
+  await core.truncate(0, 1)
+
+  t.is(core.tree.fork, 1)
+  t.is(core.header.tree.fork, 1)
+
+  await core.append([b4a.from('a')])
+
+  await clone.copyFrom(core, core.tree.signature)
+
+  t.is(clone.tree.fork, 1)
+  t.is(clone.header.tree.fork, 1)
+
+  await core.append([b4a.from('b')])
+
+  const batch = core.tree.batch()
+  batch.fork = 0
+
+  const signature = clone2.verifier.sign(batch, clone2.header.keyPair)
+
+  // fail with same fork
+  await t.exception(fail.copyFrom(core, signature), /INVALID_SIGNATURE/)
+
+  await clone2.copyFrom(core, signature, { fork: 0 })
+
+  t.is(clone2.tree.fork, 0)
+  t.is(clone2.header.tree.fork, 0)
+
+  await clone2.append([b4a.from('c')])
+
+  // verify state
+  t.is(clone.tree.length, 1)
+  t.is(core.tree.length, 2)
+  t.is(clone2.tree.length, 3)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await core.blocks.get(1), b4a.from('b'))
+  t.alike(await clone2.blocks.get(2), b4a.from('c'))
+})
+
 async function create (opts) {
   const storage = new Map()
 
