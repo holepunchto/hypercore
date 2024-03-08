@@ -10,6 +10,7 @@ const Protomux = require('protomux')
 const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
+const { createTracer } = require('hypertrace')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -17,9 +18,10 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash, defaultSignerManifest, createVerifier, createManifest, isCompat } = require('./lib/manifest')
+const { manifestHash, defaultSignerManifest, createManifest, isCompat, sign } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
+  ASSERTION,
   BAD_ARGUMENT,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
@@ -28,6 +30,10 @@ const {
 
 const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
+
+// Hypercore actually does not have any notion of max/min block sizes
+// but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
+const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
 module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
@@ -49,6 +55,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this[promises] = true
 
+    this.tracer = createTracer(this)
     this.storage = null
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
@@ -133,8 +140,10 @@ module.exports = class Hypercore extends EventEmitter {
       indent + ')'
   }
 
+  static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
+
   static key (manifest, { compat } = {}) {
-    return compat ? manifest.signer.publicKey : manifestHash(createManifest(manifest))
+    return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
   }
 
   static discoveryKey (key) {
@@ -267,6 +276,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
+    if (o.core) this.tracer.setParent(o.core.tracer)
+
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
@@ -377,6 +388,7 @@ module.exports = class Hypercore extends EventEmitter {
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
+    this.tracer.setParent(this.core.tracer)
 
     if (opts.userData) {
       for (const [key, value] of Object.entries(opts.userData)) {
@@ -490,14 +502,14 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
-    const key = opts.key || (opts.compat !== false ? manifest.signer.publicKey : manifestHash(manifest))
+    const key = opts.key || (opts.compat !== false ? manifest.signers[0].publicKey : manifestHash(manifest))
 
     if (b4a.equals(key, this.key)) {
       throw BAD_ARGUMENT('Clone cannot share verification information')
     }
 
     const signature = opts.signature === undefined
-      ? createVerifier(createManifest(manifest), { compat: isCompat(key, manifest) }).sign(this.core.tree.batch(), keyPair)
+      ? sign(createManifest(manifest), this.core.tree.batch(), keyPair, { compat: isCompat(key, manifest) })
       : opts.signature
 
     const sparse = opts.sparse === false ? false : this.sparse
@@ -809,12 +821,13 @@ module.exports = class Hypercore extends EventEmitter {
     return true
   }
 
-  batch ({ checkout = -1, autoClose = true, session = true, restore = false } = {}) {
-    return new Batch(session ? this.session() : this, checkout, autoClose, restore)
+  batch ({ checkout = -1, autoClose = true, session = true, restore = false, clear = false } = {}) {
+    return new Batch(session ? this.session() : this, checkout, autoClose, restore, clear)
   }
 
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
     const tree = (opts && opts.tree) || this.core.tree
     const s = tree.seek(bytes, this.padding)
@@ -837,10 +850,9 @@ module.exports = class Hypercore extends EventEmitter {
 
   async has (start, end = start + 1) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
-    const length = end - start
-    if (length <= 0) return false
-    if (length === 1) return this.core.bitfield.get(start)
+    if (end === start + 1) return this.core.bitfield.get(start)
 
     const i = this.core.bitfield.firstUnset(start)
     return i === -1 || i >= end
@@ -848,6 +860,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   async get (index, opts) {
     if (this.opened === false) await this.opening
+    if (!isValidIndex(index)) throw ASSERTION('block index is invalid')
+
+    this.tracer.trace('get', { index })
+
     if (this.closing !== null) throw SESSION_CLOSED()
     if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
@@ -877,6 +893,8 @@ module.exports = class Hypercore extends EventEmitter {
       opts = end
       end = start + 1
     }
+
+    if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('clear range is invalid')
 
     const cleared = (opts && opts.diff) ? { blocks: 0 } : null
 
@@ -910,6 +928,7 @@ module.exports = class Hypercore extends EventEmitter {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
       const req = this.replicator.addBlock(activeRequests, index)
+      req.snapshot = index < this.length
 
       const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
       if (timeout) req.context.setTimeout(req, timeout)
@@ -962,6 +981,8 @@ module.exports = class Hypercore extends EventEmitter {
   async _download (range) {
     if (this.opened === false) await this.opening
 
+    this.tracer.trace('download', { range })
+
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
     return this.replicator.addRange(activeRequests, range)
@@ -1004,6 +1025,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
+    this.tracer.trace('append', { blocks })
 
     const preappend = this.encryption && this._preappend
 
@@ -1012,6 +1034,11 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.encodeBatch === null) {
       for (let i = 0; i < blocks.length; i++) {
         buffers[i] = this._encode(this.valueEncoding, blocks[i])
+      }
+    }
+    for (const b of buffers) {
+      if (b.byteLength > MAX_SUGGESTED_BLOCK_SIZE) {
+        throw BAD_ARGUMENT('Appended block exceeds the maximum suggested block size')
       }
     }
 
@@ -1132,4 +1159,8 @@ function ensureEncryption (core, opts) {
 
 function createCache (cache) {
   return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
+}
+
+function isValidIndex (index) {
+  return index === 0 || index > 0
 }

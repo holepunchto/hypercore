@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "10.31.12",
+  "version": "10.33.4",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
@@ -34,18 +34,25 @@
     "messages.js",
     "lib/**.js"
   ],
+  "imports": {
+    "events": {
+      "bare": "bare-events",
+      "default": "events"
+    }
+  },
   "dependencies": {
     "@hyperswarm/secret-stream": "^6.0.0",
     "b4a": "^1.1.0",
+    "bare-events": "^2.2.0",
     "big-sparse-array": "^1.0.3",
     "compact-encoding": "^2.11.0",
     "crc-universal": "^1.0.2",
-    "events": "^3.3.0",
     "fast-fifo": "^1.3.0",
     "flat-tree": "^1.9.0",
     "hypercore-crypto": "^3.2.1",
-    "hypercore-errors": "^1.1.0",
+    "hypercore-errors": "^1.2.0",
     "hypercore-id-encoding": "^1.2.0",
+    "hypertrace": "^1.2.1",
     "is-options": "^1.0.1",
     "protomux": "^3.5.0",
     "quickbit-universal": "^2.2.0",
