@@ -9,6 +9,7 @@ const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const z32 = require('z32')
 const id = require('hypercore-id-encoding')
+const safetyCatch = require('safety-catch')
 const { createTracer } = require('hypertrace')
 
 const Replicator = require('./lib/replicator')
@@ -92,7 +93,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._active = opts.active !== false
 
     this.opening = this._openSession(key, storage, opts)
-    this.opening.catch(noop)
+    this.opening.catch(safetyCatch)
   }
 
   [inspect] (depth, opts) {
@@ -972,7 +973,7 @@ module.exports = class Hypercore extends EventEmitter {
     const req = this._download(range)
 
     // do not crash in the background...
-    req.catch(noop)
+    req.catch(safetyCatch)
 
     return new Download(req)
   }
@@ -1126,8 +1127,6 @@ module.exports = class Hypercore extends EventEmitter {
     return block
   }
 }
-
-function noop () {}
 
 function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
