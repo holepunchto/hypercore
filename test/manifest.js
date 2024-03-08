@@ -1412,6 +1412,49 @@ test('manifest encoding', t => {
   }
 })
 
+test('create verifier - open existing core with manifest', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [{
+      signature: 'ed25519',
+      publicKey: keyPair.publicKey
+    }]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+
+  const storage = ram.reusable()
+  const core = new Hypercore(storage, key, { compat: false })
+  await core.ready()
+
+  t.is(core.manifest, null)
+  t.is(core.core.header.manifest, null)
+  t.alike(core.key, key)
+
+  await core.close()
+
+  manifest.signers[0].publicKey = b4a.alloc(32, 0)
+
+  const wrongCore = new Hypercore(storage, null, { manifest, compat: false })
+  await t.exception(wrongCore.ready(), /STORAGE_CONFLICT/)
+
+  manifest.signers[0].publicKey = keyPair.publicKey
+
+  const manifestCore = new Hypercore(storage, null, { manifest, compat: false })
+  await manifestCore.ready()
+
+  t.not(manifestCore.manifest, null)
+  t.not(manifestCore.core.header.manifest, null)
+  t.alike(manifestCore.key, key)
+
+  await manifestCore.close()
+
+  const compatCore = new Hypercore(storage, null, { manifest, compat: true })
+  await t.execution(compatCore.ready()) // compat flag is unset internally
+})
+
 function createMultiManifest (signers, prologue = null) {
   return {
     hash: 'blake2b',
