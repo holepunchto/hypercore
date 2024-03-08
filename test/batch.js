@@ -643,3 +643,43 @@ test('clear', async function (t) {
 
   t.is(b2.length, 1, 'reset the batch')
 })
+
+test.solo('copy from with encrypted batch', async function (t) {
+  const encryptionKey = b4a.alloc(32, 2)
+
+  const core = await create({ encryptionKey })
+
+  const blocks = 290
+
+  const b = core.batch({ autoClose: false })
+
+  for (let i = 0; i < blocks; i++) {
+    await b.append('block' + i)
+  }
+
+  await b.flush({ keyPair: null })
+
+  t.is(core.length, 0)
+  t.is(b._sessionLength, blocks)
+
+  const manifest = {
+    prologue: {
+      length: b._sessionLength,
+      hash: b.createTreeBatch().hash()
+    },
+    encryptionKey
+  }
+
+  const clone = await create({
+    manifest,
+    encryptionKey
+  })
+
+  const tree = clone.core.tree.batch()
+
+  for (let i = 0; i < blocks; i++) {
+    await tree.append(await b.getRaw(i))
+  }
+
+  t.alike(tree.hash(), manifest.prologue.hash)
+})
