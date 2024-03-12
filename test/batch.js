@@ -644,7 +644,7 @@ test('clear', async function (t) {
   t.is(b2.length, 1, 'reset the batch')
 })
 
-test.solo('copy from with encrypted batch', async function (t) {
+test('copy from with encrypted batch', async function (t) {
   const encryptionKey = b4a.alloc(32, 2)
 
   const core = await create({ encryptionKey })
