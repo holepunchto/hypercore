@@ -678,7 +678,7 @@ test('copy from with encrypted batch', async function (t) {
   const tree = clone.core.tree.batch()
 
   for (let i = 0; i < blocks; i++) {
-    await tree.append(await b.getRaw(i))
+    await tree.append(await b.get(i, { raw: true }))
   }
 
   t.alike(tree.hash(), manifest.prologue.hash)
