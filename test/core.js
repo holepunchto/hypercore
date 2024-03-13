@@ -619,7 +619,6 @@ test('core - copyFrom with partially out of date additional', async function (t)
   t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
   t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
 
-
   await core.append([b4a.from('c')])
   await core.append([b4a.from('d')])
 
