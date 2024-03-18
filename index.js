@@ -1047,11 +1047,15 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.append(buffers, { keyPair, signature, preappend })
   }
 
-  async treeHash (length) {
+  async treeHash (length, opts = {}) {
+    if (!this.opened) await this.ready()
+
     if (length === undefined) {
-      await this.ready()
       length = this.core.tree.length
     }
+
+    // Ensure the block corresponding with the length is locally available
+    if (length > 0) await this.get(length - 1, opts)
 
     const roots = await this.core.tree.getRoots(length)
     return this.crypto.tree(roots)
