@@ -75,7 +75,7 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   onwait: () => {}, // hook that is called if gets are waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   writable: true, // disable appends and truncates
-  maxInFlight: null // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
+  inflightRange: null // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
 }
 ```
 
