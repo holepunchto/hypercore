@@ -1486,6 +1486,26 @@ test('replication updates on core copy', async function (t) {
   await t.execution(promise)
 })
 
+test('can define default max-inflight blocks for replicator peers', async function (t) {
+  const a = new Hypercore(RAM, { inflightRange: [123, 123] })
+  await a.append('some block')
+
+  const b = await create(a.key)
+  replicate(a, b, t)
+  await b.get(0)
+
+  t.alike(
+    a.replicator.peers[0].inflightRange,
+    [123, 123],
+    'Uses the custom inflight range'
+  )
+  t.alike(
+    b.replicator.peers[0].inflightRange,
+    [32, 512],
+    'Uses default if no inflight range specified'
+  )
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)

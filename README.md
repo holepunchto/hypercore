@@ -74,7 +74,8 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
   encryptionKey: k, // optionally pass an encryption key to enable block encryption
   onwait: () => {}, // hook that is called if gets are waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
-  writable: true // disable appends and truncates
+  writable: true, // disable appends and truncates
+  maxInFlight: null // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
 }
 ```
 
