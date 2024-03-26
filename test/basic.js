@@ -183,6 +183,34 @@ test('treeHash with default length', async function (t) {
   t.unlike(await core.treeHash(), await core2.treeHash())
 })
 
+test('treeHash of not-locally-available length works', async function (t) {
+  const core = new Hypercore(RAM)
+  await core.append('entry')
+  const remoteCore = new Hypercore(RAM, core.key)
+
+  const s1 = core.replicate(true, { keepAlive: false })
+  const s2 = remoteCore.replicate(false, { keepAlive: false })
+  s1.pipe(s2).pipe(s1)
+
+  await remoteCore.ready()
+  t.is(remoteCore.length, 0, 'Sanity check: initially unsynced')
+
+  const treeHash = await remoteCore.treeHash(1)
+  t.pass('No error when getting treeHash from unsynced core')
+  t.alike(treeHash, await core.treeHash(), 'Sanity check: correct treeHash')
+})
+
+test('treeHash of not-locally-available length works at length 0', async function (t) {
+  const core = new Hypercore(RAM)
+  const remoteCore = new Hypercore(RAM, core.key)
+
+  t.alike(
+    await core.treeHash(0),
+    await remoteCore.treeHash(0),
+    'Can get treeHash(0) on remote core (even without replication)'
+  )
+})
+
 test('snapshot locks the state', async function (t) {
   const core = new Hypercore(RAM)
   await core.ready()
