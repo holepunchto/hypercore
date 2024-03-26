@@ -60,7 +60,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
     this.replicator = null
-    this.inflightRange = opts.inflightRange || null
     this.encryption = null
     this.extensions = new Map()
     this.cache = createCache(opts.cache)
@@ -405,7 +404,7 @@ module.exports = class Hypercore extends EventEmitter {
       eagerUpgrade: true,
       notDownloadingLinger: opts.notDownloadingLinger,
       allowFork: opts.allowFork !== false,
-      inflightRange: this.inflightRange,
+      inflightRange: opts.inflightRange,
       onpeerupdate: this._onpeerupdate.bind(this),
       onupload: this._onupload.bind(this),
       oninvalid: this._oninvalid.bind(this)
