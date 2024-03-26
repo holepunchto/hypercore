@@ -1501,7 +1501,7 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
   t.alike(
     b.replicator.peers[0].inflightRange,
-    [32, 512],
+    [16, 512],
     'Uses default if no inflight range specified'
   )
 })
