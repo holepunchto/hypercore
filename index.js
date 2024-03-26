@@ -225,6 +225,10 @@ module.exports = class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
+    if (!opts.inflightRange && this.inflightRange) {
+      opts.inflightRange = this.inflightRange
+    }
+
     const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === false ? false : !this._readonly

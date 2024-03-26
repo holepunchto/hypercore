@@ -1506,6 +1506,24 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
+test('default inflightRange passed to new session', async function (t) {
+  const a = new Hypercore(RAM, { inflightRange: [123, 123] })
+  const session = a.session()
+
+  t.alike(
+    session.inflightRange,
+    [123, 123],
+    'inflightRange passed on to session'
+  )
+
+  const overwrittenSession = a.session({ inflightRange: [1, 2] })
+  t.alike(
+    overwrittenSession.inflightRange,
+    [1, 2],
+    'can pass explicit inflightRange to session'
+  )
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
