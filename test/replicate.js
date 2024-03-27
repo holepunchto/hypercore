@@ -745,6 +745,73 @@ test.skip('can disable downloading from a peer', async function (t) {
   t.is(cUploads, a.length)
 })
 
+test('can disable uploading to a peer', async function (t) {
+  const a = await create({ defaultUploading: false })
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(a.key, { valueEncoding: 'utf-8' })
+  const c = await create(a.key, { valueEncoding: 'utf-8' })
+
+  const [bStream] = replicate(a, b, t)
+  const [cStream] = replicate(a, c, t)
+  replicate(b, c, t)
+
+  await new Promise(resolve => a.on('peer-add', function onAdd () {
+    if (a.peers.length < 2) return
+    a.off('peer-add', onAdd)
+    resolve()
+  }))
+
+  let aUploadsToB = 0
+  let aUploadsToC = 0
+
+  a.on('upload', function (index, block, peer) {
+    if (peer.remotePublicKey.equals(bPeer.remotePublicKey)) {
+      aUploadsToB++
+    } else {
+      aUploadsToC++
+    }
+  })
+
+  await Promise.all([
+    b.update({ wait: true }),
+    c.update({ wait: true })
+  ])
+
+  t.is(a.length, b.length)
+  t.is(a.length, c.length)
+
+  const bPeer = a.peers[0].stream.rawStream === bStream
+    ? a.peers[0]
+    : a.peers[1]
+  const cPeer = a.peers[0].stream.rawStream === cStream
+    ? a.peers[0]
+    : a.peers[1]
+
+  const cRange = c.download({ start: 0, end: a.length })
+  const bRange = b.download({ start: 0, end: a.length })
+
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  t.is(b.contiguousLength, 0)
+  t.is(c.contiguousLength, 0)
+  t.is(aUploadsToB, 0)
+  t.is(aUploadsToC, 0)
+
+  cPeer.setUploading(true)
+
+  await Promise.all([
+    bRange.done(),
+    cRange.done()
+  ])
+
+  t.is(b.contiguousLength, 5)
+  t.is(c.contiguousLength, 5)
+  t.is(aUploadsToB, 0)
+  t.is(aUploadsToC, 5)
+})
+
 test('contiguous length', async function (t) {
   const a = await create()
 
