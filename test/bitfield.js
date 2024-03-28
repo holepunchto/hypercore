@@ -246,3 +246,14 @@ test('bitfield - set range on page boundary', async function (t) {
 
   t.is(b.findFirst(true, 2048), 2048)
 })
+
+test('set last bits in segment and findFirst', async function (t) {
+  const b = await Bitfield.open(new RAM())
+
+  b.set(2097150, true)
+  t.is(b.findFirst(false, 2097150), 2097151)
+
+  b.set(2097151, true)
+  t.is(b.findFirst(false, 2097150), 2097152)
+  t.is(b.findFirst(false, 2097151), 2097152)
+})
