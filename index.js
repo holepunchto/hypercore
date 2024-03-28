@@ -142,7 +142,8 @@ module.exports = class Hypercore extends EventEmitter {
 
   static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
 
-  static key (manifest, { compat } = {}) {
+  static key (manifest, { compat, version, namespace } = {}) {
+    if (b4a.isBuffer(manifest)) manifest = { version, signers: [{ publicKey: manifest, namespace }] }
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
   }
 

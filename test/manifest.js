@@ -194,6 +194,8 @@ test('create verifier - defaults', async function (t) {
 
   const verifier = Verifier.fromManifest(manifest)
 
+  t.alike(Hypercore.key(manifest), Hypercore.key(keyPair.publicKey))
+
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
   const signature = verifier.sign(batch, keyPair)
 
@@ -266,6 +268,8 @@ test('multisig - append', async function (t) {
   const core = new Hypercore(ram, { manifest })
   await core.ready()
 
+  t.alike(Hypercore.key(manifest), core.key)
+
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
 
@@ -325,6 +329,8 @@ test('multisig -  batch failed', async function (t) {
 
   const core = new Hypercore(ram, { manifest })
   await core.ready()
+
+  t.alike(Hypercore.key(manifest), core.key)
 
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
@@ -498,6 +504,8 @@ test('multisig -  batch append with patches', async function (t) {
   let multisig = null
   const core = new Hypercore(ram, { manifest })
   await core.ready()
+
+  t.alike(Hypercore.key(manifest), core.key)
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
