@@ -1,6 +1,6 @@
 # Hypercore
 
-### [See the full API docs at docs.holepunch.to](https://docs.holepunch.to/building-blocks/hypercore)
+### [See the full API docs at docs.pears.com](https://docs.pears.com/building-blocks/hypercore)
 
 Hypercore is a secure, distributed append-only log.
 
