@@ -335,6 +335,10 @@ module.exports = class Hypercore extends EventEmitter {
       ensureEncryption(this, opts)
     }
 
+    if (opts.manifest && !this.core.header.manifest) {
+      await this.core.setManifest(opts.manifest)
+    }
+
     this.writable = this._isWritable()
 
     if (opts.valueEncoding) {
