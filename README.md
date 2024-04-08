@@ -478,3 +478,11 @@ Emitted when a new connection has been established with a peer.
 #### `core.on('peer-remove')`
 
 Emitted when a peer's connection has been closed.
+
+#### `core.on('upload', index, byteLength, peer)`
+
+Emitted when a block is uploaded to a peer.
+
+#### `core.on('download', index, byteLength, peer)`
+
+Emitted when a block is downloaded from a peer.
