@@ -438,3 +438,27 @@ test('get undefined block is not allowed', async function (t) {
     t.pass(err.code, 'ERR_ASSERTION')
   }
 })
+
+test('valid manifest passed to a session is stored', async function (t) {
+  t.plan(1)
+
+  const core = new Hypercore(RAM, {
+    manifest: {
+      prologue: {
+        hash: b4a.alloc(32),
+        length: 1
+      },
+      signers: []
+    }
+  })
+
+  await core.ready()
+
+  const a = new Hypercore(RAM, core.key)
+
+  const b = new Hypercore(null, core.key, { manifest: core.manifest, from: a })
+
+  await b.ready()
+
+  t.alike(b.manifest, core.manifest)
+})
