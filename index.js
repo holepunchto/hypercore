@@ -412,7 +412,8 @@ module.exports = class Hypercore extends EventEmitter {
       inflightRange: opts.inflightRange,
       onpeerupdate: this._onpeerupdate.bind(this),
       onupload: this._onupload.bind(this),
-      oninvalid: this._oninvalid.bind(this)
+      oninvalid: this._oninvalid.bind(this),
+      onnoremote: this._onnoremote.bind(this)
     })
 
     this.replicator.findingPeers += this._findingPeers
@@ -648,6 +649,12 @@ module.exports = class Hypercore extends EventEmitter {
   _oninvalid (err, req, res, from) {
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('verification-error', err, req, res, from)
+    }
+  }
+
+  _onnoremote () {
+    for (let i = 0; i < this.sessions.length; i++) {
+      this.sessions[i].emit('no-remote')
     }
   }
 
