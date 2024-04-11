@@ -1506,6 +1506,31 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
+test('replication with no remote', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  a.once('no-remote', () => t.pass())
+
+  const n1 = new NoiseSecretStream(true)
+  const n2 = new NoiseSecretStream(false)
+  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+
+  const s1 = Hypercore.createProtocolStream(n1)
+
+  a.replicate(s1, { keepAlive: false })
+
+  const s2 = Hypercore.createProtocolStream(n2, {
+    ondiscoverykey: function (discoveryKey) {
+      t.pass()
+      return
+    }
+  })
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
