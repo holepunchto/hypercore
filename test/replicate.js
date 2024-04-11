@@ -1523,12 +1523,13 @@ test('replication with no remote', async function (t) {
 
   a.replicate(s1, { keepAlive: false })
 
-  const s2 = Hypercore.createProtocolStream(n2, {
+  Hypercore.createProtocolStream(n2, {
     ondiscoverykey: function (discoveryKey) {
       t.pass()
-      return
     }
   })
+
+  t.teardown(() => s1.destroy())
 })
 
 async function waitForRequestBlock (core) {
