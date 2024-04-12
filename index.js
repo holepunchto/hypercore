@@ -652,9 +652,9 @@ module.exports = class Hypercore extends EventEmitter {
     }
   }
 
-  _onnoremote () {
+  _onnoremote (peer) {
     for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('no-remote')
+      this.sessions[i].emit('no-remote', peer)
     }
   }
 
