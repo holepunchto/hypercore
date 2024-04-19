@@ -1082,8 +1082,10 @@ test('replication session', async function (t) {
 
   const [s1, s2] = replicate(a, b, t, { session: true, teardown: false })
 
-  t.is(a.sessions.length, 2)
-  t.is(b.sessions.length, 2)
+  t.is(a.sessions.length, 1)
+  t.is(b.sessions.length, 1)
+  t.is(a.core.active, 2)
+  t.is(b.core.active, 2)
 
   s1.destroy()
   s2.destroy()
@@ -1092,6 +1094,8 @@ test('replication session', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
+  t.is(a.core.active, 1)
+  t.is(b.core.active, 1)
 })
 
 test('replication session after stream opened', async function (t) {
@@ -1105,8 +1109,10 @@ test('replication session after stream opened', async function (t) {
   await s1.noiseStream.opened
   await s2.noiseStream.opened
 
-  t.is(a.sessions.length, 2)
-  t.is(b.sessions.length, 2)
+  t.is(a.sessions.length, 1)
+  t.is(b.sessions.length, 1)
+  t.is(a.core.active, 2)
+  t.is(b.core.active, 2)
 
   s1.destroy()
   s2.destroy()
@@ -1115,6 +1121,8 @@ test('replication session after stream opened', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
+  t.is(a.core.active, 1)
+  t.is(b.core.active, 1)
 })
 
 test('replication session keeps the core open', async function (t) {
@@ -1323,51 +1331,6 @@ test('idle replication sessions auto gc', async function (t) {
   await pollUntil(() => closed, 75)
 
   t.ok(closed, 'replication session gced')
-})
-
-test('idle replication sessions auto gc with timing', async function (t) {
-  const a = await create({ active: false, notDownloadingLinger: 0 })
-  const b = await create(a.key, { autoClose: true, active: false, notDownloadingLinger: 0 })
-
-  await a.append('test')
-  await a.append('test')
-
-  const s1 = b.session()
-  const s2 = a.session()
-
-  replicate(a, b, t, { session: true })
-
-  t.alike(await s1.get(0), b4a.from('test'), 'replicates')
-
-  await s1.close()
-
-  await eventFlush()
-
-  let s3 = null
-
-  // ensure tough timing
-  const bgSession = b.sessions[0] === b ? b.sessions[1] : b.sessions[0]
-  const close = bgSession.close
-  bgSession.close = function (...args) {
-    s3 = b.session()
-    return close.call(this, ...args)
-  }
-
-  await s2.close()
-
-  await eventFlush()
-
-  t.alike(await s3.get(1), b4a.from('test'), 'still replicates')
-  t.is(s3.peers.length, 1, 'has peer')
-
-  await s3.close()
-
-  await eventFlush()
-
-  t.is(a.peers.length, 0, 'no peers')
-
-  t.absent(a.closed, 'a not closed')
-  t.ok(b.closed, 'b closed due to inactivity')
 })
 
 test('manifests eagerly sync', async function (t) {

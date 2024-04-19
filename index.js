@@ -250,10 +250,14 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (this.opened) ensureEncryption(s, opts)
-
-    this.sessions.push(s)
+    this._addSession(s)
 
     return s
+  }
+
+  _addSession (s) {
+    this.sessions.push(s)
+    if (this.core) this.core.active++
   }
 
   async setEncryptionKey (encryptionKey, opts) {
@@ -290,8 +294,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     for (const s of sessions) {
       s.sessions = from.sessions
-      s.sessions.push(s)
       s._passCapabilities(from)
+      s._addSession(s)
     }
 
     this.storage = from.storage
@@ -308,7 +312,9 @@ module.exports = class Hypercore extends EventEmitter {
   async _openSession (key, storage, opts) {
     const isFirst = !opts._opening
 
-    if (!isFirst) await opts._opening
+    if (!isFirst) {
+      await opts._opening
+    }
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
     if (this.cache === null && opts.cache) this.cache = createCache(opts.cache)
 
@@ -355,7 +361,7 @@ module.exports = class Hypercore extends EventEmitter {
     // It's required so that corestore can load a name from userData before 'ready' is emitted.
     if (opts._preready) await opts._preready(this)
 
-    this.replicator.updateActivity(this._active ? 1 : 0, this)
+    this.replicator.updateActivity(this._active ? 1 : 0)
 
     this.opened = true
     this.emit('ready')
@@ -382,6 +388,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.core = await Core.open(this.storage, {
       compat: opts.compat,
       force: opts.force,
+      sessions: this.sessions,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
       overwrite: opts.overwrite,
@@ -465,6 +472,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (i === -1) return
 
     this.sessions.splice(i, 1)
+    this.core.active--
     this.readable = false
     this.writable = false
     this.closed = true
@@ -479,14 +487,14 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
       this.replicator.clearRequests(this.activeRequests, err)
-      this.replicator.updateActivity(this._active ? -1 : 0, this)
+      this.replicator.updateActivity(this._active ? -1 : 0)
     }
 
     this._findingPeers = 0
 
-    if (this.sessions.length) {
+    if (this.sessions.length || this.core.active > 0) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.autoClose) await this.sessions[0].close(err)
+      if (this.sessions.length === 1 && this.core.active === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
@@ -576,8 +584,7 @@ module.exports = class Hypercore extends EventEmitter {
   _attachToMuxerOpened (mux, useSession) {
     // If the user wants to, we can make this replication run in a session
     // that way the core wont close "under them" during replication
-    const session = useSession ? this.session({ active: false }) : null
-    this.replicator.attachTo(mux, session)
+    this.replicator.attachTo(mux, useSession)
   }
 
   get discoveryKey () {
