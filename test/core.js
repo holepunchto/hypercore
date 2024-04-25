@@ -647,6 +647,39 @@ test('core - copyFrom with partially out of date additional', async function (t)
   t.alike(await clone.blocks.get(3), b4a.from('d'))
 })
 
+test('clone - copyFrom when length is greater', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+
+  await core.append([
+    b4a.from('hello'),
+    b4a.from('world'),
+    b4a.from('fo'),
+    b4a.from('ooo')
+  ])
+
+  // upgrade clone
+  {
+    const p = await core.tree.proof({ upgrade: { start: 0, length: 1 } })
+    t.ok(await copy.verify(p))
+  }
+
+  await core.truncate(3, 0)
+
+  t.is(copy.tree.length, 4)
+  t.is(core.tree.length, 3)
+
+  const signature = copy.tree.signature
+  const byteLength = copy.tree.byteLength
+
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.tree.length, 4)
+  t.is(copy.tree.byteLength, byteLength)
+  t.is(copy.tree.fork, 0)
+  t.alike(copy.tree.signature, signature)
+})
+
 async function create (opts) {
   const storage = new Map()
 
