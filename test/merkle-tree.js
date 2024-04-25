@@ -15,6 +15,8 @@ test('nodes', async function (t) {
   b.commit()
 
   t.is(await tree.nodes(0), 0)
+
+  await t.exception(tree.byteOffset(18))
 })
 
 test('proof only block', async function (t) {
