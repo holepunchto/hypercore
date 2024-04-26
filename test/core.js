@@ -706,6 +706,62 @@ test('core - copyFrom can recover from bad additional', async function (t) {
   t.alike(await clone.blocks.get(2), b4a.from('c'))
 })
 
+test('core - copyFrom with prologues', async function (t) {
+  const { core } = await create({ compat: false, version: 1 })
+  await core.append([b4a.from('a'), b4a.from('b')])
+
+  const signature = b4a.from(core.tree.signature)
+
+  const manifest = { ...core.header.manifest }
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+
+  const { core: copy } = await create({ manifest })
+  const { core: copy2 } = await create({ manifest })
+  const { core: copy3 } = await create({ manifest })
+
+  await copy.copyFrom(core, signature)
+
+  t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
+
+  t.is(copy.tree.length, core.tree.length)
+  t.is(copy.tree.byteLength, core.tree.byteLength)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  // upgrade clone
+  {
+    const batch = core.tree.batch()
+    const p = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+    p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
+    t.ok(await copy2.verify(p))
+  }
+
+  await t.execution(copy2.copyFrom(core, signature, { length: 2 }))
+  await t.execution(copy3.copyFrom(core, null, { length: 2 }))
+
+  t.is(copy2.tree.length, core.tree.length)
+  t.is(copy.tree.length, copy3.tree.length)
+
+  t.is(copy2.header.tree.length, core.header.tree.length)
+  t.is(copy.header.tree.length, copy3.header.tree.length)
+
+  t.is(copy2.tree.byteLength, core.tree.byteLength)
+  t.is(copy.tree.byteLength, copy3.tree.byteLength)
+
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  const { core: copy4 } = await create({ manifest })
+
+  await copy4.copyFrom(copy, null, { length: 3, additional: [b4a.from('c')] })
+
+  t.is(copy4.tree.length, 3)
+  t.is(copy4.header.tree.length, 3)
+
+  t.alike(await copy4.blocks.get(0), b4a.from('a'))
+  t.alike(await copy4.blocks.get(1), b4a.from('b'))
+  t.alike(await copy4.blocks.get(2), b4a.from('c'))
+})
+
 async function create (opts) {
   const storage = new Map()
 
