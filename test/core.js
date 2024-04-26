@@ -517,7 +517,7 @@ test('core - clone with too many additional', async function (t) {
   await t.exception(clone.blocks.get(3))
 })
 
-test('core - clone fills in with additional', async function (t) {
+test('core - copyFrom bails if core not empty', async function (t) {
   const { core } = await create()
   const { core: copy } = await create({ keyPair: core.header.keyPair })
   const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
@@ -547,17 +547,18 @@ test('core - clone fills in with additional', async function (t) {
   await t.exception(copy.blocks.get(1))
 
   // copy should both fill in and upgrade
-  await clone.copyFrom(copy, core.tree.signature, { length: 2, additional: [b4a.from('b')] })
+  await t.exception(clone.copyFrom(core, core.tree.signature))
 
-  t.is(clone.header.tree.length, 2)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
+  t.is(clone.tree.length, 1)
+  t.is(clone.header.tree.length, 1)
+  t.alike(clone.header.tree.signature, copy.header.tree.signature)
 
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
+  t.is(clone.tree.length, copy.tree.length)
+  t.is(clone.tree.byteLength, copy.tree.byteLength)
+  t.alike(clone.roots, copy.roots)
 
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  await t.exception(clone.blocks.get(0))
+  await t.exception(clone.blocks.get(1))
 })
 
 test('core - clone with different fork', async function (t) {
@@ -645,39 +646,6 @@ test('core - copyFrom with partially out of date additional', async function (t)
   t.alike(await clone.blocks.get(1), b4a.from('b'))
   t.alike(await clone.blocks.get(2), b4a.from('c'))
   t.alike(await clone.blocks.get(3), b4a.from('d'))
-})
-
-test('clone - copyFrom when length is greater', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-
-  await core.append([
-    b4a.from('hello'),
-    b4a.from('world'),
-    b4a.from('fo'),
-    b4a.from('ooo')
-  ])
-
-  // upgrade clone
-  {
-    const p = await core.tree.proof({ upgrade: { start: 0, length: 1 } })
-    t.ok(await copy.verify(p))
-  }
-
-  await core.truncate(3, 0)
-
-  t.is(copy.tree.length, 4)
-  t.is(core.tree.length, 3)
-
-  const signature = copy.tree.signature
-  const byteLength = copy.tree.byteLength
-
-  await copy.copyFrom(core, core.tree.signature)
-
-  t.is(copy.tree.length, 4)
-  t.is(copy.tree.byteLength, byteLength)
-  t.is(copy.tree.fork, 0)
-  t.alike(copy.tree.signature, signature)
 })
 
 async function create (opts) {
