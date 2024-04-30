@@ -517,7 +517,7 @@ test('core - clone with too many additional', async function (t) {
   await t.exception(clone.blocks.get(3))
 })
 
-test('core - clone fills in with additional', async function (t) {
+test('core - copyFrom bails if core not empty', async function (t) {
   const { core } = await create()
   const { core: copy } = await create({ keyPair: core.header.keyPair })
   const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
@@ -547,17 +547,18 @@ test('core - clone fills in with additional', async function (t) {
   await t.exception(copy.blocks.get(1))
 
   // copy should both fill in and upgrade
-  await clone.copyFrom(copy, core.tree.signature, { length: 2, additional: [b4a.from('b')] })
+  await t.exception(clone.copyFrom(core, core.tree.signature))
 
-  t.is(clone.header.tree.length, 2)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
+  t.is(clone.tree.length, 1)
+  t.is(clone.header.tree.length, 1)
+  t.alike(clone.header.tree.signature, copy.header.tree.signature)
 
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
+  t.is(clone.tree.length, copy.tree.length)
+  t.is(clone.tree.byteLength, copy.tree.byteLength)
+  t.alike(clone.roots, copy.roots)
 
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  await t.exception(clone.blocks.get(0))
+  await t.exception(clone.blocks.get(1))
 })
 
 test('core - clone with different fork', async function (t) {
@@ -645,6 +646,120 @@ test('core - copyFrom with partially out of date additional', async function (t)
   t.alike(await clone.blocks.get(1), b4a.from('b'))
   t.alike(await clone.blocks.get(2), b4a.from('c'))
   t.alike(await clone.blocks.get(3), b4a.from('d'))
+})
+
+test('core - copyFrom can recover from bad additional', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  await t.exception(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('d')] }))
+  await t.execution(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] }))
+
+  t.is(clone.header.tree.length, 3)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+})
+
+test('core - copyFrom can recover from bad additional', async function (t) {
+  const { core } = await create()
+  const { core: copy } = await create({ keyPair: core.header.keyPair })
+  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+
+  await core.append([b4a.from('a'), b4a.from('b')])
+  await copy.copyFrom(core, core.tree.signature)
+
+  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
+  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  await t.exception(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('d')] }))
+  await t.execution(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] }))
+
+  t.is(clone.header.tree.length, 3)
+  t.alike(clone.header.tree.signature, core.header.tree.signature)
+
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
+
+  t.alike(await clone.blocks.get(0), b4a.from('a'))
+  t.alike(await clone.blocks.get(1), b4a.from('b'))
+  t.alike(await clone.blocks.get(2), b4a.from('c'))
+})
+
+test('core - copyFrom with prologues', async function (t) {
+  const { core } = await create({ compat: false, version: 1 })
+  await core.append([b4a.from('a'), b4a.from('b')])
+
+  const signature = b4a.from(core.tree.signature)
+
+  const manifest = { ...core.header.manifest }
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+
+  const { core: copy } = await create({ manifest })
+  const { core: copy2 } = await create({ manifest })
+  const { core: copy3 } = await create({ manifest })
+
+  await copy.copyFrom(core, signature)
+
+  t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
+
+  t.is(copy.tree.length, core.tree.length)
+  t.is(copy.tree.byteLength, core.tree.byteLength)
+
+  // copy should be independent
+  await core.append([b4a.from('c')])
+
+  // upgrade clone
+  {
+    const batch = core.tree.batch()
+    const p = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+    p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
+    t.ok(await copy2.verify(p))
+  }
+
+  await t.execution(copy2.copyFrom(core, signature, { length: 2 }))
+  await t.execution(copy3.copyFrom(core, null, { length: 2 }))
+
+  t.is(copy2.tree.length, core.tree.length)
+  t.is(copy.tree.length, copy3.tree.length)
+
+  t.is(copy2.header.tree.length, core.header.tree.length)
+  t.is(copy.header.tree.length, copy3.header.tree.length)
+
+  t.is(copy2.tree.byteLength, core.tree.byteLength)
+  t.is(copy.tree.byteLength, copy3.tree.byteLength)
+
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  const { core: copy4 } = await create({ manifest })
+
+  await copy4.copyFrom(copy, null, { length: 3, additional: [b4a.from('c')] })
+
+  t.is(copy4.tree.length, 3)
+  t.is(copy4.header.tree.length, 3)
+
+  t.alike(await copy4.blocks.get(0), b4a.from('a'))
+  t.alike(await copy4.blocks.get(1), b4a.from('b'))
+  t.alike(await copy4.blocks.get(2), b4a.from('c'))
 })
 
 async function create (opts) {
