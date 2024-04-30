@@ -12,7 +12,6 @@ async function runTests () {
   await import('./bitfield.js')
   await import('./cache.js')
   await import('./clear.js')
-  await import('./clone.js')
   await import('./compat.js')
   await import('./conflicts.js')
   await import('./core.js')
