@@ -1487,6 +1487,30 @@ test('replication updates on core copy', async function (t) {
   await t.execution(promise)
 })
 
+test('replicate while batching', async function (t) {
+  const a = await create()
+  const b = await create(a.key)
+
+  await a.append('a')
+  const signature = a.core.tree.signature
+
+  const batch = b.batch()
+
+  while (a.length < 100) await a.append('a')
+
+  replicate(a, b, t)
+
+  await b.get(99)
+
+  await batch.append('a')
+  await batch.flush({ signature })
+
+  const expected = await a.core.tree.proof({ block: { index: 0, nodes: 6 } })
+  const actual = await b.core.tree.proof({ block: { index: 0, nodes: 6 } })
+
+  t.alike(actual, expected)
+})
+
 test('can define default max-inflight blocks for replicator peers', async function (t) {
   const a = new Hypercore(RAM, { inflightRange: [123, 123] })
   await a.append('some block')
