@@ -1492,18 +1492,19 @@ test('replicate while batching', async function (t) {
   const b = await create(a.key)
 
   await a.append('a')
-  const signature = a.core.tree.signature
 
   const batch = b.batch()
+  await batch.append('a')
+  const flushed = await batch.flush({ pending: true })
+
+  t.ok(flushed)
+  t.ok(await b.has(0))
 
   while (a.length < 100) await a.append('a')
 
   replicate(a, b, t)
 
   await b.get(99)
-
-  await batch.append('a')
-  await batch.flush({ signature })
 
   const expected = await a.core.tree.proof({ block: { index: 0, nodes: 6 } })
   const actual = await b.core.tree.proof({ block: { index: 0, nodes: 6 } })
