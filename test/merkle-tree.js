@@ -565,6 +565,21 @@ test('clone a batch', async t => {
   t.not(b.nodes.length, c.nodes.length)
 })
 
+test('prune nodes in a batch', async t => {
+  const a = await create(0)
+  const b = a.batch()
+
+  for (let i = 0; i < 16; i++) {
+    b.append(b4a.from('tick tock'))
+  }
+
+  b.prune(15)
+
+  const nodes = b.nodes.sort((a, b) => a.index - b.index).map(n => n.index)
+
+  t.alike(nodes, [15, 23, 27, 29, 30])
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
