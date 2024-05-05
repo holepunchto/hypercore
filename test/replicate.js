@@ -1470,18 +1470,19 @@ test('range download, repeated', async function (t) {
 test('replication updates on core copy', async function (t) {
   const a = await create()
 
-  const b = await create(a.key)
-  const c = await create(a.key)
-
   const n = 100
 
   for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
+
+  const manifest = { prologue: { hash: await a.treeHash(), length: a.length } }
+  const b = await create({ manifest })
+  const c = await create({ manifest })
 
   replicate(b, c, t)
 
   const promise = c.get(50)
 
-  b.core.copyFrom(a.core, b4a.from(a.core.tree.signature))
+  await b.core.copyPrologue(a.core)
 
   await t.execution(promise)
 })

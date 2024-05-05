@@ -18,7 +18,7 @@ const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const Batch = require('./lib/batch')
-const { manifestHash, defaultSignerManifest, createManifest, isCompat, sign } = require('./lib/verifier')
+const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   ASSERTION,
@@ -85,7 +85,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.closing = null
     this.opening = null
 
-    this._clone = opts.clone || null
     this._readonly = opts.writable === false
     this._preappend = preappend.bind(this)
     this._snapshot = null
@@ -322,14 +321,6 @@ module.exports = class Hypercore extends EventEmitter {
           const s = this.sessions[i]
           if (s !== this) s._passCapabilities(this)
         }
-
-        // copy state over
-        if (this._clone) {
-          const { from, signature } = this._clone
-          await from.opening
-          await this.core.copyFrom(from.core, signature)
-          this._clone = null
-        }
       }
     } else {
       ensureEncryption(this, opts)
@@ -499,46 +490,6 @@ module.exports = class Hypercore extends EventEmitter {
     await this.core.close()
 
     this.emit('close', true)
-  }
-
-  clone (keyPair, storage, opts = {}) {
-    // TODO: current limitation is no forking
-    if ((opts.fork && opts.fork !== 0) || this.fork !== 0) {
-      throw BAD_ARGUMENT('Cannot clone a fork')
-    }
-
-    const manifest = opts.manifest || defaultSignerManifest(keyPair.publicKey)
-    const key = opts.key || (opts.compat !== false ? manifest.signers[0].publicKey : manifestHash(manifest))
-
-    if (b4a.equals(key, this.key)) {
-      throw BAD_ARGUMENT('Clone cannot share verification information')
-    }
-
-    const signature = opts.signature === undefined
-      ? sign(createManifest(manifest), this.core.tree.batch(), keyPair, { compat: isCompat(key, manifest) })
-      : opts.signature
-
-    const sparse = opts.sparse === false ? false : this.sparse
-    const wait = opts.wait === false ? false : this.wait
-    const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
-    const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
-
-    const Clz = this.constructor
-
-    return new Clz(storage, key, {
-      ...opts,
-      keyPair,
-      sparse,
-      wait,
-      onwait,
-      timeout,
-      manifest,
-      overwrite: true,
-      clone: {
-        from: this,
-        signature
-      }
-    })
   }
 
   replicate (isInitiator, opts = {}) {

@@ -276,7 +276,6 @@ test('core - update hook is triggered', async function (t) {
 
 test('core - clone', async function (t) {
   const { core } = await create()
-  const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
 
   await core.userData('hello', b4a.from('world'))
 
@@ -285,7 +284,10 @@ test('core - clone', async function (t) {
     b4a.from('world')
   ])
 
-  await copy.copyFrom(core, core.tree.signature)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = (await create({ manifest }))
+
+  await copy.copyPrologue(core)
 
   t.alike(copy.header.userData, [{ key: 'hello', value: b4a.from('world') }])
 
@@ -316,14 +318,14 @@ test('core - clone', async function (t) {
 
 test('core - clone verify', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
 
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create({ manifest })
+  const { core: clone } = await create({ manifest })
+
+  await copy.copyPrologue(core)
 
   // copy should be independent
   await core.append([b4a.from('c')])
@@ -334,64 +336,30 @@ test('core - clone verify', async function (t) {
   }
 
   t.is(clone.header.tree.length, 2)
-  t.alike(clone.header.tree.signature, copy.header.tree.signature)
 
   {
     const p = await copy.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
     p.block.value = await copy.blocks.get(1)
     await clone.verify(p)
   }
-})
 
-test.skip('clone - truncate original', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-
-  await core.append([
-    b4a.from('hello'),
-    b4a.from('world'),
-    b4a.from('fo'),
-    b4a.from('ooo')
-  ])
-
-  await copy.copyFrom(core)
-  const signature = copy.tree.signature
-
-  await core.truncate(3, 1)
-
-  t.is(copy.tree.length, 4)
-  t.is(copy.tree.byteLength, 15)
-  t.is(copy.tree.fork, 0)
-  t.alike(copy.tree.signature, signature)
-
-  await core.append([
-    b4a.from('a'),
-    b4a.from('b'),
-    b4a.from('c'),
-    b4a.from('d')
-  ])
-
-  t.is(copy.tree.length, 4)
-  t.is(copy.tree.byteLength, 15)
-  t.is(copy.tree.fork, 0)
-  t.alike(copy.tree.signature, signature)
-
-  await core.truncate(2, 3)
+  t.pass('verified')
 })
 
 test('core - partial clone', async function (t) {
   const { core } = await create()
-  const { core: copy } = (await create({ keyPair: { publicKey: core.header.keyPair.publicKey } }))
 
   await core.append([b4a.from('0')])
   await core.append([b4a.from('1')])
 
-  const signature = b4a.from(core.tree.signature)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
 
   await core.append([b4a.from('2')])
   await core.append([b4a.from('3')])
 
-  await copy.copyFrom(core, signature, { length: 2 })
+  const { core: copy } = (await create({ manifest }))
+
+  await copy.copyPrologue(core)
 
   t.is(core.tree.length, 4)
   t.is(copy.tree.length, 2)
@@ -409,22 +377,23 @@ test('core - partial clone', async function (t) {
 
 test('core - clone with additional', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
 
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create({ manifest })
+
+  await copy.copyPrologue(core, core.tree.signature)
 
   // copy should be independent
   await core.append([b4a.from('c')])
 
-  await clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] })
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create({ manifest: secondManifest })
+
+  await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
 
   t.is(clone.header.tree.length, 3)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
 
   t.is(clone.tree.length, core.tree.length)
   t.is(clone.tree.byteLength, core.tree.byteLength)
@@ -437,14 +406,13 @@ test('core - clone with additional', async function (t) {
 
 test('core - clone with additional, larger tree', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
 
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create({ manifest })
+
+  await copy.copyPrologue(core)
 
   const additional = [
     b4a.from('c'),
@@ -459,11 +427,13 @@ test('core - clone with additional, larger tree', async function (t) {
 
   await core.append(additional)
 
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create({ manifest: secondManifest })
+
   // copy should be independent
-  await clone.copyFrom(copy, core.tree.signature, { length: core.tree.length, additional })
+  await clone.copyPrologue(copy, { additional })
 
   t.is(clone.header.tree.length, core.header.tree.length)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
 
   t.is(clone.tree.length, core.tree.length)
   t.is(clone.tree.byteLength, core.tree.byteLength)
@@ -481,192 +451,35 @@ test('core - clone with additional, larger tree', async function (t) {
   t.alike(await clone.blocks.get(9), b4a.from('j'))
 })
 
-test('core - clone with too many additional', async function (t) {
+test('core - copyPrologue bails if core is not the same', async function (t) {
   const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
-
-  await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
-
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
-
-  // copy should be independent
-  await core.append([b4a.from('c')])
-
-  await clone.copyFrom(copy, core.tree.signature, {
-    length: 3,
-    additional: [
-      b4a.from('c'),
-      b4a.from('d')
-    ]
-  })
-
-  t.is(clone.header.tree.length, 3)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
-
-  await t.exception(clone.blocks.get(3))
-})
-
-test('core - copyFrom bails if core not empty', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
-
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
-
-  await clone.copyFrom(core, core.tree.signature)
+  const { core: copy } = await create({ manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
 
   // copy should be independent
   await core.append([b4a.from('a')])
-  await copy.copyFrom(core, core.tree.signature)
 
-  // upgrade clone
-  {
-    const p = await core.tree.proof({ upgrade: { start: 0, length: 1 } })
-    t.ok(await clone.verify(p))
-  }
-
-  await core.append([b4a.from('b')])
-
-  // verify state
-  t.is(copy.tree.length, 1)
-  t.is(clone.tree.length, 1)
-
-  await t.exception(clone.blocks.get(0))
-  await t.exception(copy.blocks.get(1))
-
-  // copy should both fill in and upgrade
-  await t.exception(clone.copyFrom(core, core.tree.signature))
-
-  t.is(clone.tree.length, 1)
-  t.is(clone.header.tree.length, 1)
-  t.alike(clone.header.tree.signature, copy.header.tree.signature)
-
-  t.is(clone.tree.length, copy.tree.length)
-  t.is(clone.tree.byteLength, copy.tree.byteLength)
-  t.alike(clone.roots, copy.roots)
-
-  await t.exception(clone.blocks.get(0))
-  await t.exception(clone.blocks.get(1))
+  await t.exception(copy.copyPrologue(core))
 })
 
-test('core - clone with different fork', async function (t) {
+test('core - copyPrologue can recover from bad additional', async function (t) {
   const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
-  const { core: clone2 } = await create({ compat: false })
-  const { core: fail } = await create({ manifest: clone2.header.manifest })
-
-  t.alike(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.unlike(clone2.header.keyPair.publicKey, core.header.keyPair.publicKey)
-
-  await core.truncate(0, 1)
-
-  t.is(core.tree.fork, 1)
-  t.is(core.header.tree.fork, 1)
-
-  await core.append([b4a.from('a')])
-
-  await clone.copyFrom(core, core.tree.signature)
-
-  t.is(clone.tree.fork, 1)
-  t.is(clone.header.tree.fork, 1)
-
-  await core.append([b4a.from('b')])
-
-  const batch = core.tree.batch()
-  batch.fork = 0
-
-  const signature = clone2.verifier.sign(batch, clone2.header.keyPair)
-
-  // fail with same fork
-  await t.exception(fail.copyFrom(core, signature), /INVALID_SIGNATURE/)
-
-  await clone2.copyFrom(core, signature, { fork: 0 })
-
-  t.is(clone2.tree.fork, 0)
-  t.is(clone2.header.tree.fork, 0)
-
-  await clone2.append([b4a.from('c')])
-
-  // verify state
-  t.is(clone.tree.length, 1)
-  t.is(core.tree.length, 2)
-  t.is(clone2.tree.length, 3)
-
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await core.blocks.get(1), b4a.from('b'))
-  t.alike(await clone2.blocks.get(2), b4a.from('c'))
-})
-
-test('core - copyFrom with partially out of date additional', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
 
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
-
-  await core.append([b4a.from('c')])
-  await core.append([b4a.from('d')])
-
-  // copy is independent
-  await copy.append([b4a.from('c')])
-
-  await clone.copyFrom(copy, core.tree.signature, {
-    length: 4,
-    sourceLength: 2,
-    additional: [
-      b4a.from('c'),
-      b4a.from('d')
-    ]
-  })
-
-  t.is(clone.header.tree.length, 4)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
-  t.alike(await clone.blocks.get(3), b4a.from('d'))
-})
-
-test('core - copyFrom can recover from bad additional', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
-
-  await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
-
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create({ manifest })
+  await copy.copyPrologue(core)
 
   // copy should be independent
   await core.append([b4a.from('c')])
 
-  await t.exception(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('d')] }))
-  await t.execution(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] }))
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create({ manifest: secondManifest })
+
+  await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
+  await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
 
   t.is(clone.header.tree.length, 3)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
 
   t.is(clone.tree.length, core.tree.length)
   t.is(clone.tree.byteLength, core.tree.byteLength)
@@ -677,40 +490,9 @@ test('core - copyFrom can recover from bad additional', async function (t) {
   t.alike(await clone.blocks.get(2), b4a.from('c'))
 })
 
-test('core - copyFrom can recover from bad additional', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ keyPair: core.header.keyPair })
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
-
-  await core.append([b4a.from('a'), b4a.from('b')])
-  await copy.copyFrom(core, core.tree.signature)
-
-  t.is(copy.header.keyPair.publicKey, core.header.keyPair.publicKey)
-  t.is(copy.header.keyPair.publicKey, clone.header.keyPair.publicKey)
-
-  // copy should be independent
-  await core.append([b4a.from('c')])
-
-  await t.exception(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('d')] }))
-  await t.execution(clone.copyFrom(copy, core.tree.signature, { length: 3, additional: [b4a.from('c')] }))
-
-  t.is(clone.header.tree.length, 3)
-  t.alike(clone.header.tree.signature, core.header.tree.signature)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
-})
-
-test('core - copyFrom with prologues', async function (t) {
+test('core - copyPrologue many', async function (t) {
   const { core } = await create({ compat: false, version: 1 })
   await core.append([b4a.from('a'), b4a.from('b')])
-
-  const signature = b4a.from(core.tree.signature)
 
   const manifest = { ...core.header.manifest }
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
@@ -719,7 +501,7 @@ test('core - copyFrom with prologues', async function (t) {
   const { core: copy2 } = await create({ manifest })
   const { core: copy3 } = await create({ manifest })
 
-  await copy.copyFrom(core, signature)
+  await copy.copyPrologue(core)
 
   t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
 
@@ -737,8 +519,8 @@ test('core - copyFrom with prologues', async function (t) {
     t.ok(await copy2.verify(p))
   }
 
-  await t.execution(copy2.copyFrom(core, signature, { length: 2 }))
-  await t.execution(copy3.copyFrom(core, null, { length: 2 }))
+  await t.execution(copy2.copyPrologue(core))
+  await t.execution(copy3.copyPrologue(core))
 
   t.is(copy2.tree.length, core.tree.length)
   t.is(copy.tree.length, copy3.tree.length)
@@ -751,15 +533,13 @@ test('core - copyFrom with prologues', async function (t) {
 
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
   const { core: copy4 } = await create({ manifest })
-
-  await copy4.copyFrom(copy, null, { length: 3, additional: [b4a.from('c')] })
+  await copy4.copyPrologue(copy2)
 
   t.is(copy4.tree.length, 3)
   t.is(copy4.header.tree.length, 3)
 
   t.alike(await copy4.blocks.get(0), b4a.from('a'))
   t.alike(await copy4.blocks.get(1), b4a.from('b'))
-  t.alike(await copy4.blocks.get(2), b4a.from('c'))
 })
 
 async function create (opts) {
