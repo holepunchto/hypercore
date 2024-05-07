@@ -48,6 +48,9 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
   await new Promise(resolve => setTimeout(resolve, 500))
 
   const peer = getPeer(c, b)
+
+  t.is(peer._remoteContiguousLength, 1, 'Sanity check')
+
   t.is(
     peer._remoteContiguousLength <= peer.remoteContiguousLength,
     true,
