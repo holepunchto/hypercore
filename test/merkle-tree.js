@@ -580,6 +580,25 @@ test('prune nodes in a batch', async t => {
   t.alike(nodes, [15, 23, 27, 29, 30])
 })
 
+test('checkout nodes in a batch', async t => {
+  const a = await create(0)
+  const b = a.batch()
+
+  for (let i = 0; i < 16; i++) {
+    b.append(b4a.from('tick tock'))
+  }
+
+  b.checkout(15)
+
+  t.alike(b.length, 15)
+  t.alike(b.byteLength, 135)
+  t.alike(b.roots.map(n => n.index), [7, 19, 25, 28])
+
+  const nodes = b.nodes.sort((a, b) => a.index - b.index).map(n => n.index)
+
+  t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
+})
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
