@@ -52,6 +52,7 @@ test('sessions - auto close', async function (t) {
   await a.close()
   t.absent(closed, 'not closed yet')
   await b.close()
+
   t.ok(closed, 'all closed')
 })
 
