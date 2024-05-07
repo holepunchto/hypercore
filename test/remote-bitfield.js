@@ -1,7 +1,6 @@
 const test = require('brittle')
-const RemoteBitfield = require('../lib/remote-bitfield')
-
 const b4a = require('b4a')
+const RemoteBitfield = require('../lib/remote-bitfield')
 const { create, replicate } = require('./helpers')
 
 test('remote bitfield - findFirst', function (t) {
