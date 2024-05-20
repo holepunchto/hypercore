@@ -1470,7 +1470,7 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
-test.solo('session id reuse does not stall', async function (t) {
+test('session id reuse does not stall', async function (t) {
   t.plan(1)
   t.timeout(90_000)
 
