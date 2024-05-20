@@ -1486,27 +1486,20 @@ test('session id reuse does not stall', async function (t) {
   a.replicate(n1)
   b.replicate(n2)
 
-  const blocks = Array.from(Array(n).keys())
-
-  while (blocks.length > 0) {
+  while (true) {
     const session = b.session()
+    await session.ready()
+    const all = []
     for (let i = 0; i < 100; i++) {
-      if (blocks[i]) {
-        session.get(i).catch(noop)
+      if (!session.core.bitfield.get(i)) {
+        all.push(session.get(i).catch(noop))
       }
     }
-    await new Promise((resolve) => {
-      session.on('download', async (index) => {
-        if (blocks.length === 1) {
-          blocks.pop()
-        } else {
-          blocks.splice(index, 1)
-        }
-        await session.close()
-        resolve()
-      })
-    })
+    if (all.length) await Promise.race(all)
+    await session.close()
+    if (all.length === 0) break
   }
+
   t.pass('All blocks downloaded.')
 })
 
@@ -1526,5 +1519,9 @@ async function pollUntil (fn, time) {
   }
 }
 
+<<<<<<< HEAD
 function noop () {
 }
+=======
+function noop () {}
+>>>>>>> adcdee1 (remove dead code and fix cancelled reqs still being alive in queue)
