@@ -1492,7 +1492,7 @@ test.solo('session id reuse does not stall', async function (t) {
     const session = b.session()
     for (let i = 0; i < 100; i++) {
       if (blocks[i]) {
-        session.get(i).catch(noob)
+        session.get(i).catch(noop)
       }
     }
     await new Promise((resolve) => {
@@ -1527,5 +1527,5 @@ async function pollUntil (fn, time) {
   }
 }
 
-function noob () {
+function noop () {
 }
