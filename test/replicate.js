@@ -1486,6 +1486,11 @@ test.solo('session id reuse does not stall', async function (t) {
   a.replicate(n1)
   b.replicate(n2)
 
+  let downloaded = 0
+  b.on('download', function () {
+    downloaded++
+  })
+
   while (true) {
     const session = b.session()
     await session.ready()
@@ -1500,7 +1505,8 @@ test.solo('session id reuse does not stall', async function (t) {
     if (all.length === 0) break
   }
 
-  t.pass('All blocks downloaded.')
+  t.pass('All blocks downloaded')
+  t.is(download, 100, 'Downloaded all blocks exactly once')
 })
 
 async function waitForRequestBlock (core) {
