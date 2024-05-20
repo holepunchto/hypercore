@@ -1497,7 +1497,6 @@ test('session id reuse does not stall', async function (t) {
     }
     await new Promise((resolve) => {
       session.on('download', async (index) => {
-        console.log(index)
         if (blocks.length === 1) {
           blocks.pop()
         } else {
