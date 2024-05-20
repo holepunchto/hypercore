@@ -1519,9 +1519,4 @@ async function pollUntil (fn, time) {
   }
 }
 
-<<<<<<< HEAD
-function noop () {
-}
-=======
 function noop () {}
->>>>>>> adcdee1 (remove dead code and fix cancelled reqs still being alive in queue)
