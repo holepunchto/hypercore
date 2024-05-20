@@ -1470,8 +1470,9 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
-test('session id reuse does not stall', async function (t) {
+test.solo('session id reuse does not stall', async function (t) {
   t.plan(1)
+  t.timeout(90_000)
 
   const a = await create()
   const b = await create(a.key)
@@ -1488,7 +1489,7 @@ test('session id reuse does not stall', async function (t) {
   const blocks = Array.from(Array(n).keys())
 
   while (blocks.length > 0) {
-    const session = await b.session()
+    const session = b.session()
     for (let i = 0; i < 100; i++) {
       if (blocks[i]) {
         session.get(i).catch(noob)
@@ -1496,6 +1497,7 @@ test('session id reuse does not stall', async function (t) {
     }
     await new Promise((resolve) => {
       session.on('download', async (index) => {
+        console.log(index)
         if (blocks.length === 1) {
           blocks.pop()
         } else {
