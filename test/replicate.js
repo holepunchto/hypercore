@@ -1470,6 +1470,45 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
+test('session id reuse does not stall', async function (t) {
+  t.plan(2)
+  t.timeout(90_000)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  const n = 500
+
+  const batch = Array(n).fill().map(e => b4a.from([0]))
+  for (let i = 0; i < n; i++) await a.append(batch)
+
+  const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
+  a.replicate(n1)
+  b.replicate(n2)
+
+  let downloaded = 0
+  b.on('download', function () {
+    downloaded++
+  })
+
+  while (true) {
+    const session = b.session()
+    await session.ready()
+    const all = []
+    for (let i = 0; i < 100; i++) {
+      if (!session.core.bitfield.get(i)) {
+        all.push(session.get(i).catch(noop))
+      }
+    }
+    if (all.length) await Promise.race(all)
+    await session.close()
+    if (all.length === 0) break
+  }
+
+  t.pass('All blocks downloaded')
+  t.is(downloaded, 100, 'Downloaded all blocks exactly once')
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
@@ -1485,3 +1524,5 @@ async function pollUntil (fn, time) {
     await new Promise(resolve => setTimeout(resolve, time))
   }
 }
+
+function noop () {}
