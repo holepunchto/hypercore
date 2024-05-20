@@ -1471,7 +1471,7 @@ test('can define default max-inflight blocks for replicator peers', async functi
 })
 
 test.solo('session id reuse does not stall', async function (t) {
-  t.plan(1)
+  t.plan(2)
   t.timeout(90_000)
 
   const a = await create()
@@ -1506,7 +1506,7 @@ test.solo('session id reuse does not stall', async function (t) {
   }
 
   t.pass('All blocks downloaded')
-  t.is(download, 100, 'Downloaded all blocks exactly once')
+  t.is(downloaded, 100, 'Downloaded all blocks exactly once')
 })
 
 async function waitForRequestBlock (core) {
