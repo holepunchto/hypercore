@@ -682,7 +682,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _oncoreupdate (status, bitfield, value, from) {
-    this.l('_oncoreupdate');
+    //this.l('_oncoreupdate');
     if (status !== 0) {
       const truncatedNonSparse = (status & 0b1000) !== 0
       const appendedNonSparse = (status & 0b0100) !== 0
@@ -690,12 +690,12 @@ module.exports = class Hypercore extends EventEmitter {
       const appended = (status & 0b0001) !== 0
 
       if (truncated) {
-        this.l('\t-> ontruncate');
+        //this.l('\t-> ontruncate');
         this.replicator.ontruncate(bitfield.start, bitfield.length)
       }
 
       if ((status & 0b10011) !== 0) {
-        this.l('\t-> onupgrade');
+        //this.l('\t-> onupgrade');
         this.replicator.onupgrade()
       }
 
@@ -747,7 +747,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (bitfield) {
-      this.l('\t-> onhave');
+      //this.l('\t-> onhave');
       this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
     }
 
@@ -1041,7 +1041,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts = {}) {
-    this.l('append');
+    //this.l('append');
     if (this.opened === false) await this.opening
 
     const { keyPair = this.keyPair, signature = null } = opts
