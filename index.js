@@ -35,8 +35,15 @@ const inspect = Symbol.for('nodejs.util.inspect.custom')
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
+const l = (...x) => console.log(...x)
+const alpha = 'abcdefghijklmnopqrstuvwxyz';
+const randChar = () => alpha[Math.floor(Math.random()*alpha.length)]
+const randName = (len = 5) => (new Array(len).fill(0)).map((_, i) => i == 0 ? randChar().toUpperCase() : randChar()).join('')
+
+
 module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
+
     super()
 
     if (isOptions(storage)) {
@@ -91,9 +98,11 @@ module.exports = class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.active !== false
+    this.name = opts?.name ?? randName() + ':Hc';
 
     this.opening = this._openSession(key, storage, opts)
     this.opening.catch(safetyCatch)
+    this.l = opts?.log ?? ((...x) => l(this.name,  ...x))
   }
 
   [inspect] (depth, opts) {
@@ -412,7 +421,9 @@ module.exports = class Hypercore extends EventEmitter {
       inflightRange: opts.inflightRange,
       onpeerupdate: this._onpeerupdate.bind(this),
       onupload: this._onupload.bind(this),
-      oninvalid: this._oninvalid.bind(this)
+      oninvalid: this._oninvalid.bind(this),
+      name: this.name,
+      log: this.l,
     })
 
     this.replicator.findingPeers += this._findingPeers
@@ -671,6 +682,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _oncoreupdate (status, bitfield, value, from) {
+    this.l('_oncoreupdate');
     if (status !== 0) {
       const truncatedNonSparse = (status & 0b1000) !== 0
       const appendedNonSparse = (status & 0b0100) !== 0
@@ -678,10 +690,12 @@ module.exports = class Hypercore extends EventEmitter {
       const appended = (status & 0b0001) !== 0
 
       if (truncated) {
+        this.l('\t-> ontruncate');
         this.replicator.ontruncate(bitfield.start, bitfield.length)
       }
 
       if ((status & 0b10011) !== 0) {
+        this.l('\t-> onupgrade');
         this.replicator.onupgrade()
       }
 
@@ -733,6 +747,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (bitfield) {
+      this.l('\t-> onhave');
       this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
     }
 
@@ -831,6 +846,7 @@ module.exports = class Hypercore extends EventEmitter {
     return new Batch(session ? this.session() : this, checkout, autoClose, restore, clear)
   }
 
+  // get block index of a byteOffset
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
@@ -1025,6 +1041,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async append (blocks, opts = {}) {
+    this.l('append');
     if (this.opened === false) await this.opening
 
     const { keyPair = this.keyPair, signature = null } = opts
