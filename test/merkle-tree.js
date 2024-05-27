@@ -1,6 +1,9 @@
+const path = require('path')
 const test = require('brittle')
 const RAM = require('random-access-memory')
 const b4a = require('b4a')
+const RandomAccessFile = require('random-access-file')
+const createTempDir = require('test-tmp')
 const Tree = require('../lib/merkle-tree')
 
 test('nodes', async function (t) {
@@ -597,6 +600,28 @@ test('checkout nodes in a batch', async t => {
   const nodes = b.nodes.sort((a, b) => a.index - b.index).map(n => n.index)
 
   t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
+})
+
+test('buffer of cached nodes is copied to small slab', async function (t) {
+  // RAM does not use slab-allocated memory,
+  // so we need to us random-access-file to reproduce this issue
+  const dir = await createTempDir(t)
+  const storage = new RandomAccessFile(path.join(dir, 'tree'))
+
+  const tree = await Tree.open(storage)
+
+  const b = tree.batch()
+  b.append(b4a.from('tree-entry'))
+  b.commit()
+
+  // Note: if the batch is committed but not yet flushed,
+  // it still uses the original slab-allocated memory
+  await tree.flush()
+
+  const node = await tree.get(0)
+  t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
+
+  await tree.close()
 })
 
 async function audit (tree) {
