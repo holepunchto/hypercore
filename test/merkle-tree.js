@@ -620,6 +620,8 @@ test('buffer of cached nodes is copied to small slab', async function (t) {
 
   const node = await tree.get(0)
   t.is(node.hash.buffer.byteLength, 40, 'created a new memory slab of the correct (small) size')
+
+  await tree.close()
 })
 
 async function audit (tree) {
