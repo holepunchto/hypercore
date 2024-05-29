@@ -14,8 +14,8 @@ function makeStreamPair (t, opts = {}) {
   t.teardown(() => a.close())
   t.teardown(() => b.close())
 
-  a.bind(0)
-  b.bind(0)
+  a.bind(0, '127.0.0.1')
+  b.bind(0, '127.0.0.1')
 
   const p = proxy({ from: a, to: b }, async function () {
     const delay = opts.latency[0] + Math.round(Math.random() * (opts.latency[1] - opts.latency[0]))
@@ -59,7 +59,7 @@ function proxy ({ from, to, bind } = {}, handler) {
     }
   })
 
-  socket.bind(bind || 0)
+  socket.bind(bind || 0, '127.0.0.1')
 
   return socket
 }
