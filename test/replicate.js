@@ -1509,6 +1509,34 @@ test('session id reuse does not stall', async function (t) {
   t.is(downloaded, 100, 'Downloaded all blocks exactly once')
 })
 
+test('restore after cancelled block request', async function (t) {
+  t.plan(2)
+
+  const a = await create()
+  const b = await create(a.key)
+
+  for (let i = 0; i < 4; i++) await a.append(b4a.from([i]))
+
+  const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+
+  a.replicate(n1)
+  b.replicate(n2)
+
+  await new Promise(resolve => b.on('append', resolve))
+
+  const session = b.session()
+  t.exception(session.get(a.length)) // async
+
+  a.on('upload', () => session.close()) // close before processing
+
+  // trigger upgrade
+  a.append([b4a.from([4]), b4a.from([5])])
+
+  await new Promise(resolve => b.on('append', resolve))
+
+  t.is(b.length, a.length)
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
