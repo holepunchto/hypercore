@@ -1,8 +1,5 @@
-const path = require('path')
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const b4a = require('b4a')
-const RandomAccessFile = require('random-access-file')
 const createTempDir = require('test-tmp')
 const Tree = require('../lib/merkle-tree')
 
