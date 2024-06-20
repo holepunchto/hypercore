@@ -614,6 +614,35 @@ test('buffer of cached nodes is copied to small slab', async function (t) {
   await tree.close()
 })
 
+test('reopen a tree', async t => {
+  const dir = await createTempDir(t)
+
+  const a = await create(t, 16, dir)
+  const b = a.batch()
+
+  for (let i = 0; i < 16; i++) {
+    b.append(b4a.from('#' + i))
+  }
+
+  await b.commit()
+
+  t.alike(a.length, 32)
+
+  const byteLength = a.byteLength
+
+  t.alike(a.roots.map(n => n.index), [31])
+
+  await a.close()
+
+  const a1 = await create(t, 0, dir)
+
+  t.alike(a1.length, 32)
+  t.alike(a1.byteLength, byteLength)
+  t.alike(a1.roots.map(n => n.index), [31])
+
+})
+
+
 async function audit (tree) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(tree.length * 2)
@@ -655,8 +684,9 @@ async function reorg (local, remote) {
   return r.ancestors
 }
 
-async function create (t, length = 0) {
-  const dir = await createTempDir(t)
+async function create (t, length = 0, dir) {
+  if (!dir) dir = await createTempDir(t)
+
   const db = new CoreStorage(dir)
 
   const dkey = b4a.alloc(32)
