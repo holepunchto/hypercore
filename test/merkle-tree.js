@@ -601,8 +601,7 @@ test('checkout nodes in a batch', async t => {
 test('buffer of cached nodes is copied to small slab', async function (t) {
   // RAM does not use slab-allocated memory,
   // so we need to us random-access-file to reproduce this issue
-  const dir = await createTempDir(t)
-  const tree = await Tree.open(dir)
+  const tree = await create(t)
 
   const b = tree.batch()
   b.append(b4a.from('tree-entry'))
@@ -657,9 +656,18 @@ async function reorg (local, remote) {
 
 async function create (t, length = 0) {
   const dir = await createTempDir(t)
-  const tree = await Tree.open(dir)
+  const db = new CoreStorage(dir)
+
+  const dkey = b4a.alloc(32)
+
+  const storage = db.get(dkey)
+  if (!await storage.open()) await storage.create()
+
+  const tree = await Tree.open(storage)
 
   t.teardown(() => tree.close())
+
+  if (!length) return tree
 
   const b = tree.batch()
   for (let i = 0; i < length; i++) {
