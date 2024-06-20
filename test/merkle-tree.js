@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 const Tree = require('../lib/merkle-tree')
 
 test('nodes', async function (t) {
