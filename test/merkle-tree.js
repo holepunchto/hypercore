@@ -692,9 +692,10 @@ async function create (t, length = 0, dir) {
   const dkey = b4a.alloc(32)
 
   const storage = db.get(dkey)
-  if (!await storage.open()) await storage.create()
+  if (!await storage.open()) await storage.create({})
 
-  const tree = await Tree.open(storage)
+  const batchId = 0
+  const tree = await Tree.open(storage, batchId)
 
   t.teardown(() => tree.close())
 
