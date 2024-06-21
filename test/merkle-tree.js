@@ -639,9 +639,7 @@ test('reopen a tree', async t => {
   t.alike(a1.length, 32)
   t.alike(a1.byteLength, byteLength)
   t.alike(a1.roots.map(n => n.index), [31])
-
 })
-
 
 async function audit (tree) {
   const flat = require('flat-tree')
