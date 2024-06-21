@@ -1,10 +1,12 @@
 const test = require('brittle')
 const RAM = require('random-access-memory')
 const b4a = require('b4a')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 const Core = require('../lib/core')
 
 test('core - append', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   {
     const info = await core.append([
@@ -15,9 +17,15 @@ test('core - append', async function (t) {
     t.alike(info, { length: 2, byteLength: 10 })
     t.is(core.tree.length, 2)
     t.is(core.tree.byteLength, 10)
+
+    const reader = core.storage.createReadBatch()
+    const b0 = core.blocks.get(reader, 0, 0)
+    const b1 = core.blocks.get(reader, 0, 1)
+    await reader.flush()
+
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1)
+      await b0,
+      await b1
     ], [
       b4a.from('hello'),
       b4a.from('world')
@@ -32,10 +40,17 @@ test('core - append', async function (t) {
     t.alike(info, { length: 3, byteLength: 13 })
     t.is(core.tree.length, 3)
     t.is(core.tree.byteLength, 13)
+
+    const reader = core.storage.createReadBatch()
+    const b0 = core.blocks.get(reader, 0, 0)
+    const b1 = core.blocks.get(reader, 0, 1)
+    const b2 = core.blocks.get(reader, 0, 2)
+    await reader.flush()
+
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1),
-      await core.blocks.get(2)
+      await b0,
+      await b1,
+      await b2
     ], [
       b4a.from('hello'),
       b4a.from('world'),
@@ -45,7 +60,7 @@ test('core - append', async function (t) {
 })
 
 test('core - append and truncate', async function (t) {
-  const { core, reopen } = await create()
+  const { core, reopen } = await create(t)
 
   await core.append([
     b4a.from('hello'),
@@ -103,7 +118,7 @@ test('core - append and truncate', async function (t) {
 })
 
 test('core - user data', async function (t) {
-  const { core, reopen } = await create()
+  const { core, reopen } = await create(t)
 
   await core.userData('hello', b4a.from('world'))
   t.alike(core.header.userData, [{ key: 'hello', value: b4a.from('world') }])
@@ -127,8 +142,8 @@ test('core - user data', async function (t) {
 })
 
 test('core - verify', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
@@ -150,8 +165,8 @@ test('core - verify', async function (t) {
 })
 
 test('core - verify parallel upgrades', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
@@ -173,8 +188,8 @@ test('core - verify parallel upgrades', async function (t) {
 })
 
 test('core - update hook is triggered', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   let ran = 0
 
@@ -275,7 +290,7 @@ test('core - update hook is triggered', async function (t) {
 })
 
 test('core - clone', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.userData('hello', b4a.from('world'))
 
@@ -285,7 +300,7 @@ test('core - clone', async function (t) {
   ])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = (await create({ manifest }))
+  const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core)
 
@@ -317,13 +332,13 @@ test('core - clone', async function (t) {
 })
 
 test('core - clone verify', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
-  const { core: clone } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
+  const { core: clone } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -347,7 +362,7 @@ test('core - clone verify', async function (t) {
 })
 
 test('core - partial clone', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('0')])
   await core.append([b4a.from('1')])
@@ -357,7 +372,7 @@ test('core - partial clone', async function (t) {
   await core.append([b4a.from('2')])
   await core.append([b4a.from('3')])
 
-  const { core: copy } = (await create({ manifest }))
+  const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core)
 
@@ -376,12 +391,12 @@ test('core - partial clone', async function (t) {
 })
 
 test('core - clone with additional', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core, core.tree.signature)
 
@@ -389,7 +404,7 @@ test('core - clone with additional', async function (t) {
   await core.append([b4a.from('c')])
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
 
@@ -405,12 +420,12 @@ test('core - clone with additional', async function (t) {
 })
 
 test('core - clone with additional, larger tree', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -428,7 +443,7 @@ test('core - clone with additional, larger tree', async function (t) {
   await core.append(additional)
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   // copy should be independent
   await clone.copyPrologue(copy, { additional })
@@ -452,8 +467,8 @@ test('core - clone with additional, larger tree', async function (t) {
 })
 
 test('core - copyPrologue bails if core is not the same', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
+  const { core } = await create(t)
+  const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
 
   // copy should be independent
   await core.append([b4a.from('a')])
@@ -462,19 +477,19 @@ test('core - copyPrologue bails if core is not the same', async function (t) {
 })
 
 test('core - copyPrologue can recover from bad additional', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
   await copy.copyPrologue(core)
 
   // copy should be independent
   await core.append([b4a.from('c')])
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
   await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
@@ -491,15 +506,15 @@ test('core - copyPrologue can recover from bad additional', async function (t) {
 })
 
 test('core - copyPrologue many', async function (t) {
-  const { core } = await create({ compat: false, version: 1 })
+  const { core } = await create(t, { compat: false, version: 1 })
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { ...core.header.manifest }
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
 
-  const { core: copy } = await create({ manifest })
-  const { core: copy2 } = await create({ manifest })
-  const { core: copy3 } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
+  const { core: copy2 } = await create(t, { manifest })
+  const { core: copy3 } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -532,7 +547,7 @@ test('core - copyPrologue many', async function (t) {
   t.is(copy.tree.byteLength, copy3.tree.byteLength)
 
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
-  const { core: copy4 } = await create({ manifest })
+  const { core: copy4 } = await create(t, { manifest })
   await copy4.copyPrologue(copy2)
 
   t.is(copy4.tree.length, 3)
@@ -542,8 +557,27 @@ test('core - copyPrologue many', async function (t) {
   t.alike(await copy4.blocks.get(1), b4a.from('b'))
 })
 
-async function create (opts) {
+async function create (t, dir, opts) {
+  if (!opts && typeof dir === 'object') {
+    opts = dir
+    dir = null
+  }
+
   const storage = new Map()
+
+  if (!dir) dir = await createTempDir(t)
+
+  const db = new CoreStorage(dir)
+
+  const dkey = b4a.alloc(32)
+
+  const store = db.get(dkey)
+  if (!await store.open()) await store.create({})
+
+  storage.set('tree', store)
+  storage.set('data', store)
+
+  t.teardown(() => db.close())
 
   const createFile = (name) => {
     if (storage.has(name)) return storage.get(name)
@@ -552,7 +586,7 @@ async function create (opts) {
     return s
   }
 
-  const reopen = () => Core.open(createFile, opts)
+  const reopen = () => Core.open(createFile, store, opts)
   const core = await reopen()
   return { core, reopen }
 }
