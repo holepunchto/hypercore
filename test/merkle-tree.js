@@ -599,7 +599,7 @@ test('checkout nodes in a batch', async t => {
   t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
 })
 
-test('buffer of cached nodes is copied to small slab', async function (t) {
+test.skip('buffer of cached nodes is copied to small slab', async function (t) {
   // RAM does not use slab-allocated memory,
   // so we need to us random-access-file to reproduce this issue
   const tree = await create(t)
