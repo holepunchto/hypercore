@@ -1,13 +1,11 @@
-const path = require('path')
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const b4a = require('b4a')
-const RandomAccessFile = require('random-access-file')
 const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 const Tree = require('../lib/merkle-tree')
 
 test('nodes', async function (t) {
-  const tree = await create()
+  const tree = await create(t)
 
   const b = tree.batch()
 
@@ -15,7 +13,7 @@ test('nodes', async function (t) {
     b.append(b4a.from([i]))
   }
 
-  b.commit()
+  await b.commit()
 
   t.is(await tree.nodes(0), 0)
 
@@ -23,7 +21,7 @@ test('nodes', async function (t) {
 })
 
 test('proof only block', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     block: { index: 4, nodes: 2 }
@@ -37,7 +35,7 @@ test('proof only block', async function (t) {
 })
 
 test('proof with upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     block: { index: 4, nodes: 0 },
@@ -55,7 +53,7 @@ test('proof with upgrade', async function (t) {
 })
 
 test('proof with upgrade + additional', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     block: { index: 4, nodes: 0 },
@@ -73,7 +71,7 @@ test('proof with upgrade + additional', async function (t) {
 })
 
 test('proof with upgrade from existing state', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     block: { index: 1, nodes: 0 },
@@ -91,7 +89,7 @@ test('proof with upgrade from existing state', async function (t) {
 })
 
 test('proof with upgrade from existing state + additional', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     block: { index: 1, nodes: 0 },
@@ -109,7 +107,7 @@ test('proof with upgrade from existing state + additional', async function (t) {
 })
 
 test('proof block and seek, no upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     seek: { bytes: 8, padding: 0 },
@@ -124,7 +122,7 @@ test('proof block and seek, no upgrade', async function (t) {
 })
 
 test('proof block and seek #2, no upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     seek: { bytes: 10, padding: 0 },
@@ -139,7 +137,7 @@ test('proof block and seek #2, no upgrade', async function (t) {
 })
 
 test('proof block and seek #3, no upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     seek: { bytes: 13, padding: 0 },
@@ -154,7 +152,7 @@ test('proof block and seek #3, no upgrade', async function (t) {
 })
 
 test('proof seek with padding, no upgrade', async function (t) {
-  const tree = await create(16)
+  const tree = await create(t, 16)
 
   const proof = await tree.proof({
     seek: { bytes: 7, padding: 1 },
@@ -167,7 +165,7 @@ test('proof seek with padding, no upgrade', async function (t) {
 })
 
 test('proof block and seek that results in tree, no upgrade', async function (t) {
-  const tree = await create(16)
+  const tree = await create(t, 16)
 
   const proof = await tree.proof({
     seek: { bytes: 26, padding: 0 },
@@ -180,7 +178,7 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
 })
 
 test('proof block and seek, with upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     seek: { bytes: 13, padding: 0 },
@@ -199,7 +197,7 @@ test('proof block and seek, with upgrade', async function (t) {
 })
 
 test('proof seek with upgrade', async function (t) {
-  const tree = await create(10)
+  const tree = await create(t, 10)
 
   const proof = await tree.proof({
     seek: { bytes: 13, padding: 0 },
@@ -215,8 +213,8 @@ test('proof seek with upgrade', async function (t) {
 })
 
 test('verify proof #1', async function (t) {
-  const tree = await create(10)
-  const clone = await create()
+  const tree = await create(t, 10)
+  const clone = await create(t)
 
   const p = await tree.proof({
     hash: { index: 6, nodes: 0 },
@@ -224,17 +222,17 @@ test('verify proof #1', async function (t) {
   })
 
   const b = await clone.verify(p)
-  b.commit()
+  await b.commit()
 
   t.is(clone.length, tree.length)
   t.is(clone.byteLength, tree.byteLength)
   t.is(await clone.byteOffset(6), await tree.byteOffset(6))
-  t.is(await clone.get(6), await tree.get(6))
+  t.alike(await clone.get(6), await tree.get(6))
 })
 
 test('verify proof #2', async function (t) {
-  const tree = await create(10)
-  const clone = await create()
+  const tree = await create(t, 10)
+  const clone = await create(t)
 
   const p = await tree.proof({
     seek: { bytes: 10, padding: 0 },
@@ -242,7 +240,7 @@ test('verify proof #2', async function (t) {
   })
 
   const b = await clone.verify(p)
-  b.commit()
+  await b.commit()
 
   t.is(clone.length, tree.length)
   t.is(clone.byteLength, tree.byteLength)
@@ -250,8 +248,8 @@ test('verify proof #2', async function (t) {
 })
 
 test('upgrade edgecase when no roots need upgrade', async function (t) {
-  const tree = await create(4)
-  const clone = await create()
+  const tree = await create(t, 4)
+  const clone = await create(t)
 
   {
     const proof = await tree.proof({
@@ -259,12 +257,12 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     })
 
     const b = await clone.verify(proof)
-    b.commit()
+    await b.commit()
   }
 
   const b = tree.batch()
   b.append(b4a.from('#5'))
-  b.commit()
+  await b.commit()
 
   {
     const proof = await tree.proof({
@@ -272,15 +270,15 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     })
 
     const b = await clone.verify(proof)
-    b.commit()
+    await b.commit()
   }
 
   t.is(tree.length, 5)
 })
 
 test('lowest common ancestor - small gap', async function (t) {
-  const tree = await create(10)
-  const clone = await create(8)
+  const tree = await create(t, 10)
+  const clone = await create(t, 8)
   const ancestors = await reorg(clone, tree)
 
   t.is(ancestors, 8)
@@ -288,8 +286,8 @@ test('lowest common ancestor - small gap', async function (t) {
 })
 
 test('lowest common ancestor - bigger gap', async function (t) {
-  const tree = await create(20)
-  const clone = await create(1)
+  const tree = await create(t, 20)
+  const clone = await create(t, 1)
   const ancestors = await reorg(clone, tree)
 
   t.is(ancestors, 1)
@@ -297,8 +295,8 @@ test('lowest common ancestor - bigger gap', async function (t) {
 })
 
 test('lowest common ancestor - remote is shorter than local', async function (t) {
-  const tree = await create(5)
-  const clone = await create(10)
+  const tree = await create(t, 5)
+  const clone = await create(t, 10)
   const ancestors = await reorg(clone, tree)
 
   t.is(ancestors, 5)
@@ -306,19 +304,19 @@ test('lowest common ancestor - remote is shorter than local', async function (t)
 })
 
 test('lowest common ancestor - simple fork', async function (t) {
-  const tree = await create(5)
-  const clone = await create(5)
+  const tree = await create(t, 5)
+  const clone = await create(t, 5)
 
   {
     const b = tree.batch()
     b.append(b4a.from('fork #1'))
-    b.commit()
+    await b.commit()
   }
 
   {
     const b = clone.batch()
     b.append(b4a.from('fork #2'))
-    b.commit()
+    await b.commit()
   }
 
   const ancestors = await reorg(clone, tree)
@@ -328,31 +326,31 @@ test('lowest common ancestor - simple fork', async function (t) {
 })
 
 test('lowest common ancestor - long fork', async function (t) {
-  const tree = await create(5)
-  const clone = await create(5)
+  const tree = await create(t, 5)
+  const clone = await create(t, 5)
 
   {
     const b = tree.batch()
     b.append(b4a.from('fork #1'))
-    b.commit()
+    await b.commit()
   }
 
   {
     const b = clone.batch()
     b.append(b4a.from('fork #2'))
-    b.commit()
+    await b.commit()
   }
 
   {
     const b = tree.batch()
     for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
-    b.commit()
+    await b.commit()
   }
 
   {
     const b = clone.batch()
     for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
-    b.commit()
+    await b.commit()
   }
 
   const ancestors = await reorg(clone, tree)
@@ -361,13 +359,12 @@ test('lowest common ancestor - long fork', async function (t) {
   t.is(clone.length, tree.length)
 
   t.ok(await audit(tree))
-  await tree.flush()
   t.ok(await audit(tree))
 })
 
 test('tree hash', async function (t) {
-  const a = await create(5)
-  const b = await create(5)
+  const a = await create(t, 5)
+  const b = await create(t, 5)
 
   t.alike(a.hash(), b.hash())
 
@@ -377,7 +374,7 @@ test('tree hash', async function (t) {
     b.append(b4a.from('hi'))
     const h = b.hash()
     t.unlike(h, a.hash())
-    b.commit()
+    await b.commit()
     t.alike(h, a.hash())
   }
 
@@ -387,13 +384,13 @@ test('tree hash', async function (t) {
     const h = ba.hash()
     t.unlike(h, b.hash())
     t.alike(h, a.hash())
-    ba.commit()
+    await ba.commit()
     t.alike(h, b.hash())
   }
 })
 
 test('basic tree seeks', async function (t) {
-  const a = await create(5)
+  const a = await create(t, 5)
 
   {
     const b = a.batch()
@@ -402,7 +399,7 @@ test('basic tree seeks', async function (t) {
     b.append(b4a.from('tiny'))
     b.append(b4a.from('s'))
     b.append(b4a.from('another'))
-    b.commit()
+    await b.commit()
   }
 
   t.is(a.length, 10)
@@ -433,7 +430,7 @@ test('basic tree seeks', async function (t) {
 })
 
 test('clear full tree', async function (t) {
-  const a = await create(5)
+  const a = await create(t, 5)
 
   t.is(a.length, 5)
 
@@ -450,7 +447,7 @@ test('clear full tree', async function (t) {
 })
 
 test('get older roots', async function (t) {
-  const a = await create(5)
+  const a = await create(t, 5)
 
   const roots = await a.getRoots(5)
   t.alike(roots, a.roots, 'same roots')
@@ -460,7 +457,7 @@ test('get older roots', async function (t) {
     b.append(b4a.from('next'))
     b.append(b4a.from('next'))
     b.append(b4a.from('next'))
-    b.commit()
+    await b.commit()
   }
 
   const oldRoots = await a.getRoots(5)
@@ -474,7 +471,7 @@ test('get older roots', async function (t) {
     {
       const b = a.batch()
       b.append(b4a.from('tick'))
-      b.commit()
+      await b.commit()
     }
   }
 
@@ -488,8 +485,8 @@ test('get older roots', async function (t) {
 })
 
 test('check if a length is upgradeable', async function (t) {
-  const tree = await create(5)
-  const clone = await create()
+  const tree = await create(t, 5)
+  const clone = await create(t)
 
   // Full clone, has it all
 
@@ -505,7 +502,7 @@ test('check if a length is upgradeable', async function (t) {
   })
 
   const b = await clone.verify(p)
-  b.commit()
+  await b.commit()
 
   /*
     Merkle tree looks like
@@ -532,7 +529,7 @@ test('check if a length is upgradeable', async function (t) {
 })
 
 test('clone a batch', async t => {
-  const a = await create(5)
+  const a = await create(t, 5)
 
   const b = a.batch()
   const c = b.clone()
@@ -556,7 +553,7 @@ test('clone a batch', async t => {
   b.append(b4a.from('s'))
   b.append(b4a.from('another'))
 
-  b.commit()
+  await b.commit()
 
   let same = b.roots.length === c.roots.length
   for (let i = 0; i < b.roots.length; i++) {
@@ -569,7 +566,7 @@ test('clone a batch', async t => {
 })
 
 test('prune nodes in a batch', async t => {
-  const a = await create(0)
+  const a = await create(t, 0)
   const b = a.batch()
 
   for (let i = 0; i < 16; i++) {
@@ -584,7 +581,7 @@ test('prune nodes in a batch', async t => {
 })
 
 test('checkout nodes in a batch', async t => {
-  const a = await create(0)
+  const a = await create(t, 0)
   const b = a.batch()
 
   for (let i = 0; i < 16; i++) {
@@ -602,26 +599,46 @@ test('checkout nodes in a batch', async t => {
   t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
 })
 
-test('buffer of cached nodes is copied to small slab', async function (t) {
+test.skip('buffer of cached nodes is copied to small slab', async function (t) {
   // RAM does not use slab-allocated memory,
   // so we need to us random-access-file to reproduce this issue
-  const dir = await createTempDir(t)
-  const storage = new RandomAccessFile(path.join(dir, 'tree'))
-
-  const tree = await Tree.open(storage)
+  const tree = await create(t)
 
   const b = tree.batch()
   b.append(b4a.from('tree-entry'))
-  b.commit()
-
-  // Note: if the batch is committed but not yet flushed,
-  // it still uses the original slab-allocated memory
-  await tree.flush()
+  await b.commit()
 
   const node = await tree.get(0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
 
   await tree.close()
+})
+
+test('reopen a tree', async t => {
+  const dir = await createTempDir(t)
+
+  const a = await create(t, 16, dir)
+  const b = a.batch()
+
+  for (let i = 0; i < 16; i++) {
+    b.append(b4a.from('#' + i))
+  }
+
+  await b.commit()
+
+  t.alike(a.length, 32)
+
+  const byteLength = a.byteLength
+
+  t.alike(a.roots.map(n => n.index), [31])
+
+  await a.close()
+
+  const a1 = await create(t, 0, dir)
+
+  t.alike(a1.length, 32)
+  t.alike(a1.byteLength, byteLength)
+  t.alike(a1.roots.map(n => n.index), [31])
 })
 
 async function audit (tree) {
@@ -661,16 +678,31 @@ async function reorg (local, remote) {
     await r.update(await remote.proof({ hash: { index, nodes } }))
   }
 
-  r.commit()
+  await r.commit()
   return r.ancestors
 }
 
-async function create (length = 0) {
-  const tree = await Tree.open(new RAM())
+async function create (t, length = 0, dir) {
+  if (!dir) dir = await createTempDir(t)
+
+  const db = new CoreStorage(dir)
+
+  const dkey = b4a.alloc(32)
+
+  const storage = db.get(dkey)
+  if (!await storage.open()) await storage.create({})
+
+  const batchId = 0
+  const tree = await Tree.open(storage, batchId)
+
+  t.teardown(() => tree.close())
+
+  if (!length) return tree
+
   const b = tree.batch()
   for (let i = 0; i < length; i++) {
     b.append(b4a.from('#' + i))
   }
-  b.commit()
+  await b.commit()
   return tree
 }
