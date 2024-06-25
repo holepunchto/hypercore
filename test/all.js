@@ -14,7 +14,7 @@ async function runTests () {
   // await import('./clear.js')
   // await import('./compat.js')
   // await import('./conflicts.js')
-  // await import('./core.js')
+  await import('./core.js')
   // await import('./encodings.js')
   // await import('./encryption.js')
   // await import('./extension.js')
