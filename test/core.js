@@ -17,8 +17,8 @@ test('core - append', async function (t) {
     t.is(core.tree.length, 2)
     t.is(core.tree.byteLength, 10)
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1)
+      await getBlock(core, 0),
+      await getBlock(core, 1)
     ], [
       b4a.from('hello'),
       b4a.from('world')
@@ -34,9 +34,9 @@ test('core - append', async function (t) {
     t.is(core.tree.length, 3)
     t.is(core.tree.byteLength, 13)
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1),
-      await core.blocks.get(2)
+      await getBlock(core, 0),
+      await getBlock(core, 1),
+      await getBlock(core, 2)
     ], [
       b4a.from('hello'),
       b4a.from('world'),
@@ -145,7 +145,7 @@ test('core - verify', async function (t) {
 
   {
     const p = await core.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
-    p.block.value = await core.blocks.get(1)
+    p.block.value = await getBlock(core, 1)
     await clone.verify(p)
   }
 })
@@ -200,7 +200,7 @@ test('core - update hook is triggered', async function (t) {
 
   {
     const p = await core.tree.proof({ block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
-    p.block.value = await core.blocks.get(1)
+    p.block.value = await getBlock(core, 1)
     await clone.verify(p, peer)
   }
 
@@ -214,7 +214,7 @@ test('core - update hook is triggered', async function (t) {
 
   {
     const p = await core.tree.proof({ block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
-    p.block.value = await core.blocks.get(3)
+    p.block.value = await getBlock(core, 3)
     await clone.verify(p, peer)
   }
 
@@ -546,14 +546,15 @@ test('core - copyPrologue many', async function (t) {
 async function create (t, opts = {}) {
   const dir = opts.dir || await createTempDir(t)
 
-  const db = new CoreStorage(dir)
-
-  const dkey = b4a.alloc(32)
-  let storage = null
+  const dkey = b4a.alloc(32, 1)
+  let db = null
 
   const reopen = async () => {
-    if (storage) await storage.close()
-    storage = db.get(dkey)
+    if (db) await db.close()
+
+    db = new CoreStorage(dir)
+
+    const storage = db.get(dkey)
     if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
 
     return Core.open(storage, opts)
@@ -561,4 +562,11 @@ async function create (t, opts = {}) {
 
   const core = await reopen()
   return { core, reopen }
+}
+
+async function getBlock (core, i) {
+  const r = core.storage.createReadBatch()
+  const p = core.blocks.get(r, i)
+  await r.flush()
+  return p
 }
