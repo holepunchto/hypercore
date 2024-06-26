@@ -687,14 +687,14 @@ async function create (t, length = 0, dir) {
 
   const db = new CoreStorage(dir)
 
+  t.teardown(() => db.close())
+
   const dkey = b4a.alloc(32)
 
   const storage = db.get(dkey)
   if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
 
   const tree = await Tree.open(storage)
-
-  t.teardown(() => tree.close())
 
   if (!length) return tree
 

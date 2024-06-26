@@ -266,6 +266,8 @@ async function createStorage (t, dir) {
 
   const db = new CoreStorage(dir)
 
+  t.teardown(() => db.close())
+
   const dkey = b4a.alloc(32)
 
   const storage = db.get(dkey)
