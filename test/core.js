@@ -106,19 +106,19 @@ test('core - append and truncate', async function (t) {
 test('core - user data', async function (t) {
   const { core, reopen } = await create()
 
-  await core.userData(b4a.from('hello'), b4a.from('world'))
-  t.alike(await core.storage.getUserData(b4a.from('hello')), b4a.from('world'))
+  await core.userData('hello', b4a.from('world'))
+  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
 
-  await core.userData(b4a.from('hej'), b4a.from('verden'))
-  t.alike(await core.storage.getUserData(b4a.from('hello')), b4a.from('world'))
-  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('verden'))
+  await core.userData('hej', b4a.from('verden'))
+  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
+  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData(b4a.from('hello'), null)
-  t.alike(await core.storage.getUserData(b4a.from('hello')), null)
-  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('verden'))
+  await core.userData('hello', null)
+  t.alike(await core.storage.getUserData('hello'), null)
+  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData(b4a.from('hej'), b4a.from('world'))
-  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('world'))
+  await core.userData('hej', b4a.from('world'))
+  t.alike(await core.storage.getUserData('hej'), b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
