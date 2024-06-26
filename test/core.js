@@ -104,27 +104,26 @@ test('core - append and truncate', async function (t) {
 })
 
 test('core - user data', async function (t) {
-  const { core, reopen } = await create(t)
+  const { core, reopen } = await create()
 
-  await core.userData('hello', b4a.from('world'))
-  t.alike(core.header.userData, [{ key: 'hello', value: b4a.from('world') }])
+  await core.userData(b4a.from('hello'), b4a.from('world'))
+  t.alike(await core.storage.getUserData(b4a.from('hello')), b4a.from('world'))
 
-  await core.userData('hej', b4a.from('verden'))
-  t.alike(core.header.userData, [
-    { key: 'hello', value: b4a.from('world') },
-    { key: 'hej', value: b4a.from('verden') }
-  ])
+  await core.userData(b4a.from('hej'), b4a.from('verden'))
+  t.alike(await core.storage.getUserData(b4a.from('hello')), b4a.from('world'))
+  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('verden'))
 
-  await core.userData('hello', null)
-  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('verden') }])
+  await core.userData(b4a.from('hello'), null)
+  t.alike(await core.storage.getUserData(b4a.from('hello')), null)
+  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('verden'))
 
-  await core.userData('hej', b4a.from('world'))
-  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('world') }])
+  await core.userData(b4a.from('hej'), b4a.from('world'))
+  t.alike(await core.storage.getUserData(b4a.from('hej')), b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.alike(coreReopen.header.userData, [{ key: 'hej', value: b4a.from('world') }])
+  t.alike(await coreReopen.storage.getUserData(b4a.from('hej')), b4a.from('world'))
 })
 
 test('core - verify', async function (t) {
