@@ -140,8 +140,11 @@ test('core - verify', async function (t) {
     await clone.verify(p)
   }
 
-  t.is(clone.header.tree.length, 2)
-  t.is(clone.header.tree.signature, core.header.tree.signature)
+  const tree1 = await core.storage.getCoreHead()
+  const tree2 = await clone.storage.getCoreHead()
+
+  t.is(tree1.length, 2)
+  t.alike(tree1.signature, tree2.signature)
 
   {
     const p = await core.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
@@ -169,8 +172,11 @@ test('core - verify parallel upgrades', async function (t) {
     await v2
   }
 
-  t.is(clone.header.tree.length, core.header.tree.length)
-  t.is(clone.header.tree.signature, core.header.tree.signature)
+  const tree1 = await core.storage.getCoreHead()
+  const tree2 = await clone.storage.getCoreHead()
+
+  t.is(tree2.length, tree1.length)
+  t.alike(tree2.signature, tree1.signature)
 })
 
 test('core - update hook is triggered', async function (t) {
