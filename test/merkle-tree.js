@@ -632,7 +632,7 @@ test('reopen a tree', async t => {
 
   t.alike(a.roots.map(n => n.index), [31])
 
-  await a.close()
+  await a.storage.close()
 
   const a1 = await create(t, 0, dir)
 
