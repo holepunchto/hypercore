@@ -1,9 +1,11 @@
 const test = require('brittle')
-const RAM = require('random-access-memory')
+const b4a = require('b4a')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 const Bitfield = require('../lib/bitfield')
 
 test('bitfield - set and get', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   t.absent(b.get(42))
   b.set(42, true)
@@ -21,7 +23,7 @@ test('bitfield - set and get', async function (t) {
 })
 
 test('bitfield - random set and gets', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
   const set = new Set()
 
   for (let i = 0; i < 200; i++) {
@@ -52,18 +54,19 @@ test('bitfield - random set and gets', async function (t) {
 })
 
 test('bitfield - reload', async function (t) {
-  const s = new RAM()
+  const dir = await createTempDir(t)
 
   {
-    const b = await Bitfield.open(s)
+    const b = await Bitfield.open(await createStorage(t, dir))
     b.set(142, true)
     b.set(40000, true)
     b.set(1424242424, true)
     await b.flush()
+    await b.storage.close()
   }
 
   {
-    const b = await Bitfield.open(s)
+    const b = await Bitfield.open(await createStorage(t, dir))
     t.ok(b.get(142))
     t.ok(b.get(40000))
     t.ok(b.get(1424242424))
@@ -74,7 +77,7 @@ test('bitfield - want', async function (t) {
   // This test will likely break when bitfields are optimised to not actually
   // store pages of all set or unset bits.
 
-  const b = new Bitfield(new RAM(), new Uint32Array(1024 * 512 / 4 /* 512 KiB */))
+  const b = new Bitfield(await createStorage(t), b4a.alloc(1024 * 512) /* 512 KiB */)
 
   t.alike([...b.want(0, 0)], [])
 
@@ -112,14 +115,14 @@ test('bitfield - want', async function (t) {
 })
 
 test('bitfield - sparse array overflow', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   // Previously bugged due to missing bounds check in sparse array
   b.set(7995511118690925, true)
 })
 
 test('bitfield - count', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
     b.setRange(start, length, true)
@@ -130,7 +133,7 @@ test('bitfield - count', async function (t) {
 })
 
 test('bitfield - find first, all zeroes', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   t.is(b.findFirst(false, 0), 0)
   t.is(b.findFirst(true, 0), -1)
@@ -153,7 +156,7 @@ test('bitfield - find first, all zeroes', async function (t) {
 })
 
 test('bitfield - find first, all ones', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   b.setRange(0, 2 ** 24, true)
 
@@ -180,7 +183,7 @@ test('bitfield - find first, all ones', async function (t) {
 })
 
 test('bitfield - find last, all zeroes', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   t.is(b.findLast(false, 0), 0)
   t.is(b.findLast(true, 0), -1)
@@ -203,7 +206,7 @@ test('bitfield - find last, all zeroes', async function (t) {
 })
 
 test('bitfield - find last, all ones', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   b.setRange(0, 2 ** 24, true)
 
@@ -230,7 +233,7 @@ test('bitfield - find last, all ones', async function (t) {
 })
 
 test('bitfield - find last, ones around page boundary', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   b.set(32767, true)
   b.set(32768, true)
@@ -240,7 +243,7 @@ test('bitfield - find last, ones around page boundary', async function (t) {
 })
 
 test('bitfield - set range on page boundary', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   b.setRange(2032, 26, true)
 
@@ -248,7 +251,7 @@ test('bitfield - set range on page boundary', async function (t) {
 })
 
 test('set last bits in segment and findFirst', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t))
 
   b.set(2097150, true)
   t.is(b.findFirst(false, 2097150), 2097151)
@@ -257,3 +260,16 @@ test('set last bits in segment and findFirst', async function (t) {
   t.is(b.findFirst(false, 2097150), 2097152)
   t.is(b.findFirst(false, 2097151), 2097152)
 })
+
+async function createStorage (t, dir) {
+  if (!dir) dir = await createTempDir(t)
+
+  const db = new CoreStorage(dir)
+
+  const dkey = b4a.alloc(32)
+
+  const storage = db.get(dkey)
+  if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
+
+  return storage
+}

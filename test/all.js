@@ -9,7 +9,7 @@ async function runTests () {
 
   // await import('./basic.js')
   // await import('./batch.js')
-  // await import('./bitfield.js')
+  await import('./bitfield.js')
   // await import('./cache.js')
   // await import('./clear.js')
   // await import('./compat.js')
