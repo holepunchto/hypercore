@@ -5,7 +5,8 @@ const CoreStorage = require('hypercore-on-the-rocks')
 const Bitfield = require('../lib/bitfield')
 
 test('bitfield - set and get', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const storage = await createStorage(t)
+  const b = await Bitfield.open(storage)
 
   t.absent(b.get(42))
   b.set(42, true)
@@ -19,7 +20,9 @@ test('bitfield - set and get', async function (t) {
   b.set(42000000, false)
   t.absent(b.get(42000000))
 
-  await b.flush()
+  const w = storage.createWriteBatch()
+  await b.flush(w)
+  await w.flush()
 })
 
 test('bitfield - random set and gets', async function (t) {
@@ -57,12 +60,15 @@ test('bitfield - reload', async function (t) {
   const dir = await createTempDir(t)
 
   {
-    const b = await Bitfield.open(await createStorage(t, dir))
+    const storage = await createStorage(t, dir)
+    const b = await Bitfield.open(storage)
     b.set(142, true)
     b.set(40000, true)
     b.set(1424242424, true)
-    await b.flush()
-    await b.storage.close()
+    const w = storage.createWriteBatch()
+    await b.flush(w)
+    await w.flush()
+    await storage.close()
   }
 
   {
@@ -77,7 +83,7 @@ test('bitfield - want', async function (t) {
   // This test will likely break when bitfields are optimised to not actually
   // store pages of all set or unset bits.
 
-  const b = new Bitfield(await createStorage(t), b4a.alloc(1024 * 512) /* 512 KiB */)
+  const b = new Bitfield(b4a.alloc(1024 * 512) /* 512 KiB */)
 
   t.alike([...b.want(0, 0)], [])
 
