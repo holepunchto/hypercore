@@ -106,18 +106,18 @@ test('core - append and truncate', async function (t) {
 test('core - user data', async function (t) {
   const { core, reopen } = await create()
 
-  await core.userData('hello', b4a.from('world'))
+  await setUserData(core, 'hello', b4a.from('world'))
   t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
 
-  await core.userData('hej', b4a.from('verden'))
+  await setUserData(core, 'hej', b4a.from('verden'))
   t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
   t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData('hello', null)
+  await setUserData(core, 'hello', null)
   t.alike(await core.storage.getUserData('hello'), null)
   t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData('hej', b4a.from('world'))
+  await setUserData(core, 'hej', b4a.from('world'))
   t.alike(await core.storage.getUserData('hej'), b4a.from('world'))
 
   // check that it was persisted
@@ -572,6 +572,13 @@ async function create (t, opts = {}) {
 async function getBlock (core, i) {
   const r = core.storage.createReadBatch()
   const p = core.blocks.get(r, i)
+  await r.flush()
+  return p
+}
+
+async function setUserData (core, key, value) {
+  const r = core.storage.createReadBatch()
+  const p = core.userData(key, value)
   await r.flush()
   return p
 }
