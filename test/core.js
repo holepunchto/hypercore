@@ -559,10 +559,10 @@ async function create (t, opts = {}) {
 
     db = new CoreStorage(dir)
 
-    const storage = db.get(dkey)
-    if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
+    if (!opts.discoveryKey) opts.discoveryKey = dkey
+    if (!opts.encryptionKey) opts.encryptionKey = dkey
 
-    return Core.open(storage, opts)
+    return Core.open(db, opts)
   }
 
   const core = await reopen()
