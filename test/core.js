@@ -577,8 +577,8 @@ async function getBlock (core, i) {
 }
 
 async function setUserData (core, key, value) {
-  const r = core.storage.createReadBatch()
-  const p = core.userData(key, value)
-  await r.flush()
+  const w = core.storage.createWriteBatch()
+  const p = core.userData(w, key, value)
+  await w.flush()
   return p
 }
