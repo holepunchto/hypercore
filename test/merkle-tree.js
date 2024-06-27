@@ -13,7 +13,9 @@ test('nodes', async function (t) {
     b.append(b4a.from([i]))
   }
 
-  await b.commit()
+  const wb = tree.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   t.is(await tree.nodes(0), 0)
 
@@ -222,7 +224,10 @@ test('verify proof #1', async function (t) {
   })
 
   const b = await clone.verify(p)
-  await b.commit()
+
+  const wb = clone.storage.createWriteBatch()
+  b.commit(wb)
+  await wb.flush()
 
   t.is(clone.length, tree.length)
   t.is(clone.byteLength, tree.byteLength)
@@ -240,7 +245,9 @@ test('verify proof #2', async function (t) {
   })
 
   const b = await clone.verify(p)
-  await b.commit()
+  const wb = clone.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   t.is(clone.length, tree.length)
   t.is(clone.byteLength, tree.byteLength)
@@ -257,12 +264,16 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     })
 
     const b = await clone.verify(proof)
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   const b = tree.batch()
   b.append(b4a.from('#5'))
-  await b.commit()
+  const wb = tree.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   {
     const proof = await tree.proof({
@@ -270,7 +281,9 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     })
 
     const b = await clone.verify(proof)
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   t.is(tree.length, 5)
@@ -310,13 +323,17 @@ test('lowest common ancestor - simple fork', async function (t) {
   {
     const b = tree.batch()
     b.append(b4a.from('fork #1'))
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   {
     const b = clone.batch()
     b.append(b4a.from('fork #2'))
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   const ancestors = await reorg(clone, tree)
@@ -332,25 +349,33 @@ test('lowest common ancestor - long fork', async function (t) {
   {
     const b = tree.batch()
     b.append(b4a.from('fork #1'))
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   {
     const b = clone.batch()
     b.append(b4a.from('fork #2'))
-    await b.commit()
+    const wb = clone.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   {
     const b = tree.batch()
     for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
-    await b.commit()
+    const wb = tree.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   {
     const b = clone.batch()
     for (let i = 0; i < 100; i++) b.append(b4a.from('#' + i))
-    await b.commit()
+    const wb = clone.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   const ancestors = await reorg(clone, tree)
@@ -374,7 +399,9 @@ test('tree hash', async function (t) {
     b.append(b4a.from('hi'))
     const h = b.hash()
     t.unlike(h, a.hash())
-    await b.commit()
+    const wb = a.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
     t.alike(h, a.hash())
   }
 
@@ -384,7 +411,9 @@ test('tree hash', async function (t) {
     const h = ba.hash()
     t.unlike(h, b.hash())
     t.alike(h, a.hash())
-    await ba.commit()
+    const wba = b.storage.createWriteBatch()
+    await ba.commit(wba)
+    await wba.flush()
     t.alike(h, b.hash())
   }
 })
@@ -399,7 +428,9 @@ test('basic tree seeks', async function (t) {
     b.append(b4a.from('tiny'))
     b.append(b4a.from('s'))
     b.append(b4a.from('another'))
-    await b.commit()
+    const wb = a.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   t.is(a.length, 10)
@@ -457,7 +488,9 @@ test('get older roots', async function (t) {
     b.append(b4a.from('next'))
     b.append(b4a.from('next'))
     b.append(b4a.from('next'))
-    await b.commit()
+    const wb = a.storage.createWriteBatch()
+    await b.commit(wb)
+    await wb.flush()
   }
 
   const oldRoots = await a.getRoots(5)
@@ -471,7 +504,9 @@ test('get older roots', async function (t) {
     {
       const b = a.batch()
       b.append(b4a.from('tick'))
-      await b.commit()
+      const wb = a.storage.createWriteBatch()
+      await b.commit(wb)
+      await wb.flush()
     }
   }
 
@@ -502,7 +537,9 @@ test('check if a length is upgradeable', async function (t) {
   })
 
   const b = await clone.verify(p)
-  await b.commit()
+  const wb = clone.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   /*
     Merkle tree looks like
@@ -553,7 +590,9 @@ test('clone a batch', async t => {
   b.append(b4a.from('s'))
   b.append(b4a.from('another'))
 
-  await b.commit()
+  const wb = a.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   let same = b.roots.length === c.roots.length
   for (let i = 0; i < b.roots.length; i++) {
@@ -606,7 +645,9 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
 
   const b = tree.batch()
   b.append(b4a.from('tree-entry'))
-  await b.commit()
+  const wb = tree.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   const node = await tree.get(0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
@@ -624,7 +665,9 @@ test('reopen a tree', async t => {
     b.append(b4a.from('#' + i))
   }
 
-  await b.commit()
+  const wb = a.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
 
   t.alike(a.length, 32)
 
@@ -678,7 +721,9 @@ async function reorg (local, remote) {
     await r.update(await remote.proof({ hash: { index, nodes } }))
   }
 
-  await r.commit()
+  const wb = local.storage.createWriteBatch()
+  r.commit(wb)
+  await wb.flush()
   return r.ancestors
 }
 
@@ -702,6 +747,8 @@ async function create (t, length = 0, dir) {
   for (let i = 0; i < length; i++) {
     b.append(b4a.from('#' + i))
   }
-  await b.commit()
+  const wb = tree.storage.createWriteBatch()
+  await b.commit(wb)
+  await wb.flush()
   return tree
 }
