@@ -1,7 +1,7 @@
 const { EventEmitter } = require('events')
-const RAF = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
+const CoreStorage = require('hypercore-on-the-rocks')
 const c = require('compact-encoding')
 const b4a = require('b4a')
 const Xache = require('xache')
@@ -39,7 +39,7 @@ module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
 
-    if (isOptions(storage)) {
+    if (isOptions(storage) && !storage.db) {
       opts = storage
       storage = null
       key = opts.key || null
@@ -189,28 +189,12 @@ module.exports = class Hypercore extends EventEmitter {
 
   static defaultStorage (storage, opts = {}) {
     if (typeof storage !== 'string') {
-      if (!isRandomAccessClass(storage)) return storage
-      const Cls = storage // just to satisfy standard...
-      return name => new Cls(name)
+      // todo: validate it is rocksdb instance
+      return storage
     }
 
     const directory = storage
-    const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
-    const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
-    const rmdir = !!opts.rmdir
-    const writable = opts.writable !== false
-
-    return createFile
-
-    function createFile (name) {
-      const lock = toLock === null ? false : isFile(name, toLock)
-      const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir, writable })
-    }
-
-    function isFile (name, n) {
-      return name === n || name.endsWith('/' + n)
-    }
+    return new CoreStorage(directory)
   }
 
   snapshot (opts) {
@@ -881,8 +865,9 @@ module.exports = class Hypercore extends EventEmitter {
     let block
 
     if (this.core.bitfield.get(index)) {
-      const tree = (opts && opts.tree) || this.core.tree
-      block = this.core.blocks.get(index, tree)
+      const reader = this.core.storage.createReadBatch()
+      block = this.core.blocks.get(reader, index)
+      await reader.flush()
 
       if (this.cache) this.cache.set(index, block)
     } else {
@@ -1096,10 +1081,6 @@ module.exports = class Hypercore extends EventEmitter {
 
 function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
-}
-
-function isRandomAccessClass (fn) {
-  return !!(typeof fn === 'function' && fn.prototype && typeof fn.prototype.open === 'function')
 }
 
 function toHex (buf) {

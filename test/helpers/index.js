@@ -1,26 +1,25 @@
 const Hypercore = require('../../')
-const RAM = require('random-access-memory')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 
-exports.create = async function create (...args) {
-  const core = new Hypercore(RAM, ...args)
+exports.create = async function (t, ...args) {
+  const dir = await createTempDir(t)
+
+  const db = new CoreStorage(dir)
+
+  t.teardown(() => db.close())
+
+  const core = new Hypercore(db, ...args)
   await core.ready()
   return core
 }
 
-exports.createStored = function createStored () {
-  const files = new Map()
-
-  return function (...args) {
-    return new Hypercore(storage, ...args)
-  }
-
-  function storage (name) {
-    if (files.has(name)) return files.get(name).clone()
-    const st = new RAM()
-    files.set(name, st)
-    return st
-  }
+exports.createStorage = async function (t, dir) {
+  if (!dir) dir = await createTempDir(t)
+  return new CoreStorage(dir)
 }
+
+exports.createStored = exports.create
 
 exports.replicate = function replicate (a, b, t, opts = {}) {
   const s1 = a.replicate(true, { keepAlive: false, ...opts })
