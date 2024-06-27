@@ -48,6 +48,8 @@ module.exports = class Hypercore extends EventEmitter {
       key = opts.key || null
     }
 
+    opts.cache = false // THis is a hack for debugging
+
     if (key && typeof key === 'string') key = id.decode(key)
     if (!opts) opts = {}
 
