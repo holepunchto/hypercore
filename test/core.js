@@ -106,7 +106,7 @@ test('core - append and truncate', async function (t) {
 })
 
 test('core - user data', async function (t) {
-  const { core, reopen } = await create()
+  const { core, reopen } = await create(t)
 
   await setUserData(core, 'hello', b4a.from('world'))
   t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
@@ -563,10 +563,13 @@ async function create (t, opts = {}) {
 
     if (!opts.discoveryKey) opts.discoveryKey = dkey
 
-    return Core.open(db, opts)
+    const core = await Core.open(db, opts)
+    t.teardown(() => core.close())
+    return core
   }
 
   const core = await reopen()
+
   return { core, reopen }
 }
 
