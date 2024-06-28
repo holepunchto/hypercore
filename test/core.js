@@ -562,7 +562,6 @@ async function create (t, opts = {}) {
     db = new CoreStorage(dir)
 
     if (!opts.discoveryKey) opts.discoveryKey = dkey
-    if (!opts.encryptionKey) opts.encryptionKey = dkey
 
     return Core.open(db, opts)
   }
