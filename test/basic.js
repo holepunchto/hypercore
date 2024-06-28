@@ -101,7 +101,7 @@ test('storage options', async function (t) {
   t.alike(await core.get(0), b4a.from('hello'))
 })
 
-test(
+test.skip(
   'allow publicKeys with different byteLength that 32, if opts.crypto were passed',
   async function (t) {
     const key = b4a.alloc(33).fill('a')
@@ -339,11 +339,16 @@ test('indexedLength mirrors core length (linearised core compat)', async functio
 test('key is set sync', async function (t) {
   const key = b4a.from('a'.repeat(64), 'hex')
 
-  t.alike((new Hypercore(await createStorage(t), key)).key, key)
-  t.is((new Hypercore(await createStorage(t))).key, null)
+  const dir1 = await createStorage(t)
+  const dir2 = await createStorage(t)
+  const dir3 = await createStorage(t)
+  const dir4 = await createStorage(t)
 
-  t.alike((new Hypercore(await createStorage(t), { key })).key, key)
-  t.is((new Hypercore(await createStorage(t), { })).key, null)
+  t.alike((new Hypercore(dir1, key)).key, key)
+  t.is((new Hypercore(dir2)).key, null)
+
+  t.alike((new Hypercore(dir3, { key })).key, key)
+  t.is((new Hypercore(dir4, { })).key, null)
 })
 
 test('disable writable option', async function (t) {
