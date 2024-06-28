@@ -867,9 +867,8 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.core.bitfield.get(index)) {
       const reader = this.core.storage.createReadBatch()
       block = this.core.blocks.get(reader, index)
-      await reader.flush()
-
       if (this.cache) this.cache.set(index, block)
+      await reader.flush()
     } else {
       if (!this._shouldWait(opts, this.wait)) return null
 
