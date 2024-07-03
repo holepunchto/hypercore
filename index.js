@@ -62,6 +62,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.encryption = null
     this.extensions = new Map()
+    this.globalCache = opts.globalCache
     this.cache = createCache(opts.cache)
 
     this.valueEncoding = null
