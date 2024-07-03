@@ -1,10 +1,10 @@
 const test = require('brittle')
-const Xache = require('xache')
+const Rache = require('rache')
 const b4a = require('b4a')
 const { create, replicate } = require('./helpers')
 
 test('cache', async function (t) {
-  const a = await create({ cache: true })
+  const a = await create({ cache: new Rache() })
   await a.append(['a', 'b', 'c'])
 
   const p = a.get(0)
@@ -14,7 +14,7 @@ test('cache', async function (t) {
 })
 
 test('session cache inheritance', async function (t) {
-  const a = await create({ cache: true })
+  const a = await create({ cache: new Rache() })
   await a.append(['a', 'b', 'c'])
 
   const s = a.session()
@@ -26,7 +26,7 @@ test('session cache inheritance', async function (t) {
 })
 
 test('session cache opt-out', async function (t) {
-  const a = await create({ cache: true })
+  const a = await create({ cache: new Rache() })
   await a.append(['a', 'b', 'c'])
 
   const s = a.session({ cache: false })
@@ -38,10 +38,11 @@ test('session cache opt-out', async function (t) {
 })
 
 test('session cache override', async function (t) {
-  const a = await create({ cache: true })
+  const cache = new Rache()
+  const a = await create({ cache })
   await a.append(['a', 'b', 'c'])
 
-  const s = a.session({ cache: new Xache({ maxSize: 64, maxAge: 0 }) })
+  const s = a.session({ cache: cache.sub() })
 
   const p = a.get(0)
   const q = s.get(0)
@@ -52,7 +53,7 @@ test('session cache override', async function (t) {
 })
 
 test('clear cache on truncate', async function (t) {
-  const a = await create({ cache: true })
+  const a = await create({ cache: new Rache() })
   await a.append(['a', 'b', 'c'])
 
   const p = a.get(0)
@@ -70,7 +71,7 @@ test('cache on replicate', async function (t) {
   const a = await create()
   await a.append(['a', 'b', 'c'])
 
-  const b = await create(a.key, { cache: true })
+  const b = await create(a.key, { cache: new Rache() })
 
   replicate(a, b, t)
 
@@ -87,7 +88,9 @@ test('cache on replicate', async function (t) {
 })
 
 test('session cache with different encodings', async function (t) {
-  const a = await create({ cache: true })
+  // TODO: investigate why this is working
+
+  const a = await create({ cache: new Rache() })
   await a.append(['a', 'b', 'c'])
 
   const s = a.session({ valueEncoding: 'utf-8' })
@@ -100,7 +103,7 @@ test('session cache with different encodings', async function (t) {
 })
 
 test('cache is set through preload', async function (t) {
-  const a = await create({ async preload () { return { cache: true } } })
+  const a = await create({ async preload () { return { cache: new Rache() } } })
 
   t.ok(a.cache)
 })

@@ -56,6 +56,7 @@
     "is-options": "^1.0.1",
     "protomux": "^3.5.0",
     "quickbit-universal": "^2.2.0",
+    "rache": "^0.0.1",
     "random-access-file": "^4.0.0",
     "random-array-iterator": "^1.0.0",
     "safety-catch": "^1.0.1",

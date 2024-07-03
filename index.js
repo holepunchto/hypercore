@@ -4,7 +4,7 @@ const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
 const c = require('compact-encoding')
 const b4a = require('b4a')
-const Xache = require('xache')
+// const Rache = require('rache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const z32 = require('z32')
@@ -245,7 +245,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     // Configure the cache unless explicitly disabled.
     if (opts.cache !== false) {
-      s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
+      s.cache = !opts.cache ? this.cache : opts.cache
     }
 
     if (this.opened) ensureEncryption(s, opts)
@@ -1124,7 +1124,7 @@ function ensureEncryption (core, opts) {
 }
 
 function createCache (cache) {
-  return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
+  return cache ? cache.sub() : null
 }
 
 function isValidIndex (index) {
