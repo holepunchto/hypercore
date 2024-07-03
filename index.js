@@ -239,7 +239,8 @@ module.exports = class Hypercore extends EventEmitter {
       timeout,
       writable,
       _opening: this.opening,
-      _sessions: this.sessions
+      _sessions: this.sessions,
+      globalCache: this.globalCache
     })
 
     s._passCapabilities(this)
