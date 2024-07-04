@@ -62,7 +62,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.encryption = null
     this.extensions = new Map()
-    this.globalCache = opts.globalCache
     this.cache = createCache(opts.cache)
 
     this.valueEncoding = null
@@ -239,8 +238,7 @@ module.exports = class Hypercore extends EventEmitter {
       timeout,
       writable,
       _opening: this.opening,
-      _sessions: this.sessions,
-      globalCache: this.globalCache
+      _sessions: this.sessions
     })
 
     s._passCapabilities(this)
@@ -390,6 +388,7 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       manifest: opts.manifest,
+      globalCache: opts.globalCache || null,
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
@@ -591,6 +590,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   get padding () {
     return this.encryption === null ? 0 : this.encryption.padding
+  }
+
+  get globalCache () {
+    return this.core?.globalCache || null
   }
 
   ready () {
