@@ -593,7 +593,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get globalCache () {
-    return this.core?.globalCache || null
+    return this.core && this.core.globalCache
   }
 
   ready () {
