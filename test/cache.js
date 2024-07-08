@@ -1,5 +1,6 @@
 const test = require('brittle')
 const Xache = require('xache')
+const Rache = require('rache')
 const b4a = require('b4a')
 const { create, replicate } = require('./helpers')
 
@@ -103,4 +104,18 @@ test('cache is set through preload', async function (t) {
   const a = await create({ async preload () { return { cache: true } } })
 
   t.ok(a.cache)
+})
+
+test('null default for globalCache', async function (t) {
+  const a = await create()
+  t.is(a.globalCache, null)
+})
+
+test('globalCache set if passed in, and shared among sessions', async function (t) {
+  const globalCache = new Rache()
+  const a = await create({ globalCache })
+  t.is(a.globalCache, globalCache, 'cache is stored in hypercore')
+
+  const session = a.session()
+  t.is(session.globalCache, globalCache, 'passed on to sessions')
 })

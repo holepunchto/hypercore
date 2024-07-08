@@ -388,6 +388,7 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       manifest: opts.manifest,
+      globalCache: opts.globalCache || null, // This is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
@@ -589,6 +590,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   get padding () {
     return this.encryption === null ? 0 : this.encryption.padding
+  }
+
+  get globalCache () {
+    return this.core && this.core.globalCache
   }
 
   ready () {
