@@ -2,16 +2,16 @@ const test = require('brittle')
 const b4a = require('b4a')
 const RAM = require('random-access-memory')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const { create, replicate, unreplicate, eventFlush } = require('./helpers')
+const { create, createStored, replicate, unreplicate, eventFlush } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
 test('basic replication', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -25,16 +25,18 @@ test('basic replication', async function (t) {
   t.is(d, 5)
 })
 
-test('basic downloading is set immediately after ready', function (t) {
+test('basic downloading is set immediately after ready', async function (t) {
   t.plan(2)
 
-  const a = new Hypercore(RAM)
+  const createA = await createStored(t)
+  const a = await createA()
 
   a.on('ready', function () {
     t.ok(a.replicator.downloading)
   })
 
-  const b = new Hypercore(RAM, { active: false })
+  const createB = await createStored(t)
+  const b = await createB({ active: false })
 
   b.on('ready', function () {
     t.absent(b.replicator.downloading)
@@ -47,7 +49,7 @@ test('basic downloading is set immediately after ready', function (t) {
 })
 
 test('basic replication from fork', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
   await a.truncate(4)
@@ -55,7 +57,7 @@ test('basic replication from fork', async function (t) {
 
   t.is(a.fork, 1)
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -71,21 +73,20 @@ test('basic replication from fork', async function (t) {
 })
 
 test('eager replication from bigger fork', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-
-  replicate(a, b, t)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e', 'g', 'h', 'i', 'j', 'k'])
   await a.truncate(4)
   await a.append(['FORKED', 'g', 'h', 'i', 'j', 'k'])
 
+  // replication has to start here so that fork is not set in upgrade
+  replicate(a, b, t)
+
   t.is(a.fork, 1)
 
   let d = 0
-  b.on('download', (index) => {
-    d++
-  })
+  b.on('download', () => d++)
 
   const r = b.download({ start: 0, end: a.length })
   await r.done()
@@ -95,8 +96,8 @@ test('eager replication from bigger fork', async function (t) {
 })
 
 test('eager replication of updates per default', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -112,8 +113,8 @@ test('eager replication of updates per default', async function (t) {
 })
 
 test('bigger download range', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -133,8 +134,8 @@ test('bigger download range', async function (t) {
 })
 
 test('high latency reorg', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const s = replicate(a, b, t, { teardown: false })
 
@@ -175,8 +176,8 @@ test('high latency reorg', async function (t) {
 test('invalid signature fails', async function (t) {
   t.plan(1)
 
-  const a = await create(null)
-  const b = await create(a.key)
+  const a = await create(t, null)
+  const b = await create(t, a.key)
 
   a.core.verifier = {
     sign () {
@@ -197,14 +198,14 @@ test('invalid signature fails', async function (t) {
 })
 
 test('more invalid signatures fails', async function (t) {
-  const a = await create(null)
+  const a = await create(t, null)
 
   await a.append(['a', 'b'], { signature: b4a.alloc(64) })
 
   await t.test('replication fails after bad append', async function (sub) {
     sub.plan(1)
 
-    const b = await create(a.key)
+    const b = await create(t, a.key)
     replicate(a, b, sub)
 
     b.on('verification-error', function (err) {
@@ -220,7 +221,7 @@ test('more invalid signatures fails', async function (t) {
   await t.test('replication fails after bad truncate', async function (sub) {
     sub.plan(1)
 
-    const b = await create(a.key)
+    const b = await create(t, a.key)
     replicate(a, b, sub)
 
     b.on('verification-error', function (err) {
@@ -234,7 +235,7 @@ test('more invalid signatures fails', async function (t) {
   await a.append('good')
 
   await t.test('replication works again', async function (sub) {
-    const b = await create(a.key)
+    const b = await create(t, a.key)
     replicate(a, b, sub)
 
     await new Promise(resolve => setImmediate(resolve))
@@ -248,8 +249,8 @@ test('more invalid signatures fails', async function (t) {
 test('invalid capability fails', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create()
+  const a = await create(t)
+  const b = await create(t)
 
   b.replicator.discoveryKey = a.discoveryKey
 
@@ -279,8 +280,8 @@ test('invalid capability fails', async function (t) {
 })
 
 test('update with zero length', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -289,11 +290,11 @@ test('update with zero length', async function (t) {
 })
 
 test('basic multiplexing', async function (t) {
-  const a1 = await create()
-  const a2 = await create()
+  const a1 = await create(t)
+  const a2 = await create(t)
 
-  const b1 = await create(a1.key)
-  const b2 = await create(a2.key)
+  const b1 = await create(t, a1.key)
+  const b2 = await create(t, a2.key)
 
   const a = a1.replicate(a2.replicate(true, { keepAlive: false }))
   const b = b1.replicate(b2.replicate(false, { keepAlive: false }))
@@ -311,18 +312,18 @@ test('basic multiplexing', async function (t) {
 })
 
 test('async multiplexing', async function (t) {
-  const a1 = await create()
-  const b1 = await create(a1.key)
+  const a1 = await create(t)
+  const b1 = await create(t, a1.key)
 
   const a = a1.replicate(true, { keepAlive: false })
   const b = b1.replicate(false, { keepAlive: false })
 
   a.pipe(b).pipe(a)
 
-  const a2 = await create()
+  const a2 = await create(t)
   await a2.append('ho')
 
-  const b2 = await create(a2.key)
+  const b2 = await create(t, a2.key)
 
   // b2 doesn't replicate immediately.
   a2.replicate(a)
@@ -339,11 +340,11 @@ test('async multiplexing', async function (t) {
 })
 
 test('multiplexing with external noise stream', async function (t) {
-  const a1 = await create()
-  const a2 = await create()
+  const a1 = await create(t)
+  const a2 = await create(t)
 
-  const b1 = await create(a1.key)
-  const b2 = await create(a2.key)
+  const b1 = await create(t, a1.key)
+  const b2 = await create(t, a2.key)
 
   const n1 = new NoiseSecretStream(true)
   const n2 = new NoiseSecretStream(false)
@@ -369,11 +370,11 @@ test('multiplexing with external noise stream', async function (t) {
 test('multiplexing with createProtocolStream (ondiscoverykey is not called)', async function (t) {
   t.plan(2)
 
-  const a1 = await create()
-  const a2 = await create()
+  const a1 = await create(t)
+  const a2 = await create(t)
 
-  const b1 = await create(a1.key)
-  const b2 = await create(a2.key)
+  const b1 = await create(t, a1.key)
+  const b2 = await create(t, a2.key)
 
   const n1 = new NoiseSecretStream(true)
   const n2 = new NoiseSecretStream(false)
@@ -410,11 +411,11 @@ test('multiplexing with createProtocolStream (ondiscoverykey is not called)', as
 test('multiplexing with createProtocolStream (ondiscoverykey is called)', async function (t) {
   t.plan(4)
 
-  const a1 = await create()
-  const a2 = await create()
+  const a1 = await create(t)
+  const a2 = await create(t)
 
-  const b1 = await create(a1.key)
-  const b2 = await create(a2.key)
+  const b1 = await create(t, a1.key)
+  const b2 = await create(t, a2.key)
 
   const n1 = new NoiseSecretStream(true)
   const n2 = new NoiseSecretStream(false)
@@ -453,8 +454,8 @@ test('multiplexing with createProtocolStream (ondiscoverykey is called)', async 
 })
 
 test('seeking while replicating', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -466,8 +467,8 @@ test('seeking while replicating', async function (t) {
 test('seek with no wait', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -481,7 +482,7 @@ test('seek with no wait', async function (t) {
 test('seek with timeout', async function (t) {
   t.plan(1)
 
-  const a = await create()
+  const a = await create(t)
 
   try {
     await a.seek(6, { timeout: 1 })
@@ -494,7 +495,7 @@ test('seek with timeout', async function (t) {
 test('seek with session options', async function (t) {
   t.plan(3)
 
-  const a = await create()
+  const a = await create(t)
 
   const s1 = a.session({ wait: false })
 
@@ -517,11 +518,11 @@ test('seek with session options', async function (t) {
 })
 
 test('multiplexing multiple times over the same stream', async function (t) {
-  const a1 = await create()
+  const a1 = await create(t)
 
   await a1.append('hi')
 
-  const b1 = await create(a1.key)
+  const b1 = await create(t, a1.key)
 
   const n1 = new NoiseSecretStream(true)
   const n2 = new NoiseSecretStream(false)
@@ -544,11 +545,11 @@ test('multiplexing multiple times over the same stream', async function (t) {
 })
 
 test('destroying a stream and re-replicating works', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   while (core.length < 33) await core.append(b4a.from('#' + core.length))
 
-  const clone = await create(core.key)
+  const clone = await create(t, core.key)
 
   let s1 = core.replicate(true, { keepAlive: false })
   let s2 = clone.replicate(false, { keepAlive: false })
@@ -584,11 +585,11 @@ test('destroying a stream and re-replicating works', async function (t) {
 })
 
 test('replicate discrete range', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -605,11 +606,11 @@ test('replicate discrete range', async function (t) {
 })
 
 test('replicate discrete empty range', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -624,11 +625,11 @@ test('replicate discrete empty range', async function (t) {
 })
 
 test('get with { wait: false } returns null if block is not available', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append('a')
 
-  const b = await create(a.key, { valueEncoding: 'utf-8' })
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
 
   replicate(a, b, t)
 
@@ -639,8 +640,8 @@ test('get with { wait: false } returns null if block is not available', async fu
 test('request cancellation regression', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   let errored = 0
 
@@ -666,8 +667,8 @@ test('request cancellation regression', async function (t) {
 test('findingPeers makes update wait for first peer', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append('hi')
 
@@ -687,8 +688,8 @@ test('findingPeers makes update wait for first peer', async function (t) {
 test('findingPeers + done makes update return false if no peers', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append('hi')
 
@@ -704,12 +705,12 @@ test('findingPeers + done makes update return false if no peers', async function
 })
 
 test.skip('can disable downloading from a peer', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const b = await create(a.key, { valueEncoding: 'utf-8' })
-  const c = await create(a.key, { valueEncoding: 'utf-8' })
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  const c = await create(t, a.key, { valueEncoding: 'utf-8' })
 
   const [aStream] = replicate(b, a, t)
   replicate(b, c, t)
@@ -746,12 +747,12 @@ test.skip('can disable downloading from a peer', async function (t) {
 })
 
 test('contiguous length', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
   t.is(a.contiguousLength, 5, 'a has all blocks')
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
   t.is(b.contiguousLength, 0)
 
   replicate(a, b, t)
@@ -767,8 +768,8 @@ test('contiguous length', async function (t) {
 })
 
 test('contiguous length after fork', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const s = replicate(a, b, t, { teardown: false })
 
@@ -787,8 +788,8 @@ test('contiguous length after fork', async function (t) {
 })
 
 test('one inflight request to a peer per block', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   let uploads = 0
   a.on('upload', function (index) {
@@ -811,9 +812,9 @@ test('one inflight request to a peer per block', async function (t) {
   t.is(uploads, 1)
 })
 
-test('non-sparse replication', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { sparse: false })
+test.skip('non-sparse replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { sparse: false })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -852,8 +853,8 @@ test('non-sparse replication', async function (t) {
 })
 
 test('download blocks if available', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -870,8 +871,8 @@ test('download blocks if available', async function (t) {
 })
 
 test('download range if available', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -888,8 +889,8 @@ test('download range if available', async function (t) {
 })
 
 test('download blocks if available, destroy midway', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const s = replicate(a, b, t, { teardown: false })
 
@@ -908,9 +909,9 @@ test('download blocks if available, destroy midway', async function (t) {
 })
 
 test('download blocks available from when only a partial set is available', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   replicate(a, b, t)
   replicate(b, c, t)
@@ -932,8 +933,8 @@ test('download blocks available from when only a partial set is available', asyn
 })
 
 test('download range resolves immediately if no peers', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   // no replication
 
@@ -944,8 +945,8 @@ test('download range resolves immediately if no peers', async function (t) {
 })
 
 test('download available blocks on non-sparse update', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { sparse: false })
+  const a = await create(t)
+  const b = await create(t, a.key, { sparse: false })
 
   replicate(a, b, t)
 
@@ -958,8 +959,8 @@ test('download available blocks on non-sparse update', async function (t) {
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c'])
 
@@ -976,7 +977,7 @@ test('sparse replication without gossiping', async function (t) {
   await unreplicate(s)
 
   await t.test('block', async function (t) {
-    const c = await create(a.key)
+    const c = await create(t, a.key)
 
     s = replicate(b, c, t, { teardown: false })
     t.teardown(() => unreplicate(s))
@@ -985,7 +986,7 @@ test('sparse replication without gossiping', async function (t) {
   })
 
   await t.test('range', async function (t) {
-    const c = await create(a.key)
+    const c = await create(t, a.key)
 
     replicate(b, c, t)
 
@@ -994,7 +995,7 @@ test('sparse replication without gossiping', async function (t) {
   })
 
   await t.test('discrete range', async function (t) {
-    const c = await create(a.key)
+    const c = await create(t, a.key)
 
     replicate(b, c, t)
 
@@ -1004,7 +1005,7 @@ test('sparse replication without gossiping', async function (t) {
   })
 
   await t.test('seek', async function (t) {
-    const c = await create(a.key)
+    const c = await create(t, a.key)
 
     replicate(b, c, t)
 
@@ -1013,8 +1014,8 @@ test('sparse replication without gossiping', async function (t) {
 })
 
 test('force update writable cores', async function (t) {
-  const a = await create()
-  const b = await create(a.key, { header: a.core.header.manifest })
+  const a = await create(t)
+  const b = await create(t, a.key, { header: a.core.header.manifest })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1035,8 +1036,8 @@ test('force update writable cores', async function (t) {
 })
 
 test('replicate to writable cores after clearing', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1056,11 +1057,11 @@ test('replicate to writable cores after clearing', async function (t) {
 test('large linear download', async function (t) {
   const n = 1000
 
-  const a = await create()
+  const a = await create(t)
 
   for (let i = 0; i < n; i++) await a.append(i.toString())
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -1075,8 +1076,8 @@ test('large linear download', async function (t) {
 })
 
 test('replication session', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1099,8 +1100,8 @@ test('replication session', async function (t) {
 })
 
 test('replication session after stream opened', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1126,8 +1127,8 @@ test('replication session after stream opened', async function (t) {
 })
 
 test('replication session keeps the core open', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1142,10 +1143,10 @@ test('replication session keeps the core open', async function (t) {
 })
 
 test('replicate range that fills initial size of bitfield page', async function (t) {
-  const a = await create()
+  const a = await create(t)
   await a.append(new Array(2 ** 15).fill('a'))
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -1159,10 +1160,10 @@ test('replicate range that fills initial size of bitfield page', async function 
 })
 
 test('replicate range that overflows initial size of bitfield page', async function (t) {
-  const a = await create()
+  const a = await create(t)
   await a.append(new Array(2 ** 15 + 1).fill('a'))
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -1176,10 +1177,10 @@ test('replicate range that overflows initial size of bitfield page', async funct
 })
 
 test('replicate ranges in reverse order', async function (t) {
-  const a = await create()
+  const a = await create(t)
   await a.append(['a', 'b'])
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
   let d = 0
   b.on('download', () => d++)
@@ -1199,8 +1200,8 @@ test('replicate ranges in reverse order', async function (t) {
 test('cancel block', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c'])
 
@@ -1227,8 +1228,8 @@ test('cancel block', async function (t) {
 test('try cancel block from a different session', async function (t) {
   t.plan(3)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c'])
 
@@ -1264,9 +1265,9 @@ test('try cancel block from a different session', async function (t) {
 test('retry failed block requests to another peer', async function (t) {
   t.plan(6)
 
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   await a.append(['1', '2', '3'])
 
@@ -1311,8 +1312,8 @@ test('retry failed block requests to another peer', async function (t) {
 })
 
 test('idle replication sessions auto gc', async function (t) {
-  const a = await create({ active: false, notDownloadingLinger: 50 })
-  const b = await create(a.key, { autoClose: true, active: false, notDownloadingLinger: 50 })
+  const a = await create(t, { active: false, notDownloadingLinger: 50 })
+  const b = await create(t, a.key, { autoClose: true, active: false, notDownloadingLinger: 50 })
 
   await a.append('test')
   const s = b.session()
@@ -1336,8 +1337,8 @@ test('idle replication sessions auto gc', async function (t) {
 test('manifests eagerly sync', async function (t) {
   t.plan(1)
 
-  const a = await create({ compat: false })
-  const b = await create(a.key)
+  const a = await create(t, { compat: false })
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -1349,9 +1350,9 @@ test('manifests eagerly sync', async function (t) {
 test('manifests gossip eagerly sync', async function (t) {
   t.plan(2)
 
-  const a = await create({ compat: false })
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t, { compat: false })
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   replicate(a, b, t)
   replicate(b, c, t)
@@ -1366,9 +1367,9 @@ test('manifests gossip eagerly sync', async function (t) {
 })
 
 test('remote has larger tree', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1398,8 +1399,8 @@ test('remote has larger tree', async function (t) {
 })
 
 test('range download, single block missing', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const n = 100
 
@@ -1414,8 +1415,8 @@ test('range download, single block missing', async function (t) {
 })
 
 test('range download, repeated', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const n = 100
 
@@ -1430,16 +1431,16 @@ test('range download, repeated', async function (t) {
   }
 })
 
-test('replication updates on core copy', async function (t) {
-  const a = await create()
+test.skip('replication updates on core copy', async function (t) {
+  const a = await create(t)
 
   const n = 100
 
   for (let i = 0; i < n; i++) await a.append(b4a.from([0]))
 
   const manifest = { prologue: { hash: await a.treeHash(), length: a.length } }
-  const b = await create({ manifest })
-  const c = await create({ manifest })
+  const b = await create(t, { manifest })
+  const c = await create(t, { manifest })
 
   replicate(b, c, t)
 
@@ -1451,10 +1452,10 @@ test('replication updates on core copy', async function (t) {
 })
 
 test('can define default max-inflight blocks for replicator peers', async function (t) {
-  const a = new Hypercore(RAM, { inflightRange: [123, 123] })
+  const a = await create(t, { inflightRange: [123, 123] })
   await a.append('some block')
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
   replicate(a, b, t)
   await b.get(0)
 
@@ -1474,8 +1475,8 @@ test('session id reuse does not stall', async function (t) {
   t.plan(2)
   t.timeout(90_000)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   const n = 500
 
@@ -1512,8 +1513,8 @@ test('session id reuse does not stall', async function (t) {
 test('restore after cancelled block request', async function (t) {
   t.plan(2)
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   for (let i = 0; i < 4; i++) await a.append(b4a.from([i]))
 

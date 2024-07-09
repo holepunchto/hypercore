@@ -7,7 +7,7 @@ exports.create = async function (t, ...args) {
 
   const db = new CoreStorage(dir)
 
-  t.teardown(() => db.close())
+  t.teardown(() => db.close(), { order: 1 })
 
   const core = new Hypercore(db, ...args)
   await core.ready()
