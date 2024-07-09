@@ -7,7 +7,7 @@ async function runTests () {
 
   test.pause()
 
-  // await import('./basic.js')
+  await import('./basic.js')
   // await import('./batch.js')
   await import('./bitfield.js')
   // await import('./cache.js')
