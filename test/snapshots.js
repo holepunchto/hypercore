@@ -1,7 +1,7 @@
 const test = require('brittle')
 const { replicate, unreplicate, create, createStored } = require('./helpers')
 
-test.skip('implicit snapshot - gets are snapshotted at call time', async function (t) {
+test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
 
   const core = await create(t)
@@ -31,6 +31,8 @@ test.skip('implicit snapshot - gets are snapshotted at call time', async functio
   const p2 = clone.get(1)
   const p3 = clone.get(2)
 
+  const exception = t.exception(p3, 'should fail cause snapshot not available')
+
   await core.truncate(2)
 
   await core.append('block #2.1')
@@ -39,7 +41,7 @@ test.skip('implicit snapshot - gets are snapshotted at call time', async functio
   replicate(core, clone, t)
 
   t.is(await p2, 'block #1.0')
-  t.exception(p3, 'should fail cause snapshot not available')
+  await exception
 
   t.is(await clone.get(2), 'block #2.1')
 
@@ -103,7 +105,7 @@ test('snapshots wait for ready', async function (t) {
   t.is(s4.length, 4, 'no changes')
 })
 
-test.skip('snapshots are consistent', async function (t) {
+test('snapshots are consistent', async function (t) {
   t.plan(6)
 
   const core = await create(t)
@@ -126,6 +128,9 @@ test.skip('snapshots are consistent', async function (t) {
   await core.truncate(1)
   await core.append('block #1.1')
   await core.append('block #2.1')
+
+  // wait for clone to update
+  await new Promise(resolve => clone.once('truncate', resolve))
 
   t.is(clone.fork, 1, 'clone updated')
 
