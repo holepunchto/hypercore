@@ -282,6 +282,7 @@ test('verify proof #1', async function (t) {
   b.commit(wb)
 
   await wb.flush()
+  b.finalise()
 
   t.is(clone.tree.length, tree.length)
   t.is(clone.tree.byteLength, tree.byteLength)
@@ -306,6 +307,7 @@ test('verify proof #2', async function (t) {
   const wb = clone.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   t.is(clone.tree.length, tree.length)
   t.is(clone.tree.byteLength, tree.byteLength)
@@ -329,6 +331,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const b = tree.batch()
@@ -336,6 +339,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   {
     const batch = storage.createReadBatch()
@@ -350,6 +354,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     const wb = clone.tree.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   t.is(tree.length, 5)
@@ -392,6 +397,7 @@ test('lowest common ancestor - simple fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -400,6 +406,7 @@ test('lowest common ancestor - simple fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const ancestors = await reorg(clone, { tree, storage })
@@ -418,6 +425,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -426,6 +434,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -434,6 +443,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -442,6 +452,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const ancestors = await reorg(clone, { tree, storage })
@@ -468,6 +479,7 @@ test('tree hash', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
     t.alike(h, a.tree.hash())
   }
 
@@ -480,6 +492,7 @@ test('tree hash', async function (t) {
     const wba = b.storage.createWriteBatch()
     await ba.commit(wba)
     await wba.flush()
+    ba.finalise()
     t.alike(h, b.tree.hash())
   }
 })
@@ -497,6 +510,7 @@ test('basic tree seeks', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   t.is(a.tree.length, 10)
@@ -559,6 +573,7 @@ test('get older roots', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const oldRoots = await a.tree.getRoots(5)
@@ -575,6 +590,7 @@ test('get older roots', async function (t) {
       const wb = a.storage.createWriteBatch()
       await b.commit(wb)
       await wb.flush()
+      b.finalise()
     }
   }
 
@@ -612,6 +628,7 @@ test('check if a length is upgradeable', async function (t) {
   const wb = clone.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   /*
     Merkle tree looks like
@@ -665,6 +682,7 @@ test('clone a batch', async t => {
   const wb = a.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   let same = b.roots.length === c.roots.length
   for (let i = 0; i < b.roots.length; i++) {
@@ -720,6 +738,7 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   const node = await tree.get(0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
@@ -740,6 +759,7 @@ test('reopen a tree', async t => {
   const wb = a.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   t.alike(a.tree.length, 32)
 
@@ -806,6 +826,7 @@ async function reorg (local, remote) {
   const wb = local.storage.createWriteBatch()
   r.commit(wb)
   await wb.flush()
+  r.finalise()
   return r.ancestors
 }
 
@@ -833,6 +854,7 @@ async function create (t, length = 0, dir) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   return { storage, tree }
 }
