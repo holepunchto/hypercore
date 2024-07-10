@@ -40,7 +40,7 @@ test('contiguous-length announce-on-update flow', async function (t) {
   t.is(getPeer(a, b).remoteContiguousLength, 0, 'b did not notify peers he already knows own that block')
 })
 
-test.skip('announce-range-on-update flow with big core (multiple bitfield pages)', async function (t) {
+test('announce-range-on-update flow with big core (multiple bitfield pages)', async function (t) {
   t.timeout(1000 * 60 * 5) // Expected to take around 15s. Additional headroom in case of slow CI machine
 
   const a = await create(t)
@@ -111,21 +111,21 @@ test.skip('announce-range-on-update flow with big core (multiple bitfield pages)
     'Sanity check: peer c can not get blocks peer b does not have')
 })
 
-test.skip('truncates by the writer result in the updated contiguous length being announced', async function (t) {
+test('truncates by the writer result in the updated contiguous length being announced', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(setImmediate)
 
   t.is(getPeer(b, a).remoteContiguousLength, 0, 'Sanity check')
 
   await a.append(['a', 'b'])
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(setImmediate)
   t.is(getPeer(b, a).remoteContiguousLength, 2, 'updated length broadcast to other peers')
 
   await a.truncate(1)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(setImmediate)
   t.is(getPeer(b, a).remoteContiguousLength, 1, 'truncate broadcast to other peers')
 })
 
