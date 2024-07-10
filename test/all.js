@@ -18,7 +18,7 @@ async function runTests () {
   await import('./encodings.js')
   await import('./encryption.js')
   await import('./extension.js')
-  await import('./manifest.js') // todo: flakey test
+  await import('./manifest.js')
   await import('./merkle-tree.js')
   await import('./mutex.js')
   // await import('./oplog.js')
@@ -26,7 +26,7 @@ async function runTests () {
   // await import('./purge.js') // todo: implement purge
   await import('./remote-bitfield.js')
   await import('./remote-length.js') // todo: tests are hanging
-  await import('./replicate.js') // todo: flakey test + fork replication + append event timing
+  await import('./replicate.js') // todo: fork replication + append event timing
   await import('./sessions.js')
   await import('./snapshots.js') // todo: snapshot not avialable + fork replication
   // await import('./storage.js')

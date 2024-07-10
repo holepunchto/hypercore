@@ -132,7 +132,6 @@ test('bigger download range', async function (t) {
   t.is(downloaded.size, a.length, 'downloaded all')
 })
 
-// todo: flakey
 test('high latency reorg', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)

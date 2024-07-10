@@ -842,7 +842,6 @@ test('multisig -  overlapping appends', async function (t) {
   t.is(core2.length, 3)
 })
 
-// todo: flakey
 test('multisig - normal operating mode', async function (t) {
   const inputs = []
 
