@@ -116,16 +116,16 @@ test('truncates by the writer result in the updated contiguous length being anno
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(setImmediate)
+  await new Promise(resolve => setTimeout(resolve, 100))
 
   t.is(getPeer(b, a).remoteContiguousLength, 0, 'Sanity check')
 
   await a.append(['a', 'b'])
-  await new Promise(setImmediate)
+  await new Promise(resolve => setTimeout(resolve, 100))
   t.is(getPeer(b, a).remoteContiguousLength, 2, 'updated length broadcast to other peers')
 
   await a.truncate(1)
-  await new Promise(setImmediate)
+  await new Promise(resolve => setTimeout(resolve, 100))
   t.is(getPeer(b, a).remoteContiguousLength, 1, 'truncate broadcast to other peers')
 })
 
