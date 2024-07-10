@@ -32,7 +32,7 @@ async function runTests () {
   // await import('./storage.js')
   await import('./streams.js')
   await import('./timeouts.js')
-  // await import('./user-data.js') // todo: setting user data
+  await import('./user-data.js')
 
   test.resume()
 }
