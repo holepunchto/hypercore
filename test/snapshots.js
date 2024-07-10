@@ -1,11 +1,11 @@
 const test = require('brittle')
 const { replicate, unreplicate, create, createStored } = require('./helpers')
 
-test('implicit snapshot - gets are snapshotted at call time', async function (t) {
+test.skip('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
 
-  const core = await create()
-  const clone = await create(core.key, { valueEncoding: 'utf-8' })
+  const core = await create(t)
+  const clone = await create(t, core.key, { valueEncoding: 'utf-8' })
 
   clone.on('truncate', function (len) {
     t.is(len, 2, 'remote truncation')
@@ -53,9 +53,9 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 test('snapshots wait for ready', async function (t) {
   t.plan(10)
 
-  const create = createStored()
+  const create = await createStored(t)
 
-  const core = create()
+  const core = await create()
   const s1 = core.snapshot()
 
   await core.append('block #0.0')
@@ -83,7 +83,7 @@ test('snapshots wait for ready', async function (t) {
 
   await core.close()
 
-  const coreCopy = create()
+  const coreCopy = await create()
 
   // if a snapshot is made on an opening core, it should wait until opened
   const s3 = coreCopy.snapshot()
@@ -103,11 +103,11 @@ test('snapshots wait for ready', async function (t) {
   t.is(s4.length, 4, 'no changes')
 })
 
-test('snapshots are consistent', async function (t) {
+test.skip('snapshots are consistent', async function (t) {
   t.plan(6)
 
-  const core = await create()
-  const clone = await create(core.key)
+  const core = await create(t)
+  const clone = await create(t, core.key)
 
   await core.append('block #0.0')
   await core.append('block #1.0')

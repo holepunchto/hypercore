@@ -5,14 +5,14 @@ const { create } = require('./helpers')
 const Hypercore = require('../')
 
 test('userdata - can set through setUserData', async function (t) {
-  const core = await create()
+  const core = await create(t)
   await core.setUserData('hello', b4a.from('world'))
 
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 })
 
 test('userdata - can set through constructor option', async function (t) {
-  const core = await create({
+  const core = await create(t, {
     userData: {
       hello: b4a.from('world')
     }
@@ -45,7 +45,7 @@ test('userdata - persists across restarts', async function (t) {
 })
 
 test('userdata - big userdata gets swapped to external header', async function (t) {
-  const core = await create()
+  const core = await create(t)
   await core.setUserData('hello', b4a.alloc(20000))
   await core.setUserData('world', b4a.alloc(20000))
   await core.setUserData('world2', b4a.alloc(20000))

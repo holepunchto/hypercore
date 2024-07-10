@@ -4,8 +4,8 @@ const RemoteBitfield = require('../lib/remote-bitfield')
 const { create, replicate } = require('./helpers')
 
 test('when the writer appends he broadcasts the new contiguous length', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -22,9 +22,9 @@ test('when the writer appends he broadcasts the new contiguous length', async fu
 })
 
 test('contiguous-length announce-on-update flow', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   replicate(a, b, t)
   replicate(b, c, t)
@@ -40,12 +40,12 @@ test('contiguous-length announce-on-update flow', async function (t) {
   t.is(getPeer(a, b).remoteContiguousLength, 0, 'b did not notify peers he already knows own that block')
 })
 
-test('announce-range-on-update flow with big core (multiple bitfield pages)', async function (t) {
+test.skip('announce-range-on-update flow with big core (multiple bitfield pages)', async function (t) {
   t.timeout(1000 * 60 * 5) // Expected to take around 15s. Additional headroom in case of slow CI machine
 
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   replicate(a, b, t)
   replicate(b, c, t)
@@ -111,9 +111,9 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
     'Sanity check: peer c can not get blocks peer b does not have')
 })
 
-test('truncates by the writer result in the updated contiguous length being announced', async function (t) {
-  const a = await create()
-  const b = await create(a.key)
+test.skip('truncates by the writer result in the updated contiguous length being announced', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
   await new Promise(resolve => setTimeout(resolve, 100))

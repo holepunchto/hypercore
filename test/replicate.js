@@ -1,6 +1,5 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const RAM = require('random-access-memory')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, createStored, replicate, unreplicate, eventFlush } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
@@ -133,6 +132,7 @@ test('bigger download range', async function (t) {
   t.is(downloaded.size, a.length, 'downloaded all')
 })
 
+// todo: flakey
 test('high latency reorg', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)

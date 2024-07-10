@@ -8,31 +8,31 @@ async function runTests () {
   test.pause()
 
   await import('./basic.js')
-  // await import('./batch.js')
+  // await import('./batch.js') // todo: implement batch api
   await import('./bitfield.js')
-  // await import('./cache.js')
-  // await import('./clear.js')
-  // await import('./compat.js')
-  // await import('./conflicts.js')
+  // await import('./cache.js') // todo: storage level caching
+  await import('./clear.js') // todo: replace Info.bytesUsed API
+  // await import('./compat.js') // todo: how to test compat?
+  // await import('./conflicts.js') // todo: replication errors not being bubbled up
   await import('./core.js')
-  // await import('./encodings.js')
-  // await import('./encryption.js')
-  // await import('./extension.js')
-  // await import('./manifest.js')
+  await import('./encodings.js')
+  await import('./encryption.js')
+  await import('./extension.js')
+  await import('./manifest.js') // todo: flakey test
   await import('./merkle-tree.js')
-  // await import('./mutex.js')
+  await import('./mutex.js')
   // await import('./oplog.js')
-  // await import('./preload.js')
-  // await import('./purge.js')
-  // await import('./remote-bitfield.js')
-  // await import('./remote-length.js')
-  // await import('./replicate.js')
-  // await import('./sessions.js')
-  // await import('./snapshots.js')
+  await import('./preload.js')
+  // await import('./purge.js') // todo: implement purge
+  await import('./remote-bitfield.js')
+  await import('./remote-length.js') // todo: tests are hanging
+  await import('./replicate.js') // todo: flakey test + fork replication + append event timing
+  await import('./sessions.js')
+  await import('./snapshots.js') // todo: snapshot not avialable + fork replication
   // await import('./storage.js')
-  // await import('./streams.js')
-  // await import('./timeouts.js')
-  // await import('./user-data.js')
+  await import('./streams.js')
+  await import('./timeouts.js')
+  // await import('./user-data.js') // todo: setting user data
 
   test.resume()
 }

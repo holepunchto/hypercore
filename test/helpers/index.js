@@ -26,9 +26,11 @@ const createStorage = exports.createStorage = async function (t, dir) {
 
 exports.createStored = async function (t) {
   const dir = await createTempDir(t)
+  let db = null
 
   return async function (...args) {
-    const db = await createStorage(t, dir)
+    if (db) await db.close()
+    db = await createStorage(t, dir)
     return new Hypercore(db, ...args)
   }
 }

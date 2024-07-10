@@ -137,7 +137,7 @@ test('core - verify', async function (t) {
   await core.append([b4a.from('a'), b4a.from('b')])
 
   {
-    const p = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
+    const p = await getProof(core, { upgrade: { start: 0, length: 2 } })
     await clone.verify(p)
   }
 
@@ -148,8 +148,7 @@ test('core - verify', async function (t) {
   t.alike(tree1.signature, tree2.signature)
 
   {
-    const p = await core.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
-    p.block.value = await getBlock(core, 1)
+    const p = await getProof(core, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
     await clone.verify(p)
   }
 })
@@ -163,8 +162,8 @@ test('core - verify parallel upgrades', async function (t) {
   await core.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
 
   {
-    const p1 = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
-    const p2 = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+    const p1 = await getProof(core, { upgrade: { start: 0, length: 2 } })
+    const p2 = await getProof(core, { upgrade: { start: 0, length: 3 } })
 
     const v1 = clone.verify(p1)
     const v2 = clone.verify(p2)
@@ -206,7 +205,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
+    const p = await getProof(core, { block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
     p.block.value = await getBlock(core, 1)
     await clone.verify(p, peer)
   }
@@ -220,7 +219,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
+    const p = await getProof(core, { block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
     p.block.value = await getBlock(core, 3)
     await clone.verify(p, peer)
   }
@@ -251,7 +250,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
+    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
     const r = await clone.tree.reorg(p)
     await clone.reorg(r, peer)
   }
@@ -273,7 +272,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
+    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
     const r = await clone.tree.reorg(p)
 
     await clone.reorg(r, peer)
@@ -339,14 +338,14 @@ test('core - update hook is triggered', async function (t) {
 //   await core.append([b4a.from('c')])
 
 //   {
-//     const p = await copy.tree.proof({ upgrade: { start: 0, length: 2 } })
+//     const p = await getProof(copy, { upgrade: { start: 0, length: 2 } })
 //     t.ok(await clone.verify(p))
 //   }
 
 //   t.is(clone.header.tree.length, 2)
 
 //   {
-//     const p = await copy.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+//     const p = await getProof(copy, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
 //     p.block.value = await copy.blocks.get(1)
 //     await clone.verify(p)
 //   }
@@ -522,7 +521,7 @@ test('core - update hook is triggered', async function (t) {
 //   // upgrade clone
 //   {
 //     const batch = core.tree.batch()
-//     const p = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+//     const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
 //     p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
 //     t.ok(await copy2.verify(p))
 //   }
@@ -582,4 +581,14 @@ async function setUserData (core, key, value) {
   const p = core.userData(w, key, value)
   await w.flush()
   return p
+}
+
+async function getProof (core, req) {
+  const batch = core.storage.createReadBatch()
+  const p = await core.tree.proof(batch, req)
+  const block = req.block ? core.blocks.get(batch, req.block.index) : null
+  batch.tryFlush()
+  const proof = await p.settle()
+  if (block) proof.block.value = await block
+  return proof
 }
