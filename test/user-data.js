@@ -1,7 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const { create, createStored } = require('./helpers')
-const Hypercore = require('../')
 
 test('userdata - can set through setUserData', async function (t) {
   const core = await create(t)
