@@ -13,7 +13,7 @@ async function runTests () {
   // await import('./cache.js') // todo: storage level caching
   await import('./clear.js') // todo: replace Info.bytesUsed API
   // await import('./compat.js') // todo: how to test compat?
-  // await import('./conflicts.js') // todo: replication errors not being bubbled up
+  await import('./conflicts.js')
   await import('./core.js')
   await import('./encodings.js')
   await import('./encryption.js')
@@ -25,10 +25,10 @@ async function runTests () {
   await import('./preload.js')
   // await import('./purge.js') // todo: implement purge
   await import('./remote-bitfield.js')
-  await import('./remote-length.js') // todo: tests are hanging
-  await import('./replicate.js') // todo: fork replication + append event timing
+  await import('./remote-length.js')
+  await import('./replicate.js') // todo: append event timing
   await import('./sessions.js')
-  await import('./snapshots.js') // todo: snapshot not avialable + fork replication
+  await import('./snapshots.js')
   // await import('./storage.js')
   await import('./streams.js')
   await import('./timeouts.js')
