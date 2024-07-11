@@ -35,8 +35,6 @@ exports.createStored = async function (t) {
   }
 }
 
-exports.createStored = exports.create
-
 exports.replicate = function replicate (a, b, t, opts = {}) {
   const s1 = a.replicate(true, { keepAlive: false, ...opts })
   const s2 = b.replicate(false, { keepAlive: false, ...opts })

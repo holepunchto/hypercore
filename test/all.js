@@ -7,7 +7,7 @@ async function runTests () {
 
   test.pause()
 
-  await import('./basic.js')
+  await import('./basic.js') // todo: implement storageInfo API
   // await import('./batch.js') // todo: implement batch api
   await import('./bitfield.js')
   // await import('./cache.js') // todo: storage level caching
