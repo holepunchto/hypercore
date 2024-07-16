@@ -318,7 +318,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (opts.name) {
-      this.state = await this.core.createNamedSession(opts.name, this.core.tree.length)
+      this.state = await this.core.createNamedSession(opts.name)
     } else {
       this.state = this.core.state
     }
