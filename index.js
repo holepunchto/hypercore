@@ -546,7 +546,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this._snapshot) return this._snapshot.length
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousLength
-    return this.core.tree.length
+    return this.state.tree.length
   }
 
   get indexedLength () {
