@@ -884,8 +884,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.core.isFlushing) await this.core.flushed()
 
-    if (this.core.bitfield.get(index)) {
-      const reader = this.core.storage.createReadBatch()
+    if (this.state.bitfield.get(index)) {
+      const reader = this.state.storage.createReadBatch()
       block = this.core.blocks.get(reader, index)
 
       if (this.cache) this.cache.set(index, block)
@@ -904,7 +904,7 @@ module.exports = class Hypercore extends EventEmitter {
       const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
       if (timeout) req.context.setTimeout(req, timeout)
 
-      block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
+      block = this._cacheOnResolve(index, req.promise, this.state.tree.fork)
     }
 
     return block
