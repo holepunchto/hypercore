@@ -683,3 +683,18 @@ test('copy from with encrypted batch', async function (t) {
 
   t.alike(tree.hash(), manifest.prologue.hash)
 })
+
+test('batch append with huge batch', async function (t) {
+  // Context: array.append(...otherArray) stops working after a certain amount of entries
+  // due to a limit on the amount of function args
+  // This caused a bug on large batches
+  const core = await create()
+  const bigBatch = (new Array(200_000)).fill('o')
+
+  const b = core.batch()
+  await b.append(bigBatch)
+
+  // Actually flushing such a big batch takes multiple minutes
+  // so we only ensure that nothing crashed while appending
+  t.pass('Can append a big batch')
+})
