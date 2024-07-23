@@ -868,6 +868,8 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     let block
 
+    if (this.core.isFlushing) await this.core.flushed()
+
     if (this.core.bitfield.get(index)) {
       const reader = this.core.storage.createReadBatch()
       block = this.core.blocks.get(reader, index)
