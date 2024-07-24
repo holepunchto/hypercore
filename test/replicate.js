@@ -955,6 +955,45 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
+test('downloaded blocks are unslabbed if small', async function (t) {
+  const a = await create()
+
+  await a.append(Buffer.alloc(1))
+
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  t.is(b.contiguousLength, 0, 'sanity check: we want to receive the downloaded buffer (not from fs)')
+  const block = await b.get(0)
+
+  t.is(block.buffer.byteLength, 1, 'unslabbed block')
+})
+
+test('downloaded blocks are not unslabbed if bigger than half of slab size', async function (t) {
+  const a = await create()
+
+  await a.append(Buffer.alloc(5000))
+  t.is(
+    Buffer.poolSize < 5000 * 2,
+    true,
+    'Sanity check (adapt test if fails)'
+  )
+
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  t.is(b.contiguousLength, 0, 'sanity check: we want to receive the downloaded buffer (not from fs)')
+  const block = await b.get(0)
+
+  t.is(
+    block.buffer.byteLength !== block.byteLength,
+    true,
+    'No unslab if big block' // slab includes the protomux frame
+  )
+})
+
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 

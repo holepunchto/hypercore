@@ -76,15 +76,15 @@ test('cache on replicate', async function (t) {
   replicate(a, b, t)
 
   // These will issue a replicator request
-  const p = b.get(0)
-  const q = b.get(0)
+  const p = await b.get(0)
+  const q = await b.get(0)
 
-  t.is(await p, await q, 'blocks are identical')
+  t.is(p, q, 'blocks are identical')
 
   // This should use the cache
-  const r = b.get(0)
+  const r = await b.get(0)
 
-  t.is(await p, await r, 'blocks are identical')
+  t.is(p, r, 'blocks are identical')
 })
 
 test('session cache with different encodings', async function (t) {
