@@ -185,7 +185,7 @@ test('core - update hook is triggered', async function (t) {
 
   let ran = 0
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: false, start: 0, length: 4 })
@@ -196,7 +196,7 @@ test('core - update hook is triggered', async function (t) {
 
   const peer = {}
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 1, length: 1 })
@@ -210,7 +210,7 @@ test('core - update hook is triggered', async function (t) {
     await clone.verify(p, peer)
   }
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.is(status, 0b00, 'no append or truncate')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 3, length: 1 })
@@ -224,7 +224,7 @@ test('core - update hook is triggered', async function (t) {
     await clone.verify(p, peer)
   }
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: true, start: 1, length: 3 })
@@ -233,7 +233,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.truncate(1, 1)
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: false, start: 1, length: 1 })
@@ -242,7 +242,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.append([b4a.from('e')])
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b11, 'was appended and truncated')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: true, start: 1, length: 3 })
@@ -255,7 +255,7 @@ test('core - update hook is triggered', async function (t) {
     await clone.reorg(r, peer)
   }
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: true, start: 1, length: 1 })
@@ -264,7 +264,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.truncate(1, 2)
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: true, start: 1, length: 1 })

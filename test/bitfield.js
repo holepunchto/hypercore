@@ -313,7 +313,7 @@ async function createStorage (t, dir) {
 
 async function flush (s, b) {
   const w = s.createWriteBatch()
-  const f = b.flush(w)
+  const u = b.flush(w)
   await w.flush()
-  b.setFlushed(f)
+  b.onupdate(u)
 }

@@ -614,7 +614,7 @@ module.exports = class Hypercore extends EventEmitter {
     await Promise.allSettled(all)
   }
 
-  _oncoreupdate (status, bitfield, value, from) {
+  _oncoreupdate ({ status, bitfield, value, from }) {
     if (status !== 0) {
       const truncatedNonSparse = (status & 0b1000) !== 0
       const appendedNonSparse = (status & 0b0100) !== 0
