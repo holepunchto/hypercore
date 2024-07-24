@@ -955,6 +955,21 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
+test('downloaded blocks are unslabbed', async function (t) {
+  const a = await create()
+
+  await a.append(Buffer.alloc(1))
+
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+
+  t.is(b.contiguousLength, 0, 'sanity check: we want to receive the downloaded buffer (not from fs)')
+  const block = await b.get(0)
+
+  t.is(block.buffer.byteLength, 1, 'unslabbed block')
+})
+
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
