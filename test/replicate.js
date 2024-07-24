@@ -955,7 +955,7 @@ test('download available blocks on non-sparse update', async function (t) {
   t.is(b.contiguousLength, b.length)
 })
 
-test('downloaded blocks are unslabbed', async function (t) {
+test('downloaded blocks are unslabbed if small', async function (t) {
   const a = await create()
 
   await a.append(Buffer.alloc(1))

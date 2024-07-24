@@ -11,6 +11,7 @@ const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const { createTracer } = require('hypertrace')
+const unslab = require('unslab')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -911,7 +912,12 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _cacheOnResolve (index, req, fork) {
-    const block = await req
+    const resolved = await req
+
+    // Unslab only when it takes up less then half the slab
+    const block = resolved !== null && 2 * resolved.length < resolved.buffer.byteLength
+      ? unslab(resolved)
+      : resolved
 
     if (this.cache && fork === this.core.tree.fork) {
       this.cache.set(index, Promise.resolve(block))
