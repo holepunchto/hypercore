@@ -1537,6 +1537,29 @@ test('restore after cancelled block request', async function (t) {
   t.is(b.length, a.length)
 })
 
+test('handshake is unslabbed', async function (t) {
+  const a = await create()
+
+  await a.append(['a'])
+
+  const b = await create(a.key)
+
+  replicate(a, b, t)
+  const r = b.download({ start: 0, end: a.length })
+  await r.done()
+
+  t.is(
+    a.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    32,
+    'unslabbed handshake capability buffer'
+  )
+  t.is(
+    b.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    32,
+    'unslabbed handshake capability buffer'
+  )
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
