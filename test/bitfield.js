@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-on-the-rocks')
 const Bitfield = require('../lib/bitfield')
+const BitInterlude = require('../lib/bit-interlude')
 
 test('bitfield - set and get', async function (t) {
   const storage = await createStorage(t)
@@ -10,28 +11,14 @@ test('bitfield - set and get', async function (t) {
 
   t.absent(b.get(42))
   b.set(42, true)
-
-  await flush(storage, b)
-
   t.ok(b.get(42))
 
   // bigger offsets
   t.absent(b.get(42000000))
   b.set(42000000, true)
-
-  await flush(storage, b)
-
   t.ok(b.get(42000000, true))
-
   b.set(42000000, false)
-
-  await flush(storage, b)
-
   t.absent(b.get(42000000, true))
-
-  const w = storage.createWriteBatch()
-  await b.flush(w)
-  await w.flush()
 })
 
 test('bitfield - random set and gets', async function (t) {
@@ -70,10 +57,11 @@ test('bitfield - reload', async function (t) {
 
   {
     const storage = await createStorage(t, dir)
-    const b = await Bitfield.open(storage)
-    b.set(142, true)
-    b.set(40000, true)
-    b.set(1424242424, true)
+    const bitfield = await Bitfield.open(storage)
+    const b = new BitInterlude(bitfield)
+    b.setRange(142, 143, true)
+    b.setRange(40000, 40001, true)
+    b.setRange(1424242424, 1424242425, true)
     await flush(storage, b)
     await storage.close()
   }
@@ -142,8 +130,6 @@ test('bitfield - count', async function (t) {
     b.setRange(start, length, true)
   }
 
-  await flush(s, b)
-
   t.is(b.count(3, 18, true), 8)
   t.is(b.count(3, 18, false), 10)
 })
@@ -176,8 +162,6 @@ test('bitfield - find first, all ones', async function (t) {
   const b = await Bitfield.open(s)
 
   b.setRange(0, 2 ** 24, true)
-
-  await flush(s, b)
 
   t.is(b.findFirst(true, 0), 0)
   t.is(b.findFirst(true, 2 ** 24), -1)
@@ -230,8 +214,6 @@ test('bitfield - find last, all ones', async function (t) {
 
   b.setRange(0, 2 ** 24, true)
 
-  await flush(s, b)
-
   t.is(b.findLast(false, 0), -1)
   t.is(b.findLast(false, 2 ** 24), 2 ** 24)
   t.is(b.findLast(true, 0), 0)
@@ -261,8 +243,6 @@ test('bitfield - find last, ones around page boundary', async function (t) {
   b.set(32767, true)
   b.set(32768, true)
 
-  await flush(s, b)
-
   t.is(b.lastUnset(32768), 32766)
   t.is(b.lastUnset(32769), 32769)
 })
@@ -273,8 +253,6 @@ test('bitfield - set range on page boundary', async function (t) {
 
   b.setRange(2032, 26, true)
 
-  await flush(s, b)
-
   t.is(b.findFirst(true, 2048), 2048)
 })
 
@@ -284,13 +262,9 @@ test('set last bits in segment and findFirst', async function (t) {
 
   b.set(2097150, true)
 
-  await flush(s, b)
-
   t.is(b.findFirst(false, 2097150), 2097151)
 
   b.set(2097151, true)
-
-  await flush(s, b)
 
   t.is(b.findFirst(false, 2097150), 2097152)
   t.is(b.findFirst(false, 2097151), 2097152)
@@ -313,7 +287,6 @@ async function createStorage (t, dir) {
 
 async function flush (s, b) {
   const w = s.createWriteBatch()
-  const u = b.flush(w)
+  b.flush(w)
   await w.flush()
-  b.onupdate(u)
 }
