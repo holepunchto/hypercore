@@ -915,7 +915,7 @@ module.exports = class Hypercore extends EventEmitter {
     const resolved = await req
 
     // Unslab only when it takes up less then half the slab
-    const block = resolved !== null && 2 * resolved.length < resolved.buffer.byteLength
+    const block = resolved !== null && 2 * resolved.byteLength < resolved.buffer.byteLength
       ? unslab(resolved)
       : resolved
 
