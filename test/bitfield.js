@@ -10,15 +10,24 @@ test('bitfield - set and get', async function (t) {
 
   t.absent(b.get(42))
   b.set(42, true)
+
+  await flush(storage, b)
+
   t.ok(b.get(42))
 
   // bigger offsets
   t.absent(b.get(42000000))
   b.set(42000000, true)
-  t.ok(b.get(42000000))
+
+  await flush(storage, b)
+
+  t.ok(b.get(42000000, true))
 
   b.set(42000000, false)
-  t.absent(b.get(42000000))
+
+  await flush(storage, b)
+
+  t.absent(b.get(42000000, true))
 
   const w = storage.createWriteBatch()
   await b.flush(w)
@@ -38,7 +47,7 @@ test('bitfield - random set and gets', async function (t) {
   for (let i = 0; i < 500; i++) {
     const idx = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     const expected = set.has(idx)
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== expected) {
       t.fail('expected ' + expected + ' but got ' + val + ' at ' + idx)
       return
@@ -46,7 +55,7 @@ test('bitfield - random set and gets', async function (t) {
   }
 
   for (const idx of set) {
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== true) {
       t.fail('expected true but got ' + val + ' at ' + idx)
       return
@@ -65,9 +74,7 @@ test('bitfield - reload', async function (t) {
     b.set(142, true)
     b.set(40000, true)
     b.set(1424242424, true)
-    const w = storage.createWriteBatch()
-    await b.flush(w)
-    await w.flush()
+    await flush(storage, b)
     await storage.close()
   }
 
@@ -128,11 +135,14 @@ test('bitfield - sparse array overflow', async function (t) {
 })
 
 test('bitfield - count', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
     b.setRange(start, length, true)
   }
+
+  await flush(s, b)
 
   t.is(b.count(3, 18, true), 8)
   t.is(b.count(3, 18, false), 10)
@@ -162,9 +172,12 @@ test('bitfield - find first, all zeroes', async function (t) {
 })
 
 test('bitfield - find first, all ones', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(0, 2 ** 24, true)
+
+  await flush(s, b)
 
   t.is(b.findFirst(true, 0), 0)
   t.is(b.findFirst(true, 2 ** 24), -1)
@@ -212,9 +225,12 @@ test('bitfield - find last, all zeroes', async function (t) {
 })
 
 test('bitfield - find last, all ones', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(0, 2 ** 24, true)
+
+  await flush(s, b)
 
   t.is(b.findLast(false, 0), -1)
   t.is(b.findLast(false, 2 ** 24), 2 ** 24)
@@ -239,30 +255,43 @@ test('bitfield - find last, all ones', async function (t) {
 })
 
 test('bitfield - find last, ones around page boundary', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.set(32767, true)
   b.set(32768, true)
+
+  await flush(s, b)
 
   t.is(b.lastUnset(32768), 32766)
   t.is(b.lastUnset(32769), 32769)
 })
 
 test('bitfield - set range on page boundary', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(2032, 26, true)
+
+  await flush(s, b)
 
   t.is(b.findFirst(true, 2048), 2048)
 })
 
 test('set last bits in segment and findFirst', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.set(2097150, true)
+
+  await flush(s, b)
+
   t.is(b.findFirst(false, 2097150), 2097151)
 
   b.set(2097151, true)
+
+  await flush(s, b)
+
   t.is(b.findFirst(false, 2097150), 2097152)
   t.is(b.findFirst(false, 2097151), 2097152)
 })
@@ -280,4 +309,11 @@ async function createStorage (t, dir) {
   if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
 
   return storage
+}
+
+async function flush (s, b) {
+  const w = s.createWriteBatch()
+  const f = b.flush(w)
+  await w.flush()
+  b.setFlushed(f)
 }
