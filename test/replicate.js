@@ -1599,6 +1599,21 @@ test('handshake is unslabbed', async function (t) {
   )
 })
 
+test('merkle-tree signature gets unslabbed', async function (t) {
+  const a = await create()
+  await a.append(['a'])
+
+  const b = await create(a.key)
+  replicate(a, b, t)
+  await b.get(0)
+
+  t.is(
+    b.core.tree.signature.buffer.byteLength,
+    64,
+    'Signature got unslabbed'
+  )
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
