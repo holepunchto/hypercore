@@ -602,6 +602,37 @@ test('checkout nodes in a batch', async t => {
   t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
 })
 
+test('roots get unslabbed in one slab', async function (t) {
+  const tree = await create()
+
+  const b = tree.batch()
+
+  for (let i = 0; i < 100; i++) {
+    b.append(b4a.from([i]))
+  }
+
+  b.commit()
+
+  t.is(tree.roots.length > 1, true, 'sanity check')
+
+  const rootByteLength = 32
+  const nrRoots = 3
+  const buffer = tree.roots[0].hash.buffer
+
+  t.is(
+    buffer.byteLength,
+    nrRoots * rootByteLength,
+    'unslabbed the roots, and put them all in the same slab'
+  )
+
+  // Sanity check
+  for (const root of tree.roots) {
+    if (root.hash.buffer !== buffer) {
+      t.fail('a root lives on a different slab')
+    }
+  }
+})
+
 test('buffer of cached nodes is copied to small slab', async function (t) {
   // RAM does not use slab-allocated memory,
   // so we need to us random-access-file to reproduce this issue
