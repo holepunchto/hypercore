@@ -30,7 +30,7 @@ test('preload - from another core', async function (t) {
   })
   await second.ready()
 
-  t.is(first.key, second.key)
+  t.alike(first.key, second.key)
   t.is(first.sessions, second.sessions)
 })
 
@@ -44,7 +44,7 @@ test('preload - custom keypair', async function (t) {
   await core.ready()
 
   t.ok(core.writable)
-  t.is(core.key, keyPair.publicKey)
+  t.alike(core.key, keyPair.publicKey)
 })
 
 test('preload - sign/storage', async function (t) {
