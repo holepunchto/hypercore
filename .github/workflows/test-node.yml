@@ -3,11 +3,13 @@ on:
   push:
     branches:
       - main
+      - rocksdb
     tags: # To trigger the canary
       - '*'
   pull_request:
     branches:
       - main
+      - rocksdb
 jobs:
   build:
     if: ${{ !startsWith(github.ref, 'refs/tags/')}} # Already runs for the push of the commit, no need to run again for the tag

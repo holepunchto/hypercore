@@ -11,6 +11,7 @@ const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const { createTracer } = require('hypertrace')
+const unslab = require('unslab')
 
 const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
@@ -372,6 +373,7 @@ module.exports = class Hypercore extends EventEmitter {
       crypto: this.crypto,
       legacy: opts.legacy,
       manifest: opts.manifest,
+      globalCache: opts.globalCache || null, // This is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
@@ -575,6 +577,10 @@ module.exports = class Hypercore extends EventEmitter {
 
   get padding () {
     return this.encryption === null ? 0 : this.encryption.padding
+  }
+
+  get globalCache () {
+    return this.core && this.core.globalCache
   }
 
   ready () {
@@ -897,7 +903,12 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _cacheOnResolve (index, req, fork) {
-    const block = await req
+    const resolved = await req
+
+    // Unslab only when it takes up less then half the slab
+    const block = resolved !== null && 2 * resolved.byteLength < resolved.buffer.byteLength
+      ? unslab(resolved)
+      : resolved
 
     if (this.cache && fork === this.core.tree.fork) {
       this.cache.set(index, Promise.resolve(block))

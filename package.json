@@ -1,6 +1,6 @@
 {
   "name": "hypercore",
-  "version": "10.37.7",
+  "version": "10.37.15",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
@@ -62,13 +62,14 @@
     "safety-catch": "^1.0.1",
     "sodium-universal": "^4.0.0",
     "streamx": "^2.12.4",
-    "unslab": "^1.0.0",
+    "unslab": "^1.3.0",
     "xache": "^1.1.0",
     "z32": "^1.0.0"
   },
   "devDependencies": {
     "brittle": "^3.0.0",
     "hyperswarm": "^4.3.6",
+    "rache": "^1.0.0",
     "random-access-memory": "^6.1.0",
     "random-access-memory-overlay": "^3.0.0",
     "range-parser": "^1.2.1",
