@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-on-the-rocks')
 const Bitfield = require('../lib/bitfield')
+const BitInterlude = require('../lib/bit-interlude')
 
 test('bitfield - set and get', async function (t) {
   const storage = await createStorage(t)
@@ -15,14 +16,9 @@ test('bitfield - set and get', async function (t) {
   // bigger offsets
   t.absent(b.get(42000000))
   b.set(42000000, true)
-  t.ok(b.get(42000000))
-
+  t.ok(b.get(42000000, true))
   b.set(42000000, false)
-  t.absent(b.get(42000000))
-
-  const w = storage.createWriteBatch()
-  await b.flush(w)
-  await w.flush()
+  t.absent(b.get(42000000, true))
 })
 
 test('bitfield - random set and gets', async function (t) {
@@ -38,7 +34,7 @@ test('bitfield - random set and gets', async function (t) {
   for (let i = 0; i < 500; i++) {
     const idx = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     const expected = set.has(idx)
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== expected) {
       t.fail('expected ' + expected + ' but got ' + val + ' at ' + idx)
       return
@@ -46,7 +42,7 @@ test('bitfield - random set and gets', async function (t) {
   }
 
   for (const idx of set) {
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== true) {
       t.fail('expected true but got ' + val + ' at ' + idx)
       return
@@ -61,13 +57,12 @@ test('bitfield - reload', async function (t) {
 
   {
     const storage = await createStorage(t, dir)
-    const b = await Bitfield.open(storage)
-    b.set(142, true)
-    b.set(40000, true)
-    b.set(1424242424, true)
-    const w = storage.createWriteBatch()
-    await b.flush(w)
-    await w.flush()
+    const bitfield = await Bitfield.open(storage)
+    const b = new BitInterlude(bitfield)
+    b.setRange(142, 143, true)
+    b.setRange(40000, 40001, true)
+    b.setRange(1424242424, 1424242425, true)
+    await flush(storage, b)
     await storage.close()
   }
 
@@ -128,7 +123,8 @@ test('bitfield - sparse array overflow', async function (t) {
 })
 
 test('bitfield - count', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
     b.setRange(start, length, true)
@@ -162,7 +158,8 @@ test('bitfield - find first, all zeroes', async function (t) {
 })
 
 test('bitfield - find first, all ones', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -212,7 +209,8 @@ test('bitfield - find last, all zeroes', async function (t) {
 })
 
 test('bitfield - find last, all ones', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -239,7 +237,8 @@ test('bitfield - find last, all ones', async function (t) {
 })
 
 test('bitfield - find last, ones around page boundary', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.set(32767, true)
   b.set(32768, true)
@@ -249,7 +248,8 @@ test('bitfield - find last, ones around page boundary', async function (t) {
 })
 
 test('bitfield - set range on page boundary', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.setRange(2032, 26, true)
 
@@ -257,12 +257,15 @@ test('bitfield - set range on page boundary', async function (t) {
 })
 
 test('set last bits in segment and findFirst', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s)
 
   b.set(2097150, true)
+
   t.is(b.findFirst(false, 2097150), 2097151)
 
   b.set(2097151, true)
+
   t.is(b.findFirst(false, 2097150), 2097152)
   t.is(b.findFirst(false, 2097151), 2097152)
 })
@@ -280,4 +283,10 @@ async function createStorage (t, dir) {
   if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
 
   return storage
+}
+
+async function flush (s, b) {
+  const w = s.createWriteBatch()
+  b.flush(w)
+  await w.flush()
 }

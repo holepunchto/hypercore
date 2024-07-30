@@ -7,19 +7,33 @@ exports.create = async function (t, ...args) {
 
   const db = new CoreStorage(dir)
 
-  t.teardown(() => db.close())
+  t.teardown(() => db.close(), { order: 1 })
 
   const core = new Hypercore(db, ...args)
   await core.ready()
+
   return core
 }
 
-exports.createStorage = async function (t, dir) {
+const createStorage = exports.createStorage = async function (t, dir) {
   if (!dir) dir = await createTempDir(t)
-  return new CoreStorage(dir)
+  const db = new CoreStorage(dir)
+
+  t.teardown(() => db.close(), { order: 1 })
+
+  return db
 }
 
-exports.createStored = exports.create
+exports.createStored = async function (t) {
+  const dir = await createTempDir(t)
+  let db = null
+
+  return async function (...args) {
+    if (db) await db.close()
+    db = await createStorage(t, dir)
+    return new Hypercore(db, ...args)
+  }
+}
 
 exports.replicate = function replicate (a, b, t, opts = {}) {
   const s1 = a.replicate(true, { keepAlive: false, ...opts })

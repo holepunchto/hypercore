@@ -4,8 +4,8 @@ const { replicate, unreplicate, create, createStored } = require('./helpers')
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
 
-  const core = await create()
-  const clone = await create(core.key, { valueEncoding: 'utf-8' })
+  const core = await create(t)
+  const clone = await create(t, core.key, { valueEncoding: 'utf-8' })
 
   clone.on('truncate', function (len) {
     t.is(len, 2, 'remote truncation')
@@ -31,6 +31,8 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   const p2 = clone.get(1)
   const p3 = clone.get(2)
 
+  const exception = t.exception(p3, 'should fail cause snapshot not available')
+
   await core.truncate(2)
 
   await core.append('block #2.1')
@@ -39,7 +41,7 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   replicate(core, clone, t)
 
   t.is(await p2, 'block #1.0')
-  t.exception(p3, 'should fail cause snapshot not available')
+  await exception
 
   t.is(await clone.get(2), 'block #2.1')
 
@@ -53,9 +55,9 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 test('snapshots wait for ready', async function (t) {
   t.plan(10)
 
-  const create = createStored()
+  const create = await createStored(t)
 
-  const core = create()
+  const core = await create()
   const s1 = core.snapshot()
 
   await core.append('block #0.0')
@@ -83,7 +85,7 @@ test('snapshots wait for ready', async function (t) {
 
   await core.close()
 
-  const coreCopy = create()
+  const coreCopy = await create()
 
   // if a snapshot is made on an opening core, it should wait until opened
   const s3 = coreCopy.snapshot()
@@ -106,8 +108,8 @@ test('snapshots wait for ready', async function (t) {
 test('snapshots are consistent', async function (t) {
   t.plan(6)
 
-  const core = await create()
-  const clone = await create(core.key)
+  const core = await create(t)
+  const clone = await create(t, core.key)
 
   await core.append('block #0.0')
   await core.append('block #1.0')
@@ -126,6 +128,9 @@ test('snapshots are consistent', async function (t) {
   await core.truncate(1)
   await core.append('block #1.1')
   await core.append('block #2.1')
+
+  // wait for clone to update
+  await new Promise(resolve => clone.once('truncate', resolve))
 
   t.is(clone.fork, 1, 'clone updated')
 

@@ -34,9 +34,9 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
   // Indirectly tests the findFirst method for the case where
   // a position > 0 is passed in, while _maxSegments is still 0
   // because nothing was set.
-  const a = await create()
-  const b = await create(a.key)
-  const c = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
 
   replicate(a, b, t)
   replicate(b, c, t)

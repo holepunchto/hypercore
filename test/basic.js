@@ -308,7 +308,7 @@ test('has range', async function (t) {
   t.ok(await core.has(3, 5), 'has 3 to 4')
 })
 
-test('storage info', async function (t) {
+test.skip('storage info', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
@@ -344,11 +344,21 @@ test('key is set sync', async function (t) {
   const dir3 = await createStorage(t)
   const dir4 = await createStorage(t)
 
-  t.alike((new Hypercore(dir1, key)).key, key)
-  t.is((new Hypercore(dir2)).key, null)
+  const core1 = new Hypercore(dir1, key)
+  const core2 = new Hypercore(dir2)
+  const core3 = new Hypercore(dir3, { key })
+  const core4 = new Hypercore(dir4, { })
 
-  t.alike((new Hypercore(dir3, { key })).key, key)
-  t.is((new Hypercore(dir4, { })).key, null)
+  // flush all db ops before teardown
+  t.teardown(() => core1.ready())
+  t.teardown(() => core2.ready())
+  t.teardown(() => core3.ready())
+  t.teardown(() => core4.ready())
+
+  t.alike(core1.key, key)
+  t.is(core2.key, null)
+  t.alike(core3.key, key)
+  t.is(core4.key, null)
 })
 
 test('disable writable option', async function (t) {

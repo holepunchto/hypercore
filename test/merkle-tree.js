@@ -23,11 +23,16 @@ test('nodes', async function (t) {
 })
 
 test('proof only block', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     block: { index: 4, nodes: 2 }
   })
+
+  b.tryFlush()
+
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.is(proof.seek, null)
@@ -37,12 +42,16 @@ test('proof only block', async function (t) {
 })
 
 test('proof with upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.seek, null)
   t.is(proof.block.index, 4)
@@ -55,12 +64,16 @@ test('proof with upgrade', async function (t) {
 })
 
 test('proof with upgrade + additional', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 8 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.seek, null)
   t.is(proof.block.index, 4)
@@ -73,12 +86,16 @@ test('proof with upgrade + additional', async function (t) {
 })
 
 test('proof with upgrade from existing state', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 9 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.seek, null)
   t.is(proof.block.index, 1)
@@ -91,12 +108,16 @@ test('proof with upgrade from existing state', async function (t) {
 })
 
 test('proof with upgrade from existing state + additional', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 5 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.seek, null)
   t.is(proof.block.index, 1)
@@ -109,12 +130,16 @@ test('proof with upgrade from existing state + additional', async function (t) {
 })
 
 test('proof block and seek, no upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 8, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.is(proof.seek, null) // seek included in the block
@@ -124,12 +149,16 @@ test('proof block and seek, no upgrade', async function (t) {
 })
 
 test('proof block and seek #2, no upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 10, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.is(proof.seek, null) // seek included in the block
@@ -139,12 +168,16 @@ test('proof block and seek #2, no upgrade', async function (t) {
 })
 
 test('proof block and seek #3, no upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.alike(proof.seek.nodes.map(n => n.index), [12, 14])
@@ -154,12 +187,16 @@ test('proof block and seek #3, no upgrade', async function (t) {
 })
 
 test('proof seek with padding, no upgrade', async function (t) {
-  const { tree } = await create(t, 16)
+  const { storage, tree } = await create(t, 16)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 7, padding: 1 },
     block: { index: 0, nodes: 4 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.alike(proof.block.nodes.map(n => n.index), [2, 5, 23])
@@ -167,12 +204,16 @@ test('proof seek with padding, no upgrade', async function (t) {
 })
 
 test('proof block and seek that results in tree, no upgrade', async function (t) {
-  const { tree } = await create(t, 16)
+  const { storage, tree } = await create(t, 16)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 26, padding: 0 },
     block: { index: 0, nodes: 4 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.is(proof.upgrade, null)
   t.alike(proof.block.nodes.map(n => n.index), [2, 5, 11])
@@ -180,13 +221,17 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
 })
 
 test('proof block and seek, with upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 },
     upgrade: { start: 8, length: 2 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.alike(proof.seek.nodes.map(n => n.index), [12, 14])
   t.is(proof.block.index, 4)
@@ -199,12 +244,16 @@ test('proof block and seek, with upgrade', async function (t) {
 })
 
 test('proof seek with upgrade', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
 
-  const proof = await tree.proof({
+  const b = storage.createReadBatch()
+  const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
+
+  b.tryFlush()
+  const proof = await p.settle()
 
   t.alike(proof.seek.nodes.map(n => n.index), [12, 14, 9, 3])
   t.is(proof.block, null)
@@ -215,13 +264,17 @@ test('proof seek with upgrade', async function (t) {
 })
 
 test('verify proof #1', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
   const clone = await create(t)
 
-  const p = await tree.proof({
+  const batch = storage.createReadBatch()
+  const proof = await tree.proof(batch, {
     hash: { index: 6, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
+
+  batch.tryFlush()
+  const p = await proof.settle()
 
   const b = await clone.tree.verify(p)
 
@@ -229,6 +282,7 @@ test('verify proof #1', async function (t) {
   b.commit(wb)
 
   await wb.flush()
+  b.finalise()
 
   t.is(clone.tree.length, tree.length)
   t.is(clone.tree.byteLength, tree.byteLength)
@@ -237,18 +291,23 @@ test('verify proof #1', async function (t) {
 })
 
 test('verify proof #2', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
   const clone = await create(t)
 
-  const p = await tree.proof({
+  const batch = storage.createReadBatch()
+  const proof = await tree.proof(batch, {
     seek: { bytes: 10, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
+
+  batch.tryFlush()
+  const p = await proof.settle()
 
   const b = await clone.tree.verify(p)
   const wb = clone.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   t.is(clone.tree.length, tree.length)
   t.is(clone.tree.byteLength, tree.byteLength)
@@ -260,14 +319,19 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   const clone = await create(t)
 
   {
-    const proof = await tree.proof({
+    const batch = storage.createReadBatch()
+    const p = await tree.proof(batch, {
       upgrade: { start: 0, length: 4 }
     })
+
+    batch.tryFlush()
+    const proof = await p.settle()
 
     const b = await clone.tree.verify(proof)
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const b = tree.batch()
@@ -275,43 +339,49 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   {
-    const proof = await tree.proof({
+    const batch = storage.createReadBatch()
+    const p = await tree.proof(batch, {
       upgrade: { start: 4, length: 1 }
     })
+
+    batch.tryFlush()
+    const proof = await p.settle()
 
     const b = await clone.tree.verify(proof)
     const wb = clone.tree.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   t.is(tree.length, 5)
 })
 
 test('lowest common ancestor - small gap', async function (t) {
-  const { tree } = await create(t, 10)
+  const { storage, tree } = await create(t, 10)
   const clone = await create(t, 8)
-  const ancestors = await reorg(clone, { tree })
+  const ancestors = await reorg(clone, { tree, storage })
 
   t.is(ancestors, 8)
   t.is(clone.tree.length, tree.length)
 })
 
 test('lowest common ancestor - bigger gap', async function (t) {
-  const { tree } = await create(t, 20)
+  const { storage, tree } = await create(t, 20)
   const clone = await create(t, 1)
-  const ancestors = await reorg(clone, { tree })
+  const ancestors = await reorg(clone, { tree, storage })
 
   t.is(ancestors, 1)
   t.is(clone.tree.length, tree.length)
 })
 
 test('lowest common ancestor - remote is shorter than local', async function (t) {
-  const { tree } = await create(t, 5)
+  const { storage, tree } = await create(t, 5)
   const clone = await create(t, 10)
-  const ancestors = await reorg(clone, { tree })
+  const ancestors = await reorg(clone, { tree, storage })
 
   t.is(ancestors, 5)
   t.is(clone.tree.length, tree.length)
@@ -327,6 +397,7 @@ test('lowest common ancestor - simple fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -335,9 +406,10 @@ test('lowest common ancestor - simple fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
-  const ancestors = await reorg(clone, { tree })
+  const ancestors = await reorg(clone, { tree, storage })
 
   t.is(ancestors, 5)
   t.is(clone.tree.length, tree.length)
@@ -353,6 +425,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -361,6 +434,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -369,6 +443,7 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   {
@@ -377,9 +452,10 @@ test('lowest common ancestor - long fork', async function (t) {
     const wb = clone.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
-  const ancestors = await reorg(clone, { tree })
+  const ancestors = await reorg(clone, { tree, storage })
 
   t.is(ancestors, 5)
   t.is(clone.tree.length, tree.length)
@@ -403,6 +479,7 @@ test('tree hash', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
     t.alike(h, a.tree.hash())
   }
 
@@ -415,6 +492,7 @@ test('tree hash', async function (t) {
     const wba = b.storage.createWriteBatch()
     await ba.commit(wba)
     await wba.flush()
+    ba.finalise()
     t.alike(h, b.tree.hash())
   }
 })
@@ -432,6 +510,7 @@ test('basic tree seeks', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   t.is(a.tree.length, 10)
@@ -494,6 +573,7 @@ test('get older roots', async function (t) {
     const wb = a.storage.createWriteBatch()
     await b.commit(wb)
     await wb.flush()
+    b.finalise()
   }
 
   const oldRoots = await a.tree.getRoots(5)
@@ -510,6 +590,7 @@ test('get older roots', async function (t) {
       const wb = a.storage.createWriteBatch()
       await b.commit(wb)
       await wb.flush()
+      b.finalise()
     }
   }
 
@@ -523,7 +604,7 @@ test('get older roots', async function (t) {
 })
 
 test('check if a length is upgradeable', async function (t) {
-  const { tree } = await create(t, 5)
+  const { storage, tree } = await create(t, 5)
   const clone = await create(t)
 
   // Full clone, has it all
@@ -535,14 +616,19 @@ test('check if a length is upgradeable', async function (t) {
   t.is(await tree.upgradeable(4), true)
   t.is(await tree.upgradeable(5), true)
 
-  const p = await tree.proof({
+  const batch = storage.createReadBatch()
+  const proof = await tree.proof(batch, {
     upgrade: { start: 0, length: 5 }
   })
+
+  batch.tryFlush()
+  const p = await proof.settle()
 
   const b = await clone.tree.verify(p)
   const wb = clone.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   /*
     Merkle tree looks like
@@ -596,6 +682,7 @@ test('clone a batch', async t => {
   const wb = a.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   let same = b.roots.length === c.roots.length
   for (let i = 0; i < b.roots.length; i++) {
@@ -651,6 +738,7 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   const node = await tree.get(0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
@@ -671,6 +759,7 @@ test('reopen a tree', async t => {
   const wb = a.storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   t.alike(a.tree.length, 32)
 
@@ -715,18 +804,29 @@ async function audit (tree) {
 
 async function reorg (local, remote) {
   const upgrade = { start: 0, length: remote.tree.length }
-  const r = await local.tree.reorg(await remote.tree.proof({ upgrade }))
+
+  const batch = remote.storage.createReadBatch()
+  const proof = await remote.tree.proof(batch, { upgrade })
+
+  batch.tryFlush()
+  const r = await local.tree.reorg(await proof.settle())
 
   while (!r.finished) {
     const index = 2 * (r.want.end - 1)
     const nodes = r.want.nodes
 
-    await r.update(await remote.tree.proof({ hash: { index, nodes } }))
+    const batch = remote.storage.createReadBatch()
+    const proof = await remote.tree.proof(batch, { hash: { index, nodes } })
+
+    batch.tryFlush()
+
+    await r.update(await proof.settle())
   }
 
   const wb = local.storage.createWriteBatch()
   r.commit(wb)
   await wb.flush()
+  r.finalise()
   return r.ancestors
 }
 
@@ -754,6 +854,7 @@ async function create (t, length = 0, dir) {
   const wb = storage.createWriteBatch()
   await b.commit(wb)
   await wb.flush()
+  b.finalise()
 
   return { storage, tree }
 }
