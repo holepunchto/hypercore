@@ -560,7 +560,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this._snapshot) return this._snapshot.byteLength
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousByteLength
-    return this.core.tree.byteLength - (this.core.tree.length * this.padding)
+    return this.state.tree.byteLength - (this.state.tree.length * this.padding)
   }
 
   get contiguousLength () {
@@ -733,7 +733,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   createTreeBatch () {
-    return this.core.tree.batch()
+    return this.state.tree.batch()
   }
 
   findingPeers () {
