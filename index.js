@@ -995,10 +995,12 @@ module.exports = class Hypercore extends EventEmitter {
   async append (blocks, opts = {}) {
     if (this.opened === false) await this.opening
 
+    const isDefault = this.state === this.core.state
+
     const { keyPair = this.keyPair, signature = null } = opts
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
 
-    if (writable === false) throw SESSION_NOT_WRITABLE()
+    if (isDefault && writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
     this.tracer.trace('append', { blocks })
