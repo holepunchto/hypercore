@@ -284,7 +284,6 @@ test('core - update hook is triggered', async function (t) {
 test('core - clone', async function (t) {
   const { core } = await create(t)
 
-  const writer = core.storage.createWriteBatch()
   await setUserData(core, 'hello', b4a.from('world'))
 
   await core.append([
