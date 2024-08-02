@@ -317,6 +317,12 @@ module.exports = class Hypercore extends EventEmitter {
       ensureEncryption(this, opts)
     }
 
+    if (opts.name) {
+      this.state = await this.core.createNamedSession(opts.name)
+    } else {
+      this.state = this.core.state
+    }
+
     if (opts.manifest && !this.core.header.manifest) {
       await this.core.setManifest(opts.manifest)
     }
@@ -379,8 +385,10 @@ module.exports = class Hypercore extends EventEmitter {
     })
     this.tracer.setParent(this.core.tracer)
 
+    this.state = this.core.state
+
     if (opts.userData) {
-      const batch = this.core.storage.createWriteBatch()
+      const batch = this.state.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
         this.core.userData(batch, key, value)
       }
@@ -538,7 +546,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this._snapshot) return this._snapshot.length
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousLength
-    return this.core.tree.length
+    return this.state.tree.length
   }
 
   get indexedLength () {
@@ -552,7 +560,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this._snapshot) return this._snapshot.byteLength
     if (this.core === null) return 0
     if (!this.sparse) return this.contiguousByteLength
-    return this.core.tree.byteLength - (this.core.tree.length * this.padding)
+    return this.state.tree.byteLength - (this.state.tree.length * this.padding)
   }
 
   get contiguousLength () {
@@ -711,7 +719,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
-    const batch = this.core.storage.createWriteBatch()
+    const batch = this.state.storage.createWriteBatch()
     this.core.userData(batch, key, value)
     await batch.flush()
   }
@@ -725,7 +733,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   createTreeBatch () {
-    return this.core.tree.batch()
+    return this.state.tree.batch()
   }
 
   findingPeers () {
@@ -810,9 +818,9 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
-    if (end === start + 1) return this.core.bitfield.get(start)
+    if (end === start + 1) return this.state.bitfield.get(start)
 
-    const i = this.core.bitfield.firstUnset(start)
+    const i = this.state.bitfield.firstUnset(start)
     return i === -1 || i >= end
   }
 
@@ -861,7 +869,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (start >= end) return cleared
     if (start >= this.length) return cleared
 
-    await this.core.clear(start, end, cleared)
+    await this.core.clear(this.state, start, end, cleared)
 
     return cleared
   }
@@ -876,8 +884,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.core.isFlushing) await this.core.flushed()
 
-    if (this.core.bitfield.get(index)) {
-      const reader = this.core.storage.createReadBatch()
+    if (this.state.bitfield.get(index)) {
+      const reader = this.state.storage.createReadBatch()
       block = this.core.blocks.get(reader, index)
 
       if (this.cache) this.cache.set(index, block)
@@ -896,7 +904,7 @@ module.exports = class Hypercore extends EventEmitter {
       const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
       if (timeout) req.context.setTimeout(req, timeout)
 
-      block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
+      block = this._cacheOnResolve(index, req.promise, this.state.tree.fork)
     }
 
     return block
@@ -970,27 +978,29 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
 
     const {
-      fork = this.core.tree.fork + 1,
+      fork = this.state.tree.fork + 1,
       keyPair = this.keyPair,
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
 
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (writable === false && (newLength > 0 || fork !== this.core.tree.fork)) throw SESSION_NOT_WRITABLE()
+    if (writable === false && (newLength > 0 || fork !== this.state.tree.fork)) throw SESSION_NOT_WRITABLE()
 
-    await this.core.truncate(newLength, fork, { keyPair, signature })
+    await this.core.truncate(this.state, newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
-    this.replicator.updateAll()
+    if (this.state === this.core.state) this.replicator.updateAll()
   }
 
   async append (blocks, opts = {}) {
     if (this.opened === false) await this.opening
 
+    const isDefault = this.state === this.core.state
+
     const { keyPair = this.keyPair, signature = null } = opts
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
 
-    if (writable === false) throw SESSION_NOT_WRITABLE()
+    if (isDefault && writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
     this.tracer.trace('append', { blocks })
@@ -1010,7 +1020,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, { keyPair, signature, preappend })
+    return this.core.append(this.state, buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {
