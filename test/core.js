@@ -281,273 +281,304 @@ test('core - update hook is triggered', async function (t) {
   t.is(ran, 255, 'ran all')
 })
 
-// test('core - clone', async function (t) {
-//   const { core } = await create(t)
+test('core - clone', async function (t) {
+  const { core } = await create(t)
 
-//   await core.userData('hello', b4a.from('world'))
+  const writer = core.storage.createWriteBatch()
+  await setUserData(core, 'hello', b4a.from('world'))
 
-//   await core.append([
-//     b4a.from('hello'),
-//     b4a.from('world')
-//   ])
+  await core.append([
+    b4a.from('hello'),
+    b4a.from('world')
+  ])
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: copy } = (await create(t, { manifest }))
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = (await create(t, { manifest }))
 
-//   await copy.copyPrologue(core)
+  await copy.copyPrologue(core)
 
-//   t.alike(copy.header.userData, [{ key: 'hello', value: b4a.from('world') }])
+  const userData = []
+  const str = copy.storage.createUserDataStream()
+  for await (const { key, value } of str) userData.push({ key, value })
 
-//   t.alike([
-//     await copy.blocks.get(0),
-//     await copy.blocks.get(1)
-//   ], [
-//     b4a.from('hello'),
-//     b4a.from('world')
-//   ])
+  t.alike(userData, [{ key: 'hello', value: b4a.from('world') }])
 
-//   const signature = copy.tree.signature
-//   const roots = copy.tree.roots.map(r => r.index)
+  t.alike([
+    await getBlock(copy, 0),
+    await getBlock(copy, 1)
+  ], [
+    b4a.from('hello'),
+    b4a.from('world')
+  ])
 
-//   for (let i = 0; i <= core.tree.length * 2; i++) {
-//     t.alike(
-//       await copy.tree.get(i, false),
-//       await core.tree.get(i, false)
-//     )
-//   }
+  const signature = copy.tree.signature
+  const roots = copy.tree.roots.map(r => r.index)
 
-//   await core.append([b4a.from('c')])
+  for (let i = 0; i <= core.tree.length * 2; i++) {
+    t.alike(
+      await copy.tree.get(i, false),
+      await core.tree.get(i, false)
+    )
+  }
 
-//   // copy should be independent
-//   t.alike(copy.tree.signature, signature)
-//   t.alike(copy.tree.roots.map(r => r.index), roots)
-// })
+  await core.append([b4a.from('c')])
 
-// test('core - clone verify', async function (t) {
-//   const { core } = await create(t)
+  // copy should be independent
+  t.alike(copy.tree.signature, signature)
+  t.alike(copy.tree.roots.map(r => r.index), roots)
+  t.is(copy.header.hints.contiguousLength, 2)
+})
 
-//   await core.append([b4a.from('a'), b4a.from('b')])
+test('core - clone verify', async function (t) {
+  const { core } = await create(t)
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: copy } = await create(t, { manifest })
-//   const { core: clone } = await create(t, { manifest })
+  await core.append([b4a.from('a'), b4a.from('b')])
 
-//   await copy.copyPrologue(core)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create(t, { manifest })
+  const { core: clone } = await create(t, { manifest })
 
-//   // copy should be independent
-//   await core.append([b4a.from('c')])
+  await copy.copyPrologue(core)
 
-//   {
-//     const p = await getProof(copy, { upgrade: { start: 0, length: 2 } })
-//     t.ok(await clone.verify(p))
-//   }
+  // copy should be independent
+  await core.append([b4a.from('c')])
 
-//   t.is(clone.header.tree.length, 2)
+  {
+    const p = await getProof(copy, { upgrade: { start: 0, length: 2 } })
+    t.ok(await clone.verify(p))
+  }
 
-//   {
-//     const p = await getProof(copy, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
-//     p.block.value = await copy.blocks.get(1)
-//     await clone.verify(p)
-//   }
+  t.is(clone.header.tree.length, 2)
 
-//   t.pass('verified')
-// })
+  {
+    const p = await getProof(copy, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+    p.block.value = await getBlock(copy, 1)
+    await clone.verify(p)
+  }
 
-// test('core - partial clone', async function (t) {
-//   const { core } = await create(t)
+  t.is(core.header.hints.contiguousLength, 3)
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 0)
 
-//   await core.append([b4a.from('0')])
-//   await core.append([b4a.from('1')])
+  t.pass('verified')
+})
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+test('core - partial clone', async function (t) {
+  const { core } = await create(t)
 
-//   await core.append([b4a.from('2')])
-//   await core.append([b4a.from('3')])
+  await core.append([b4a.from('0')])
+  await core.append([b4a.from('1')])
 
-//   const { core: copy } = (await create(t, { manifest }))
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
 
-//   await copy.copyPrologue(core)
+  await core.append([b4a.from('2')])
+  await core.append([b4a.from('3')])
 
-//   t.is(core.tree.length, 4)
-//   t.is(copy.tree.length, 2)
+  const { core: copy } = (await create(t, { manifest }))
 
-//   t.alike([
-//     await copy.blocks.get(0),
-//     await copy.blocks.get(1)
-//   ], [
-//     b4a.from('0'),
-//     b4a.from('1')
-//   ])
+  await copy.copyPrologue(core)
 
-//   await t.exception(copy.blocks.get(2))
-// })
+  t.is(core.tree.length, 4)
+  t.is(copy.tree.length, 2)
 
-// test('core - clone with additional', async function (t) {
-//   const { core } = await create(t)
+  t.is(core.header.hints.contiguousLength, 4)
+  t.is(copy.header.hints.contiguousLength, 2)
 
-//   await core.append([b4a.from('a'), b4a.from('b')])
+  t.alike([
+    await getBlock(copy, 0),
+    await getBlock(copy, 1),
+    await getBlock(copy, 2)
+  ], [
+    b4a.from('0'),
+    b4a.from('1'),
+    null
+  ])
+})
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: copy } = await create(t, { manifest })
+test('core - clone with additional', async function (t) {
+  const { core } = await create(t)
 
-//   await copy.copyPrologue(core, core.tree.signature)
+  await core.append([b4a.from('a'), b4a.from('b')])
 
-//   // copy should be independent
-//   await core.append([b4a.from('c')])
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create(t, { manifest })
 
-//   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: clone } = await create(t, { manifest: secondManifest })
+  await copy.copyPrologue(core, core.tree.signature)
 
-//   await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
+  // copy should be independent
+  await core.append([b4a.from('c')])
 
-//   t.is(clone.header.tree.length, 3)
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
-//   t.is(clone.tree.length, core.tree.length)
-//   t.is(clone.tree.byteLength, core.tree.byteLength)
-//   t.alike(clone.roots, core.roots)
+  await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
 
-//   t.alike(await clone.blocks.get(0), b4a.from('a'))
-//   t.alike(await clone.blocks.get(1), b4a.from('b'))
-//   t.alike(await clone.blocks.get(2), b4a.from('c'))
-// })
+  t.is(clone.header.tree.length, 3)
 
-// test('core - clone with additional, larger tree', async function (t) {
-//   const { core } = await create(t)
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
 
-//   await core.append([b4a.from('a'), b4a.from('b')])
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 3)
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: copy } = await create(t, { manifest })
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
+})
 
-//   await copy.copyPrologue(core)
+test('core - clone with additional, larger tree', async function (t) {
+  const { core } = await create(t)
 
-//   const additional = [
-//     b4a.from('c'),
-//     b4a.from('d'),
-//     b4a.from('e'),
-//     b4a.from('f'),
-//     b4a.from('g'),
-//     b4a.from('h'),
-//     b4a.from('i'),
-//     b4a.from('j')
-//   ]
+  await core.append([b4a.from('a'), b4a.from('b')])
 
-//   await core.append(additional)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create(t, { manifest })
 
-//   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: clone } = await create(t, { manifest: secondManifest })
+  await copy.copyPrologue(core)
 
-//   // copy should be independent
-//   await clone.copyPrologue(copy, { additional })
+  const additional = [
+    b4a.from('c'),
+    b4a.from('d'),
+    b4a.from('e'),
+    b4a.from('f'),
+    b4a.from('g'),
+    b4a.from('h'),
+    b4a.from('i'),
+    b4a.from('j')
+  ]
 
-//   t.is(clone.header.tree.length, core.header.tree.length)
+  await core.append(additional)
 
-//   t.is(clone.tree.length, core.tree.length)
-//   t.is(clone.tree.byteLength, core.tree.byteLength)
-//   t.alike(clone.roots, core.roots)
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
-//   t.alike(await clone.blocks.get(0), b4a.from('a'))
-//   t.alike(await clone.blocks.get(1), b4a.from('b'))
-//   t.alike(await clone.blocks.get(2), b4a.from('c'))
-//   t.alike(await clone.blocks.get(3), b4a.from('d'))
-//   t.alike(await clone.blocks.get(4), b4a.from('e'))
-//   t.alike(await clone.blocks.get(5), b4a.from('f'))
-//   t.alike(await clone.blocks.get(6), b4a.from('g'))
-//   t.alike(await clone.blocks.get(7), b4a.from('h'))
-//   t.alike(await clone.blocks.get(8), b4a.from('i'))
-//   t.alike(await clone.blocks.get(9), b4a.from('j'))
-// })
+  // copy should be independent
+  await clone.copyPrologue(copy, { additional })
 
-// test('core - copyPrologue bails if core is not the same', async function (t) {
-//   const { core } = await create(t)
-//   const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
+  t.is(clone.header.tree.length, core.header.tree.length)
 
-//   // copy should be independent
-//   await core.append([b4a.from('a')])
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
 
-//   await t.exception(copy.copyPrologue(core))
-// })
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 10)
 
-// test('core - copyPrologue can recover from bad additional', async function (t) {
-//   const { core } = await create(t)
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
+  t.alike(await getBlock(clone, 3), b4a.from('d'))
+  t.alike(await getBlock(clone, 4), b4a.from('e'))
+  t.alike(await getBlock(clone, 5), b4a.from('f'))
+  t.alike(await getBlock(clone, 6), b4a.from('g'))
+  t.alike(await getBlock(clone, 7), b4a.from('h'))
+  t.alike(await getBlock(clone, 8), b4a.from('i'))
+  t.alike(await getBlock(clone, 9), b4a.from('j'))
+})
 
-//   await core.append([b4a.from('a'), b4a.from('b')])
+test('core - copyPrologue bails if core is not the same', async function (t) {
+  const { core } = await create(t)
+  const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
 
-//   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: copy } = await create(t, { manifest })
-//   await copy.copyPrologue(core)
+  // copy should be independent
+  await core.append([b4a.from('a')])
 
-//   // copy should be independent
-//   await core.append([b4a.from('c')])
+  await t.exception(copy.copyPrologue(core))
 
-//   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-//   const { core: clone } = await create(t, { manifest: secondManifest })
+  t.is(copy.header.hints.contiguousLength, 0)
+})
 
-//   await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
-//   await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
+test('core - copyPrologue can recover from bad additional', async function (t) {
+  const { core } = await create(t)
 
-//   t.is(clone.header.tree.length, 3)
+  await core.append([b4a.from('a'), b4a.from('b')])
 
-//   t.is(clone.tree.length, core.tree.length)
-//   t.is(clone.tree.byteLength, core.tree.byteLength)
-//   t.alike(clone.roots, core.roots)
+  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: copy } = await create(t, { manifest })
+  await copy.copyPrologue(core)
 
-//   t.alike(await clone.blocks.get(0), b4a.from('a'))
-//   t.alike(await clone.blocks.get(1), b4a.from('b'))
-//   t.alike(await clone.blocks.get(2), b4a.from('c'))
-// })
+  // copy should be independent
+  await core.append([b4a.from('c')])
 
-// test('core - copyPrologue many', async function (t) {
-//   const { core } = await create(t, { compat: false, version: 1 })
-//   await core.append([b4a.from('a'), b4a.from('b')])
+  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
-//   const manifest = { ...core.header.manifest }
-//   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
 
-//   const { core: copy } = await create(t, { manifest })
-//   const { core: copy2 } = await create(t, { manifest })
-//   const { core: copy3 } = await create(t, { manifest })
+  t.is(clone.header.hints.contiguousLength, 0)
 
-//   await copy.copyPrologue(core)
+  await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
 
-//   t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
+  t.is(clone.header.hints.contiguousLength, 3)
+  t.is(clone.header.tree.length, 3)
 
-//   t.is(copy.tree.length, core.tree.length)
-//   t.is(copy.tree.byteLength, core.tree.byteLength)
+  t.is(clone.tree.length, core.tree.length)
+  t.is(clone.tree.byteLength, core.tree.byteLength)
+  t.alike(clone.roots, core.roots)
 
-//   // copy should be independent
-//   await core.append([b4a.from('c')])
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
+})
 
-//   // upgrade clone
-//   {
-//     const batch = core.tree.batch()
-//     const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
-//     p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
-//     t.ok(await copy2.verify(p))
-//   }
+test('core - copyPrologue many', async function (t) {
+  const { core } = await create(t, { compat: false, version: 1 })
+  await core.append([b4a.from('a'), b4a.from('b')])
 
-//   await t.execution(copy2.copyPrologue(core))
-//   await t.execution(copy3.copyPrologue(core))
+  const manifest = { ...core.header.manifest }
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
 
-//   t.is(copy2.tree.length, core.tree.length)
-//   t.is(copy.tree.length, copy3.tree.length)
+  const { core: copy } = await create(t, { manifest })
+  const { core: copy2 } = await create(t, { manifest })
+  const { core: copy3 } = await create(t, { manifest })
 
-//   t.is(copy2.header.tree.length, core.header.tree.length)
-//   t.is(copy.header.tree.length, copy3.header.tree.length)
+  await copy.copyPrologue(core)
 
-//   t.is(copy2.tree.byteLength, core.tree.byteLength)
-//   t.is(copy.tree.byteLength, copy3.tree.byteLength)
+  t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
 
-//   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
-//   const { core: copy4 } = await create(t, { manifest })
-//   await copy4.copyPrologue(copy2)
+  t.is(copy.tree.length, core.tree.length)
+  t.is(copy.tree.byteLength, core.tree.byteLength)
 
-//   t.is(copy4.tree.length, 3)
-//   t.is(copy4.header.tree.length, 3)
+  // copy should be independent
+  await core.append([b4a.from('c')])
 
-//   t.alike(await copy4.blocks.get(0), b4a.from('a'))
-//   t.alike(await copy4.blocks.get(1), b4a.from('b'))
-// })
+  // upgrade clone
+  {
+    const batch = core.tree.batch()
+    const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
+    p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
+    t.ok(await copy2.verify(p))
+  }
+
+  await t.execution(copy2.copyPrologue(core))
+  await t.execution(copy3.copyPrologue(core))
+
+  t.is(copy2.tree.length, core.tree.length)
+  t.is(copy.tree.length, copy3.tree.length)
+
+  t.is(copy2.header.tree.length, core.header.tree.length)
+  t.is(copy.header.tree.length, copy3.header.tree.length)
+
+  t.is(copy2.tree.byteLength, core.tree.byteLength)
+  t.is(copy.tree.byteLength, copy3.tree.byteLength)
+
+  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  const { core: copy4 } = await create(t, { manifest })
+  await copy4.copyPrologue(copy2)
+
+  t.is(copy4.tree.length, 3)
+  t.is(copy4.header.tree.length, 3)
+
+  t.is(core.header.hints.contiguousLength, 3)
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(copy2.header.hints.contiguousLength, 2)
+  t.is(copy3.header.hints.contiguousLength, 2)
+  t.is(copy4.header.hints.contiguousLength, 2)
+
+  t.alike(await getBlock(copy4, 0), b4a.from('a'))
+  t.alike(await getBlock(copy4, 1), b4a.from('b'))
+})
 
 async function create (t, opts = {}) {
   const dir = opts.dir || await createTempDir(t)
