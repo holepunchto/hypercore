@@ -1,17 +1,17 @@
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const crypto = require('hypercore-crypto')
 const c = require('compact-encoding')
 const b4a = require('b4a')
-const { create } = require('./helpers')
+const { create, createStorage } = require('./helpers')
 
 const Hypercore = require('../')
 
 test('sessions - can create writable sessions from a read-only core', async function (t) {
   t.plan(5)
 
+  const storage = await createStorage(t)
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(RAM, keyPair.publicKey, {
+  const core = new Hypercore(storage, keyPair.publicKey, {
     valueEncoding: 'utf-8'
   })
   await core.ready()
@@ -39,7 +39,8 @@ test('sessions - can create writable sessions from a read-only core', async func
 })
 
 test('sessions - auto close', async function (t) {
-  const core = new Hypercore(RAM, { autoClose: true })
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage, { autoClose: true })
 
   let closed = false
   core.on('close', function () {
@@ -57,7 +58,8 @@ test('sessions - auto close', async function (t) {
 })
 
 test('sessions - auto close different order', async function (t) {
-  const core = new Hypercore(RAM, { autoClose: true })
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage, { autoClose: true })
 
   const a = core.session()
   const b = core.session()
@@ -75,7 +77,8 @@ test('sessions - auto close different order', async function (t) {
 })
 
 test('sessions - auto close with all closing', async function (t) {
-  const core = new Hypercore(RAM, { autoClose: true })
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage, { autoClose: true })
 
   const a = core.session()
   const b = core.session()
@@ -90,7 +93,8 @@ test('sessions - auto close with all closing', async function (t) {
 })
 
 test('sessions - auto close when using from option', async function (t) {
-  const core1 = new Hypercore(RAM, {
+  const storage = await createStorage(t)
+  const core1 = new Hypercore(storage, {
     autoClose: true
   })
   const core2 = new Hypercore({
@@ -105,7 +109,8 @@ test('sessions - auto close when using from option', async function (t) {
 })
 
 test('sessions - close with from option', async function (t) {
-  const core1 = new Hypercore(RAM)
+  const storage = await createStorage(t)
+  const core1 = new Hypercore(storage)
   await core1.append('hello world')
 
   const core2 = new Hypercore({
@@ -122,7 +127,8 @@ test('sessions - close with from option', async function (t) {
 })
 
 test('sessions - custom valueEncoding on session', async function (t) {
-  const core1 = new Hypercore(RAM)
+  const storage = await createStorage(t)
+  const core1 = new Hypercore(storage)
   await core1.append(c.encode(c.raw.json, { a: 1 }))
 
   const core2 = core1.session({ valueEncoding: 'json' })
@@ -136,7 +142,8 @@ test('sessions - custom preload hook on first/later sessions', async function (t
   const preloadsTest = t.test('both preload hooks called')
   preloadsTest.plan(2)
 
-  const core1 = new Hypercore(RAM, {
+  const storage = await createStorage(t)
+  const core1 = new Hypercore(storage, {
     preload: () => {
       preloadsTest.pass('first hook called')
       return null
@@ -154,14 +161,14 @@ test('sessions - custom preload hook on first/later sessions', async function (t
 })
 
 test('session inherits non-sparse setting', async function (t) {
-  const a = await create({ sparse: false })
+  const a = await create(t, { sparse: false })
   const s = a.session()
 
   t.is(s.sparse, false)
 })
 
 test('session on a from instance, pre-ready', async function (t) {
-  const a = await create()
+  const a = await create(t)
 
   const b = new Hypercore({ from: a })
   const c = b.session()
@@ -175,7 +182,7 @@ test('session on a from instance, pre-ready', async function (t) {
 })
 
 test('session on a from instance does not inject itself to other sessions', async function (t) {
-  const a = await create({ })
+  const a = await create(t, { })
 
   const b = new Hypercore({ from: a, encryptionKey: null })
   await b.ready()

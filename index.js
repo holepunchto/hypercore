@@ -1,7 +1,7 @@
 const { EventEmitter } = require('events')
-const RAF = require('random-access-file')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
+const CoreStorage = require('hypercore-on-the-rocks')
 const c = require('compact-encoding')
 const b4a = require('b4a')
 const Xache = require('xache')
@@ -40,7 +40,7 @@ module.exports = class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
 
-    if (isOptions(storage)) {
+    if (isOptions(storage) && !storage.db) {
       opts = storage
       storage = null
       key = opts.key || null
@@ -190,28 +190,12 @@ module.exports = class Hypercore extends EventEmitter {
 
   static defaultStorage (storage, opts = {}) {
     if (typeof storage !== 'string') {
-      if (!isRandomAccessClass(storage)) return storage
-      const Cls = storage // just to satisfy standard...
-      return name => new Cls(name)
+      // todo: validate it is rocksdb instance
+      return storage
     }
 
     const directory = storage
-    const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
-    const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
-    const rmdir = !!opts.rmdir
-    const writable = opts.writable !== false
-
-    return createFile
-
-    function createFile (name) {
-      const lock = toLock === null ? false : isFile(name, toLock)
-      const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir, writable })
-    }
-
-    function isFile (name, n) {
-      return name === n || name.endsWith('/' + n)
-    }
+    return new CoreStorage(directory)
   }
 
   snapshot (opts) {
@@ -396,9 +380,11 @@ module.exports = class Hypercore extends EventEmitter {
     this.tracer.setParent(this.core.tracer)
 
     if (opts.userData) {
+      const batch = this.core.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
-        await this.core.userData(key, value)
+        this.core.userData(batch, key, value)
       }
+      await batch.flush()
     }
 
     this.key = this.core.header.key
@@ -634,7 +620,7 @@ module.exports = class Hypercore extends EventEmitter {
     await Promise.allSettled(all)
   }
 
-  _oncoreupdate (status, bitfield, value, from) {
+  _oncoreupdate ({ status, bitfield, value, from }) {
     if (status !== 0) {
       const truncatedNonSparse = (status & 0b1000) !== 0
       const appendedNonSparse = (status & 0b0100) !== 0
@@ -725,15 +711,17 @@ module.exports = class Hypercore extends EventEmitter {
 
   async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
-    return this.core.userData(key, value, flush)
+    const batch = this.core.storage.createWriteBatch()
+    this.core.userData(batch, key, value)
+    await batch.flush()
   }
 
   async getUserData (key) {
     if (this.opened === false) await this.opening
-    for (const { key: savedKey, value } of this.core.header.userData) {
-      if (key === savedKey) return value
-    }
-    return null
+    const batch = this.core.storage.createReadBatch()
+    const p = batch.getUserData(key)
+    batch.tryFlush()
+    return p
   }
 
   createTreeBatch () {
@@ -886,11 +874,14 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     let block
 
+    if (this.core.isFlushing) await this.core.flushed()
+
     if (this.core.bitfield.get(index)) {
-      const tree = (opts && opts.tree) || this.core.tree
-      block = this.core.blocks.get(index, tree)
+      const reader = this.core.storage.createReadBatch()
+      block = this.core.blocks.get(reader, index)
 
       if (this.cache) this.cache.set(index, block)
+      await reader.flush()
     } else {
       if (!this._shouldWait(opts, this.wait)) return null
 
@@ -1107,10 +1098,6 @@ module.exports = class Hypercore extends EventEmitter {
 
 function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
-}
-
-function isRandomAccessClass (fn) {
-  return !!(typeof fn === 'function' && fn.prototype && typeof fn.prototype.open === 'function')
 }
 
 function toHex (buf) {

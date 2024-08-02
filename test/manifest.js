@@ -2,7 +2,6 @@ const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 const tmpDir = require('test-tmp')
-const ram = require('random-access-memory')
 const c = require('compact-encoding')
 
 const Hypercore = require('../')
@@ -11,7 +10,7 @@ const { assemble, partialSignature, signableLength } = require('../lib/multisig'
 const caps = require('../lib/caps')
 const enc = require('../lib/messages')
 
-const { replicate, unreplicate } = require('./helpers')
+const { create, createStorage, createStored, replicate, unreplicate } = require('./helpers')
 
 // TODO: move this to be actual tree batches instead - less future surprises
 // for now this is just to get the tests to work as they test important things
@@ -258,15 +257,14 @@ test('create verifier - compat signer', async function (t) {
 
 test('multisig - append', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers, 0)
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   t.alike(Hypercore.key(manifest), core.key)
 
@@ -294,7 +292,7 @@ test('multisig - append', async function (t) {
 
   t.is(core.length, 1)
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -319,7 +317,7 @@ test('multisig - append', async function (t) {
 
 test('multisig -  batch failed', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
   await Promise.all(signers.map(s => s.ready()))
 
@@ -327,8 +325,7 @@ test('multisig -  batch failed', async function (t) {
 
   const manifest = createMultiManifest(signers)
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   t.alike(Hypercore.key(manifest), core.key)
 
@@ -354,7 +351,7 @@ test('multisig -  batch failed', async function (t) {
 
   await t.execution(core.append(b4a.from('hello'), { signature: multisig }))
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -362,7 +359,7 @@ test('multisig -  batch failed', async function (t) {
   const p = new Promise((resolve, reject) => {
     core2.on('verification-error', reject)
 
-    setImmediate(resolve)
+    setTimeout(resolve, 100)
   })
 
   s1.pipe(s2).pipe(s1)
@@ -374,14 +371,13 @@ test('multisig -  batch failed', async function (t) {
 
 test('multisig -  patches', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -404,7 +400,7 @@ test('multisig -  patches', async function (t) {
 
   t.is(core.length, 1)
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -418,6 +414,7 @@ test('multisig -  patches', async function (t) {
 
   s1.pipe(s2).pipe(s1)
 
+  await p
   await t.execution(p)
 
   t.is(core2.length, core.length)
@@ -429,14 +426,13 @@ test('multisig -  patches', async function (t) {
 
 test('multisig -  batch append', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -468,7 +464,7 @@ test('multisig -  batch append', async function (t) {
 
   t.is(core.length, 4)
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -496,14 +492,13 @@ test('multisig -  batch append', async function (t) {
 
 test('multisig -  batch append with patches', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
   let multisig = null
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   t.alike(Hypercore.key(manifest), core.key)
 
@@ -539,7 +534,7 @@ test('multisig -  batch append with patches', async function (t) {
 
   t.is(core.length, 4)
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -567,15 +562,14 @@ test('multisig -  batch append with patches', async function (t) {
 
 test('multisig -  cannot divide batch', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -603,7 +597,7 @@ test('multisig -  cannot divide batch', async function (t) {
     signature: multisig
   }))
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -624,7 +618,7 @@ test('multisig -  cannot divide batch', async function (t) {
 
 test('multisig -  multiple appends', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
@@ -632,8 +626,7 @@ test('multisig -  multiple appends', async function (t) {
   let multisig1 = null
   let multisig2 = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -666,7 +659,7 @@ test('multisig -  multiple appends', async function (t) {
     await partialCoreSignature(core, signers[1], len)
   ])
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -709,10 +702,11 @@ test('multisig -  multiple appends', async function (t) {
 })
 
 test('multisig -  persist to disk', async function (t) {
-  const storage = await tmpDir(t)
+  const dir = await tmpDir(t)
+  const storage = await createStorage(t, dir)
 
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
@@ -739,11 +733,12 @@ test('multisig -  persist to disk', async function (t) {
   t.is(core.length, 1)
 
   await core.close()
+  await storage.close()
 
-  const clone = new Hypercore(storage, { manifest })
+  const clone = new Hypercore(await createStorage(t, dir), { manifest })
   await t.execution(clone.ready())
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = clone.replicate(true)
   const s2 = core2.replicate(false)
@@ -770,7 +765,7 @@ test('multisig -  persist to disk', async function (t) {
 
 test('multisig -  overlapping appends', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
   await Promise.all(signers.map(s => s.ready()))
 
@@ -779,10 +774,9 @@ test('multisig -  overlapping appends', async function (t) {
   let multisig1 = null
   let multisig2 = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
   await core.ready()
 
   await signers[0].append(b4a.from('0'))
@@ -854,9 +848,9 @@ test('multisig - normal operating mode', async function (t) {
   for (let i = 0; i < 0xff; i++) inputs.push(b4a.from([i]))
 
   const signers = []
-  signers.push(new Hypercore(ram, { compat: false }))
-  signers.push(new Hypercore(ram, { compat: false }))
-  signers.push(new Hypercore(ram, { compat: false }))
+  signers.push(await create(t, { compat: false }))
+  signers.push(await create(t, { compat: false }))
+  signers.push(await create(t, { compat: false }))
 
   const [a, b, d] = signers
 
@@ -866,10 +860,9 @@ test('multisig - normal operating mode', async function (t) {
   const signer1 = signer(a, b)
   const signer2 = signer(b, d)
 
-  const core = new Hypercore(ram, { manifest, sign: signer1.sign })
-  await core.ready()
+  const core = await create(t, { manifest, sign: signer1.sign })
 
-  const core2 = new Hypercore(ram, { manifest, sign: signer2.sign })
+  const core2 = await create(t, { manifest, sign: signer2.sign })
   await core.ready()
 
   let ai = 0
@@ -948,15 +941,14 @@ test('multisig - normal operating mode', async function (t) {
 
 test('multisig -  large patches', async function (t) {
   const signers = []
-  for (let i = 0; i < 3; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   for (let i = 0; i < 10000; i++) {
     await signers[0].append(b4a.from(i.toString(10)))
@@ -976,7 +968,7 @@ test('multisig -  large patches', async function (t) {
 
   t.is(core.length, 1)
 
-  const core2 = new Hypercore(ram, { manifest })
+  const core2 = await create(t, { manifest })
 
   const s1 = core.replicate(true)
   const s2 = core2.replicate(false)
@@ -1034,7 +1026,7 @@ test('multisig -  large patches', async function (t) {
 
 test('multisig - prologue', async function (t) {
   const signers = []
-  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   await signers[0].append(b4a.from('0'))
@@ -1047,10 +1039,9 @@ test('multisig - prologue', async function (t) {
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
-  const prologued = new Hypercore(ram, { manifest: manifestWithPrologue })
+  const prologued = await create(t, { manifest: manifestWithPrologue })
   await prologued.ready()
 
   await signers[1].append(b4a.from('0'))
@@ -1088,7 +1079,7 @@ test('multisig - prologue', async function (t) {
 
 test('multisig - prologue replicate', async function (t) {
   const signers = []
-  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   await signers[0].append(b4a.from('0'))
@@ -1100,10 +1091,9 @@ test('multisig - prologue replicate', async function (t) {
 
   let multisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
-  const remote = new Hypercore(ram, { manifest })
+  const remote = await create(t, { manifest })
   await remote.ready()
 
   await signers[1].append(b4a.from('0'))
@@ -1133,7 +1123,7 @@ test('multisig - prologue replicate', async function (t) {
 
 test('multisig - prologue verify hash', async function (t) {
   const signers = []
-  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   await signers[0].append(b4a.from('0'))
@@ -1143,19 +1133,22 @@ test('multisig - prologue verify hash', async function (t) {
 
   const manifest = createMultiManifest(signers, { hash, length: 2 })
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   t.is(core.length, 0)
 
-  const proof = await signers[0].core.tree.proof({ upgrade: { start: 0, length: 2 } })
+  const batch = signers[0].core.storage.createReadBatch()
+  const p = await signers[0].core.tree.proof(batch, { upgrade: { start: 0, length: 2 } })
+  batch.tryFlush()
+
+  const proof = await p.settle()
   proof.upgrade.signature = null
 
   await t.execution(core.core.verify(proof))
 
   t.is(core.length, 2)
 
-  const remote = new Hypercore(ram, { manifest })
+  const remote = await create(t, { manifest })
   await remote.ready()
 
   t.is(core.length, 2)
@@ -1178,7 +1171,7 @@ test('multisig - prologue morphs request', async function (t) {
 
   let multisig = null
 
-  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   await signers[0].append(b4a.from('0'))
@@ -1196,12 +1189,15 @@ test('multisig - prologue morphs request', async function (t) {
   const hash = b4a.from(signers[0].core.tree.hash())
   const manifest = createMultiManifest(signers, { hash, length: 4 })
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   t.is(core.length, 0)
 
-  const proof = await signers[0].core.tree.proof({ upgrade: { start: 0, length: 4 } })
+  const batch = signers[0].core.storage.createReadBatch()
+  const p = await signers[0].core.tree.proof(batch, { upgrade: { start: 0, length: 4 } })
+  batch.tryFlush()
+
+  const proof = await p.settle()
   proof.upgrade.signature = null
 
   await t.execution(core.core.verify(proof))
@@ -1220,7 +1216,7 @@ test('multisig - prologue morphs request', async function (t) {
 
   t.is(core.length, 5)
 
-  const remote = new Hypercore(ram, { manifest })
+  const remote = await create(t, { manifest })
   await remote.ready()
 
   t.is(core.length, 5)
@@ -1239,12 +1235,16 @@ test('multisig - prologue morphs request', async function (t) {
 
   t.is(remote.length, 5)
 
-  await t.execution(remote.core.tree.proof({ upgrade: { start: 0, length: 4 } }))
+  const rb = remote.core.storage.createReadBatch()
+  const rp = await remote.core.tree.proof(rb, { upgrade: { start: 0, length: 4 } })
+  rb.tryFlush()
+
+  await t.execution(rp.settle())
 })
 
 test('multisig - append/truncate before prologue', async function (t) {
   const signers = []
-  for (let i = 0; i < 2; i++) signers.push(new Hypercore(ram, { compat: false }))
+  for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
   await signers[0].append(b4a.from('0'))
@@ -1259,8 +1259,7 @@ test('multisig - append/truncate before prologue', async function (t) {
   let multisig = null
   let partialMultisig = null
 
-  const core = new Hypercore(ram, { manifest })
-  await core.ready()
+  const core = await create(t, { manifest })
 
   const proof = await partialSignature(signers[0].core.tree, 0, 2)
   const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
@@ -1433,8 +1432,8 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   const key = Verifier.manifestHash(manifest)
 
-  const storage = ram.reusable()
-  const core = new Hypercore(storage, key, { compat: false })
+  const create = await createStored(t)
+  const core = await create(key, { compat: false })
   await core.ready()
 
   t.is(core.manifest, null)
@@ -1445,12 +1444,12 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   manifest.signers[0].publicKey = b4a.alloc(32, 0)
 
-  const wrongCore = new Hypercore(storage, null, { manifest, compat: false })
+  const wrongCore = await create(null, { manifest, compat: false })
   await t.exception(wrongCore.ready(), /STORAGE_CONFLICT/)
 
   manifest.signers[0].publicKey = keyPair.publicKey
 
-  const manifestCore = new Hypercore(storage, null, { manifest, compat: false })
+  const manifestCore = await create(null, { manifest, compat: false })
   await manifestCore.ready()
 
   t.not(manifestCore.manifest, null)
@@ -1459,7 +1458,7 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   await manifestCore.close()
 
-  const compatCore = new Hypercore(storage, null, { manifest, compat: true })
+  const compatCore = await create(null, { manifest, compat: true })
   await t.execution(compatCore.ready()) // compat flag is unset internally
 })
 

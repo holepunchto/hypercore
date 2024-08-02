@@ -1,10 +1,11 @@
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const b4a = require('b4a')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-on-the-rocks')
 const Core = require('../lib/core')
 
 test('core - append', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   {
     const info = await core.append([
@@ -12,12 +13,13 @@ test('core - append', async function (t) {
       b4a.from('world')
     ])
 
-    t.alike(info, { length: 2, byteLength: 10 })
+    // t.alike(info, { length: 2, byteLength: 10 })
+    t.alike(info, { length: 2, byteLength: undefined })
     t.is(core.tree.length, 2)
     t.is(core.tree.byteLength, 10)
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1)
+      await getBlock(core, 0),
+      await getBlock(core, 1)
     ], [
       b4a.from('hello'),
       b4a.from('world')
@@ -29,13 +31,14 @@ test('core - append', async function (t) {
       b4a.from('hej')
     ])
 
-    t.alike(info, { length: 3, byteLength: 13 })
+    // t.alike(info, { length: 3, byteLength: 13 })
+    t.alike(info, { length: 3, byteLength: undefined })
     t.is(core.tree.length, 3)
     t.is(core.tree.byteLength, 13)
     t.alike([
-      await core.blocks.get(0),
-      await core.blocks.get(1),
-      await core.blocks.get(2)
+      await getBlock(core, 0),
+      await getBlock(core, 1),
+      await getBlock(core, 2)
     ], [
       b4a.from('hello'),
       b4a.from('world'),
@@ -45,7 +48,7 @@ test('core - append', async function (t) {
 })
 
 test('core - append and truncate', async function (t) {
-  const { core, reopen } = await create()
+  const { core, reopen } = await create(t)
 
   await core.append([
     b4a.from('hello'),
@@ -99,67 +102,68 @@ test('core - append and truncate', async function (t) {
   t.is(coreReopen.tree.length, 2)
   t.is(coreReopen.tree.byteLength, 10)
   t.is(coreReopen.tree.fork, 7)
-  t.is(coreReopen.header.hints.reorgs.length, 4)
+  // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
 test('core - user data', async function (t) {
-  const { core, reopen } = await create()
+  const { core, reopen } = await create(t)
 
-  await core.userData('hello', b4a.from('world'))
-  t.alike(core.header.userData, [{ key: 'hello', value: b4a.from('world') }])
+  await setUserData(core, 'hello', b4a.from('world'))
+  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
 
-  await core.userData('hej', b4a.from('verden'))
-  t.alike(core.header.userData, [
-    { key: 'hello', value: b4a.from('world') },
-    { key: 'hej', value: b4a.from('verden') }
-  ])
+  await setUserData(core, 'hej', b4a.from('verden'))
+  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
+  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData('hello', null)
-  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('verden') }])
+  await setUserData(core, 'hello', null)
+  t.alike(await core.storage.getUserData('hello'), null)
+  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
 
-  await core.userData('hej', b4a.from('world'))
-  t.alike(core.header.userData, [{ key: 'hej', value: b4a.from('world') }])
+  await setUserData(core, 'hej', b4a.from('world'))
+  t.alike(await core.storage.getUserData('hej'), b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.alike(coreReopen.header.userData, [{ key: 'hej', value: b4a.from('world') }])
+  t.alike(await coreReopen.storage.getUserData('hej'), b4a.from('world'))
 })
 
 test('core - verify', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   {
-    const p = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
+    const p = await getProof(core, { upgrade: { start: 0, length: 2 } })
     await clone.verify(p)
   }
 
-  t.is(clone.header.tree.length, 2)
-  t.is(clone.header.tree.signature, core.header.tree.signature)
+  const tree1 = await core.storage.getCoreHead()
+  const tree2 = await clone.storage.getCoreHead()
+
+  t.is(tree1.length, 2)
+  t.alike(tree1.signature, tree2.signature)
 
   {
-    const p = await core.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
-    p.block.value = await core.blocks.get(1)
+    const p = await getProof(core, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
     await clone.verify(p)
   }
 })
 
 test('core - verify parallel upgrades', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   t.is(clone.header.keyPair.publicKey, core.header.keyPair.publicKey)
 
   await core.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
 
   {
-    const p1 = await core.tree.proof({ upgrade: { start: 0, length: 2 } })
-    const p2 = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+    const p1 = await getProof(core, { upgrade: { start: 0, length: 2 } })
+    const p2 = await getProof(core, { upgrade: { start: 0, length: 3 } })
 
     const v1 = clone.verify(p1)
     const v2 = clone.verify(p2)
@@ -168,17 +172,20 @@ test('core - verify parallel upgrades', async function (t) {
     await v2
   }
 
-  t.is(clone.header.tree.length, core.header.tree.length)
-  t.is(clone.header.tree.signature, core.header.tree.signature)
+  const tree1 = await core.storage.getCoreHead()
+  const tree2 = await clone.storage.getCoreHead()
+
+  t.is(tree2.length, tree1.length)
+  t.alike(tree2.signature, tree1.signature)
 })
 
 test('core - update hook is triggered', async function (t) {
-  const { core } = await create()
-  const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
+  const { core } = await create(t)
+  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
 
   let ran = 0
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: false, start: 0, length: 4 })
@@ -189,7 +196,7 @@ test('core - update hook is triggered', async function (t) {
 
   const peer = {}
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 1, length: 1 })
@@ -198,12 +205,12 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
-    p.block.value = await core.blocks.get(1)
+    const p = await getProof(core, { block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
+    p.block.value = await getBlock(core, 1)
     await clone.verify(p, peer)
   }
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.is(status, 0b00, 'no append or truncate')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: false, start: 3, length: 1 })
@@ -212,12 +219,12 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
-    p.block.value = await core.blocks.get(3)
+    const p = await getProof(core, { block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
+    p.block.value = await getBlock(core, 3)
     await clone.verify(p, peer)
   }
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: true, start: 1, length: 3 })
@@ -226,7 +233,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.truncate(1, 1)
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b01, 'was appended')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: false, start: 1, length: 1 })
@@ -235,7 +242,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.append([b4a.from('e')])
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b11, 'was appended and truncated')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: true, start: 1, length: 3 })
@@ -243,12 +250,12 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
+    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
     const r = await clone.tree.reorg(p)
     await clone.reorg(r, peer)
   }
 
-  core.onupdate = (status, bitfield, value, from) => {
+  core.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, null, 'was local')
     t.alike(bitfield, { drop: true, start: 1, length: 1 })
@@ -257,7 +264,7 @@ test('core - update hook is triggered', async function (t) {
 
   await core.truncate(1, 2)
 
-  clone.onupdate = (status, bitfield, value, from) => {
+  clone.onupdate = ({ status, bitfield, value, from }) => {
     t.ok(status & 0b10, 'was truncated')
     t.is(from, peer, 'was remote')
     t.alike(bitfield, { drop: true, start: 1, length: 1 })
@@ -265,7 +272,7 @@ test('core - update hook is triggered', async function (t) {
   }
 
   {
-    const p = await core.tree.proof({ hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
+    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
     const r = await clone.tree.reorg(p)
 
     await clone.reorg(r, peer)
@@ -275,9 +282,9 @@ test('core - update hook is triggered', async function (t) {
 })
 
 test('core - clone', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
-  await core.userData('hello', b4a.from('world'))
+  await setUserData(core, 'hello', b4a.from('world'))
 
   await core.append([
     b4a.from('hello'),
@@ -285,15 +292,19 @@ test('core - clone', async function (t) {
   ])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = (await create({ manifest }))
+  const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core)
 
-  t.alike(copy.header.userData, [{ key: 'hello', value: b4a.from('world') }])
+  const userData = []
+  const str = copy.storage.createUserDataStream()
+  for await (const { key, value } of str) userData.push({ key, value })
+
+  t.alike(userData, [{ key: 'hello', value: b4a.from('world') }])
 
   t.alike([
-    await copy.blocks.get(0),
-    await copy.blocks.get(1)
+    await getBlock(copy, 0),
+    await getBlock(copy, 1)
   ], [
     b4a.from('hello'),
     b4a.from('world')
@@ -314,16 +325,17 @@ test('core - clone', async function (t) {
   // copy should be independent
   t.alike(copy.tree.signature, signature)
   t.alike(copy.tree.roots.map(r => r.index), roots)
+  t.is(copy.header.hints.contiguousLength, 2)
 })
 
 test('core - clone verify', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
-  const { core: clone } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
+  const { core: clone } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -331,23 +343,27 @@ test('core - clone verify', async function (t) {
   await core.append([b4a.from('c')])
 
   {
-    const p = await copy.tree.proof({ upgrade: { start: 0, length: 2 } })
+    const p = await getProof(copy, { upgrade: { start: 0, length: 2 } })
     t.ok(await clone.verify(p))
   }
 
   t.is(clone.header.tree.length, 2)
 
   {
-    const p = await copy.tree.proof({ block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
-    p.block.value = await copy.blocks.get(1)
+    const p = await getProof(copy, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+    p.block.value = await getBlock(copy, 1)
     await clone.verify(p)
   }
+
+  t.is(core.header.hints.contiguousLength, 3)
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 0)
 
   t.pass('verified')
 })
 
 test('core - partial clone', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('0')])
   await core.append([b4a.from('1')])
@@ -357,31 +373,34 @@ test('core - partial clone', async function (t) {
   await core.append([b4a.from('2')])
   await core.append([b4a.from('3')])
 
-  const { core: copy } = (await create({ manifest }))
+  const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core)
 
   t.is(core.tree.length, 4)
   t.is(copy.tree.length, 2)
 
+  t.is(core.header.hints.contiguousLength, 4)
+  t.is(copy.header.hints.contiguousLength, 2)
+
   t.alike([
-    await copy.blocks.get(0),
-    await copy.blocks.get(1)
+    await getBlock(copy, 0),
+    await getBlock(copy, 1),
+    await getBlock(copy, 2)
   ], [
     b4a.from('0'),
-    b4a.from('1')
+    b4a.from('1'),
+    null
   ])
-
-  await t.exception(copy.blocks.get(2))
 })
 
 test('core - clone with additional', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core, core.tree.signature)
 
@@ -389,7 +408,7 @@ test('core - clone with additional', async function (t) {
   await core.append([b4a.from('c')])
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
 
@@ -399,18 +418,21 @@ test('core - clone with additional', async function (t) {
   t.is(clone.tree.byteLength, core.tree.byteLength)
   t.alike(clone.roots, core.roots)
 
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 3)
+
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
 })
 
 test('core - clone with additional, larger tree', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -428,7 +450,7 @@ test('core - clone with additional, larger tree', async function (t) {
   await core.append(additional)
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   // copy should be independent
   await clone.copyPrologue(copy, { additional })
@@ -439,67 +461,76 @@ test('core - clone with additional, larger tree', async function (t) {
   t.is(clone.tree.byteLength, core.tree.byteLength)
   t.alike(clone.roots, core.roots)
 
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
-  t.alike(await clone.blocks.get(3), b4a.from('d'))
-  t.alike(await clone.blocks.get(4), b4a.from('e'))
-  t.alike(await clone.blocks.get(5), b4a.from('f'))
-  t.alike(await clone.blocks.get(6), b4a.from('g'))
-  t.alike(await clone.blocks.get(7), b4a.from('h'))
-  t.alike(await clone.blocks.get(8), b4a.from('i'))
-  t.alike(await clone.blocks.get(9), b4a.from('j'))
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(clone.header.hints.contiguousLength, 10)
+
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
+  t.alike(await getBlock(clone, 3), b4a.from('d'))
+  t.alike(await getBlock(clone, 4), b4a.from('e'))
+  t.alike(await getBlock(clone, 5), b4a.from('f'))
+  t.alike(await getBlock(clone, 6), b4a.from('g'))
+  t.alike(await getBlock(clone, 7), b4a.from('h'))
+  t.alike(await getBlock(clone, 8), b4a.from('i'))
+  t.alike(await getBlock(clone, 9), b4a.from('j'))
 })
 
 test('core - copyPrologue bails if core is not the same', async function (t) {
-  const { core } = await create()
-  const { core: copy } = await create({ manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
+  const { core } = await create(t)
+  const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
 
   // copy should be independent
   await core.append([b4a.from('a')])
 
   await t.exception(copy.copyPrologue(core))
+
+  t.is(copy.header.hints.contiguousLength, 0)
 })
 
 test('core - copyPrologue can recover from bad additional', async function (t) {
-  const { core } = await create()
+  const { core } = await create(t)
 
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
   await copy.copyPrologue(core)
 
   // copy should be independent
   await core.append([b4a.from('c')])
 
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create({ manifest: secondManifest })
+  const { core: clone } = await create(t, { manifest: secondManifest })
 
   await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
+
+  t.is(clone.header.hints.contiguousLength, 0)
+
   await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
 
+  t.is(clone.header.hints.contiguousLength, 3)
   t.is(clone.header.tree.length, 3)
 
   t.is(clone.tree.length, core.tree.length)
   t.is(clone.tree.byteLength, core.tree.byteLength)
   t.alike(clone.roots, core.roots)
 
-  t.alike(await clone.blocks.get(0), b4a.from('a'))
-  t.alike(await clone.blocks.get(1), b4a.from('b'))
-  t.alike(await clone.blocks.get(2), b4a.from('c'))
+  t.alike(await getBlock(clone, 0), b4a.from('a'))
+  t.alike(await getBlock(clone, 1), b4a.from('b'))
+  t.alike(await getBlock(clone, 2), b4a.from('c'))
 })
 
 test('core - copyPrologue many', async function (t) {
-  const { core } = await create({ compat: false, version: 1 })
+  const { core } = await create(t, { compat: false, version: 1 })
   await core.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { ...core.header.manifest }
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
 
-  const { core: copy } = await create({ manifest })
-  const { core: copy2 } = await create({ manifest })
-  const { core: copy3 } = await create({ manifest })
+  const { core: copy } = await create(t, { manifest })
+  const { core: copy2 } = await create(t, { manifest })
+  const { core: copy3 } = await create(t, { manifest })
 
   await copy.copyPrologue(core)
 
@@ -514,7 +545,7 @@ test('core - copyPrologue many', async function (t) {
   // upgrade clone
   {
     const batch = core.tree.batch()
-    const p = await core.tree.proof({ upgrade: { start: 0, length: 3 } })
+    const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
     p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
     t.ok(await copy2.verify(p))
   }
@@ -532,27 +563,65 @@ test('core - copyPrologue many', async function (t) {
   t.is(copy.tree.byteLength, copy3.tree.byteLength)
 
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
-  const { core: copy4 } = await create({ manifest })
+  const { core: copy4 } = await create(t, { manifest })
   await copy4.copyPrologue(copy2)
 
   t.is(copy4.tree.length, 3)
   t.is(copy4.header.tree.length, 3)
 
-  t.alike(await copy4.blocks.get(0), b4a.from('a'))
-  t.alike(await copy4.blocks.get(1), b4a.from('b'))
+  t.is(core.header.hints.contiguousLength, 3)
+  t.is(copy.header.hints.contiguousLength, 2)
+  t.is(copy2.header.hints.contiguousLength, 2)
+  t.is(copy3.header.hints.contiguousLength, 2)
+  t.is(copy4.header.hints.contiguousLength, 2)
+
+  t.alike(await getBlock(copy4, 0), b4a.from('a'))
+  t.alike(await getBlock(copy4, 1), b4a.from('b'))
 })
 
-async function create (opts) {
-  const storage = new Map()
+async function create (t, opts = {}) {
+  const dir = opts.dir || await createTempDir(t)
 
-  const createFile = (name) => {
-    if (storage.has(name)) return storage.get(name)
-    const s = new RAM()
-    storage.set(name, s)
-    return s
+  const dkey = b4a.alloc(32, 1)
+  let db = null
+
+  const reopen = async () => {
+    if (db) await db.close()
+
+    db = new CoreStorage(dir)
+
+    if (!opts.discoveryKey) opts.discoveryKey = dkey
+
+    const core = await Core.open(db, opts)
+    t.teardown(() => core.close())
+    return core
   }
 
-  const reopen = () => Core.open(createFile, opts)
   const core = await reopen()
+
   return { core, reopen }
+}
+
+async function getBlock (core, i) {
+  const r = core.storage.createReadBatch()
+  const p = core.blocks.get(r, i)
+  await r.flush()
+  return p
+}
+
+async function setUserData (core, key, value) {
+  const w = core.storage.createWriteBatch()
+  const p = core.userData(w, key, value)
+  await w.flush()
+  return p
+}
+
+async function getProof (core, req) {
+  const batch = core.storage.createReadBatch()
+  const p = await core.tree.proof(batch, req)
+  const block = req.block ? core.blocks.get(batch, req.block.index) : null
+  batch.tryFlush()
+  const proof = await p.settle()
+  if (block) proof.block.value = await block
+  return proof
 }

@@ -1,13 +1,15 @@
 const crypto = require('hypercore-crypto')
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const b4a = require('b4a')
 const Hypercore = require('../')
+const { create, createStorage } = require('./helpers')
 
 test('preload - storage', async function (t) {
+  const storage = await createStorage(t)
+
   const core = new Hypercore(null, {
     preload: () => {
-      return { storage: RAM }
+      return { storage }
     }
   })
   await core.ready()
@@ -20,8 +22,7 @@ test('preload - storage', async function (t) {
 test('preload - from another core', async function (t) {
   t.plan(2)
 
-  const first = new Hypercore(RAM)
-  await first.ready()
+  const first = await create(t)
 
   const second = new Hypercore(null, {
     preload: () => {
@@ -36,7 +37,9 @@ test('preload - from another core', async function (t) {
 
 test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
-  const core = new Hypercore(RAM, keyPair.publicKey, {
+  const storage = await createStorage(t)
+
+  const core = new Hypercore(storage, keyPair.publicKey, {
     preload: () => {
       return { keyPair }
     }
@@ -49,11 +52,12 @@ test('preload - custom keypair', async function (t) {
 
 test('preload - sign/storage', async function (t) {
   const keyPair = crypto.keyPair()
+  const storage = await createStorage(t)
   const core = new Hypercore(null, keyPair.publicKey, {
     valueEncoding: 'utf-8',
     preload: () => {
       return {
-        storage: RAM,
+        storage,
         keyPair
       }
     }
