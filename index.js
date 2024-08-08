@@ -270,6 +270,14 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
   }
 
+  setActive (bool) {
+    const active = !!bool
+    if (active === this._active) return
+    this._active = active
+    if (!this.opened || this.closing) return
+    this.replicator.updateActivity(this._active ? 1 : -1)
+  }
+
   _passCapabilities (o) {
     if (!this.keyPair) this.keyPair = o.keyPair
     this.crypto = o.crypto
