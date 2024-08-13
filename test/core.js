@@ -126,6 +126,29 @@ test('core - user data', async function (t) {
   t.alike(coreReopen.header.userData, [{ key: 'hej', value: b4a.from('world') }])
 })
 
+test('core - header does not retain slabs', async function (t) {
+  const { core, reopen } = await create()
+  await core.userData('hello', b4a.from('world'))
+
+  t.is(core.header.key.buffer.byteLength, 32, 'unslabbed key')
+  t.is(core.header.keyPair.publicKey.buffer.byteLength, 32, 'unslabbed public key')
+  t.is(core.header.keyPair.secretKey.buffer.byteLength, 64, 'unslabbed private key')
+  t.is(core.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'unslabbed signers namespace')
+  t.is(core.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'unslabbed signers publicKey')
+
+  t.is(core.header.userData[0].value.buffer.byteLength, 5, 'unslabbed the userdata value')
+
+  // check the different code path when re-opening
+  const coreReopen = await reopen()
+
+  t.is(coreReopen.header.key.buffer.byteLength, 32, 'reopen unslabbed key')
+  t.is(coreReopen.header.keyPair.publicKey.buffer.byteLength, 32, 'reopen unslabbed public key')
+  t.is(coreReopen.header.keyPair.secretKey.buffer.byteLength, 64, 'reopen unslabbed secret key')
+  t.is(coreReopen.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'reopen unslabbed signers namespace')
+  t.is(coreReopen.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'reopen unslabbed signers publicKey')
+  t.is(coreReopen.header.userData[0].value.buffer.byteLength, 5, 'reopen unslabbed the userdata value')
+})
+
 test('core - verify', async function (t) {
   const { core } = await create()
   const { core: clone } = await create({ keyPair: { publicKey: core.header.keyPair.publicKey } })
