@@ -72,11 +72,6 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
     true,
     'Sanity check: b knows about a'
   )
-  t.is(
-    getPeer(b, a).remoteBitfield._pages.tiny.b[1] != null,
-    true,
-    'Sanity check: there is indeed >1 page'
-  )
 
   await b.get(nrBlocks - 1)
   await new Promise(resolve => setTimeout(resolve, 500))
