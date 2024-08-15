@@ -1614,6 +1614,21 @@ test('merkle-tree signature gets unslabbed', async function (t) {
   )
 })
 
+test('seek against non sparse peer', async function (t) {
+  const a = await create()
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n'])
+
+  const b = await create(a.key)
+  replicate(a, b, t)
+
+  await b.get(a.length - 1)
+
+  const [block, offset] = await b.seek(5)
+
+  t.is(block, 5)
+  t.is(offset, 0)
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
