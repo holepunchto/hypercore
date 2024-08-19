@@ -987,8 +987,9 @@ module.exports = class Hypercore extends EventEmitter {
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
 
+    const isDefault = this.state === this.core.state
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (writable === false && (newLength > 0 || fork !== this.state.tree.fork)) throw SESSION_NOT_WRITABLE()
+    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.tree.fork)) throw SESSION_NOT_WRITABLE()
 
     await this.core.truncate(this.state, newLength, fork, { keyPair, signature })
 
