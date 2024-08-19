@@ -496,6 +496,7 @@ module.exports = class Hypercore extends EventEmitter {
       this.replicator.destroy()
     }
 
+    await this.state.mutex.destroy()
     await this.core.close()
 
     this.emit('close', true)
