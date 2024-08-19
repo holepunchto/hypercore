@@ -377,6 +377,7 @@ module.exports = class Hypercore extends EventEmitter {
       sessions: this.sessions,
       createIfMissing: opts.createIfMissing,
       readonly: unlocked,
+      discoveryKey: opts.discoveryKey,
       overwrite: opts.overwrite,
       key,
       keyPair: opts.keyPair,
