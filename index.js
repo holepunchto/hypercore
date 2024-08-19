@@ -318,9 +318,13 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (opts.name) {
-      this.state = await this.core.createNamedSession(opts.name)
+      this.state = await this.core.createNamedSession(opts.name, opts.checkout)
     } else {
       this.state = this.core.state
+    }
+
+    if (opts.checkout !== undefined) {
+      await this.core.truncate(this.state, opts.checkout, this.fork)
     }
 
     if (opts.manifest && !this.core.header.manifest) {
