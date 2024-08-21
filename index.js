@@ -69,17 +69,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.encodeBatch = null
     this.activeRequests = []
 
-    // Set by the root session.
-    // all other sessions re-use the same stats object (set in _addSession)
-    this.stats = {
-      blocksUploaded: 0,
-      blocksDownloaded: 0,
-      bytesUploaded: 0,
-      bytesDownloaded: 0,
-      blocksAppended: 0,
-      bytesAppended: 0
-    }
-
     this.id = null
     this.key = key || null
     this.keyPair = opts.keyPair || null
@@ -267,10 +256,6 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _addSession (s) {
-    if (this.sessions.lenth >= 1) {
-      // Re-use same stats object across all sessions
-      s.stats = this.sessions[0].stats
-    }
     this.sessions.push(s)
 
     if (this.core) this.core.active++
@@ -621,6 +606,10 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core && this.core.globalCache
   }
 
+  get stats () {
+    return this.core.stats
+  }
+
   ready () {
     return this.opening
   }
@@ -628,8 +617,8 @@ module.exports = class Hypercore extends EventEmitter {
   _onupload (index, value, from) {
     const byteLength = value.byteLength - this.padding
 
-    this.stats.blocksUploaded++
-    this.stats.bytesUploaded += byteLength
+    this.core.stats.blocksUploaded++
+    this.core.stats.bytesUploaded += byteLength
 
     for (let i = 0; i < this.sessions.length; i++) {
       this.sessions[i].emit('upload', index, byteLength, from)
@@ -730,8 +719,8 @@ module.exports = class Hypercore extends EventEmitter {
     if (value) {
       const byteLength = value.byteLength - this.padding
 
-      this.stats.blocksDownloaded++
-      this.stats.bytesDownloaded += byteLength
+      this.core.stats.blocksDownloaded++
+      this.core.stats.bytesDownloaded += byteLength
 
       for (let i = 0; i < this.sessions.length; i++) {
         this.sessions[i].emit('download', bitfield.start, byteLength, from)
@@ -1052,8 +1041,8 @@ module.exports = class Hypercore extends EventEmitter {
       totalByteLength += b.byteLength
     }
 
-    this.stats.blocksAppended += blocks.length
-    this.stats.bytesAppended += totalByteLength
+    this.core.stats.blocksAppended += blocks.length
+    this.core.stats.bytesAppended += totalByteLength
 
     return this.core.append(buffers, { keyPair, signature, preappend })
   }
