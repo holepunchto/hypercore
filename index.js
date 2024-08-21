@@ -257,7 +257,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   _addSession (s) {
     this.sessions.push(s)
-
     if (this.core) this.core.active++
   }
 
