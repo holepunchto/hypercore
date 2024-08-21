@@ -19,10 +19,84 @@ test('basic replication', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ start: 0, end: a.length })
-
   await r.done()
 
   t.is(d, 5)
+})
+
+test('basic replication stats', async function (t) {
+  const a = await create()
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  const aStats = a.replicator.stats
+  const bStats = b.replicator.stats
+
+  t.is(aStats.wireSyncReceived, 0, 'wireSync init 0')
+  t.is(aStats.wireSyncTransmitted, 0, 'wireSync init 0')
+  t.is(aStats.wireRequestReceived, 0, 'wireRequests init 0')
+  t.is(aStats.wireRequestTransmitted, 0, 'wireRequests init 0')
+  t.is(aStats.wireDataReceived, 0, 'wireData init 0')
+  t.is(aStats.wireDataTransmitted, 0, 'wireData init 0')
+  t.is(aStats.wireWantReceived, 0, 'wireWant init 0')
+  t.is(aStats.wireWantTransmitted, 0, 'wireWant init 0')
+  t.is(aStats.wireBitfieldReceived, 0, 'wireBitfield init 0')
+  t.is(aStats.wireBitfieldTransmitted, 0, 'wireBitfield init 0')
+  t.is(aStats.wireRangeReceived, 0, 'wireRange init 0')
+  t.is(aStats.wireRangeTransmitted, 0, 'wireRange init 0')
+  t.is(aStats.wireExtensionReceived, 0, 'wireExtension init 0')
+  t.is(aStats.wireExtensionTransmitted, 0, 'wireExtension init 0')
+  t.is(aStats.wireCancelReceived, 0, 'wireCancel init 0')
+  t.is(aStats.wireCancelTransmitted, 0, 'wireCancel init 0')
+
+  replicate(a, b, t)
+
+  b.get(10).catch(() => {}) // does not exist (for want messages0)
+  const r = b.download({ start: 0, end: a.length })
+
+  await r.done()
+
+  const aPeerStats = a.replicator.peers[0].stats
+  t.alike(aPeerStats, aStats, 'same stats for peer as entire replicator (when there is only 1 peer)')
+
+  t.ok(aStats.wireSyncReceived > 0, 'wiresync incremented')
+  t.is(aStats.wireSyncReceived, bStats.wireSyncTransmitted, 'wireSync received == transmitted')
+
+  t.ok(aStats.wireRequestReceived > 0, 'wireRequests incremented')
+  t.is(aStats.wireRequestReceived, bStats.wireRequestTransmitted, 'wireRequests received == transmitted')
+
+  t.ok(bStats.wireDataReceived > 0, 'wireRequests incremented')
+  t.is(aStats.wireDataTransmitted, bStats.wireDataReceived, 'wireData received == transmitted')
+
+  t.ok(aStats.wireWantReceived > 0, 'wireWant incremented')
+  t.is(bStats.wireWantTransmitted, aStats.wireWantReceived, 'wireWant received == transmitted')
+
+  t.ok(bStats.wireRangeReceived > 0, 'wireRange incremented')
+  t.is(aStats.wireRangeTransmitted, bStats.wireRangeReceived, 'wireRange received == transmitted')
+
+  // extension messages
+  const aExt = a.registerExtension('test-extension', {
+    encoding: 'utf-8'
+  })
+  aExt.send('hello', a.peers[0])
+  await new Promise(resolve => setImmediate(resolve))
+  t.ok(bStats.wireExtensionReceived > 0, 'extension incremented')
+  t.is(aStats.wireExtensionTransmitted, bStats.wireExtensionReceived, 'extension received == transmitted')
+
+  // bitfield messages
+  await b.clear(1)
+  const c = await create(a.key)
+  replicate(c, b, t)
+  c.get(1).catch(() => {})
+  await new Promise(resolve => setImmediate(resolve))
+  const cStats = c.replicator.stats
+  t.ok(cStats.wireBitfieldReceived > 0, 'bitfield incremented')
+  t.is(bStats.wireBitfieldTransmitted, cStats.wireBitfieldReceived, 'bitfield received == transmitted')
 })
 
 test('basic downloading is set immediately after ready', function (t) {
@@ -583,6 +657,7 @@ test('destroying a stream and re-replicating works', async function (t) {
   s2.destroy()
 })
 
+// TODO: wireWant here
 test('replicate discrete range', async function (t) {
   const a = await create()
 
@@ -1236,7 +1311,7 @@ test('replicate ranges in reverse order', async function (t) {
 })
 
 test('cancel block', async function (t) {
-  t.plan(2)
+  t.plan(4)
 
   const a = await create()
   const b = await create(a.key)
@@ -1261,6 +1336,9 @@ test('cancel block', async function (t) {
 
   await a.close()
   await b.close()
+
+  t.ok(a.replicator.stats.wireCancelReceived > 0, 'wireCancel stats incremented')
+  t.is(a.replicator.stats.wireCancelReceived, b.replicator.stats.wireCancelTransmitted, 'wireCancel stats consistent')
 })
 
 test('try cancel block from a different session', async function (t) {
