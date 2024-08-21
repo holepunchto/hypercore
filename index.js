@@ -606,7 +606,16 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get stats () {
-    return this.core.stats
+    return this.core !== null
+      ? this.core.stats
+      : {
+          blocksUploaded: 0,
+          blocksDownloaded: 0,
+          bytesUploaded: 0,
+          bytesDownloaded: 0,
+          blocksAppended: 0,
+          bytesAppended: 0
+        }
   }
 
   ready () {

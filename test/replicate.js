@@ -1630,7 +1630,20 @@ test('seek against non sparse peer', async function (t) {
 })
 
 test('hypercore stats', async function (t) {
-  const a = await create()
+  const a = new Hypercore(RAM)
+  t.alike(
+    a.stats,
+    {
+      blocksUploaded: 0,
+      blocksDownloaded: 0,
+      bytesUploaded: 0,
+      bytesDownloaded: 0,
+      blocksAppended: 0,
+      bytesAppended: 0
+    },
+    'all-0 stats before ready'
+  )
+
   await a.append(['block0', 'block1', 'block2'])
 
   const b = await create(a.key)
