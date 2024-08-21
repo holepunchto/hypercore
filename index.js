@@ -267,7 +267,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _addSession (s) {
-    if (this.sessions?.lenth >= 1) {
+    if (this.sessions.lenth >= 1) {
       // Re-use same stats object across all sessions
       s.stats = this.sessions[0].stats
     }
