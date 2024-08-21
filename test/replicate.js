@@ -1629,6 +1629,41 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
+test('hypercore stats', async function (t) {
+  const a = await create()
+  await a.append(['block0', 'block1', 'block2'])
+
+  const b = await create(a.key)
+  replicate(a, b, t)
+
+  await b.get(0)
+
+  t.alike(
+    a.stats,
+    {
+      blocksUploaded: 1,
+      blocksDownloaded: 0,
+      bytesUploaded: 6,
+      bytesDownloaded: 0,
+      blocksAppended: 3,
+      bytesAppended: 3 * 6
+    },
+    'creator stats (append and upload)'
+  )
+  t.alike(
+    b.stats,
+    {
+      blocksUploaded: 0,
+      blocksDownloaded: 1,
+      bytesUploaded: 0,
+      bytesDownloaded: 6,
+      blocksAppended: 0,
+      bytesAppended: 0
+    },
+    'reader stats (download)'
+  )
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
