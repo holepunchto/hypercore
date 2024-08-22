@@ -19,6 +19,7 @@ test('basic replication', async function (t) {
   replicate(a, b, t)
 
   const r = b.download({ start: 0, end: a.length })
+
   await r.done()
 
   t.is(d, 5)
