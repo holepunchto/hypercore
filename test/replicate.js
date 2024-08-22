@@ -52,6 +52,9 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireCancelReceived, 0, 'wireCancel init 0')
   t.is(aStats.wireCancelTransmitted, 0, 'wireCancel init 0')
 
+  const initStatsLength = [...Object.keys(aStats)].length
+  t.is(initStatsLength, 16, 'Expected amount of stats')
+
   replicate(a, b, t)
 
   b.get(10).catch(() => {}) // does not exist (for want messages0)
@@ -95,6 +98,8 @@ test('basic replication stats', async function (t) {
   const cStats = c.replicator.stats
   t.ok(cStats.wireBitfieldReceived > 0, 'bitfield incremented')
   t.is(bStats.wireBitfieldTransmitted, cStats.wireBitfieldReceived, 'bitfield received == transmitted')
+
+  t.is(initStatsLength, [...Object.keys(aStats)].length, 'No stats were dynamically added')
 })
 
 test('basic downloading is set immediately after ready', function (t) {
