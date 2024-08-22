@@ -660,7 +660,6 @@ test('destroying a stream and re-replicating works', async function (t) {
   s2.destroy()
 })
 
-// TODO: wireWant here
 test('replicate discrete range', async function (t) {
   const a = await create()
 
