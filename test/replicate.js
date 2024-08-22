@@ -31,9 +31,6 @@ test('basic replication stats', async function (t) {
 
   const b = await create(a.key)
 
-  let d = 0
-  b.on('download', () => d++)
-
   const aStats = a.replicator.stats
   const bStats = b.replicator.stats
 
