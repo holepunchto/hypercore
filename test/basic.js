@@ -18,7 +18,9 @@ test('basic', async function (t) {
   })
 
   await core.append('hello')
+  t.is(core.length, 1)
   await core.append('world')
+  t.is(core.length, 2)
 
   const info = await core.info()
 
