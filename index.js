@@ -1125,8 +1125,8 @@ function toHex (buf) {
 }
 
 function preappend (blocks) {
-  const offset = this.core.tree.length
-  const fork = this.core.tree.fork
+  const offset = this.state.tree.length
+  const fork = this.state.tree.fork
 
   for (let i = 0; i < blocks.length; i++) {
     this.encryption.encrypt(offset + i, blocks[i], fork)
