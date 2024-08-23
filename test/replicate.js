@@ -35,25 +35,25 @@ test('basic replication stats', async function (t) {
   const aStats = a.replicator.stats
   const bStats = b.replicator.stats
 
-  t.is(aStats.wireSyncReceived, 0, 'wireSync init 0')
-  t.is(aStats.wireSyncTransmitted, 0, 'wireSync init 0')
-  t.is(aStats.wireRequestReceived, 0, 'wireRequests init 0')
-  t.is(aStats.wireRequestTransmitted, 0, 'wireRequests init 0')
-  t.is(aStats.wireDataReceived, 0, 'wireData init 0')
-  t.is(aStats.wireDataTransmitted, 0, 'wireData init 0')
-  t.is(aStats.wireWantReceived, 0, 'wireWant init 0')
-  t.is(aStats.wireWantTransmitted, 0, 'wireWant init 0')
-  t.is(aStats.wireBitfieldReceived, 0, 'wireBitfield init 0')
-  t.is(aStats.wireBitfieldTransmitted, 0, 'wireBitfield init 0')
-  t.is(aStats.wireRangeReceived, 0, 'wireRange init 0')
-  t.is(aStats.wireRangeTransmitted, 0, 'wireRange init 0')
-  t.is(aStats.wireExtensionReceived, 0, 'wireExtension init 0')
-  t.is(aStats.wireExtensionTransmitted, 0, 'wireExtension init 0')
-  t.is(aStats.wireCancelReceived, 0, 'wireCancel init 0')
-  t.is(aStats.wireCancelTransmitted, 0, 'wireCancel init 0')
+  t.is(aStats.wireSync.rx, 0, 'wireSync init 0')
+  t.is(aStats.wireSync.tx, 0, 'wireSync init 0')
+  t.is(aStats.wireRequest.rx, 0, 'wireRequests init 0')
+  t.is(aStats.wireRequest.tx, 0, 'wireRequests init 0')
+  t.is(aStats.wireData.rx, 0, 'wireData init 0')
+  t.is(aStats.wireData.tx, 0, 'wireData init 0')
+  t.is(aStats.wireWant.rx, 0, 'wireWant init 0')
+  t.is(aStats.wireWant.tx, 0, 'wireWant init 0')
+  t.is(aStats.wireBitfield.rx, 0, 'wireBitfield init 0')
+  t.is(aStats.wireBitfield.tx, 0, 'wireBitfield init 0')
+  t.is(aStats.wireRange.rx, 0, 'wireRange init 0')
+  t.is(aStats.wireRange.tx, 0, 'wireRange init 0')
+  t.is(aStats.wireExtension.rx, 0, 'wireExtension init 0')
+  t.is(aStats.wireExtension.tx, 0, 'wireExtension init 0')
+  t.is(aStats.wireCancel.rx, 0, 'wireCancel init 0')
+  t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 16, 'Expected amount of stats')
+  t.is(initStatsLength, 8, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -65,20 +65,20 @@ test('basic replication stats', async function (t) {
   const aPeerStats = a.replicator.peers[0].stats
   t.alike(aPeerStats, aStats, 'same stats for peer as entire replicator (when there is only 1 peer)')
 
-  t.ok(aStats.wireSyncReceived > 0, 'wiresync incremented')
-  t.is(aStats.wireSyncReceived, bStats.wireSyncTransmitted, 'wireSync received == transmitted')
+  t.ok(aStats.wireSync.rx > 0, 'wiresync incremented')
+  t.is(aStats.wireSync.rx, bStats.wireSync.tx, 'wireSync received == transmitted')
 
-  t.ok(aStats.wireRequestReceived > 0, 'wireRequests incremented')
-  t.is(aStats.wireRequestReceived, bStats.wireRequestTransmitted, 'wireRequests received == transmitted')
+  t.ok(aStats.wireRequest.rx > 0, 'wireRequests incremented')
+  t.is(aStats.wireRequest.rx, bStats.wireRequest.tx, 'wireRequests received == transmitted')
 
-  t.ok(bStats.wireDataReceived > 0, 'wireRequests incremented')
-  t.is(aStats.wireDataTransmitted, bStats.wireDataReceived, 'wireData received == transmitted')
+  t.ok(bStats.wireData.rx > 0, 'wireRequests incremented')
+  t.is(aStats.wireData.tx, bStats.wireData.rx, 'wireData received == transmitted')
 
-  t.ok(aStats.wireWantReceived > 0, 'wireWant incremented')
-  t.is(bStats.wireWantTransmitted, aStats.wireWantReceived, 'wireWant received == transmitted')
+  t.ok(aStats.wireWant.rx > 0, 'wireWant incremented')
+  t.is(bStats.wireWant.tx, aStats.wireWant.rx, 'wireWant received == transmitted')
 
-  t.ok(bStats.wireRangeReceived > 0, 'wireRange incremented')
-  t.is(aStats.wireRangeTransmitted, bStats.wireRangeReceived, 'wireRange received == transmitted')
+  t.ok(bStats.wireRange.rx > 0, 'wireRange incremented')
+  t.is(aStats.wireRange.tx, bStats.wireRange.rx, 'wireRange received == transmitted')
 
   // extension messages
   const aExt = a.registerExtension('test-extension', {
@@ -86,8 +86,8 @@ test('basic replication stats', async function (t) {
   })
   aExt.send('hello', a.peers[0])
   await new Promise(resolve => setImmediate(resolve))
-  t.ok(bStats.wireExtensionReceived > 0, 'extension incremented')
-  t.is(aStats.wireExtensionTransmitted, bStats.wireExtensionReceived, 'extension received == transmitted')
+  t.ok(bStats.wireExtension.rx > 0, 'extension incremented')
+  t.is(aStats.wireExtension.tx, bStats.wireExtension.rx, 'extension received == transmitted')
 
   // bitfield messages
   await b.clear(1)
@@ -96,8 +96,8 @@ test('basic replication stats', async function (t) {
   c.get(1).catch(() => {})
   await new Promise(resolve => setImmediate(resolve))
   const cStats = c.replicator.stats
-  t.ok(cStats.wireBitfieldReceived > 0, 'bitfield incremented')
-  t.is(bStats.wireBitfieldTransmitted, cStats.wireBitfieldReceived, 'bitfield received == transmitted')
+  t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
+  t.is(bStats.wireBitfield.tx, cStats.wireBitfield.rx, 'bitfield received == transmitted')
 
   t.is(initStatsLength, [...Object.keys(aStats)].length, 'No stats were dynamically added')
 })
@@ -1339,8 +1339,8 @@ test('cancel block', async function (t) {
   await a.close()
   await b.close()
 
-  t.ok(a.replicator.stats.wireCancelReceived > 0, 'wireCancel stats incremented')
-  t.is(a.replicator.stats.wireCancelReceived, b.replicator.stats.wireCancelTransmitted, 'wireCancel stats consistent')
+  t.ok(a.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
+  t.is(a.replicator.stats.wireCancel.rx, b.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
 })
 
 test('try cancel block from a different session', async function (t) {
