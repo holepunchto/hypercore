@@ -914,6 +914,11 @@ module.exports = class Hypercore extends EventEmitter {
     return block
   }
 
+  async restoreBatch (length, blocks) {
+    if (this.opened === false) await this.opening
+    return this.state.tree.restoreBatch(length)
+  }
+
   async _cacheOnResolve (index, req, fork) {
     const resolved = await req
 
