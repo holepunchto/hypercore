@@ -292,7 +292,7 @@ test('core - clone', async function (t) {
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: copy } = (await create(t, { manifest }))
 
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   const userData = []
   const str = copy.storage.createUserDataStream()
@@ -335,7 +335,7 @@ test('core - clone verify', async function (t) {
   const { core: copy } = await create(t, { manifest })
   const { core: clone } = await create(t, { manifest })
 
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   // copy should be independent
   await core.append(core.state, [b4a.from('c')])
@@ -373,7 +373,7 @@ test('core - partial clone', async function (t) {
 
   const { core: copy } = (await create(t, { manifest }))
 
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   t.is(core.tree.length, 4)
   t.is(copy.tree.length, 2)
@@ -400,7 +400,7 @@ test('core - clone with additional', async function (t) {
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: copy } = await create(t, { manifest })
 
-  await copy.copyPrologue(core, core.tree.signature)
+  await copy.copyPrologue(core.state, core.tree.signature)
 
   // copy should be independent
   await core.append(core.state, [b4a.from('c')])
@@ -408,7 +408,7 @@ test('core - clone with additional', async function (t) {
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: clone } = await create(t, { manifest: secondManifest })
 
-  await clone.copyPrologue(copy, { additional: [b4a.from('c')] })
+  await clone.copyPrologue(copy.state, { additional: [b4a.from('c')] })
 
   t.is(clone.header.tree.length, 3)
 
@@ -432,7 +432,7 @@ test('core - clone with additional, larger tree', async function (t) {
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: copy } = await create(t, { manifest })
 
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   const additional = [
     b4a.from('c'),
@@ -451,7 +451,7 @@ test('core - clone with additional, larger tree', async function (t) {
   const { core: clone } = await create(t, { manifest: secondManifest })
 
   // copy should be independent
-  await clone.copyPrologue(copy, { additional })
+  await clone.copyPrologue(copy.state, { additional })
 
   t.is(clone.header.tree.length, core.header.tree.length)
 
@@ -481,7 +481,7 @@ test('core - copyPrologue bails if core is not the same', async function (t) {
   // copy should be independent
   await core.append(core.state, [b4a.from('a')])
 
-  await t.exception(copy.copyPrologue(core))
+  await t.exception(copy.copyPrologue(core.state))
 
   t.is(copy.header.hints.contiguousLength, 0)
 })
@@ -493,7 +493,7 @@ test('core - copyPrologue can recover from bad additional', async function (t) {
 
   const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: copy } = await create(t, { manifest })
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   // copy should be independent
   await core.append(core.state, [b4a.from('c')])
@@ -501,11 +501,11 @@ test('core - copyPrologue can recover from bad additional', async function (t) {
   const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
   const { core: clone } = await create(t, { manifest: secondManifest })
 
-  await t.exception(clone.copyPrologue(copy, { additional: [b4a.from('d')] }))
+  await t.exception(clone.copyPrologue(copy.state, { additional: [b4a.from('d')] }))
 
   t.is(clone.header.hints.contiguousLength, 0)
 
-  await t.execution(clone.copyPrologue(copy, { additional: [b4a.from('c')] }))
+  await t.execution(clone.copyPrologue(copy.state, { additional: [b4a.from('c')] }))
 
   t.is(clone.header.hints.contiguousLength, 3)
   t.is(clone.header.tree.length, 3)
@@ -530,7 +530,7 @@ test('core - copyPrologue many', async function (t) {
   const { core: copy2 } = await create(t, { manifest })
   const { core: copy3 } = await create(t, { manifest })
 
-  await copy.copyPrologue(core)
+  await copy.copyPrologue(core.state)
 
   t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
 
@@ -548,8 +548,8 @@ test('core - copyPrologue many', async function (t) {
     t.ok(await copy2.verify(p))
   }
 
-  await t.execution(copy2.copyPrologue(core))
-  await t.execution(copy3.copyPrologue(core))
+  await t.execution(copy2.copyPrologue(core.state))
+  await t.execution(copy3.copyPrologue(core.state))
 
   t.is(copy2.tree.length, core.tree.length)
   t.is(copy.tree.length, copy3.tree.length)
@@ -562,7 +562,7 @@ test('core - copyPrologue many', async function (t) {
 
   manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
   const { core: copy4 } = await create(t, { manifest })
-  await copy4.copyPrologue(copy2)
+  await copy4.copyPrologue(copy2.state)
 
   t.is(copy4.tree.length, 3)
   t.is(copy4.header.tree.length, 3)
