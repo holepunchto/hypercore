@@ -556,7 +556,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get flushedLength () {
-    return this.state.treeLength
+    return this.state === this.core.state ? this.core.tree.length : this.state.treeLength
   }
 
   /**
