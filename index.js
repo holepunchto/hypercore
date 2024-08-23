@@ -318,13 +318,13 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (opts.name) {
-      this.state = await this.core.createNamedSession(opts.name, opts.checkout)
+      this.state = await this.core.createSession(opts.name, opts.checkout)
     } else {
       this.state = this.core.state
     }
 
     if (opts.checkout !== undefined) {
-      await this.core.truncate(this.state, opts.checkout, this.fork)
+      await this.state.truncate(opts.checkout, this.fork)
     }
 
     if (opts.manifest && !this.core.header.manifest) {
@@ -725,7 +725,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
-    await this.core.setUserData(this.state, key, value)
+    await this.state.setUserData(key, value)
   }
 
   async getUserData (key) {
@@ -873,7 +873,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (start >= end) return cleared
     if (start >= this.length) return cleared
 
-    await this.core.clear(this.state, start, end, cleared)
+    await this.state.clear(start, end, cleared)
 
     return cleared
   }
@@ -996,7 +996,7 @@ module.exports = class Hypercore extends EventEmitter {
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
     if (isDefault && writable === false && (newLength > 0 || fork !== this.state.tree.fork)) throw SESSION_NOT_WRITABLE()
 
-    await this.core.truncate(this.state, newLength, fork, { keyPair, signature })
+    await this.state.truncate(newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
     if (this.state === this.core.state) this.replicator.updateAll()
@@ -1030,7 +1030,7 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(this.state, buffers, { keyPair, signature, preappend })
+    return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {
@@ -1039,7 +1039,7 @@ module.exports = class Hypercore extends EventEmitter {
       length = this.core.tree.length
     }
 
-    const roots = await this.core.tree.getRoots(length)
+    const roots = await this.state.tree.getRoots(length)
     return this.crypto.tree(roots)
   }
 
