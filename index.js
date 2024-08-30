@@ -60,6 +60,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.storage = null
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
+    this.state = null
     this.replicator = null
     this.encryption = null
     this.extensions = new Map()
@@ -264,6 +265,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
+    this.state = o.state
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
@@ -319,8 +321,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (opts.name) {
       this.state = await this.core.createSession(opts.name, opts.checkout)
-    } else {
-      this.state = this.core.state
     }
 
     if (opts.checkout !== undefined) {
@@ -424,18 +424,18 @@ module.exports = class Hypercore extends EventEmitter {
   _getSnapshot () {
     if (this.sparse) {
       return {
-        length: this.core.tree.length,
-        byteLength: this.core.tree.byteLength,
-        fork: this.core.tree.fork,
-        compatLength: this.core.tree.length
+        length: this.state.tree.length,
+        byteLength: this.state.tree.byteLength,
+        fork: this.state.tree.fork,
+        compatLength: this.state.tree.length
       }
     }
 
     return {
-      length: this.core.header.hints.contiguousLength,
+      length: this.state.header.hints.contiguousLength,
       byteLength: 0,
-      fork: this.core.tree.fork,
-      compatLength: this.core.header.hints.contiguousLength
+      fork: this.state.tree.fork,
+      compatLength: this.state.header.hints.contiguousLength
     }
   }
 
