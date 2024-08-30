@@ -12,6 +12,7 @@ test('batch append', async function (t) {
   await core.append(['a', 'b', 'c'])
 
   const b = core.session({ name: 'batch' })
+  await b.ready() // todo: we shouldn't have to wait for ready
 
   t.unlike(b.state, core.state)
 
@@ -36,7 +37,7 @@ test('batch has', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
 
-  const b = core.batch()
+  const b = core.session({ name: 'batch' })
   await b.append(['de', 'fg'])
 
   for (let i = 0; i < b.length; i++) {
