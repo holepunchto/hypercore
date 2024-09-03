@@ -469,8 +469,6 @@ test('basic - core stats', async function (t) {
   await core.append('ok')
   await core.append(['batch', 'here'])
 
-  console.log(core.length)
-
   t.is(core.core.stats.bytesAppended, 11, 'bytesAppended')
   t.is(core.core.stats.blocksAppended, 3, 'blocksAppended')
 })
