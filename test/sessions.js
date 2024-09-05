@@ -127,6 +127,7 @@ test('sessions - close with from option', async function (t) {
 
   t.absent(core1.closed)
   t.alike(await core1.get(0), b4a.from('hello world'))
+  await core1.close()
 })
 
 test('sessions - custom valueEncoding on session', async function (t) {
