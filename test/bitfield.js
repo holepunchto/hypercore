@@ -63,7 +63,7 @@ test('bitfield - reload', async function (t) {
     b.setRange(40000, 40001, true)
     b.setRange(1424242424, 1424242425, true)
     await flush(storage, b)
-    await storage.close()
+    await storage.db.close()
   }
 
   {

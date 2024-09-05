@@ -7,21 +7,17 @@ exports.create = async function (t, ...args) {
 
   const db = new CoreStorage(dir)
 
-  t.teardown(() => db.close(), { order: 1 })
-
   const core = new Hypercore(db, ...args)
   await core.ready()
+
+  t.teardown(() => core.close(), { order: 1 })
 
   return core
 }
 
 const createStorage = exports.createStorage = async function (t, dir) {
   if (!dir) dir = await createTempDir(t)
-  const db = new CoreStorage(dir)
-
-  t.teardown(() => db.close(), { order: 1 })
-
-  return db
+  return new CoreStorage(dir)
 }
 
 exports.createStored = async function (t) {

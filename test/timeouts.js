@@ -17,6 +17,10 @@ test('core and session timeout property', async function (t) {
   t.is(b.timeout, 50)
 
   await new Promise(resolve => setTimeout(resolve, 100))
+
+  await core.close()
+  await a.close()
+  await b.close()
 })
 
 test('core session inherits timeout property', async function (t) {
@@ -33,6 +37,10 @@ test('core session inherits timeout property', async function (t) {
   t.is(b.timeout, 0)
 
   await new Promise(resolve => setTimeout(resolve, 100))
+
+  await core.close()
+  await a.close()
+  await b.close()
 })
 
 test('get before timeout', async function (t) {
@@ -83,6 +91,8 @@ test('session get after timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  await session.close()
 })
 
 test('session get after inherited timeout', async function (t) {
@@ -97,6 +107,8 @@ test('session get after inherited timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  await session.close()
 })
 
 test('core constructor timeout but disable on get', async function (t) {

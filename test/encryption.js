@@ -125,6 +125,8 @@ test('encrypted session', async function (t) {
   const encrypted = await getBlock(s, 1)
   t.absent(encrypted.includes('world'))
   t.alike(await getBlock(a, 1), encrypted)
+
+  await s.close()
 })
 
 test('encrypted session before ready core', async function (t) {
@@ -139,6 +141,9 @@ test('encrypted session before ready core', async function (t) {
 
   await a.append(['hello'])
   t.alike(await s.get(0), b4a.from('hello'))
+
+  await s.close()
+  await a.close()
 })
 
 test('encrypted session on unencrypted core', async function (t) {
@@ -155,6 +160,8 @@ test('encrypted session on unencrypted core', async function (t) {
 
   const encrypted = await a.get(0)
   t.absent(encrypted.includes('hello'))
+
+  await s.close()
 })
 
 test('encrypted session on encrypted core, same key', async function (t) {
@@ -168,6 +175,8 @@ test('encrypted session on encrypted core, same key', async function (t) {
   const unencrypted = await s.get(0)
   t.alike(unencrypted, b4a.from('hello'))
   t.alike(unencrypted, await a.get(0))
+
+  await s.close()
 })
 
 test('encrypted session on encrypted core, different keys', async function (t) {
@@ -183,6 +192,8 @@ test('encrypted session on encrypted core, different keys', async function (t) {
 
   const encrypted = await a.get(0)
   t.absent(encrypted.includes('hello'))
+
+  await s.close()
 })
 
 test('multiple gets to replicated, encrypted block', async function (t) {
@@ -211,6 +222,8 @@ test('encrypted core from existing unencrypted core', async function (t) {
 
   const unencrypted = await b.get(0)
   t.alike(unencrypted, b4a.from('hello'))
+
+  await b.close()
 })
 
 test('from session sessions pass encryption', async function (t) {
@@ -227,6 +240,10 @@ test('from session sessions pass encryption', async function (t) {
   t.absent(a.encryptionKey)
   t.ok(b.encryptionKey)
   t.ok(c.encryptionKey)
+
+  await c.close()
+  await b.close()
+  await a.close()
 })
 
 test('session keeps encryption', async function (t) {
@@ -237,6 +254,9 @@ test('session keeps encryption', async function (t) {
   await b.ready()
 
   t.alike(b.encryptionKey, encryptionKey)
+
+  await b.close()
+  await a.close()
 })
 
 function getBlock (core, index) {

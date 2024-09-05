@@ -103,6 +103,12 @@ test('snapshots wait for ready', async function (t) {
 
   t.is(s3.length, 4, 'no changes')
   t.is(s4.length, 4, 'no changes')
+
+  await coreCopy.close()
+  await s1.close()
+  await s2.close()
+  await s3.close()
+  await s4.close()
 })
 
 test('snapshots are consistent', async function (t) {
@@ -138,4 +144,6 @@ test('snapshots are consistent', async function (t) {
   t.exception(snapshot.get(1))
   t.exception(snapshot.get(2))
   t.is(await b, 'block #0.0')
+
+  await snapshot.close()
 })

@@ -275,7 +275,9 @@ test('multisig - append', async function (t) {
 
   t.is(len, 1)
 
-  const batch = await core.batch()
+  const batch = await core.session({ name: 'batch' })
+  batch.keyPair = null
+
   await batch.append(b4a.from('0'))
 
   const sigBatch = batch.createTreeBatch()
@@ -313,6 +315,8 @@ test('multisig - append', async function (t) {
   await core2.download({ start: 0, end: core.length }).downloaded()
 
   t.alike(await core2.get(0), b4a.from('0'))
+
+  await batch.close()
 })
 
 test('multisig -  batch failed', async function (t) {
@@ -336,7 +340,9 @@ test('multisig -  batch failed', async function (t) {
 
   t.is(len, 1)
 
-  const batch = await core.batch()
+  const batch = await core.session({ name: 'batch' })
+  batch.keyPair = null
+
   await batch.append(b4a.from('0'))
 
   const sigBatch = batch.createTreeBatch()
@@ -367,6 +373,8 @@ test('multisig -  batch failed', async function (t) {
   await t.exception(p)
 
   t.is(core2.length, 0)
+
+  await batch.close()
 })
 
 test('multisig -  patches', async function (t) {
@@ -1460,6 +1468,8 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   const compatCore = await create(null, { manifest, compat: true })
   await t.execution(compatCore.ready()) // compat flag is unset internally
+
+  await compatCore.close()
 })
 
 function createMultiManifest (signers, prologue = null) {
