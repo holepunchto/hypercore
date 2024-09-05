@@ -213,6 +213,7 @@ test('treeHash with default length', async function (t) {
   t.unlike(await core.treeHash(), await core2.treeHash())
 
   await core.close()
+  await core2.close()
 })
 
 test('snapshot locks the state', async function (t) {
@@ -234,6 +235,8 @@ test('snapshot locks the state', async function (t) {
   t.is(b.length, 1)
 
   await core.close()
+  await a.close()
+  await b.close()
 })
 
 test('downloading local range', async function (t) {
