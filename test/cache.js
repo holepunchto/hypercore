@@ -24,6 +24,8 @@ test('session cache inheritance', async function (t) {
   const q = s.get(0)
 
   t.is(await p, await q, 'blocks are identical')
+
+  await s.close()
 })
 
 test('session cache opt-out', async function (t) {
@@ -36,6 +38,8 @@ test('session cache opt-out', async function (t) {
   const q = s.get(0)
 
   t.not(await p, await q, 'blocks are not identical')
+
+  await s.close()
 })
 
 test('session cache override', async function (t) {
@@ -50,6 +54,8 @@ test('session cache override', async function (t) {
 
   t.not(await p, await q, 'blocks are not identical')
   t.is(await q, await r, 'blocks are identical')
+
+  await s.close()
 })
 
 test('clear cache on truncate', async function (t) {
@@ -98,6 +104,8 @@ test('session cache with different encodings', async function (t) {
 
   t.alike(await p, b4a.from('a'))
   t.is(await q, 'a')
+
+  await s.close()
 })
 
 test('cache is set through preload', async function (t) {
@@ -118,4 +126,6 @@ test('globalCache set if passed in, and shared among sessions', async function (
 
   const session = a.session()
   t.is(session.globalCache, globalCache, 'passed on to sessions')
+
+  await session.close()
 })
