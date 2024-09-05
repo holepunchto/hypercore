@@ -71,7 +71,7 @@ test('clear + replication, gossip', async function (t) {
   t.alike(await req, b4a.from('b'), 'c downloaded from b')
 })
 
-test.skip('incorrect clear', async function (t) {
+test('incorrect clear', async function (t) {
   const core = await create(t)
 
   const blocks = []
@@ -87,7 +87,7 @@ test.skip('incorrect clear', async function (t) {
   t.alike(await core.get(128), b4a.from('tick'))
 })
 
-test.skip('clear blocks with diff option', async function (t) {
+test('clear blocks with diff option', async function (t) {
   const storage = await createStorage(t)
   const core = new Hypercore(storage)
   await core.append(b4a.alloc(128))
@@ -106,7 +106,7 @@ test.skip('clear blocks with diff option', async function (t) {
   await core.close()
 })
 
-test.skip('clear - no side effect from clearing unknown nodes', async function (t) {
+test('clear - no side effect from clearing unknown nodes', async function (t) {
   const storageWriter = await tmp(t)
   const storageReader = await tmp(t)
 
