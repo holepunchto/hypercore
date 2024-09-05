@@ -319,6 +319,9 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (opts.name) {
+      // todo: need to make named sessions safe before ready
+      // atm we always copy the state in passCapabilities
+      await this.state.close()
       this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
 
       if (opts.checkout !== undefined) {
