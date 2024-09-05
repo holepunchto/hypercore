@@ -677,7 +677,7 @@ test('persistent batch', async function (t) {
   }
 })
 
-test.skip('clear', async function (t) {
+test('clear', async function (t) {
   const core = await create(t)
 
   await core.append('hello')
