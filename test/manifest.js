@@ -1441,7 +1441,7 @@ test('create verifier - open existing core with manifest', async function (t) {
   const key = Verifier.manifestHash(manifest)
 
   const create = await createStored(t)
-  const core = await create(t, key, { compat: false })
+  const core = await create(key, { compat: false })
   await core.ready()
 
   t.is(core.manifest, null)
@@ -1452,12 +1452,12 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   manifest.signers[0].publicKey = b4a.alloc(32, 0)
 
-  const wrongCore = await create(t, null, { manifest, compat: false })
+  const wrongCore = await create(null, { manifest, compat: false })
   await t.exception(wrongCore.ready(), /STORAGE_CONFLICT/)
 
   manifest.signers[0].publicKey = keyPair.publicKey
 
-  const manifestCore = await create(t, null, { manifest, compat: false })
+  const manifestCore = await create(null, { manifest, compat: false })
   await manifestCore.ready()
 
   t.not(manifestCore.manifest, null)
@@ -1466,8 +1466,10 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   await manifestCore.close()
 
-  const compatCore = await create(t, null, { manifest, compat: true })
+  const compatCore = await create(null, { manifest, compat: true })
   await t.execution(compatCore.ready()) // compat flag is unset internally
+
+  await compatCore.close()
 })
 
 function createMultiManifest (signers, prologue = null) {
