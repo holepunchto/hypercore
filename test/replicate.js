@@ -1123,8 +1123,8 @@ test('replication session', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
-  t.is(a.core.active, 2)
-  t.is(b.core.active, 2)
+  t.is(a.core.state.active, 2)
+  t.is(b.core.state.active, 2)
 
   s1.destroy()
   s2.destroy()
@@ -1133,8 +1133,8 @@ test('replication session', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
-  t.is(a.core.active, 1)
-  t.is(b.core.active, 1)
+  t.is(a.core.state.active, 1)
+  t.is(b.core.state.active, 1)
 })
 
 test('replication session after stream opened', async function (t) {
@@ -1150,8 +1150,8 @@ test('replication session after stream opened', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
-  t.is(a.core.active, 2)
-  t.is(b.core.active, 2)
+  t.is(a.core.state.active, 2)
+  t.is(b.core.state.active, 2)
 
   s1.destroy()
   s2.destroy()
@@ -1160,8 +1160,8 @@ test('replication session after stream opened', async function (t) {
 
   t.is(a.sessions.length, 1)
   t.is(b.sessions.length, 1)
-  t.is(a.core.active, 1)
-  t.is(b.core.active, 1)
+  t.is(a.core.state.active, 1)
+  t.is(b.core.state.active, 1)
 })
 
 test('replication session keeps the core open', async function (t) {

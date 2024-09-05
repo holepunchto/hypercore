@@ -242,7 +242,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   _addSession (s) {
     this.sessions.push(s)
-    if (this.core) this.core.active++
   }
 
   async setEncryptionKey (encryptionKey, opts) {
@@ -265,7 +264,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
-    this.state = o.state
+    if (o.state) this.state = o.state.clone()
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
@@ -464,7 +463,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (i === -1) return
 
     this.sessions.splice(i, 1)
-    this.core.active--
     this.readable = false
     this.writable = false
     this.closed = true
@@ -484,9 +482,11 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._findingPeers = 0
 
-    if (this.sessions.length || this.core.active > 0) {
+    await this.state.close()
+
+    if (this.sessions.length || this.state.active > 0) {
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.core.active === 1 && this.autoClose) await this.sessions[0].close(err)
+      if (this.sessions.length === 1 && this.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
@@ -496,8 +496,6 @@ module.exports = class Hypercore extends EventEmitter {
       this.replicator.destroy()
     }
 
-    await this.state.storage.close()
-    await this.state.mutex.destroy(new Error('Closed'))
     await this.core.close()
 
     this.emit('close', true)
