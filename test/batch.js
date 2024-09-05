@@ -224,6 +224,7 @@ test('multiple batches', async function (t) {
 
   t.is(core.length, 2)
 
+  await session.close()
   await b.close()
   await b2.close()
 })
