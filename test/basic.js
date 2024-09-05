@@ -67,6 +67,8 @@ test('session', async function (t) {
   await session.append('test')
   t.alike(await core.get(0), b4a.from('test'))
   t.alike(await session.get(0), b4a.from('test'))
+
+  await session.close()
 })
 
 test('close', async function (t) {
@@ -297,6 +299,7 @@ test('defaults for wait', async function (t) {
   t.is(await s2.get(1), null)
 
   await s.close()
+  await s2.close()
   await core.close()
 })
 
