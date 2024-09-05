@@ -10,6 +10,8 @@ exports.create = async function (t, ...args) {
   const core = new Hypercore(db, ...args)
   await core.ready()
 
+  t.teardown(() => core.close())
+
   return core
 }
 
