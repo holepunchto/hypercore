@@ -132,6 +132,7 @@ test('createIfMissing', async function (t) {
   const core = new Hypercore(db, { createIfMissing: false })
 
   await t.exception(core.ready())
+  await db.close()
 })
 
 test('reopen and overwrite', async function (t) {
