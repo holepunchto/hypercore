@@ -320,7 +320,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (opts.name) {
-      this.state = await this.core.createSession(opts.name, opts.checkout)
+      this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
     }
 
     if (opts.checkout !== undefined) {
