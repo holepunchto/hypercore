@@ -315,6 +315,8 @@ test('multisig - append', async function (t) {
   await core2.download({ start: 0, end: core.length }).downloaded()
 
   t.alike(await core2.get(0), b4a.from('0'))
+
+  await batch.close()
 })
 
 test('multisig -  batch failed', async function (t) {
@@ -371,6 +373,8 @@ test('multisig -  batch failed', async function (t) {
   await t.exception(p)
 
   t.is(core2.length, 0)
+
+  await batch.close()
 })
 
 test('multisig -  patches', async function (t) {

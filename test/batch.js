@@ -31,6 +31,8 @@ test('batch append', async function (t) {
   await core.core.commit(b.state)
 
   t.is(core.length, 5)
+
+  await b.close()
 })
 
 test('batch has', async function (t) {
@@ -43,6 +45,8 @@ test('batch has', async function (t) {
   for (let i = 0; i < b.length; i++) {
     t.ok(await b.has(i))
   }
+
+  await b.close()
 })
 
 test.skip('append to core during batch', async function (t) {
@@ -55,6 +59,8 @@ test.skip('append to core during batch', async function (t) {
   t.absent(await b.flush())
 
   t.is(core.length, 4)
+
+  await b.close()
 })
 
 test('append to session during batch, create before batch', async function (t) {
@@ -68,6 +74,9 @@ test('append to session during batch, create before batch', async function (t) {
 
   t.ok(await core.core.commit(b.state))
   t.is(s.length, 4)
+
+  await b.close()
+  await s.close()
 })
 
 test('append to session during batch, create after batch', async function (t) {
@@ -81,6 +90,9 @@ test('append to session during batch, create after batch', async function (t) {
 
   t.ok(await core.core.commit(b.state))
   t.is(s.length, 4)
+
+  await s.close()
+  await b.close()
 })
 
 test('batch truncate', async function (t) {
@@ -96,6 +108,8 @@ test('batch truncate', async function (t) {
 
   await core.core.commit(b.state)
   t.is(core.length, 4)
+
+  await b.close()
 })
 
 test('truncate core during batch', async function (t) {
@@ -107,6 +121,8 @@ test('truncate core during batch', async function (t) {
   await core.truncate(2)
   t.absent(await core.core.commit(b.state))
   t.is(core.length, 2)
+
+  await b.close()
 })
 
 test.skip('batch truncate committed', async function (t) {
@@ -116,6 +132,8 @@ test.skip('batch truncate committed', async function (t) {
   const b = core.session({ name: 'batch' })
   await b.append(['de', 'fg'])
   await t.exception(b.truncate(2))
+
+  await b.close()
 })
 
 test('batch close', async function (t) {
@@ -168,6 +186,8 @@ test.skip('batch info', async function (t) {
 
   await core.core.commit(b.state)
   t.alike(await core.info(), info)
+
+  await b.close()
 })
 
 test('simultaneous batches', async function (t) {
@@ -184,6 +204,10 @@ test('simultaneous batches', async function (t) {
   t.ok(await core.core.commit(b.state))
   t.ok(await core.core.commit(c.state))
   t.absent(await core.core.commit(d.state))
+
+  await b.close()
+  await c.close()
+  await d.close()
 })
 
 test('multiple batches', async function (t) {
@@ -199,6 +223,9 @@ test('multiple batches', async function (t) {
   await core.core.commit(b2.state)
 
   t.is(core.length, 2)
+
+  await b.close()
+  await b2.close()
 })
 
 test.skip('partial flush', async function (t) {
@@ -251,6 +278,8 @@ test('can make a tree batch', async function (t) {
   const hash = treeBatch.hash()
 
   t.alike(hash, batchHash)
+
+  await b.close()
 })
 
 test('batched tree batch contains new nodes', async function (t) {
@@ -269,6 +298,8 @@ test('batched tree batch contains new nodes', async function (t) {
   const node = await treeBatch.get(0)
 
   t.alike(node, batchNode)
+
+  await b.close()
 })
 
 test('batched tree batch proofs are equivalent', async function (t) {
@@ -302,6 +333,8 @@ test('batched tree batch proofs are equivalent', async function (t) {
 
   t.alike(proof, batchProof)
   t.alike(treeProof, batchProof)
+
+  await b.close()
 })
 
 test.skip('create tree batches', async function (t) {
@@ -372,6 +405,9 @@ test.skip('create tree batches', async function (t) {
 
   await b2.append('g')
   t.alike(b2.createTreeBatch().signable(NS), t7.signable(NS))
+
+  await b.close()
+  await b2.close()
 })
 
 test('flush with bg activity', async function (t) {
@@ -399,6 +435,8 @@ test('flush with bg activity', async function (t) {
   await b.append('c')
 
   t.ok(await core.core.commit(b.state), 'flushed!')
+
+  await b.close()
 })
 
 test('flush with bg activity persists non conflicting values', async function (t) {
@@ -429,6 +467,8 @@ test('flush with bg activity persists non conflicting values', async function (t
 
   t.is(b.byteLength, clone.byteLength)
   t.is(b.flushedLength, b.length, 'nothing buffered')
+
+  await b.close()
 })
 
 test('flush with conflicting bg activity', async function (t) {
@@ -453,6 +493,8 @@ test('flush with conflicting bg activity', async function (t) {
   await b.append('c')
 
   t.absent(await clone.core.commit(b.state), 'cannot flush a batch with conflicts')
+
+  await b.close()
 })
 
 test.skip('checkout batch', async function (t) {
@@ -478,6 +520,8 @@ test.skip('checkout batch', async function (t) {
   await b.truncate(3, b.fork)
   await b.append('d')
   t.ok(await b.flush())
+
+  await b.close()
 })
 
 test('encryption and batches', async function (t) {
@@ -509,6 +553,8 @@ test('encryption and batches', async function (t) {
 
   // t.alike(pre.hash(), final.hash())
   t.alike(post.hash(), final.hash())
+
+  await batch.close()
 })
 
 test('encryption and bigger batches', async function (t) {
@@ -542,6 +588,8 @@ test('encryption and bigger batches', async function (t) {
 
   // t.alike(pre.hash(), final.hash())
   t.alike(post.hash(), final.hash())
+
+  await batch.close()
 })
 
 // test('persistent batch', async function (t) {

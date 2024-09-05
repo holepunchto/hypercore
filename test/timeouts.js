@@ -91,6 +91,8 @@ test('session get after timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  await session.close()
 })
 
 test('session get after inherited timeout', async function (t) {
@@ -105,6 +107,8 @@ test('session get after inherited timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  await session.close()
 })
 
 test('core constructor timeout but disable on get', async function (t) {

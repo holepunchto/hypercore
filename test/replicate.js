@@ -1261,6 +1261,7 @@ test('cancel block', async function (t) {
 
   await a.close()
   await b.close()
+  await session.close()
 })
 
 test('try cancel block from a different session', async function (t) {
