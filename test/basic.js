@@ -39,6 +39,8 @@ test('core id', async function (t) {
 
   await core.ready()
   t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
+  await core.close()
 })
 
 test('session id', async function (t) {
