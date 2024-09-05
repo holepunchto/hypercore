@@ -104,7 +104,7 @@ test('snapshots wait for ready', async function (t) {
   t.is(s3.length, 4, 'no changes')
   t.is(s4.length, 4, 'no changes')
 
-  await core.close()
+  await coreCopy.close()
   await s1.close()
   await s2.close()
   await s3.close()
