@@ -321,10 +321,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (opts.name) {
       this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
-    }
 
-    if (opts.checkout !== undefined) {
-      await this.state.truncate(opts.checkout, this.fork)
+      if (opts.checkout !== undefined) {
+        await this.state.truncate(opts.checkout, this.fork)
+      }
     }
 
     if (opts.manifest && !this.core.header.manifest) {
