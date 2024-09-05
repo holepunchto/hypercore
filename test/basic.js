@@ -52,6 +52,8 @@ test('session id', async function (t) {
 
   await session.ready()
   t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
+  await core.close()
 })
 
 test('session', async function (t) {
@@ -101,6 +103,8 @@ test('storage options', async function (t) {
   const core = new Hypercore({ storage: db })
   await core.append('hello')
   t.alike(await core.get(0), b4a.from('hello'))
+
+  await core.close()
 })
 
 test.skip(
@@ -113,6 +117,8 @@ test.skip(
 
     t.is(core.key, key)
     t.pass('creating a core with more than 32 byteLength key did not throw')
+
+    await core.close()
   }
 )
 
@@ -130,17 +136,21 @@ test('reopen and overwrite', async function (t) {
   const core = new Hypercore(await open())
 
   await core.ready()
+  await core.close()
   const key = core.key
 
   const reopen = new Hypercore(await open())
 
   await reopen.ready()
   t.alike(reopen.key, key, 'reopened the core')
+  await reopen.close()
 
   const overwritten = new Hypercore(await open(), { overwrite: true })
 
   await overwritten.ready()
   t.unlike(overwritten.key, key, 'overwrote the core')
+
+  await overwritten.close()
 
   async function open () {
     if (storage) await storage.close()
@@ -161,6 +171,7 @@ test('truncate event has truncated-length and fork', async function (t) {
 
   await core.append(['a', 'b', 'c'])
   await core.truncate(2)
+  await core.close()
 })
 
 test('treeHash gets the tree hash at a given core length', async function (t) {
@@ -179,6 +190,8 @@ test('treeHash gets the tree hash at a given core length', async function (t) {
   for (let i = 0; i < 10; i++) {
     t.alike(await core.treeHash(i), hashes[i])
   }
+
+  await core.close()
 })
 
 test('treeHash with default length', async function (t) {
@@ -192,6 +205,8 @@ test('treeHash with default length', async function (t) {
   await core.append('a')
 
   t.unlike(await core.treeHash(), await core2.treeHash())
+
+  await core.close()
 })
 
 test('snapshot locks the state', async function (t) {
@@ -211,6 +226,8 @@ test('snapshot locks the state', async function (t) {
 
   t.is(a.length, 0)
   t.is(b.length, 1)
+
+  await core.close()
 })
 
 test('downloading local range', async function (t) {
@@ -227,6 +244,8 @@ test('downloading local range', async function (t) {
   await range.destroy()
 
   t.pass('did not throw')
+
+  await core.close()
 })
 
 test('read ahead', async function (t) {
@@ -243,6 +262,8 @@ test('read ahead', async function (t) {
   await core.append('b')
 
   t.alike(await blk, 'b')
+
+  await core.close()
 })
 
 test('defaults for wait', async function (t) {
@@ -294,6 +315,8 @@ test('has', async function (t) {
       t.ok(await core.has(i), `has ${i}`)
     }
   }
+
+  await core.close()
 })
 
 test('has range', async function (t) {
@@ -308,6 +331,8 @@ test('has range', async function (t) {
   t.absent(await core.has(0, 5), 'does not have 0 to 4')
   t.ok(await core.has(0, 2), 'has 0 to 1')
   t.ok(await core.has(3, 5), 'has 3 to 4')
+
+  await core.close()
 })
 
 test.skip('storage info', async function (t) {
@@ -317,6 +342,8 @@ test.skip('storage info', async function (t) {
   const info = await core.info({ storage: true })
 
   t.snapshot(info.storage)
+
+  await core.close()
 })
 
 test('storage info, off by default', async function (t) {
@@ -326,6 +353,8 @@ test('storage info, off by default', async function (t) {
   const info = await core.info()
 
   t.is(info.storage, null)
+
+  await core.close()
 })
 
 test('indexedLength mirrors core length (linearised core compat)', async function (t) {
@@ -336,6 +365,8 @@ test('indexedLength mirrors core length (linearised core compat)', async functio
   await core.append(['a', 'b'])
   t.is(core.length, 2)
   t.is(core.flushedLength, core.length)
+
+  await core.close()
 })
 
 test('key is set sync', async function (t) {
@@ -352,10 +383,10 @@ test('key is set sync', async function (t) {
   const core4 = new Hypercore(dir4, { })
 
   // flush all db ops before teardown
-  t.teardown(() => core1.ready())
-  t.teardown(() => core2.ready())
-  t.teardown(() => core3.ready())
-  t.teardown(() => core4.ready())
+  t.teardown(() => core1.close())
+  t.teardown(() => core2.close())
+  t.teardown(() => core3.close())
+  t.teardown(() => core4.close())
 
   t.alike(core1.key, key)
   t.is(core2.key, null)
@@ -377,6 +408,8 @@ test('disable writable option', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await core.close()
 })
 
 test('disable session writable option', async function (t) {
@@ -398,6 +431,9 @@ test('disable session writable option', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await session.close()
+  await core.close()
 })
 
 test('session of a session with the writable option disabled', async function (t) {
@@ -413,6 +449,10 @@ test('session of a session with the writable option disabled', async function (t
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await s1.close()
+  await s2.close()
+  await core.close()
 })
 
 test('writable session on a readable only core', async function (t) {
@@ -432,6 +472,10 @@ test('writable session on a readable only core', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await s.close()
+  await a.close()
+  await core.close()
 })
 
 test('append above the max suggested block size', async function (t) {
@@ -450,6 +494,8 @@ test('append above the max suggested block size', async function (t) {
   } catch {
     t.pass('should throw')
   }
+
+  await core.close()
 })
 
 test('get undefined block is not allowed', async function (t) {
@@ -463,6 +509,8 @@ test('get undefined block is not allowed', async function (t) {
   } catch (err) {
     t.pass(err.code, 'ERR_ASSERTION')
   }
+
+  await core.close()
 })
 
 test('valid manifest passed to a session is stored', async function (t) {
@@ -487,4 +535,8 @@ test('valid manifest passed to a session is stored', async function (t) {
   await b.ready()
 
   t.alike(b.manifest, core.manifest)
+
+  await a.close()
+  await b.close()
+  await core.close()
 })

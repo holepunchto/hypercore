@@ -670,6 +670,9 @@ test('persistent batch', async function (t) {
   // t.is(batch.flushedLength, 3)
   // t.alike(await batch.seek(4), [4, 0])
 
+  await reopened.close()
+  await reopen.close()
+
   async function open () {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
@@ -712,6 +715,8 @@ test('clear', async function (t) {
   await b2.ready()
 
   t.is(b2.length, 1, 'reset the batch')
+
+  await b2.close()
 })
 
 test('copy from with encrypted batch', async function (t) {
@@ -750,6 +755,8 @@ test('copy from with encrypted batch', async function (t) {
   }
 
   t.alike(tree.hash(), manifest.prologue.hash)
+
+  await b.close()
 })
 
 test('batch append with huge batch', async function (t) {
@@ -765,4 +772,6 @@ test('batch append with huge batch', async function (t) {
   // Actually flushing such a big batch takes multiple minutes
   // so we only ensure that nothing crashed while appending
   t.pass('Can append a big batch')
+
+  await b.close()
 })

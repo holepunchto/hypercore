@@ -583,6 +583,8 @@ async function create (t, opts = {}) {
   const dkey = b4a.alloc(32, 1)
   let db = null
 
+  t.teardown(teardown, { order: 1 })
+
   const reopen = async () => {
     if (db) await db.close()
 
@@ -598,6 +600,10 @@ async function create (t, opts = {}) {
   const core = await reopen()
 
   return { core, reopen }
+
+  async function teardown () {
+    if (db) await db.close()
+  }
 }
 
 async function getBlock (core, i) {

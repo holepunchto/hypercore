@@ -18,6 +18,8 @@ test('clear', async function (t) {
   t.ok(await a.has(0), 'has 0')
   t.absent(await a.has(1), 'has not 1')
   t.ok(await a.has(2), 'has 2')
+
+  await a.close()
 })
 
 test('clear + replication', async function (t) {
@@ -35,6 +37,9 @@ test('clear + replication', async function (t) {
   t.ok(await b.has(1), 'b not cleared')
 
   t.alike(await a.get(1), b4a.from('b'), 'a downloaded from b')
+
+  await a.close()
+  await b.close()
 })
 
 test('clear + replication, gossip', async function (t) {

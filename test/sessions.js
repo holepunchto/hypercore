@@ -36,6 +36,9 @@ test('sessions - can create writable sessions from a read-only core', async func
   }
 
   t.is(core.length, 1)
+
+  await session.close()
+  await core.close()
 })
 
 test('sessions - auto close', async function (t) {
@@ -136,6 +139,9 @@ test('sessions - custom valueEncoding on session', async function (t) {
 
   t.alike(await core2.get(0), { a: 1 })
   t.alike(await core2.get(1), { b: 2 })
+
+  await core2.close()
+  await core1.close()
 })
 
 test('sessions - custom preload hook on first/later sessions', async function (t) {
@@ -158,6 +164,9 @@ test('sessions - custom preload hook on first/later sessions', async function (t
   await core2.ready()
 
   await preloadsTest
+
+  await core2.close()
+  await core1.close()
 })
 
 test('session inherits non-sparse setting', async function (t) {
@@ -165,6 +174,9 @@ test('session inherits non-sparse setting', async function (t) {
   const s = a.session()
 
   t.is(s.sparse, false)
+
+  await s.close()
+  await a.close()
 })
 
 test('session on a from instance, pre-ready', async function (t) {
@@ -179,6 +191,9 @@ test('session on a from instance, pre-ready', async function (t) {
 
   t.is(a.sessions, b.sessions)
   t.is(a.sessions, c.sessions)
+
+  await b.close()
+  await c.close()
 })
 
 test('session on a from instance does not inject itself to other sessions', async function (t) {
@@ -198,4 +213,8 @@ test('session on a from instance does not inject itself to other sessions', asyn
   t.absent(b.encryption)
   t.ok(c.encryption)
   t.absent(d.encryption)
+
+  await b.close()
+  await c.close()
+  await d.close()
 })

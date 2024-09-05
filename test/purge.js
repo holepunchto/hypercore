@@ -29,6 +29,8 @@ test('basic purge', async function (t) {
   t.is(fs.existsSync(bitfieldLoc), false)
   t.is(fs.existsSync(dataLoc), false)
   t.is(fs.readdirSync(dir).length, 0) // Nothing remains
+
+  await core.close()
 })
 
 test('purge closes all sessions', async function (t) {
@@ -42,4 +44,6 @@ test('purge closes all sessions', async function (t) {
 
   t.is(core.closed, true)
   t.is(otherSession.closed, true)
+
+  await core.close()
 })
