@@ -839,7 +839,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.tracer.trace('get', { index })
 
     if (this.closing !== null) throw SESSION_CLOSED()
-    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
@@ -890,32 +889,42 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    const reader = this.state.storage.createReadBatch()
+    const reader = this.state.createReadBatch()
     const promise = reader.getBlock(index)
     reader.tryFlush()
 
     let block = await promise
 
-    if (block !== null) {
-      if (this.cache) this.cache.set(index, Promise.resolve(block))
-    } else {
-      if (!this._shouldWait(opts, this.wait)) return null
+    // snapshot should check if core has block
+    if (block === null && this._snapshot !== null) {
+      if (index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
-      if (opts && opts.onwait) opts.onwait(index, this)
-      if (this.onwait) this.onwait(index, this)
+      const reader = this.core.state.createReadBatch()
+      const promise = reader.getBlock(index)
+      reader.tryFlush()
 
-      const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-
-      const req = this.replicator.addBlock(activeRequests, index)
-      req.snapshot = index < this.length
-
-      const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
-      if (timeout) req.context.setTimeout(req, timeout)
-
-      block = this._cacheOnResolve(index, req.promise, this.state.tree.fork)
+      block = await promise
     }
 
-    return block
+    if (block !== null) {
+      if (this.cache) this.cache.set(index, Promise.resolve(block))
+      return block
+    }
+
+    if (!this._shouldWait(opts, this.wait)) return null
+
+    if (opts && opts.onwait) opts.onwait(index, this)
+    if (this.onwait) this.onwait(index, this)
+
+    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+
+    const req = this.replicator.addBlock(activeRequests, index)
+    req.snapshot = index < this.length
+
+    const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
+    if (timeout) req.context.setTimeout(req, timeout)
+
+    return this._cacheOnResolve(index, req.promise, this.state.tree.fork)
   }
 
   async restoreBatch (length, blocks) {
@@ -930,6 +939,8 @@ module.exports = class Hypercore extends EventEmitter {
     const block = resolved !== null && 2 * resolved.byteLength < resolved.buffer.byteLength
       ? unslab(resolved)
       : resolved
+
+    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
     if (this.cache && fork === this.core.tree.fork) {
       this.cache.set(index, Promise.resolve(block))
