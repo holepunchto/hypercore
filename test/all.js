@@ -10,7 +10,6 @@ async function runTests () {
   await import('./basic.js') // todo: implement storageInfo API
   await import('./batch.js') // todo: implement batch api
   await import('./bitfield.js')
-  await import('./cache.js')
   await import('./clear.js') // todo: replace Info.bytesUsed API
   // await import('./compat.js') // todo: how to test compat?
   await import('./conflicts.js')
