@@ -264,7 +264,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
-    if (o.state) this.state = o.state.clone()
+    if (o.state) this.state = o.state.ref()
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
@@ -321,7 +321,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      await this.state.close()
+      await this.state.unref()
       this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
 
       if (opts.checkout !== undefined) {
@@ -486,7 +486,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._findingPeers = 0
 
     if (this.sessions.length || this.state.active > 1) {
-      await this.state.close()
+      await this.state.unref()
 
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
       if (this.sessions.length === 1 && this.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
