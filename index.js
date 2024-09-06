@@ -26,7 +26,8 @@ const {
   BAD_ARGUMENT,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
-  SNAPSHOT_NOT_AVAILABLE
+  SNAPSHOT_NOT_AVAILABLE,
+  DECODING_ERROR
 } = require('hypercore-errors')
 
 const promises = Symbol.for('hypercore.promises')
@@ -1108,7 +1109,11 @@ module.exports = class Hypercore extends EventEmitter {
 
   _decode (enc, block) {
     if (this.padding) block = block.subarray(this.padding)
-    if (enc) return c.decode(enc, block)
+    try {
+      if (enc) return c.decode(enc, block)
+    } catch {
+      throw DECODING_ERROR()
+    }
     return block
   }
 }
