@@ -904,6 +904,8 @@ module.exports = class Hypercore extends EventEmitter {
       reader.tryFlush()
 
       block = await promise
+
+      if (index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
     }
 
     if (block !== null) {
