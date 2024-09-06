@@ -8,10 +8,10 @@ test('cache', async function (t) {
   const a = await create(t, { cache: true })
   await a.append(['a', 'b', 'c'])
 
-  const p = a.get(0)
-  const q = a.get(0)
+  const p = await a.get(0)
+  const q = await a.get(0)
 
-  t.is(await p, await q, 'blocks are identical')
+  t.is(p, q, 'blocks are identical')
 })
 
 test('session cache inheritance', async function (t) {
@@ -20,10 +20,10 @@ test('session cache inheritance', async function (t) {
 
   const s = a.session()
 
-  const p = a.get(0)
-  const q = s.get(0)
+  const p = await a.get(0)
+  const q = await s.get(0)
 
-  t.is(await p, await q, 'blocks are identical')
+  t.is(p, q, 'blocks are identical')
 
   await s.close()
 })
@@ -34,10 +34,10 @@ test('session cache opt-out', async function (t) {
 
   const s = a.session({ cache: false })
 
-  const p = a.get(0)
-  const q = s.get(0)
+  const p = await a.get(0)
+  const q = await s.get(0)
 
-  t.not(await p, await q, 'blocks are not identical')
+  t.not(p, q, 'blocks are not identical')
 
   await s.close()
 })
@@ -48,12 +48,12 @@ test('session cache override', async function (t) {
 
   const s = a.session({ cache: new Xache({ maxSize: 64, maxAge: 0 }) })
 
-  const p = a.get(0)
-  const q = s.get(0)
-  const r = s.get(0)
+  const p = await a.get(0)
+  const q = await s.get(0)
+  const r = await s.get(0)
 
-  t.not(await p, await q, 'blocks are not identical')
-  t.is(await q, await r, 'blocks are identical')
+  t.not(p, q, 'blocks are not identical')
+  t.is(q, r, 'blocks are identical')
 
   await s.close()
 })

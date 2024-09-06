@@ -650,6 +650,9 @@ test('request cancellation regression', async function (t) {
   b.get(1).catch(onerror)
   b.get(2).catch(onerror)
 
+  // have to wait for the storage lookup here, TODO: add a flush sort of api for testing this
+  await new Promise(resolve => setTimeout(resolve, 500))
+
   // No explict api to trigger this (maybe we add a cancel signal / abort controller?) but cancel get(1)
   b.activeRequests[1].context.detach(b.activeRequests[1])
 
