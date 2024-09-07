@@ -4,7 +4,6 @@ const hypercoreCrypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-on-the-rocks')
 const c = require('compact-encoding')
 const b4a = require('b4a')
-const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
 const z32 = require('z32')
@@ -64,7 +63,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.replicator = null
     this.encryption = null
     this.extensions = new Map()
-    this.cache = createCache(opts.cache)
 
     this.valueEncoding = null
     this.encodeBatch = null
@@ -229,11 +227,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     s._passCapabilities(this)
 
-    // Configure the cache unless explicitly disabled.
-    if (opts.cache !== false) {
-      s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
-    }
-
     if (this.opened) ensureEncryption(s, opts)
     this._addSession(s)
 
@@ -302,7 +295,6 @@ module.exports = class Hypercore extends EventEmitter {
       await opts._opening
     }
     if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
-    if (this.cache === null && opts.cache) this.cache = createCache(opts.cache)
 
     if (isFirst) {
       await this._openCapabilities(key, storage, opts)
@@ -671,8 +663,6 @@ module.exports = class Hypercore extends EventEmitter {
         const s = this.sessions[i]
 
         if (truncated) {
-          if (s.cache) s.cache.clear()
-
           // If snapshotted, make sure to update our compat so we can fail gets
           if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
         }
@@ -842,8 +832,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
-    let req = this.cache && this.cache.get(index)
-    if (!req) req = this._get(index, opts)
+    const req = this._get(index, opts)
 
     let block = await req
     if (!block) return null
@@ -889,18 +878,17 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    let block = await readBlock(this.state.createReadBatch(), index)
+    const block = await readBlock(this.state.createReadBatch(), index)
+
+    if (block !== null) return block
 
     // snapshot should check if core has block
-    if (block === null && this._snapshot !== null) {
+    if (this._snapshot !== null) {
       checkSnapshot(this._snapshot, index)
-      block = await readBlock(this.core.state.createReadBatch(), index)
-      checkSnapshot(this._snapshot, index)
-    }
+      const coreBlock = await readBlock(this.core.state.createReadBatch(), index)
 
-    if (block !== null) {
-      if (this.cache) this.cache.set(index, Promise.resolve(block))
-      return block
+      checkSnapshot(this._snapshot, index)
+      if (coreBlock !== null) return coreBlock
     }
 
     if (!this._shouldWait(opts, this.wait)) return null
@@ -916,29 +904,15 @@ module.exports = class Hypercore extends EventEmitter {
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    return this._cacheOnResolve(index, req.promise, this.state.tree.fork)
+    const replicatedBlock = await req.promise
+    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
+
+    return maybeUnslab(replicatedBlock)
   }
 
   async restoreBatch (length, blocks) {
     if (this.opened === false) await this.opening
     return this.state.tree.restoreBatch(length)
-  }
-
-  async _cacheOnResolve (index, req, fork) {
-    const resolved = await req
-
-    // Unslab only when it takes up less then half the slab
-    const block = resolved !== null && 2 * resolved.byteLength < resolved.buffer.byteLength
-      ? unslab(resolved)
-      : resolved
-
-    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
-
-    if (this.cache && fork === this.core.tree.fork) {
-      this.cache.set(index, Promise.resolve(block))
-    }
-
-    return block
   }
 
   _shouldWait (opts, defaultValue) {
@@ -1148,12 +1122,13 @@ function ensureEncryption (core, opts) {
   core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core ? core.core.compat : true, isBlockKey: opts.isBlockKey })
 }
 
-function createCache (cache) {
-  return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
-}
-
 function isValidIndex (index) {
   return index === 0 || index > 0
+}
+
+function maybeUnslab (block) {
+  // Unslab only when it takes up less then half the slab
+  return block !== null && 2 * block.byteLength < block.buffer.byteLength ? unslab(block) : block
 }
 
 function checkSnapshot (snapshot, index) {
