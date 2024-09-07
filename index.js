@@ -257,7 +257,8 @@ module.exports = class Hypercore extends EventEmitter {
     this.encryption = o.encryption
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
-    if (o.state) this.state = o.state.clone()
+
+    if (o.state) this.state = this.snapshotted ? o.state.snapshot() : o.state.ref()
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
@@ -313,7 +314,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      await this.state.close()
+      await this.state.unref()
       this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
 
       if (opts.checkout !== undefined) {
@@ -478,7 +479,7 @@ module.exports = class Hypercore extends EventEmitter {
     this._findingPeers = 0
 
     if (this.sessions.length || this.state.active > 1) {
-      await this.state.close()
+      await this.state.unref()
 
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
       if (this.sessions.length === 1 && this.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
@@ -828,7 +829,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.tracer.trace('get', { index })
 
     if (this.closing !== null) throw SESSION_CLOSED()
-    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
@@ -878,12 +878,18 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    const reader = this.state.storage.createReadBatch()
-    const promise = reader.getBlock(index)
-    reader.tryFlush()
+    const block = await readBlock(this.state.createReadBatch(), index)
 
-    const block = await promise
     if (block !== null) return block
+
+    // snapshot should check if core has block
+    if (this._snapshot !== null) {
+      checkSnapshot(this._snapshot, index)
+      const coreBlock = await readBlock(this.core.state.createReadBatch(), index)
+
+      checkSnapshot(this._snapshot, index)
+      if (coreBlock !== null) return coreBlock
+    }
 
     if (!this._shouldWait(opts, this.wait)) return null
 
@@ -898,7 +904,10 @@ module.exports = class Hypercore extends EventEmitter {
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    return maybeUnslab(await req.promise)
+    const replicatedBlock = await req.promise
+    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
+
+    return maybeUnslab(replicatedBlock)
   }
 
   async restoreBatch (length, blocks) {
@@ -1120,4 +1129,14 @@ function isValidIndex (index) {
 function maybeUnslab (block) {
   // Unslab only when it takes up less then half the slab
   return block !== null && 2 * block.byteLength < block.buffer.byteLength ? unslab(block) : block
+}
+
+function checkSnapshot (snapshot, index) {
+  if (index >= snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+}
+
+function readBlock (reader, index) {
+  const promise = reader.getBlock(index)
+  reader.tryFlush()
+  return promise
 }
