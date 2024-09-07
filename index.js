@@ -889,23 +889,13 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    const reader = this.state.createReadBatch()
-    const promise = reader.getBlock(index)
-    reader.tryFlush()
-
-    let block = await promise
+    let block = await readBlock(this.state.createReadBatch(), index)
 
     // snapshot should check if core has block
     if (block === null && this._snapshot !== null) {
-      if (index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
-
-      const reader = this.core.state.createReadBatch()
-      const promise = reader.getBlock(index)
-      reader.tryFlush()
-
-      block = await promise
-
-      if (index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+      checkSnapshot(this._snapshot, index)
+      block = await readBlock(this.core.state.createReadBatch(), index)
+      checkSnapshot(this._snapshot, index)
     }
 
     if (block !== null) {
@@ -942,7 +932,7 @@ module.exports = class Hypercore extends EventEmitter {
       ? unslab(resolved)
       : resolved
 
-    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
 
     if (this.cache && fork === this.core.tree.fork) {
       this.cache.set(index, Promise.resolve(block))
@@ -1164,4 +1154,14 @@ function createCache (cache) {
 
 function isValidIndex (index) {
   return index === 0 || index > 0
+}
+
+function checkSnapshot (snapshot, index) {
+  if (index >= snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+}
+
+function readBlock (reader, index) {
+  const promise = reader.getBlock(index)
+  reader.tryFlush()
+  return promise
 }
