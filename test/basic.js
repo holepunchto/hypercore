@@ -135,6 +135,53 @@ test('createIfMissing', async function (t) {
   await db.close()
 })
 
+test('reopen writable core', async function (t) {
+  const dir = await createTempDir(t)
+
+  const core = new Hypercore(dir)
+  await core.ready()
+
+  let appends = 0
+
+  t.is(core.length, 0)
+  t.is(core.writable, true)
+  t.is(core.readable, true)
+
+  core.on('append', function () {
+    appends++
+  })
+
+  await core.append('hello')
+  await core.append('world')
+
+  const info = await core.info()
+
+  t.is(core.length, 2)
+  t.is(info.byteLength, 10)
+  t.is(appends, 2)
+
+  await core.close()
+
+  const core2 = new Hypercore(dir)
+  await core2.ready()
+
+  t.is(core2.length, 2)
+  t.is(core2.writable, true)
+  t.is(core2.readable, true)
+
+  core2.on('append', function () {
+    appends++
+  })
+
+  await core2.append('goodbye')
+  await core2.append('test')
+
+  t.is(core2.length, 4)
+  t.is(appends, 4)
+
+  await core2.close()
+})
+
 test('reopen and overwrite', async function (t) {
   const dir = await createTempDir()
   let storage = null
