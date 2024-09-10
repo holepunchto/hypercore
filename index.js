@@ -77,7 +77,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opened = false
     this.closed = false
     this.snapshotted = !!opts.snapshot
-    this.memoryOverlay = !!opts.memoryOverlay
+    this.dryRun = !!opts.dryRun
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
     this.autoClose = !!opts.autoClose
@@ -268,7 +268,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
-    if (o.state) this.state = this.memoryOverlay ? o.state.memoryOverlay() : this.snapshotted ? o.state.snapshot() : o.state.ref()
+    if (o.state) this.state = this.dryRun ? o.state.memoryOverlay() : this.snapshotted ? o.state.snapshot() : o.state.ref()
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
