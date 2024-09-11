@@ -92,7 +92,7 @@ test('basic replication stats', async function (t) {
   await b.clear(1)
   const c = await create(t, a.key)
   replicate(c, b, t)
-  c.get(1).catch((err) => { console.log(err) })
+  c.get(1).catch(() => {})
   await new Promise(resolve => setTimeout(resolve, 100))
   const cStats = c.replicator.stats
   t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
