@@ -25,7 +25,8 @@ const {
   BAD_ARGUMENT,
   SESSION_CLOSED,
   SESSION_NOT_WRITABLE,
-  SNAPSHOT_NOT_AVAILABLE
+  SNAPSHOT_NOT_AVAILABLE,
+  DECODING_ERROR
 } = require('hypercore-errors')
 
 const promises = Symbol.for('hypercore.promises')
@@ -247,6 +248,14 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
   }
 
+  setActive (bool) {
+    const active = !!bool
+    if (active === this._active || this.closing) return
+    this._active = active
+    if (!this.opened) return
+    this.replicator.updateActivity(this._active ? 1 : -1)
+  }
+
   _passCapabilities (o) {
     if (!this.keyPair) this.keyPair = o.keyPair
     this.crypto = o.crypto
@@ -390,7 +399,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
-        this.core.userData(batch, key, value)
+        this.core.setUserData(batch, key, value)
       }
       await batch.flush()
     }
@@ -1092,7 +1101,11 @@ module.exports = class Hypercore extends EventEmitter {
 
   _decode (enc, block) {
     if (this.padding) block = block.subarray(this.padding)
-    if (enc) return c.decode(enc, block)
+    try {
+      if (enc) return c.decode(enc, block)
+    } catch {
+      throw DECODING_ERROR()
+    }
     return block
   }
 }
