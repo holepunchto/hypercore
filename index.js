@@ -273,9 +273,9 @@ module.exports = class Hypercore extends EventEmitter {
 
   setActive (bool) {
     const active = !!bool
-    if (active === this._active) return
+    if (active === this._active || this.closing) return
     this._active = active
-    if (!this.opened || this.closing) return
+    if (!this.opened) return
     this.replicator.updateActivity(this._active ? 1 : -1)
   }
 
