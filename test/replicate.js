@@ -1248,15 +1248,13 @@ test('replication session after stream opened', async function (t) {
   t.is(b.core.state.active, 1)
 })
 
-test('replication session keeps the core open', async function (t) {
-  t.plan(1)
-
+test.solo('replication session keeps the core open', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  replicate(a, b, t, { session: true })
+  const [s1, s2] = replicate(a, b, t, { session: true })
 
   await a.close()
   await eventFlush()
@@ -1264,6 +1262,14 @@ test('replication session keeps the core open', async function (t) {
   const blk = await b.get(2)
 
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
+
+  s1.destroy()
+  s2.destroy()
+
+  await Promise.all([
+    new Promise(resolve => s1.on('close', resolve)),
+    new Promise(resolve => s2.on('close', resolve))
+  ])
 })
 
 test('replicate range that fills initial size of bitfield page', async function (t) {
