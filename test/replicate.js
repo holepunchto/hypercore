@@ -1249,6 +1249,8 @@ test('replication session after stream opened', async function (t) {
 })
 
 test('replication session keeps the core open', async function (t) {
+  t.plan(1)
+
   const a = await create(t)
   const b = await create(t, a.key)
 
