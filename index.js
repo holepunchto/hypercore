@@ -910,9 +910,11 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.closing) throw SESSION_CLOSED()
 
-    if (await this.replicator.flushBlock(index)) {
-      if (this.closing) throw SESSION_CLOSED()
+    const refresh = await this.replicator.flushBlock(index)
 
+    if (this.closing) throw SESSION_CLOSED()
+
+    if (refresh) {
       const block = await readBlock(this.state.createReadBatch(), index)
       if (block !== null) return block
     }
