@@ -1254,7 +1254,7 @@ test('replication session keeps the core open', async function (t) {
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const [s1, s2] = replicate(a, b, t, { session: true })
+  replicate(a, b, t, { session: true })
 
   await a.close()
   await eventFlush()
