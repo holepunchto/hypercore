@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@hyperswarm/secret-stream": "^6.0.0",
+    "activity-queue": "^1.0.0",
     "b4a": "^1.1.0",
     "bare-events": "^2.2.0",
     "big-sparse-array": "^1.0.3",
