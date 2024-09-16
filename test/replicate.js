@@ -1709,6 +1709,54 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
+test('replication count should never go negative', async function (t) {
+  t.plan(2 + 3)
+
+  const a = await create({ autoClose: true })
+  const b = await create(a.key, { autoClose: true })
+  const c = await create(a.key, { autoClose: true })
+
+  const refA = a.session()
+  const refB = b.session()
+  const refC = b.session()
+
+  await a.append(['a'])
+
+  const s1 = a.replicate(true, { session: true })
+  const s2 = Hypercore.createProtocolStream(false)
+
+  s1.pipe(s2).pipe(s1)
+
+  const s3 = a.replicate(true, { session: true })
+  const s4 = Hypercore.createProtocolStream(false)
+
+  s3.pipe(s4).pipe(s3)
+
+  await eventFlush()
+
+  b.replicate(s2, { session: true })
+  c.replicate(s4, { session: true })
+
+  // get some values just to know all the stream plumbing is done
+  t.ok(!!(await b.get(0)), 'b got it')
+  t.ok(!!(await c.get(0)), 'c got it')
+
+  a.on('close', () => t.pass('a closed'))
+  b.on('close', () => t.pass('b closed'))
+  c.on('close', () => t.pass('c closed'))
+
+  await Promise.all([destroyStream(s1), destroyStream(s2), destroyStream(s3), destroyStream(s4)])
+
+  await refA.close()
+  await refB.close()
+  await refC.close()
+
+  function destroyStream (s) {
+    s.destroy()
+    return new Promise(resolve => s.once('close', resolve))
+  }
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
