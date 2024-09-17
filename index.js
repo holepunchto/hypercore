@@ -904,6 +904,8 @@ module.exports = class Hypercore extends EventEmitter {
       if (coreBlock !== null) return coreBlock
     }
 
+    // lets check the bitfield to see if we got it during the above async calls
+    // this is the last resort before replication, so always safe.
     if (this.core.state.bitfield.get(index)) {
       return readBlock(this.state.createReadBatch(), index)
     }
