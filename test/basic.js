@@ -462,3 +462,13 @@ test('valid manifest passed to a session is stored', async function (t) {
 
   t.alike(b.manifest, core.manifest)
 })
+
+test('basic - core stats', async function (t) {
+  const core = await create()
+
+  await core.append('ok')
+  await core.append(['batch', 'here'])
+
+  t.is(core.core.stats.bytesAppended, 11, 'bytesAppended')
+  t.is(core.core.stats.blocksAppended, 3, 'blocksAppended')
+})
