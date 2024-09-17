@@ -735,7 +735,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   async getUserData (key) {
     if (this.opened === false) await this.opening
-    const batch = this.core.storage.createReadBatch()
+    const batch = this.state.storage.createReadBatch()
     const p = batch.getUserData(key)
     batch.tryFlush()
     return p
