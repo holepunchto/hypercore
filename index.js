@@ -893,6 +893,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (block !== null) return block
 
+    if (this.closing !== null) throw SESSION_CLOSED()
+
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this._snapshot, index)
@@ -906,6 +908,10 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (opts && opts.onwait) opts.onwait(index, this)
     if (this.onwait) this.onwait(index, this)
+
+    if (this.core.state.bitfield.get(index)) {
+      return readBlock(this.state.createReadBatch(), index)
+    }
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
