@@ -195,7 +195,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const directory = storage
-    return new CoreStorage(directory)
+    return new CoreStorage(directory, opts)
   }
 
   snapshot (opts) {
