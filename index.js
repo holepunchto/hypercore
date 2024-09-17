@@ -904,14 +904,14 @@ module.exports = class Hypercore extends EventEmitter {
       if (coreBlock !== null) return coreBlock
     }
 
+    if (this.core.state.bitfield.get(index)) {
+      return readBlock(this.state.createReadBatch(), index)
+    }
+
     if (!this._shouldWait(opts, this.wait)) return null
 
     if (opts && opts.onwait) opts.onwait(index, this)
     if (this.onwait) this.onwait(index, this)
-
-    if (this.core.state.bitfield.get(index)) {
-      return readBlock(this.state.createReadBatch(), index)
-    }
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
