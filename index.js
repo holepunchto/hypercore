@@ -893,6 +893,8 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (block !== null) return block
 
+    if (this.closing !== null) throw SESSION_CLOSED()
+
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this._snapshot, index)
@@ -900,6 +902,12 @@ module.exports = class Hypercore extends EventEmitter {
 
       checkSnapshot(this._snapshot, index)
       if (coreBlock !== null) return coreBlock
+    }
+
+    // lets check the bitfield to see if we got it during the above async calls
+    // this is the last resort before replication, so always safe.
+    if (this.core.state.bitfield.get(index)) {
+      return readBlock(this.state.createReadBatch(), index)
     }
 
     if (!this._shouldWait(opts, this.wait)) return null
