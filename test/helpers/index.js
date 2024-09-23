@@ -1,6 +1,7 @@
 const Hypercore = require('../../')
 const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-on-the-rocks')
+const safetyCatch = require('safety-catch')
 
 exports.create = async function (t, ...args) {
   const dir = await createTempDir(t)
@@ -38,8 +39,14 @@ exports.replicate = function replicate (a, b, t, opts = {}) {
   const closed1 = new Promise(resolve => s1.once('close', resolve))
   const closed2 = new Promise(resolve => s2.once('close', resolve))
 
-  s1.on('error', err => t.comment(`replication stream error (initiator): ${err}`))
-  s2.on('error', err => t.comment(`replication stream error (responder): ${err}`))
+  s1.on('error', err => {
+    safetyCatch(err)
+    t.comment(`replication stream error (initiator): ${err}`)
+  })
+  s2.on('error', err => {
+    safetyCatch(err)
+    t.comment(`replication stream error (responder): ${err}`)
+  })
 
   if (opts.teardown !== false) {
     t.teardown(async function () {

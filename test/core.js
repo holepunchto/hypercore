@@ -107,23 +107,30 @@ test('core - user data', async function (t) {
   const { core, reopen } = await create(t)
 
   await setUserData(core, 'hello', b4a.from('world'))
-  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
+  t.alike(await getUserData(core.storage, 'hello'), b4a.from('world'))
 
   await setUserData(core, 'hej', b4a.from('verden'))
-  t.alike(await core.storage.getUserData('hello'), b4a.from('world'))
-  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
+  t.alike(await getUserData(core.storage, 'hello'), b4a.from('world'))
+  t.alike(await getUserData(core.storage, 'hej'), b4a.from('verden'))
 
   await setUserData(core, 'hello', null)
-  t.alike(await core.storage.getUserData('hello'), null)
-  t.alike(await core.storage.getUserData('hej'), b4a.from('verden'))
+  t.alike(await getUserData(core.storage, 'hello'), null)
+  t.alike(await getUserData(core.storage, 'hej'), b4a.from('verden'))
 
   await setUserData(core, 'hej', b4a.from('world'))
-  t.alike(await core.storage.getUserData('hej'), b4a.from('world'))
+  t.alike(await getUserData(core.storage, 'hej'), b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.alike(await coreReopen.storage.getUserData('hej'), b4a.from('world'))
+  t.alike(await getUserData(coreReopen.storage, 'hej'), b4a.from('world'))
+
+  function getUserData (storage, key) {
+    const b = storage.createReadBatch()
+    const p = b.getUserData(key)
+    b.tryFlush()
+    return p
+  }
 })
 
 test('core - header does not retain slabs', async function (t) {
@@ -165,8 +172,8 @@ test('core - verify', async function (t) {
     await clone.verify(p)
   }
 
-  const tree1 = await core.storage.getCoreHead()
-  const tree2 = await clone.storage.getCoreHead()
+  const tree1 = await getCoreHead(core.storage)
+  const tree2 = await getCoreHead(clone.storage)
 
   t.is(tree1.length, 2)
   t.alike(tree1.signature, tree2.signature)
@@ -196,8 +203,8 @@ test('core - verify parallel upgrades', async function (t) {
     await v2
   }
 
-  const tree1 = await core.storage.getCoreHead()
-  const tree2 = await clone.storage.getCoreHead()
+  const tree1 = await getCoreHead(core.storage)
+  const tree2 = await getCoreHead(clone.storage)
 
   t.is(tree2.length, tree1.length)
   t.alike(tree2.signature, tree1.signature)
@@ -651,4 +658,11 @@ async function getProof (core, req) {
   const proof = await p.settle()
   if (block) proof.block.value = await block
   return proof
+}
+
+function getCoreHead (storage) {
+  const b = storage.createReadBatch()
+  const p = b.getCoreHead()
+  b.tryFlush()
+  return p
 }
