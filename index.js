@@ -77,7 +77,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.opened = false
     this.closed = false
     this.snapshotted = !!opts.snapshot
-    this.dryRun = !!opts.dryRun
+    this.draft = !!opts.draft
     this.sparse = opts.sparse !== false
     this.sessions = opts._sessions || [this]
     this.autoClose = !!opts.autoClose
@@ -268,7 +268,7 @@ module.exports = class Hypercore extends EventEmitter {
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
-    if (o.state) this.state = this.dryRun ? o.state.memoryOverlay() : this.snapshotted ? o.state.snapshot() : o.state.ref()
+    if (o.state) this.state = this.draft ? o.state.memoryOverlay() : this.snapshotted ? o.state.snapshot() : o.state.ref()
 
     if (o.core) this.tracer.setParent(o.core.tracer)
 
@@ -805,7 +805,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.core.tree
+    const tree = (opts && opts.tree) || this.state.tree
     const s = tree.seek(bytes, this.padding)
 
     const offset = await s.update()
@@ -1037,7 +1037,7 @@ module.exports = class Hypercore extends EventEmitter {
   async treeHash (length) {
     if (length === undefined) {
       await this.ready()
-      length = this.core.tree.length
+      length = this.state.tree.length
     }
 
     const roots = await this.state.tree.getRoots(length)
