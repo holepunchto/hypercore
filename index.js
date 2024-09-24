@@ -456,13 +456,28 @@ module.exports = class Hypercore extends EventEmitter {
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  close (err) {
+  close (err, opts = { force: false }) {
+    if (opts.force) return this.forceClose()
     if (this.closing) return this.closing
-    this.closing = this._close(err || null)
+    this.closing = this._close(err || null, opts)
     return this.closing
   }
 
-  async _close (err) {
+  async forceClose (err) {
+    if (this.closing) await this.closing
+    this.closing = this._forceClose(err)
+  }
+
+  async _forceClose (err) {
+    const sessions = []
+    for (const session of this.sessions) {
+      sessions.push(session._close(err, { force: true }))
+    }
+
+    return Promise.all(sessions)
+  }
+
+  async _close (err, opts) {
     if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
@@ -492,12 +507,15 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.sessions.length || this.state.active > 1) {
       await this.state.unref()
 
+      this.state.events.push(['autoclose', this.sessions.length, this.core.state.active, this.autoClose])
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
       if (this.sessions.length === 1 && this.core.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
 
-      this.emit('close', false)
-      return
+      if (this.sessions.length !== 0 || !opts.force) {
+        this.emit('close', false)
+        return
+      }
     }
 
     if (this.replicator !== null) {
