@@ -469,6 +469,8 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _forceClose (err) {
+    this.replicator.destroy()
+
     const sessions = []
     for (const session of this.sessions) {
       sessions.push(session._close(err, { force: true }))
