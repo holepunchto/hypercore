@@ -279,10 +279,7 @@ async function createStorage (t, dir) {
 
   const dkey = b4a.alloc(32)
 
-  const storage = db.get(dkey)
-  if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
-
-  return storage
+  return (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
 }
 
 async function flush (s, b) {

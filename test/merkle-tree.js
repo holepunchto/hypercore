@@ -875,8 +875,7 @@ async function create (t, length = 0, dir) {
 
   const dkey = b4a.alloc(32)
 
-  const storage = db.get(dkey)
-  if (!await storage.open()) await storage.create({ key: b4a.alloc(32) })
+  const storage = (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
 
   const tree = await Tree.open(storage)
 
