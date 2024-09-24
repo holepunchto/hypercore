@@ -890,7 +890,7 @@ module.exports = class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    const block = await readBlock(this.state.createReadBatch(), index)
+    const block = await readBlock(this.state.storage.createReadBatch(), index)
 
     if (block !== null) return block
 
@@ -899,7 +899,7 @@ module.exports = class Hypercore extends EventEmitter {
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this._snapshot, index)
-      const coreBlock = await readBlock(this.core.state.createReadBatch(), index)
+      const coreBlock = await readBlock(this.core.state.storage.createReadBatch(), index)
 
       checkSnapshot(this._snapshot, index)
       if (coreBlock !== null) return coreBlock
@@ -908,7 +908,7 @@ module.exports = class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.state.bitfield.get(index)) {
-      return readBlock(this.state.createReadBatch(), index)
+      return readBlock(this.state.storage.createReadBatch(), index)
     }
 
     if (!this._shouldWait(opts, this.wait)) return null
