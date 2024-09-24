@@ -509,7 +509,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.sessions.length || this.state.active > 1) {
       await this.state.unref()
 
-      this.state.events.push(['autoclose', this.sessions.length, this.core.state.active, this.autoClose])
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
       if (this.sessions.length === 1 && this.core.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
       // emit "fake" close as this is a session
