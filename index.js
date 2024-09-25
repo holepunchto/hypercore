@@ -457,24 +457,22 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async close ({ error, force = !!error } = {}) {
-    if (force) {
-      if (this.closing) await this.closing
-
-      this.closing = this.forceClose(error)
-      return this.closing
-    }
-
     if (this.closing) return this.closing
 
     this.closing = this._close(error || null, force)
     return this.closing
   }
 
-  async forceClose (err) {
-    if (this.closing) await this.closing
+  async _forceClose (err) {
+    const sessions = [...this.sessions]
 
-    this.replicator.destroy()
-    return this._closeAllSessions(err)
+    const closing = []
+    for (const session of sessions) {
+      if (session === this) continue
+      closing.push(sessions.close(err))
+    }
+
+    return Promise.all(closing)
   }
 
   async _close (error, force) {
@@ -503,18 +501,18 @@ module.exports = class Hypercore extends EventEmitter {
 
     this._findingPeers = 0
 
-    // check if there is still an active session
-    if (this.sessions.length || this.state.active > 1) {
+    if (force) {
+      await this._forceClose(error)
+    } else if (this.sessions.length || this.state.active > 1) {
+      // check if there is still an active session
       await this.state.unref()
 
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
       if (this.sessions.length === 1 && this.core.state.active === 1 && this.autoClose) await this.sessions[0].close({ error })
       // emit "fake" close as this is a session
 
-      if (this.sessions.length !== 0 || !force) {
-        this.emit('close', false)
-        return
-      }
+      this.emit('close', false)
+      return
     }
 
     if (this.replicator !== null) {
