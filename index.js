@@ -463,13 +463,13 @@ module.exports = class Hypercore extends EventEmitter {
     return this.closing
   }
 
-  async _forceClose (err) {
+  _forceClose (error) {
     const sessions = [...this.sessions]
 
     const closing = []
     for (const session of sessions) {
       if (session === this) continue
-      closing.push(sessions.close(err))
+      closing.push(session.close({ error, force: false }))
     }
 
     return Promise.all(closing)
