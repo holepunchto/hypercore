@@ -1264,6 +1264,25 @@ test('replication session keeps the core open', async function (t) {
   t.alike(blk, b4a.from('c'), 'still replicating due to session')
 })
 
+test('force close kills replication session', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(a, b, t, { session: true })
+
+  await a.close({ force: true })
+  await eventFlush()
+
+  const blk = b.get(2, { timeout: 1000 })
+
+  t.ok(a.core.closed)
+  t.ok(a.replicator.destroyed)
+
+  await t.exception(blk, /REQUEST_TIMEOUT/)
+})
+
 test('replicate range that fills initial size of bitfield page', async function (t) {
   const a = await create(t)
   await a.append(new Array(2 ** 15).fill('a'))
