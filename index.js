@@ -466,7 +466,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.closing) return this.closing
 
-    this.closing = this._close(error || null, { force })
+    this.closing = this._close(error || null, force)
     return this.closing
   }
 
