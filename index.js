@@ -456,13 +456,26 @@ module.exports = class Hypercore extends EventEmitter {
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  close (err) {
+  close ({ error, force = !!error } = {}) {
     if (this.closing) return this.closing
-    this.closing = this._close(err || null)
+
+    this.closing = this._close(error || null, force)
     return this.closing
   }
 
-  async _close (err) {
+  _forceClose (error) {
+    const sessions = [...this.sessions]
+
+    const closing = []
+    for (const session of sessions) {
+      if (session === this) continue
+      closing.push(session.close({ error, force: false }))
+    }
+
+    return Promise.all(closing)
+  }
+
+  async _close (error, force) {
     if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
@@ -482,18 +495,20 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (this.replicator !== null) {
       this.replicator.findingPeers -= this._findingPeers
-      this.replicator.clearRequests(this.activeRequests, err)
+      this.replicator.clearRequests(this.activeRequests, error)
       this.replicator.updateActivity(this._active ? -1 : 0)
     }
 
     this._findingPeers = 0
 
-    // check if there is still an active session
-    if (this.sessions.length || this.state.active > 1) {
+    if (force) {
+      await this._forceClose(error)
+    } else if (this.sessions.length || this.state.active > 1) {
+      // check if there is still an active session
       await this.state.unref()
 
       // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.core.state.active === 1 && this.autoClose) await this.sessions[0].close(err)
+      if (this.sessions.length === 1 && this.core.state.active === 1 && this.autoClose) await this.sessions[0].close({ error })
       // emit "fake" close as this is a session
 
       this.emit('close', false)
@@ -638,7 +653,7 @@ module.exports = class Hypercore extends EventEmitter {
     const sessions = [...this.sessions]
 
     const all = []
-    for (const s of sessions) all.push(s.close(err))
+    for (const s of sessions) all.push(s.close({ error: err, force: false })) // force false or else infinite recursion
     await Promise.allSettled(all)
   }
 
