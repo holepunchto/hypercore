@@ -456,7 +456,7 @@ module.exports = class Hypercore extends EventEmitter {
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  async close ({ error, force = !!error } = {}) {
+  close ({ error, force = !!error } = {}) {
     if (this.closing) return this.closing
 
     this.closing = this._close(error || null, force)
