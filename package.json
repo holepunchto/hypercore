@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "brittle": "^3.0.0",
+    "byte-size": "^8.1.1",
     "hyperswarm": "^4.3.6",
     "rache": "^1.0.0",
     "random-access-memory": "^6.1.0",
