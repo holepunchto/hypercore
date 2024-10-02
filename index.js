@@ -498,7 +498,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (this.replicator !== null) {
-      this.replicator.destroy()
+      await this.replicator.destroy()
     }
 
     await this.core.close()
