@@ -411,6 +411,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     this.replicator = new Replicator(this.core, this.key, {
       eagerUpgrade: true,
+      defaultUploading: opts.defaultUploading,
       notDownloadingLinger: opts.notDownloadingLinger,
       allowFork: opts.allowFork !== false,
       inflightRange: opts.inflightRange,
