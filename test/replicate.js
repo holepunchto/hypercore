@@ -1368,6 +1368,9 @@ test('cancel block', async function (t) {
 
   t.ok(a.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
   t.is(a.replicator.stats.wireCancel.rx, b.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
+
+  n1.destroy()
+  n2.destroy()
 })
 
 test('try cancel block from a different session', async function (t) {
@@ -1405,6 +1408,9 @@ test('try cancel block from a different session', async function (t) {
 
   await a.close()
   await b.close()
+
+  n1.destroy()
+  n2.destroy()
 })
 
 test('retry failed block requests to another peer', async function (t) {
@@ -1441,6 +1447,15 @@ test('retry failed block requests to another peer', async function (t) {
   b.once('upload', onupload.bind(null, b, 'b'))
 
   t.alike(await c.get(0), b4a.from('1'))
+
+  n1.destroy()
+  n2.destroy()
+
+  n3.destroy()
+  n4.destroy()
+
+  n5.destroy()
+  n6.destroy()
 
   async function onupload (core, name) {
     t.pass('onupload: ' + name + ' (' + (once ? 'allow' : 'deny') + ')')
@@ -1653,6 +1668,9 @@ test('session id reuse does not stall', async function (t) {
 
   t.pass('All blocks downloaded')
   t.is(downloaded, 100, 'Downloaded all blocks exactly once')
+
+  n1.destroy()
+  n2.destroy()
 })
 
 test('restore after cancelled block request', async function (t) {
@@ -1681,6 +1699,9 @@ test('restore after cancelled block request', async function (t) {
   await new Promise(resolve => b.on('append', resolve))
 
   t.is(b.length, a.length)
+
+  n1.destroy()
+  n2.destroy()
 })
 
 test('handshake is unslabbed', async function (t) {

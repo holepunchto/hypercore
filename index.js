@@ -9,7 +9,6 @@ const Protomux = require('protomux')
 const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
-const { createTracer } = require('hypertrace')
 const unslab = require('unslab')
 
 const Replicator = require('./lib/replicator')
@@ -56,7 +55,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     this[promises] = true
 
-    this.tracer = createTracer(this)
     this.storage = null
     this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
@@ -270,8 +268,6 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (o.state) this.state = this.draft ? o.state.memoryOverlay() : this.snapshotted ? o.state.snapshot() : o.state.ref()
 
-    if (o.core) this.tracer.setParent(o.core.tracer)
-
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
@@ -393,7 +389,6 @@ module.exports = class Hypercore extends EventEmitter {
       onupdate: this._oncoreupdate.bind(this),
       onconflict: this._oncoreconflict.bind(this)
     })
-    this.tracer.setParent(this.core.tracer)
 
     this.state = this.core.state
 
@@ -516,7 +511,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (this.replicator !== null) {
-      this.replicator.destroy()
+      await this.replicator.destroy()
     }
 
     await this.state.unref() // close after replicator
@@ -853,8 +848,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid')
 
-    this.tracer.trace('get', { index })
-
     if (this.closing !== null) throw SESSION_CLOSED()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
@@ -982,8 +975,6 @@ module.exports = class Hypercore extends EventEmitter {
   async _download (range) {
     if (this.opened === false) await this.opening
 
-    this.tracer.trace('download', { range })
-
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
     return this.replicator.addRange(activeRequests, range)
@@ -1029,7 +1020,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (isDefault && writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
-    this.tracer.trace('append', { blocks })
 
     const preappend = this.encryption && this._preappend
 
