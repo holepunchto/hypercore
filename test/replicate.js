@@ -28,7 +28,7 @@ test('basic replication', async function (t) {
 test('basic replication stats', async function (t) {
   const a = await create()
 
-  await a.append(['a', 'b', 'c', 'd', 'e'])
+  await a.append(['aa', 'bb', 'cc', 'dd', 'ee'])
 
   const b = await create(a.key)
 
@@ -51,9 +51,13 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireExtension.tx, 0, 'wireExtension init 0')
   t.is(aStats.wireCancel.rx, 0, 'wireCancel init 0')
   t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
+  t.is(aStats.blocksUploaded, 0, 'blocksUploaded init 0')
+  t.is(aStats.blocksDownloaded, 0, 'blocksDownloaded init 0')
+  t.is(aStats.bytesUploaded, 0, 'bytesUploaded init 0')
+  t.is(aStats.bytesDownloaded, 0, 'bytesDownloaded init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 8, 'Expected amount of stats')
+  t.is(initStatsLength, 12, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -79,6 +83,11 @@ test('basic replication stats', async function (t) {
 
   t.ok(bStats.wireRange.rx > 0, 'wireRange incremented')
   t.is(aStats.wireRange.tx, bStats.wireRange.rx, 'wireRange received == transmitted')
+
+  t.ok(aStats.blocksUploaded > 0, 'blocksUploaded incremented')
+  t.is(aStats.bytesUploaded, aStats.blocksUploaded * 2, '2 bytes per block') // Because the entries all consist of 2 bytes (like aa)
+  t.is(bStats.blocksDownloaded, aStats.blocksUploaded, 'blocks uploaded == downloaded')
+  t.is(bStats.bytesDownloaded, aStats.bytesUploaded, 'bytes uploaded == downloaded')
 
   // extension messages
   const aExt = a.registerExtension('test-extension', {
