@@ -1,7 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
-const CoreStorage = require('hypercore-on-the-rocks')
+const CoreStorage = require('hypercore-storage')
 const Core = require('../lib/core')
 
 test('core - append', async function (t) {

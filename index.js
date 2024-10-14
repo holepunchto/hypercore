@@ -1,7 +1,7 @@
 const { EventEmitter } = require('events')
 const isOptions = require('is-options')
 const hypercoreCrypto = require('hypercore-crypto')
-const CoreStorage = require('hypercore-on-the-rocks')
+const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
