@@ -824,3 +824,32 @@ test('batch append with huge batch', async function (t) {
 
   await b.close()
 })
+
+test('batch does not append but reopens', async function (t) {
+  const dir = await createTempDir(t)
+
+  let core = new Hypercore(dir)
+
+  await core.append('hello')
+
+  let batch = core.session({ name: 'hello' })
+
+  // open and close
+  await batch.ready()
+  await batch.close()
+
+  await core.close()
+
+  core = new Hypercore(dir)
+
+  await core.append('hello')
+
+  batch = core.session({ name: 'hello' })
+  await batch.ready()
+
+  t.is(core.length, 2)
+  t.is(batch.length, 1)
+
+  await core.close()
+  await batch.close()
+})
