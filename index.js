@@ -321,10 +321,11 @@ module.exports = class Hypercore extends EventEmitter {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
       await this.state.unref()
-      this.state = await this.core.createSession(opts.name, opts.checkout, opts.refresh)
+      const checkout = opts.checkout === undefined ? -1 : opts.checkout
+      this.state = await this.core.createSession(opts.name, checkout, !!opts.overwrite)
 
-      if (opts.checkout !== undefined) {
-        await this.state.truncate(opts.checkout, this.fork)
+      if (checkout !== -1) {
+        await this.state.truncate(checkout, this.fork)
       }
     }
 
