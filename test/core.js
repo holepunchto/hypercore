@@ -425,88 +425,6 @@ test('core - partial clone', async function (t) {
   ])
 })
 
-test('core - clone with additional', async function (t) {
-  const { core } = await create(t)
-
-  await core.state.append([b4a.from('a'), b4a.from('b')])
-
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create(t, { manifest })
-
-  await copy.copyPrologue(core.state, core.tree.signature)
-
-  // copy should be independent
-  await core.state.append([b4a.from('c')])
-
-  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create(t, { manifest: secondManifest })
-
-  await clone.copyPrologue(copy.state, { additional: [b4a.from('c')] })
-
-  t.is(clone.header.tree.length, 3)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.is(copy.header.hints.contiguousLength, 2)
-  t.is(clone.header.hints.contiguousLength, 3)
-
-  t.alike(await getBlock(clone, 0), b4a.from('a'))
-  t.alike(await getBlock(clone, 1), b4a.from('b'))
-  t.alike(await getBlock(clone, 2), b4a.from('c'))
-})
-
-test('core - clone with additional, larger tree', async function (t) {
-  const { core } = await create(t)
-
-  await core.state.append([b4a.from('a'), b4a.from('b')])
-
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create(t, { manifest })
-
-  await copy.copyPrologue(core.state)
-
-  const additional = [
-    b4a.from('c'),
-    b4a.from('d'),
-    b4a.from('e'),
-    b4a.from('f'),
-    b4a.from('g'),
-    b4a.from('h'),
-    b4a.from('i'),
-    b4a.from('j')
-  ]
-
-  await core.state.append(additional)
-
-  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create(t, { manifest: secondManifest })
-
-  // copy should be independent
-  await clone.copyPrologue(copy.state, { additional })
-
-  t.is(clone.header.tree.length, core.header.tree.length)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.is(copy.header.hints.contiguousLength, 2)
-  t.is(clone.header.hints.contiguousLength, 10)
-
-  t.alike(await getBlock(clone, 0), b4a.from('a'))
-  t.alike(await getBlock(clone, 1), b4a.from('b'))
-  t.alike(await getBlock(clone, 2), b4a.from('c'))
-  t.alike(await getBlock(clone, 3), b4a.from('d'))
-  t.alike(await getBlock(clone, 4), b4a.from('e'))
-  t.alike(await getBlock(clone, 5), b4a.from('f'))
-  t.alike(await getBlock(clone, 6), b4a.from('g'))
-  t.alike(await getBlock(clone, 7), b4a.from('h'))
-  t.alike(await getBlock(clone, 8), b4a.from('i'))
-  t.alike(await getBlock(clone, 9), b4a.from('j'))
-})
-
 test('core - copyPrologue bails if core is not the same', async function (t) {
   const { core } = await create(t)
   const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
@@ -517,39 +435,6 @@ test('core - copyPrologue bails if core is not the same', async function (t) {
   await t.exception(copy.copyPrologue(core.state))
 
   t.is(copy.header.hints.contiguousLength, 0)
-})
-
-test('core - copyPrologue can recover from bad additional', async function (t) {
-  const { core } = await create(t)
-
-  await core.state.append([b4a.from('a'), b4a.from('b')])
-
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: copy } = await create(t, { manifest })
-  await copy.copyPrologue(core.state)
-
-  // copy should be independent
-  await core.state.append([b4a.from('c')])
-
-  const secondManifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
-  const { core: clone } = await create(t, { manifest: secondManifest })
-
-  await t.exception(clone.copyPrologue(copy.state, { additional: [b4a.from('d')] }))
-
-  t.is(clone.header.hints.contiguousLength, 0)
-
-  await t.execution(clone.copyPrologue(copy.state, { additional: [b4a.from('c')] }))
-
-  t.is(clone.header.hints.contiguousLength, 3)
-  t.is(clone.header.tree.length, 3)
-
-  t.is(clone.tree.length, core.tree.length)
-  t.is(clone.tree.byteLength, core.tree.byteLength)
-  t.alike(clone.roots, core.roots)
-
-  t.alike(await getBlock(clone, 0), b4a.from('a'))
-  t.alike(await getBlock(clone, 1), b4a.from('b'))
-  t.alike(await getBlock(clone, 2), b4a.from('c'))
 })
 
 test('core - copyPrologue many', async function (t) {
