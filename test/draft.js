@@ -38,7 +38,7 @@ test('draft and then undraft', async function (t) {
 
   await draft.append('edits!')
 
-  await core.core.commit(draft.state)
+  await core.core.commit(draft.state, { treeLength: 2 })
 
   await draft.close()
 
