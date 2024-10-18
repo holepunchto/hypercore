@@ -53,10 +53,17 @@ test('draft truncate', async function (t) {
 
   await core.append('hello')
   await core.append('world')
-  await core.append('some')
-  await core.append('value')
 
-  const draft = core.session({ draft: true })
+  const sess = core.session({ name: 'batch' })
+
+  await sess.append('some')
+  await sess.append('value')
+
+  // nothing changed as it was a draft
+  t.alike(sess.byteLength, 19)
+  t.alike(sess.length, 4)
+
+  const draft = sess.session({ draft: true })
 
   await draft.truncate(2)
 
@@ -67,13 +74,48 @@ test('draft truncate', async function (t) {
   t.alike(draft.byteLength, 10)
   t.alike(draft.length, 2)
 
-  t.unlike(await core.core.commit(draft.state, { overwrite: true }), null)
+  t.unlike(await sess.state.overwrite(draft.state, { overwrite: true }), null)
 
   await draft.close()
 
   // nothing changed as it was a draft
-  t.alike(core.byteLength, 10)
-  t.alike(core.length, 2)
+  t.alike(sess.byteLength, 10)
+  t.alike(sess.length, 2)
 
+  await core.close()
+})
+
+test('draft truncate then append', async function (t) {
+  const core = await create(t)
+
+  await core.append('hello')
+  await core.append('world')
+
+  const sess = core.session({ name: 'batch' }) // only batch can be truncated
+
+  await sess.append('some')
+  await sess.append('value')
+
+  const draft = sess.session({ draft: true })
+
+  await draft.truncate(2)
+  await draft.append('other data')
+
+  t.alike(await draft.get(0), b4a.from('hello'))
+  t.alike(await draft.get(1), b4a.from('world'))
+  t.alike(await draft.get(2), b4a.from('other data'))
+  t.alike(await draft.seek(11), [2, 1])
+  t.alike(draft.byteLength, 20)
+  t.alike(draft.length, 3)
+
+  t.unlike(await sess.state.overwrite(draft.state), null)
+
+  await draft.close()
+
+  // nothing changed as it was a draft
+  t.alike(sess.byteLength, 20)
+  t.alike(sess.length, 3)
+
+  await sess.close()
   await core.close()
 })
