@@ -805,7 +805,7 @@ test('reopen a tree', async t => {
 
   await a.storage.db.close()
 
-  const a1 = await create(t, 0, dir)
+  const a1 = await create(t, 0, dir, a.tree.length)
 
   t.alike(a1.tree.length, 32)
   t.alike(a1.tree.byteLength, byteLength)
@@ -866,7 +866,7 @@ async function reorg (local, remote) {
   return r.ancestors
 }
 
-async function create (t, length = 0, dir) {
+async function create (t, length = 0, dir, resume = 0) {
   if (!dir) dir = await createTempDir(t)
 
   const db = new CoreStorage(dir)
@@ -877,7 +877,7 @@ async function create (t, length = 0, dir) {
 
   const storage = (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
 
-  const tree = await Tree.open(storage)
+  const tree = await Tree.open(storage, resume)
 
   if (!length) return { storage, tree }
 
