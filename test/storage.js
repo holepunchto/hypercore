@@ -17,6 +17,8 @@ test('storage layout', async function (t) {
   }
 
   snapshot(t, core)
+
+  await core.close()
 })
 
 test('encrypted storage layout', async function (t) {
@@ -27,6 +29,8 @@ test('encrypted storage layout', async function (t) {
   }
 
   snapshot(t, core)
+
+  await core.close()
 })
 
 function snapshot (t, core) {

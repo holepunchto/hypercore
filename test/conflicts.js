@@ -4,12 +4,12 @@ const { create, replicate, unreplicate } = require('./helpers')
 test('one forks', async function (t) {
   t.plan(3)
 
-  const a = await create()
+  const a = await create(t)
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
 
-  const c = await create({ keyPair: a.core.header.keyPair })
+  const c = await create(t, { keyPair: a.core.header.keyPair })
   await c.append(['a', 'b', 'c', 'd', 'f', 'e'])
 
   const streams = replicate(a, b, t)
