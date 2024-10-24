@@ -10,7 +10,6 @@ const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 
-const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
@@ -202,7 +201,7 @@ class Hypercore extends EventEmitter {
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const Clz = opts.class || Hypercore
-    const s = new Clz(this.storage, this.key, {
+    const s = new Clz(null, this.key, {
       ...opts,
       core: this.core,
       sparse,
@@ -397,7 +396,7 @@ class Hypercore extends EventEmitter {
     }
     for (const ext of gc) ext.destroy()
 
-    if (this.core !== null && this.core.replicator !== null) {
+    if (this.core !== null) {
       this.core.replicator.findingPeers -= this._findingPeers
       this.core.replicator.clearRequests(this.activeRequests, error)
       this.core.replicator.updateActivity(this._active ? -1 : 0)
@@ -552,7 +551,7 @@ class Hypercore extends EventEmitter {
 
   findingPeers () {
     this._findingPeers++
-    if (this.core !== null && this.core.replicator !== null && !this.closing) this.core.replicator.findingPeers++
+    if (this.core !== null && !this.closing) this.core.replicator.findingPeers++
 
     let once = true
 
@@ -560,7 +559,7 @@ class Hypercore extends EventEmitter {
       if (this.closing || !once) return
       once = false
       this._findingPeers--
-      if (this.core !== null && this.core.replicator !== null && --this.core.replicator.findingPeers === 0) {
+      if (this.core !== null && --this.core.replicator.findingPeers === 0) {
         this.core.replicator.updateAll()
       }
     }
@@ -956,9 +955,11 @@ function readBlock (reader, index) {
 }
 
 function initOnce (session, storage, key, opts) {
-  session.storage = Hypercore.defaultStorage(storage)
-
-  session.core = new Core(session.storage, {
+  session.core = new Core(Hypercore.defaultStorage(storage), {
+    eagerUpgrade: true,
+    notDownloadingLinger: opts.notDownloadingLinger,
+    allowFork: opts.allowFork !== false,
+    inflightRange: opts.inflightRange,
     compat: opts.compat,
     force: opts.force,
     createIfMissing: opts.createIfMissing,
@@ -969,12 +970,5 @@ function initOnce (session, storage, key, opts) {
     legacy: opts.legacy,
     manifest: opts.manifest,
     globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
-  })
-
-  session.core.replicator = new Replicator(session.core, {
-    eagerUpgrade: true,
-    notDownloadingLinger: opts.notDownloadingLinger,
-    allowFork: opts.allowFork !== false,
-    inflightRange: opts.inflightRange
   })
 }

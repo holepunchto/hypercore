@@ -93,8 +93,8 @@ test('basic replication stats', async function (t) {
   const c = await create(t, a.key)
   replicate(c, b, t)
   c.get(1).catch(() => {})
-  await new Promise(resolve => setImmediate(resolve))
-  await c.storage.idle()
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  await c.core.storage.db.idle()
   const cStats = c.core.replicator.stats
   t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
   t.is(bStats.wireBitfield.tx, cStats.wireBitfield.rx, 'bitfield received == transmitted')
