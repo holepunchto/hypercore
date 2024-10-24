@@ -333,7 +333,7 @@ test('invalid capability fails', async function (t) {
   const a = await create(t)
   const b = await create(t)
 
-  b.core.replicator.discoveryKey = a.discoveryKey
+  b.core.discoveryKey = a.discoveryKey
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1472,29 +1472,6 @@ test('retry failed block requests to another peer', async function (t) {
   }
 })
 
-test('idle replication sessions auto gc', async function (t) {
-  const a = await create(t, { active: false, notDownloadingLinger: 50 })
-  const b = await create(t, a.key, { autoClose: true, active: false, notDownloadingLinger: 50 })
-
-  await a.append('test')
-  const s = b.session()
-
-  replicate(a, b, t, { session: true })
-
-  t.alike(await s.get(0), b4a.from('test'), 'replicates')
-
-  let closed = false
-  b.on('close', function () {
-    closed = true
-  })
-
-  await s.close()
-
-  await pollUntil(() => closed, 75)
-
-  t.ok(closed, 'replication session gced')
-})
-
 test('manifests eagerly sync', async function (t) {
   t.plan(1)
 
@@ -1758,67 +1735,12 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
-test('replication count should never go negative', async function (t) {
-  t.plan(2 + 3)
-
-  const a = await create(t, { autoClose: true })
-  const b = await create(t, a.key, { autoClose: true })
-  const c = await create(t, a.key, { autoClose: true })
-
-  const refA = a.session()
-  const refB = b.session()
-  const refC = b.session()
-
-  await a.append(['a'])
-
-  const s1 = a.replicate(true, { session: true })
-  const s2 = Hypercore.createProtocolStream(false)
-
-  s1.pipe(s2).pipe(s1)
-
-  const s3 = a.replicate(true, { session: true })
-  const s4 = Hypercore.createProtocolStream(false)
-
-  s3.pipe(s4).pipe(s3)
-
-  await eventFlush()
-
-  b.replicate(s2, { session: true })
-  c.replicate(s4, { session: true })
-
-  // get some values just to know all the stream plumbing is done
-  t.ok(!!(await b.get(0)), 'b got it')
-  t.ok(!!(await c.get(0)), 'c got it')
-
-  a.on('close', () => t.pass('a closed'))
-  b.on('close', () => t.pass('b closed'))
-  c.on('close', () => t.pass('c closed'))
-
-  await Promise.all([destroyStream(s1), destroyStream(s2), destroyStream(s3), destroyStream(s4)])
-
-  await refA.close()
-  await refB.close()
-  await refC.close()
-
-  function destroyStream (s) {
-    s.destroy()
-    return new Promise(resolve => s.once('close', resolve))
-  }
-})
-
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
     if (reqBlock) break
 
     await new Promise(resolve => setImmediate(resolve))
-  }
-}
-
-async function pollUntil (fn, time) {
-  for (let i = 0; i < 5; i++) {
-    if (fn()) return
-    await new Promise(resolve => setTimeout(resolve, time))
   }
 }
 

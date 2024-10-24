@@ -275,8 +275,7 @@ test('multisig - append', async function (t) {
 
   t.is(len, 1)
 
-  const batch = await core.session({ name: 'batch' })
-  batch.keyPair = null
+  const batch = core.session({ name: 'batch' })
 
   await batch.append(b4a.from('0'))
 

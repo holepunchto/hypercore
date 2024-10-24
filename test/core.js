@@ -510,7 +510,8 @@ async function create (t, opts = {}) {
 
     if (!opts.discoveryKey) opts.discoveryKey = dkey
 
-    const core = await Core.open(db, opts)
+    const core = new Core(db, opts)
+    await core.ready()
     t.teardown(() => core.close())
     return core
   }
