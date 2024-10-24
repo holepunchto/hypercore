@@ -318,7 +318,7 @@ test('multisig - append', async function (t) {
   await batch.close()
 })
 
-test('multisig -  batch failed', async function (t) {
+test('multisig - batch failed', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
@@ -376,7 +376,7 @@ test('multisig -  batch failed', async function (t) {
   await batch.close()
 })
 
-test('multisig -  patches', async function (t) {
+test('multisig - patches', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -431,7 +431,7 @@ test('multisig -  patches', async function (t) {
   t.alike(await core2.get(0), b4a.from('0'))
 })
 
-test('multisig -  batch append', async function (t) {
+test('multisig - batch append', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -497,7 +497,7 @@ test('multisig -  batch append', async function (t) {
   t.alike(await core2.get(3), b4a.from('3'))
 })
 
-test('multisig -  batch append with patches', async function (t) {
+test('multisig - batch append with patches', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -567,7 +567,7 @@ test('multisig -  batch append with patches', async function (t) {
   t.alike(await core2.get(3), b4a.from('3'))
 })
 
-test('multisig -  cannot divide batch', async function (t) {
+test('multisig - cannot divide batch', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -623,7 +623,7 @@ test('multisig -  cannot divide batch', async function (t) {
   t.is(core2.length, 0)
 })
 
-test('multisig -  multiple appends', async function (t) {
+test('multisig - multiple appends', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -708,7 +708,7 @@ test('multisig -  multiple appends', async function (t) {
   t.is(core2.length, 4)
 })
 
-test('multisig -  persist to disk', async function (t) {
+test('multisig - persist to disk', async function (t) {
   const dir = await tmpDir(t)
   const storage = await createStorage(t, dir)
 
@@ -770,7 +770,7 @@ test('multisig -  persist to disk', async function (t) {
   await clone.close()
 })
 
-test('multisig -  overlapping appends', async function (t) {
+test('multisig - overlapping appends', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
@@ -946,7 +946,7 @@ test('multisig - normal operating mode', async function (t) {
   }
 })
 
-test('multisig -  large patches', async function (t) {
+test('multisig - large patches', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))

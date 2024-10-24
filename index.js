@@ -547,112 +547,6 @@ class Hypercore extends EventEmitter {
     }
   }
 
-  async _oncoreconflict (proof, from) {
-    await this.core.replicator.onconflict(from)
-
-    for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
-
-    const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
-    await this._closeAllSessions(err)
-  }
-
-  async _closeAllSessions (err) {
-    // this.sessions modifies itself when a session closes
-    // This way we ensure we indeed iterate over all sessions
-    const sessions = [...this.sessions]
-
-    const all = []
-    for (const s of sessions) all.push(s.close({ error: err, force: false })) // force false or else infinite recursion
-    await Promise.allSettled(all)
-  }
-
-  _oncoreupdate ({ status, bitfield, value, from }) {
-    if (status !== 0) {
-      const truncatedNonSparse = (status & 0b1000) !== 0
-      const appendedNonSparse = (status & 0b0100) !== 0
-      const truncated = (status & 0b0010) !== 0
-      const appended = (status & 0b0001) !== 0
-
-      if (truncated) {
-        this.core.replicator.ontruncate(bitfield.start, bitfield.length)
-      }
-
-      if ((status & 0b10011) !== 0) {
-        this.core.replicator.onupgrade()
-      }
-
-      if (status & 0b10000) {
-        for (let i = 0; i < this.sessions.length; i++) {
-          const s = this.sessions[i]
-
-          if (s.encryption && s.encryption.compat !== this.core.compat) {
-            s.encryption = new BlockEncryption(s.encryption.key, this.key, { compat: this.core.compat, isBlockKey: s.encryption.isBlockKey })
-          }
-        }
-
-        for (let i = 0; i < this.sessions.length; i++) {
-          this.sessions[i].emit('manifest')
-        }
-      }
-
-      for (let i = 0; i < this.sessions.length; i++) {
-        const s = this.sessions[i]
-
-        if (truncated) {
-          // If snapshotted, make sure to update our compat so we can fail gets
-          if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
-        }
-
-        if (s.sparse ? truncated : truncatedNonSparse) {
-          s.emit('truncate', bitfield.start, this.core.tree.fork)
-        }
-
-        // For sparse sessions, immediately emit appends. If non-sparse, emit if contig length has updated
-        if (s.sparse ? appended : appendedNonSparse) {
-          s.emit('append')
-        }
-      }
-
-      const contig = this.core.header.hints.contiguousLength
-
-      // When the contig length catches up, broadcast the non-sparse length to peers
-      if (appendedNonSparse && contig === this.core.tree.length) {
-        for (const peer of this.peers) {
-          if (peer.broadcastedNonSparse) continue
-
-          peer.broadcastRange(0, contig)
-          peer.broadcastedNonSparse = true
-        }
-      }
-    }
-
-    if (bitfield) {
-      this.core.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
-    }
-
-    if (value) {
-      const byteLength = value.byteLength - this.padding
-
-      for (let i = 0; i < this.sessions.length; i++) {
-        this.sessions[i].emit('download', bitfield.start, byteLength, from)
-      }
-    }
-  }
-
-  _onpeerupdate (added, peer) {
-    const name = added ? 'peer-add' : 'peer-remove'
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit(name, peer)
-
-      if (added) {
-        for (const ext of this.sessions[i].extensions.values()) {
-          peer.extensions.set(ext.name, ext)
-        }
-      }
-    }
-  }
-
   async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
     await this.state.setUserData(key, value)
@@ -1088,9 +982,7 @@ function initOnce (session, storage, key, opts) {
     keyPair: opts.keyPair,
     legacy: opts.legacy,
     manifest: opts.manifest,
-    globalCache: opts.globalCache || null, // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
-    onupdate: session._oncoreupdate.bind(session),
-    onconflict: session._oncoreconflict.bind(session)
+    globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
   })
 
   session.core.replicator = new Replicator(session.core, {
@@ -1098,7 +990,6 @@ function initOnce (session, storage, key, opts) {
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
     inflightRange: opts.inflightRange,
-    onpeerupdate: session._onpeerupdate.bind(session),
     onupload: session._onupload.bind(session),
     oninvalid: session._oninvalid.bind(session)
   })
