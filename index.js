@@ -416,12 +416,8 @@ class Hypercore extends EventEmitter {
       return
     }
 
-    if (this.core !== null && this.core.replicator !== null) {
-      await this.core.replicator.destroy()
-    }
-
-    await this.state.unref() // close after replicator
     await this.core.close()
+    await this.state.unref() // close after replicator
 
     this.emit('close', true)
   }
