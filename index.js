@@ -533,20 +533,6 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  _onupload (index, value, from) {
-    const byteLength = value.byteLength - this.padding
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('upload', index, byteLength, from)
-    }
-  }
-
-  _oninvalid (err, req, res, from) {
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('verification-error', err, req, res, from)
-    }
-  }
-
   async setUserData (key, value, { flush = false } = {}) {
     if (this.opened === false) await this.opening
     await this.state.setUserData(key, value)
@@ -989,8 +975,6 @@ function initOnce (session, storage, key, opts) {
     eagerUpgrade: true,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
-    inflightRange: opts.inflightRange,
-    onupload: session._onupload.bind(session),
-    oninvalid: session._oninvalid.bind(session)
+    inflightRange: opts.inflightRange
   })
 }
