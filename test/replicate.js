@@ -31,8 +31,8 @@ test('basic replication stats', async function (t) {
 
   const b = await create(t, a.key)
 
-  const aStats = a.replicator.stats
-  const bStats = b.replicator.stats
+  const aStats = a.core.replicator.stats
+  const bStats = b.core.replicator.stats
 
   t.is(aStats.wireSync.rx, 0, 'wireSync init 0')
   t.is(aStats.wireSync.tx, 0, 'wireSync init 0')
@@ -61,7 +61,7 @@ test('basic replication stats', async function (t) {
 
   await r.done()
 
-  const aPeerStats = a.replicator.peers[0].stats
+  const aPeerStats = a.core.replicator.peers[0].stats
   t.alike(aPeerStats, aStats, 'same stats for peer as entire replicator (when there is only 1 peer)')
 
   t.ok(aStats.wireSync.rx > 0, 'wiresync incremented')
@@ -95,7 +95,7 @@ test('basic replication stats', async function (t) {
   c.get(1).catch(() => {})
   await new Promise(resolve => setImmediate(resolve))
   await c.storage.idle()
-  const cStats = c.replicator.stats
+  const cStats = c.core.replicator.stats
   t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
   t.is(bStats.wireBitfield.tx, cStats.wireBitfield.rx, 'bitfield received == transmitted')
 
@@ -113,14 +113,14 @@ test('basic downloading is set immediately after ready', async function (t) {
   const a = await createA()
 
   a.on('ready', function () {
-    t.ok(a.replicator.downloading)
+    t.ok(a.core.replicator.downloading)
   })
 
   const createB = await createStored(t)
   const b = await createB({ active: false })
 
   b.on('ready', function () {
-    t.absent(b.replicator.downloading)
+    t.absent(b.core.replicator.downloading)
   })
 
   t.teardown(async () => {
@@ -333,7 +333,7 @@ test('invalid capability fails', async function (t) {
   const a = await create(t)
   const b = await create(t)
 
-  b.replicator.discoveryKey = a.discoveryKey
+  b.core.replicator.discoveryKey = a.discoveryKey
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1279,7 +1279,7 @@ test('force close kills replication session', async function (t) {
   const blk = b.get(2, { timeout: 1000 })
 
   t.ok(a.core.closed)
-  t.ok(a.replicator.destroyed)
+  t.ok(a.core.replicator.destroyed)
 
   await t.exception(blk, /REQUEST_TIMEOUT/)
 })
@@ -1367,8 +1367,8 @@ test('cancel block', async function (t) {
   await b.close()
   await session.close()
 
-  t.ok(a.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
-  t.is(a.replicator.stats.wireCancel.rx, b.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
+  t.ok(a.core.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
+  t.is(a.core.replicator.stats.wireCancel.rx, b.core.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
 
   n1.destroy()
   n2.destroy()
@@ -1621,12 +1621,12 @@ test('can define default max-inflight blocks for replicator peers', async functi
   await b.get(0)
 
   t.alike(
-    a.replicator.peers[0].inflightRange,
+    a.core.replicator.peers[0].inflightRange,
     [123, 123],
     'Uses the custom inflight range'
   )
   t.alike(
-    b.replicator.peers[0].inflightRange,
+    b.core.replicator.peers[0].inflightRange,
     [16, 512],
     'Uses default if no inflight range specified'
   )
@@ -1717,12 +1717,12 @@ test('handshake is unslabbed', async function (t) {
   await r.done()
 
   t.is(
-    a.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    a.core.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
     32,
     'unslabbed handshake capability buffer'
   )
   t.is(
-    b.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    b.core.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
     32,
     'unslabbed handshake capability buffer'
   )
@@ -1808,7 +1808,7 @@ test('replication count should never go negative', async function (t) {
 
 async function waitForRequestBlock (core) {
   while (true) {
-    const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
+    const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
     if (reqBlock) break
 
     await new Promise(resolve => setImmediate(resolve))

@@ -1,12 +1,11 @@
 const { EventEmitter } = require('events')
 const isOptions = require('is-options')
-const hypercoreCrypto = require('hypercore-crypto')
+const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
-const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
@@ -56,10 +55,8 @@ module.exports = class Hypercore extends EventEmitter {
     this[promises] = true
 
     this.storage = null
-    this.crypto = opts.crypto || hypercoreCrypto
-    this.core = null
+    this.core = opts.core || null
     this.state = null
-    this.replicator = null
     this.encryption = null
     this.extensions = new Map()
 
@@ -67,8 +64,6 @@ module.exports = class Hypercore extends EventEmitter {
     this.encodeBatch = null
     this.activeRequests = []
 
-    this.id = null
-    this.key = key || null
     this.keyPair = opts.keyPair || null
     this.readable = true
     this.writable = false
@@ -147,7 +142,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static discoveryKey (key) {
-    return hypercoreCrypto.discoveryKey(key)
+    return crypto.discoveryKey(key)
   }
 
   static getProtocolMuxer (stream) {
@@ -244,7 +239,6 @@ module.exports = class Hypercore extends EventEmitter {
 
   setKeyPair (keyPair) {
     this.keyPair = keyPair
-    this.writable = this._isWritable()
   }
 
   setActive (bool) {
@@ -252,17 +246,13 @@ module.exports = class Hypercore extends EventEmitter {
     if (active === this._active || this.closing) return
     this._active = active
     if (!this.opened) return
-    this.replicator.updateActivity(this._active ? 1 : -1)
+    this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
   _passCapabilities (o) {
-    if (!this.keyPair) this.keyPair = o.keyPair
-    this.crypto = o.crypto
-    this.id = o.id
-    this.key = o.key
     this.core = o.core
-    this.replicator = o.replicator
     this.encryption = o.encryption
+    if (!this.keyPair) this.keyPair = o.keyPair
     this.writable = this._isWritable()
     this.autoClose = o.autoClose
 
@@ -284,7 +274,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     this.storage = from.storage
-    this.replicator.findingPeers += this._findingPeers
+    this.core.replicator.findingPeers += this._findingPeers
 
     ensureEncryption(this, opts)
 
@@ -349,7 +339,7 @@ module.exports = class Hypercore extends EventEmitter {
     // It's required so that corestore can load a name from userData before 'ready' is emitted.
     if (opts._preready) await opts._preready(this)
 
-    this.replicator.updateActivity(this._active ? 1 : 0)
+    this.core.replicator.updateActivity(this._active ? 1 : 0)
 
     this.opened = true
     this.emit('ready')
@@ -383,7 +373,6 @@ module.exports = class Hypercore extends EventEmitter {
       overwrite: opts.overwrite,
       key,
       keyPair: opts.keyPair,
-      crypto: this.crypto,
       legacy: opts.legacy,
       manifest: opts.manifest,
       globalCache: opts.globalCache || null, // This is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
@@ -392,6 +381,7 @@ module.exports = class Hypercore extends EventEmitter {
     })
 
     this.state = this.core.state
+    if (this.keyPair === null) this.keyPair = this.core.header.keyPair
 
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
@@ -401,11 +391,7 @@ module.exports = class Hypercore extends EventEmitter {
       await batch.flush()
     }
 
-    this.key = this.core.header.key
-    this.keyPair = this.core.header.keyPair
-    this.id = z32.encode(this.key)
-
-    this.replicator = new Replicator(this.core, this.key, {
+    this.core.replicator = new Replicator(this.core, this.key, {
       eagerUpgrade: true,
       notDownloadingLinger: opts.notDownloadingLinger,
       allowFork: opts.allowFork !== false,
@@ -415,11 +401,15 @@ module.exports = class Hypercore extends EventEmitter {
       oninvalid: this._oninvalid.bind(this)
     })
 
-    this.replicator.findingPeers += this._findingPeers
+    this.core.replicator.findingPeers += this._findingPeers
 
     if (!this.encryption && opts.encryptionKey) {
       this.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
     }
+  }
+
+  get replicator () {
+    return this.core === null ? null : this.core.replicator
   }
 
   _getSnapshot () {
@@ -489,10 +479,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
     for (const ext of gc) ext.destroy()
 
-    if (this.replicator !== null) {
-      this.replicator.findingPeers -= this._findingPeers
-      this.replicator.clearRequests(this.activeRequests, error)
-      this.replicator.updateActivity(this._active ? -1 : 0)
+    if (this.core !== null && this.core.replicator !== null) {
+      this.core.replicator.findingPeers -= this._findingPeers
+      this.core.replicator.clearRequests(this.activeRequests, error)
+      this.core.replicator.updateActivity(this._active ? -1 : 0)
     }
 
     this._findingPeers = 0
@@ -511,8 +501,8 @@ module.exports = class Hypercore extends EventEmitter {
       return
     }
 
-    if (this.replicator !== null) {
-      await this.replicator.destroy()
+    if (this.core !== null && this.core.replicator !== null) {
+      await this.core.replicator.destroy()
     }
 
     await this.state.unref() // close after replicator
@@ -540,7 +530,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _isAttached (stream) {
-    return stream.userData && this.replicator && this.replicator.attached(stream.userData)
+    return stream.userData && this.core && this.core.replicator && this.core.replicator.attached(stream.userData)
   }
 
   _attachToMuxer (mux, useSession) {
@@ -556,11 +546,19 @@ module.exports = class Hypercore extends EventEmitter {
   _attachToMuxerOpened (mux, useSession) {
     // If the user wants to, we can make this replication run in a session
     // that way the core wont close "under them" during replication
-    this.replicator.attachTo(mux, useSession)
+    this.core.replicator.attachTo(mux, useSession)
+  }
+
+  get id () {
+    return this.core === null ? null : this.core.id
+  }
+
+  get key () {
+    return this.core === null ? null : this.core.header.key
   }
 
   get discoveryKey () {
-    return this.replicator === null ? null : this.replicator.discoveryKey
+    return this.core === null ? null : this.core.discoveryKey
   }
 
   get manifest () {
@@ -601,7 +599,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get peers () {
-    return this.replicator === null ? [] : this.replicator.peers
+    return this.core === null || this.core.replicator === null ? [] : this.core.replicator.peers
   }
 
   get encryptionKey () {
@@ -635,7 +633,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _oncoreconflict (proof, from) {
-    await this.replicator.onconflict(from)
+    await this.core.replicator.onconflict(from)
 
     for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
 
@@ -661,11 +659,11 @@ module.exports = class Hypercore extends EventEmitter {
       const appended = (status & 0b0001) !== 0
 
       if (truncated) {
-        this.replicator.ontruncate(bitfield.start, bitfield.length)
+        this.core.replicator.ontruncate(bitfield.start, bitfield.length)
       }
 
       if ((status & 0b10011) !== 0) {
-        this.replicator.onupgrade()
+        this.core.replicator.onupgrade()
       }
 
       if (status & 0b10000) {
@@ -714,7 +712,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     if (bitfield) {
-      this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
+      this.core.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
     }
 
     if (value) {
@@ -759,7 +757,7 @@ module.exports = class Hypercore extends EventEmitter {
 
   findingPeers () {
     this._findingPeers++
-    if (this.replicator !== null && !this.closing) this.replicator.findingPeers++
+    if (this.core !== null && this.core.replicator !== null && !this.closing) this.core.replicator.findingPeers++
 
     let once = true
 
@@ -767,8 +765,8 @@ module.exports = class Hypercore extends EventEmitter {
       if (this.closing || !once) return
       once = false
       this._findingPeers--
-      if (this.replicator !== null && --this.replicator.findingPeers === 0) {
-        this.replicator.updateAll()
+      if (this.core !== null && this.core.replicator !== null && --this.core.replicator.findingPeers === 0) {
+        this.core.replicator.updateAll()
       }
     }
   }
@@ -788,17 +786,17 @@ module.exports = class Hypercore extends EventEmitter {
       return this._updateSnapshot()
     }
 
-    const remoteWait = this._shouldWait(opts, this.replicator.findingPeers > 0)
+    const remoteWait = this._shouldWait(opts, this.core.replicator.findingPeers > 0)
 
     let upgraded = false
 
-    if (await this.replicator.applyPendingReorg()) {
+    if (await this.core.replicator.applyPendingReorg()) {
       upgraded = true
     }
 
     if (!upgraded && remoteWait) {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-      const req = this.replicator.addUpgrade(activeRequests)
+      const req = this.core.replicator.addUpgrade(activeRequests)
 
       upgraded = await req.promise
     }
@@ -827,7 +825,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (!this._shouldWait(opts, this.wait)) return null
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-    const req = this.replicator.addSeek(activeRequests, s)
+    const req = this.core.replicator.addSeek(activeRequests, s)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
@@ -927,7 +925,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-    const req = this.replicator.addBlock(activeRequests, index)
+    const req = this.core.replicator.addBlock(activeRequests, index)
     req.snapshot = index < this.length
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
@@ -978,7 +976,7 @@ module.exports = class Hypercore extends EventEmitter {
 
     const activeRequests = (range && range.activeRequests) || this.activeRequests
 
-    return this.replicator.addRange(activeRequests, range)
+    return this.core.replicator.addRange(activeRequests, range)
   }
 
   // TODO: get rid of this / deprecate it?
@@ -1007,15 +1005,16 @@ module.exports = class Hypercore extends EventEmitter {
     await this.state.truncate(newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
-    if (this.state === this.core.state) this.replicator.updateAll()
+    if (this.state === this.core.state) this.core.replicator.updateAll()
   }
 
   async append (blocks, opts = {}) {
     if (this.opened === false) await this.opening
 
     const isDefault = this.state === this.core.state
+    const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
-    const { keyPair = this.keyPair, signature = null } = opts
+    const { keyPair = defaultKeyPair, signature = null } = opts
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
 
     if (isDefault && writable === false) throw SESSION_NOT_WRITABLE()
@@ -1047,7 +1046,7 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     const roots = await this.state.tree.getRoots(length)
-    return this.crypto.tree(roots)
+    return crypto.tree(roots)
   }
 
   registerExtension (name, handlers = {}) {

@@ -19,6 +19,7 @@ test('sessions - can create writable sessions from a read-only core', async func
 
   const session = core.session({ keyPair })
   await session.ready()
+
   t.ok(session.writable)
 
   try {
