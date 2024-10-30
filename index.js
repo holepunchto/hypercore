@@ -141,6 +141,10 @@ class Hypercore extends EventEmitter {
     return stream.noiseStream.userData
   }
 
+  static createCore (storage, opts) {
+    return new Core(Hypercore.defaultStorage(storage), opts)
+  }
+
   static createProtocolStream (isInitiator, opts = {}) {
     let outerStream = Protomux.isProtomux(isInitiator)
       ? isInitiator.stream
