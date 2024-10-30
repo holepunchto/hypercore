@@ -388,11 +388,9 @@ class Hypercore extends EventEmitter {
     }
     for (const ext of gc) ext.destroy()
 
-    if (this.core.replicator !== null) {
-      this.core.replicator.findingPeers -= this._findingPeers
-      this.core.replicator.clearRequests(this.activeRequests, error)
-      this.core.replicator.updateActivity(this._active ? -1 : 0)
-    }
+    this.core.replicator.findingPeers -= this._findingPeers
+    this.core.replicator.clearRequests(this.activeRequests, error)
+    this.core.replicator.updateActivity(this._active ? -1 : 0)
 
     this._findingPeers = 0
 
