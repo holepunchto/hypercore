@@ -363,26 +363,14 @@ class Hypercore extends EventEmitter {
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  close ({ error, force = !!error } = {}) {
+  close ({ error } = {}) {
     if (this.closing) return this.closing
 
-    this.closing = this._close(error || null, force)
+    this.closing = this._close(error || null)
     return this.closing
   }
 
-  _forceClose (error) {
-    const sessions = [...this.sessions]
-
-    const closing = []
-    for (const session of sessions) {
-      if (session === this) continue
-      closing.push(session.close({ error, force: false }))
-    }
-
-    return Promise.all(closing)
-  }
-
-  async _close (error, force) {
+  async _close (error) {
     if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
@@ -407,10 +395,6 @@ class Hypercore extends EventEmitter {
     }
 
     this._findingPeers = 0
-
-    if (force) {
-      await this._forceClose(error)
-    }
 
     this.state.unref()
 
