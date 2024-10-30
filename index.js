@@ -396,7 +396,7 @@ class Hypercore extends EventEmitter {
 
     this.state.unref()
 
-    if (this.sessions.length || this.state.active > 0) {
+    if (this.core.sessions.length || this.state.active > 0) {
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
