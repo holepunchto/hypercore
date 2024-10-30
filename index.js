@@ -414,7 +414,7 @@ class Hypercore extends EventEmitter {
 
     this.state.unref()
 
-    if (this.sessions.length || this.state.active > 1) {
+    if (this.sessions.length || this.state.active > 0) {
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
@@ -436,9 +436,8 @@ class Hypercore extends EventEmitter {
     const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
     const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
-    const useSession = !!opts.session
 
-    this._attachToMuxer(protocol, useSession)
+    this._attachToMuxer(protocol)
 
     return protocolStream
   }
@@ -447,20 +446,20 @@ class Hypercore extends EventEmitter {
     return stream.userData && this.core && this.core.replicator && this.core.replicator.attached(stream.userData)
   }
 
-  _attachToMuxer (mux, useSession) {
+  _attachToMuxer (mux) {
     if (this.opened) {
-      this._attachToMuxerOpened(mux, useSession)
+      this._attachToMuxerOpened(mux)
     } else {
-      this.opening.then(this._attachToMuxerOpened.bind(this, mux, useSession), mux.destroy.bind(mux))
+      this.opening.then(this._attachToMuxerOpened.bind(this, mux), mux.destroy.bind(mux))
     }
 
     return mux
   }
 
-  _attachToMuxerOpened (mux, useSession) {
+  _attachToMuxerOpened (mux) {
     // If the user wants to, we can make this replication run in a session
     // that way the core wont close "under them" during replication
-    this.core.replicator.attachTo(mux, useSession)
+    this.core.replicator.attachTo(mux)
   }
 
   get id () {
