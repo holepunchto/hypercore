@@ -142,7 +142,7 @@ class Hypercore extends EventEmitter {
   }
 
   static createCore (storage, opts) {
-    return new Core(Hypercore.defaultStorage(storage), opts)
+    return new Core(Hypercore.defaultStorage(storage), { autoClose: false, ...opts })
   }
 
   static createProtocolStream (isInitiator, opts = {}) {
