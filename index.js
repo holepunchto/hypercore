@@ -430,18 +430,13 @@ class Hypercore extends EventEmitter {
 
   _attachToMuxer (mux) {
     if (this.opened) {
-      this._attachToMuxerOpened(mux)
+      this.core.replicator.attachTo(mux)
     } else {
-      this.opening.then(this._attachToMuxerOpened.bind(this, mux), mux.destroy.bind(mux))
+      const replicator = this.core.replicator
+      this.opening.then(replicator.attachTo.bind(replicator, mux), mux.destroy.bind(mux))
     }
 
     return mux
-  }
-
-  _attachToMuxerOpened (mux) {
-    // If the user wants to, we can make this replication run in a session
-    // that way the core wont close "under them" during replication
-    this.core.replicator.attachTo(mux)
   }
 
   get id () {
