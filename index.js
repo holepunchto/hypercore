@@ -410,17 +410,17 @@ class Hypercore extends EventEmitter {
 
     if (force) {
       await this._forceClose(error)
-    } else if (this.sessions.length || this.state.active > 1) {
-      // check if there is still an active session
-      await this.state.unref()
+    }
 
+    this.state.unref()
+
+    if (this.sessions.length || this.state.active > 1) {
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
     }
 
     await this.core.close()
-    await this.state.unref() // close after replicator
 
     this.emit('close', true)
   }
