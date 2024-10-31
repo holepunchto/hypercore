@@ -140,7 +140,7 @@ class Hypercore extends EventEmitter {
   }
 
   static createCore (storage, opts) {
-    return new Core(Hypercore.defaultStorage(storage), opts)
+    return new Core(Hypercore.defaultStorage(storage), { autoClose: false, ...opts })
   }
 
   static createProtocolStream (isInitiator, opts = {}) {
@@ -350,26 +350,14 @@ class Hypercore extends EventEmitter {
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  close ({ error, force = !!error } = {}) {
+  close ({ error } = {}) {
     if (this.closing) return this.closing
 
-    this.closing = this._close(error || null, force)
+    this.closing = this._close(error || null)
     return this.closing
   }
 
-  _forceClose (error) {
-    const sessions = [...this.sessions]
-
-    const closing = []
-    for (const session of sessions) {
-      if (session === this) continue
-      closing.push(session.close({ error, force: false }))
-    }
-
-    return Promise.all(closing)
-  }
-
-  async _close (error, force) {
+  async _close (error) {
     if (this.opened === false) await this.opening
 
     const i = this.sessions.indexOf(this)
@@ -387,27 +375,21 @@ class Hypercore extends EventEmitter {
     }
     for (const ext of gc) ext.destroy()
 
-    if (this.core !== null) {
-      this.core.replicator.findingPeers -= this._findingPeers
-      this.core.replicator.clearRequests(this.activeRequests, error)
-      this.core.replicator.updateActivity(this._active ? -1 : 0)
-    }
+    this.core.replicator.findingPeers -= this._findingPeers
+    this.core.replicator.clearRequests(this.activeRequests, error)
+    this.core.replicator.updateActivity(this._active ? -1 : 0)
 
     this._findingPeers = 0
 
-    if (force) {
-      await this._forceClose(error)
-    } else if (this.sessions.length || this.state.active > 1) {
-      // check if there is still an active session
-      await this.state.unref()
+    this.state.unref()
 
+    if (this.core.sessions.length || this.state.active > 0) {
       // emit "fake" close as this is a session
       this.emit('close', false)
       return
     }
 
     await this.core.close()
-    await this.state.unref() // close after replicator
 
     this.emit('close', true)
   }
@@ -423,9 +405,8 @@ class Hypercore extends EventEmitter {
     const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
     const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
-    const useSession = !!opts.session
 
-    this._attachToMuxer(protocol, useSession)
+    this._attachToMuxer(protocol)
 
     return protocolStream
   }
@@ -434,20 +415,15 @@ class Hypercore extends EventEmitter {
     return stream.userData && this.core && this.core.replicator && this.core.replicator.attached(stream.userData)
   }
 
-  _attachToMuxer (mux, useSession) {
+  _attachToMuxer (mux) {
     if (this.opened) {
-      this._attachToMuxerOpened(mux, useSession)
+      this.core.replicator.attachTo(mux)
     } else {
-      this.opening.then(this._attachToMuxerOpened.bind(this, mux, useSession), mux.destroy.bind(mux))
+      const replicator = this.core.replicator
+      this.opening.then(replicator.attachTo.bind(replicator, mux), mux.destroy.bind(mux))
     }
 
     return mux
-  }
-
-  _attachToMuxerOpened (mux, useSession) {
-    // If the user wants to, we can make this replication run in a session
-    // that way the core wont close "under them" during replication
-    this.core.replicator.attachTo(mux, useSession)
   }
 
   get id () {
