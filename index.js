@@ -65,7 +65,6 @@ class Hypercore extends EventEmitter {
     this.closed = false
     this.snapshotted = !!opts.snapshot
     this.draft = !!opts.draft
-    this.sparse = opts.sparse !== false
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
@@ -116,7 +115,6 @@ class Hypercore extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  closed: ' + opts.stylize(this.closed, 'boolean') + '\n' +
       indent + '  snapshotted: ' + opts.stylize(this.snapshotted, 'boolean') + '\n' +
-      indent + '  sparse: ' + opts.stylize(this.sparse, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
@@ -199,7 +197,6 @@ class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
-    const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
@@ -208,7 +205,6 @@ class Hypercore extends EventEmitter {
     const s = new Clz(null, this.key, {
       ...opts,
       core: this.core,
-      sparse,
       wait,
       onwait,
       timeout,
@@ -254,6 +250,11 @@ class Hypercore extends EventEmitter {
   }
 
   async _open (storage, key, opts) {
+    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
+
+    if (storage === null) storage = opts.storage || null
+    if (key === null) key = opts.key || null
+
     if (this.core === null) initOnce(this, storage, key, opts)
 
     this.core.sessions.push(this)
@@ -265,13 +266,10 @@ class Hypercore extends EventEmitter {
       throw err
     }
 
-    this.opened = true
     this.emit('ready')
   }
 
   async _openSession (key, opts) {
-    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
-
     if (this.core.opened === false) await this.core.ready()
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
@@ -323,10 +321,8 @@ class Hypercore extends EventEmitter {
       await this.core.setManifest(opts.manifest)
     }
 
-    // Start continous replication if not in sparse mode.
-    if (!this.sparse) this.download({ start: 0, end: -1 })
-
     this.core.replicator.updateActivity(this._active ? 1 : 0)
+    this.opened = true
   }
 
   get replicator () {
@@ -334,20 +330,11 @@ class Hypercore extends EventEmitter {
   }
 
   _getSnapshot () {
-    if (this.sparse) {
-      return {
-        length: this.state.tree.length,
-        byteLength: this.state.tree.byteLength,
-        fork: this.state.tree.fork,
-        compatLength: this.state.tree.length
-      }
-    }
-
     return {
-      length: this.state.header.hints.contiguousLength,
-      byteLength: 0,
+      length: this.state.tree.length,
+      byteLength: this.state.tree.byteLength,
       fork: this.state.tree.fork,
-      compatLength: this.state.header.hints.contiguousLength
+      compatLength: this.state.tree.length
     }
   }
 
@@ -464,29 +451,28 @@ class Hypercore extends EventEmitter {
   }
 
   get id () {
-    return this.core.id
+    return this.core === null ? null : this.core.id
   }
 
   get key () {
-    return this.core.key
+    return this.core === null ? null : this.core.key
   }
 
   get discoveryKey () {
-    return this.core.discoveryKey
+    return this.core === null ? null : this.core.discoveryKey
   }
 
   get manifest () {
-    return this.core.manifest
+    return this.core === null ? null : this.core.manifest
   }
 
   get length () {
     if (this._snapshot) return this._snapshot.length
-    if (this.opened === false) return 0
-    if (!this.sparse) return this.contiguousLength
-    return this.state.tree.length
+    return this.opened === false ? 0 : this.state.tree.length
   }
 
   get flushedLength () {
+    if (this.opened === false) return 0
     return this.state === this.core.state ? this.core.tree.length : this.state.treeLength
   }
 
@@ -494,14 +480,14 @@ class Hypercore extends EventEmitter {
    * Deprecated. Use `const { byteLength } = await core.info()`.
    */
   get byteLength () {
+    if (this.opened === false) return 0
     if (this._snapshot) return this._snapshot.byteLength
-    if (this.core === null) return 0
-    if (!this.sparse) return this.contiguousByteLength
     return this.state.tree.byteLength - (this.state.tree.length * this.padding)
   }
 
   get contiguousLength () {
-    return this.core.tree === null ? 0 : Math.min(this.core.tree.length, this.core.header.hints.contiguousLength)
+    if (this.opened === false) return 0
+    return Math.min(this.core.tree.length, this.core.header.hints.contiguousLength)
   }
 
   get contiguousByteLength () {
@@ -509,11 +495,12 @@ class Hypercore extends EventEmitter {
   }
 
   get fork () {
-    return this.core.tree === null ? 0 : this.core.tree.fork
+    if (this.opened === false) return 0
+    return this.core.tree.fork
   }
 
   get peers () {
-    return this.core.replicator.peers
+    return this.opened === false ? [] : this.core.replicator.peers
   }
 
   get encryptionKey () {
@@ -525,11 +512,11 @@ class Hypercore extends EventEmitter {
   }
 
   get globalCache () {
-    return this.core.globalCache
+    return this.opened === false ? null : this.core.globalCache
   }
 
   get sessions () {
-    return this.core.sessions
+    return this.opened === false ? [] : this.core.sessions
   }
 
   ready () {
@@ -959,7 +946,7 @@ function readBlock (reader, index) {
 }
 
 function initOnce (session, storage, key, opts) {
-  session.core = new Core(Hypercore.defaultStorage(storage), {
+  session.core = opts.core || new Core(Hypercore.defaultStorage(storage), {
     eagerUpgrade: true,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,

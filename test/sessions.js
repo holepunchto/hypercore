@@ -57,41 +57,6 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
-test('sessions - custom preload hook on first/later sessions', async function (t) {
-  const preloadsTest = t.test('both preload hooks called')
-  preloadsTest.plan(2)
-
-  const storage = await createStorage(t)
-  const core1 = new Hypercore(storage, {
-    preload: () => {
-      preloadsTest.pass('first hook called')
-      return null
-    }
-  })
-  const core2 = core1.session({
-    preload: () => {
-      preloadsTest.pass('second hook called')
-      return null
-    }
-  })
-  await core2.ready()
-
-  await preloadsTest
-
-  await core2.close()
-  await core1.close()
-})
-
-test('session inherits non-sparse setting', async function (t) {
-  const a = await create(t, { sparse: false })
-  const s = a.session()
-
-  t.is(s.sparse, false)
-
-  await s.close()
-  await a.close()
-})
-
 test('session on a from instance, pre-ready', async function (t) {
   const a = await create(t)
 
