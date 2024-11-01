@@ -1277,12 +1277,12 @@ test('cancel block', async function (t) {
 
   t.alike(await b.get(1), b4a.from('b'))
 
+  t.ok(a.core.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
+  t.is(a.core.replicator.stats.wireCancel.rx, b.core.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
+
   await a.close()
   await b.close()
   await session.close()
-
-  t.ok(a.core.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
-  t.is(a.core.replicator.stats.wireCancel.rx, b.core.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
 
   n1.destroy()
   n2.destroy()

@@ -243,12 +243,6 @@ class Hypercore extends EventEmitter {
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
-  _removeSession () {
-    const i = this.core.sessions.indexOf(this)
-    if (i === -1) return
-    this.core.sessions.splice(i, 1)
-  }
-
   async _open (storage, key, opts) {
     if (opts.preload) opts = { ...opts, ...(await opts.preload) }
 
@@ -257,12 +251,13 @@ class Hypercore extends EventEmitter {
 
     if (this.core === null) initOnce(this, storage, key, opts)
 
-    this.core.sessions.push(this)
+    this.core.addSession(this)
 
     try {
       await this._openSession(key, opts)
     } catch (err) {
-      this._removeSession(this)
+      this.core.removeSession(this)
+      if (this.core.autoClose && this.sessions.length === 0) await this.core.close()
       throw err
     }
 
@@ -359,14 +354,12 @@ class Hypercore extends EventEmitter {
 
   async _close (error) {
     if (this.opened === false) await this.opening
+    if (this.closed === true) return
 
-    const i = this.sessions.indexOf(this)
-    if (i === -1) return
+    this.core.removeSession(this)
 
-    this.sessions.splice(i, 1)
     this.readable = false
     this.writable = false
-    this.closed = true
     this.opened = false
 
     const gc = []
@@ -385,12 +378,14 @@ class Hypercore extends EventEmitter {
 
     if (this.core.sessions.length) {
       // emit "fake" close as this is a session
+      this.closed = true
       this.emit('close', false)
       return
     }
 
-    await this.core.close()
+    if (this.core.autoClose) await this.core.close()
 
+    this.closed = true
     this.emit('close', true)
   }
 
