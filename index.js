@@ -250,7 +250,7 @@ class Hypercore extends EventEmitter {
   }
 
   async _open (storage, key, opts) {
-    if (opts.preload) opts = { ...opts, ...(await opts.preload()) }
+    if (opts.preload) await opts.preload
 
     if (storage === null) storage = opts.storage || null
     if (key === null) key = opts.key || null
