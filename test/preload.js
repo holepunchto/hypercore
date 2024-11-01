@@ -7,22 +7,11 @@ test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
   const storage = await createStorage(t)
 
-  let done = null
   const preload = new Promise((resolve) => {
-    done = resolve
+    resolve({ keyPair })
   })
 
-  const opts = {
-    preload,
-    keyPair: null
-  }
-
-  const core = new Hypercore(storage, keyPair.publicKey, opts)
-
-  await Promise.resolve()
-  opts.keyPair = keyPair
-  done()
-
+  const core = new Hypercore(storage, keyPair.publicKey, { preload })
   await core.ready()
 
   t.ok(core.writable)
