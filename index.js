@@ -49,7 +49,7 @@ class Hypercore extends EventEmitter {
 
     if (!storage) storage = opts.storage
 
-    this.core = opts.core || (opts.from ? opts.from.core : null)
+    this.core = opts.core || null
     this.state = null
     this.encryption = null
     this.extensions = new Map()

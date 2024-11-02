@@ -60,7 +60,7 @@ test('sessions - custom valueEncoding on session', async function (t) {
 test('session on a from instance, pre-ready', async function (t) {
   const a = await create(t)
 
-  const b = new Hypercore({ from: a })
+  const b = new Hypercore({ core: a.core })
   const c = b.session()
 
   await a.ready()
@@ -77,14 +77,14 @@ test('session on a from instance, pre-ready', async function (t) {
 test('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 
-  const b = new Hypercore({ from: a, encryptionKey: null })
+  const b = new Hypercore({ core: a.core, encryptionKey: null })
   await b.ready()
 
-  const c = new Hypercore({ from: a, encryptionKey: null })
+  const c = new Hypercore({ core: a.core, encryptionKey: null })
   await c.ready()
   await c.setEncryptionKey(b4a.alloc(32))
 
-  const d = new Hypercore({ from: a, encryptionKey: null })
+  const d = new Hypercore({ core: a.core, encryptionKey: null })
   await d.ready()
 
   t.absent(a.encryption)

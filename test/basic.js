@@ -583,7 +583,7 @@ test('valid manifest passed to a session is stored', async function (t) {
   await core.ready()
 
   const a = new Hypercore(await createStorage(t), core.key)
-  const b = new Hypercore(null, core.key, { manifest: core.manifest, from: a })
+  const b = new Hypercore(null, core.key, { manifest: core.manifest, core: a.core })
 
   await b.ready()
 

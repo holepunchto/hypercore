@@ -197,7 +197,7 @@ test('multiple gets to replicated, encrypted block', async function (t) {
 
 test('encrypted core from existing unencrypted core', async function (t) {
   const a = await create(t, { encryptionKey: null })
-  const b = new Hypercore({ from: a, encryptionKey })
+  const b = new Hypercore({ core: a.core, encryptionKey })
 
   t.alike(b.key, a.key)
   t.alike(b.encryptionKey, encryptionKey)
@@ -214,7 +214,7 @@ test('from session sessions pass encryption', async function (t) {
   const storage = await createStorage(t)
 
   const a = new Hypercore(storage)
-  const b = new Hypercore({ from: a, encryptionKey })
+  const b = new Hypercore({ core: a.core, encryptionKey })
   const c = b.session()
 
   await a.ready()
