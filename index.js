@@ -61,6 +61,7 @@ class Hypercore extends EventEmitter {
     this.keyPair = opts.keyPair || null
     this.readable = true
     this.writable = false
+    this.exclusive = false
     this.opened = false
     this.closed = false
     this.snapshotted = !!opts.snapshot
@@ -258,6 +259,7 @@ class Hypercore extends EventEmitter {
     } catch (err) {
       this.core.removeSession(this)
       if (this.core.autoClose && this.sessions.length === 0) await this.core.close()
+      if (this.exclusive) this.core.unlockExclusive()
       throw err
     }
 
@@ -287,6 +289,11 @@ class Hypercore extends EventEmitter {
     if (opts.parent) {
       if (opts.parent.state === null) await opts.parent.ready()
       this._setupSession(opts.parent)
+    }
+
+    if (opts.exclusive) {
+      this.exclusive = true
+      await this.core.lockExclusive()
     }
 
     if (opts.name) {
@@ -375,6 +382,8 @@ class Hypercore extends EventEmitter {
     this._findingPeers = 0
 
     this.state.unref()
+
+    if (this.exclusive) this.core.unlockExclusive()
 
     if (this.core.sessions.length) {
       // emit "fake" close as this is a session

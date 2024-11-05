@@ -593,3 +593,17 @@ test('valid manifest passed to a session is stored', async function (t) {
   await b.close()
   await core.close()
 })
+
+test('exclusive sessions', async function (t) {
+  const core = new Hypercore(await createStorage(t))
+
+  const a = core.session({ exclusive: true })
+  await a.ready()
+
+  setTimeout(() => a.close(), 200)
+
+  const b = core.session({ exclusive: true })
+  await b.ready()
+  t.ok(a.closed)
+  await b.close()
+})
