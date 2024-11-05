@@ -606,4 +606,6 @@ test('exclusive sessions', async function (t) {
   await b.ready()
   t.ok(a.closed)
   await b.close()
+
+  await core.close()
 })
