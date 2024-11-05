@@ -260,6 +260,7 @@ class Hypercore extends EventEmitter {
       this.core.removeSession(this)
       if (this.core.autoClose && this.sessions.length === 0) await this.core.close()
       if (this.exclusive) this.core.unlockExclusive()
+      this.emit('close', this.sessions.length === 0)
       throw err
     }
 
