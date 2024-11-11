@@ -309,7 +309,7 @@ class Hypercore extends EventEmitter {
         await this.state.truncate(checkout, this.fork)
       }
     } else if (this.state === null) {
-      this.state = this.core.state
+      this.state = this.core.state.ref()
     }
 
     if (opts.userData) {
