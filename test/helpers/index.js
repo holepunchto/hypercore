@@ -1,6 +1,6 @@
 const Hypercore = require('../../')
 const createTempDir = require('test-tmp')
-const CoreStorage = require('hypercore-on-the-rocks')
+const CoreStorage = require('hypercore-storage')
 const safetyCatch = require('safety-catch')
 
 exports.create = async function (t, ...args) {

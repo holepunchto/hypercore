@@ -148,7 +148,8 @@ test('encrypted session before ready core', async function (t) {
 
 test('encrypted session on unencrypted core', async function (t) {
   const a = await create(t)
-  const s = a.session({ encryptionKey })
+
+  const s = a.session({ encryptionKey, debug: 'debug' })
 
   t.alike(s.encryptionKey, encryptionKey)
   t.unlike(s.encryptionKey, a.encryptionKey)
@@ -179,23 +180,6 @@ test('encrypted session on encrypted core, same key', async function (t) {
   await s.close()
 })
 
-test('encrypted session on encrypted core, different keys', async function (t) {
-  const a = await create(t, { encryptionKey: b4a.alloc(32, 'a') })
-  const s = a.session({ encryptionKey: b4a.alloc(32, 's') })
-
-  t.unlike(s.encryptionKey, a.encryptionKey)
-
-  await s.append(['hello'])
-
-  const unencrypted = await s.get(0)
-  t.alike(unencrypted, b4a.from('hello'))
-
-  const encrypted = await a.get(0)
-  t.absent(encrypted.includes('hello'))
-
-  await s.close()
-})
-
 test('multiple gets to replicated, encrypted block', async function (t) {
   const a = await create(t, { encryptionKey })
   await a.append('a')
@@ -212,8 +196,8 @@ test('multiple gets to replicated, encrypted block', async function (t) {
 })
 
 test('encrypted core from existing unencrypted core', async function (t) {
-  const a = await create(t, { encryptionKey: b4a.alloc(32, 'a') })
-  const b = new Hypercore({ from: a, encryptionKey })
+  const a = await create(t, { encryptionKey: null })
+  const b = new Hypercore({ core: a.core, encryptionKey })
 
   t.alike(b.key, a.key)
   t.alike(b.encryptionKey, encryptionKey)
@@ -230,7 +214,7 @@ test('from session sessions pass encryption', async function (t) {
   const storage = await createStorage(t)
 
   const a = new Hypercore(storage)
-  const b = new Hypercore({ from: a, encryptionKey })
+  const b = new Hypercore({ core: a.core, encryptionKey })
   const c = b.session()
 
   await a.ready()

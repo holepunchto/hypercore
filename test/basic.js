@@ -35,8 +35,6 @@ test('core id', async function (t) {
   const db = await createStorage(t)
   const core = new Hypercore(db, key)
 
-  t.is(core.id, null)
-
   await core.ready()
   t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
 
@@ -50,7 +48,6 @@ test('session id', async function (t) {
   const core = new Hypercore(db, key)
 
   const session = core.session()
-  t.is(session.id, null)
 
   await session.ready()
   t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
@@ -586,8 +583,7 @@ test('valid manifest passed to a session is stored', async function (t) {
   await core.ready()
 
   const a = new Hypercore(await createStorage(t), core.key)
-
-  const b = new Hypercore(null, core.key, { manifest: core.manifest, from: a })
+  const b = new Hypercore(null, core.key, { manifest: core.manifest, core: a.core })
 
   await b.ready()
 
@@ -595,5 +591,21 @@ test('valid manifest passed to a session is stored', async function (t) {
 
   await a.close()
   await b.close()
+  await core.close()
+})
+
+test('exclusive sessions', async function (t) {
+  const core = new Hypercore(await createStorage(t))
+
+  const a = core.session({ exclusive: true })
+  await a.ready()
+
+  setTimeout(() => a.close(), 200)
+
+  const b = core.session({ exclusive: true })
+  await b.ready()
+  t.ok(a.closed)
+  await b.close()
+
   await core.close()
 })

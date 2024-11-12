@@ -1,79 +1,21 @@
 const crypto = require('hypercore-crypto')
 const test = require('brittle')
-const b4a = require('b4a')
 const Hypercore = require('../')
-const { create, createStorage } = require('./helpers')
-
-test('preload - storage', async function (t) {
-  const storage = await createStorage(t)
-
-  const core = new Hypercore(null, {
-    preload: () => {
-      return { storage }
-    }
-  })
-  await core.ready()
-
-  await core.append('hello world')
-  t.is(core.length, 1)
-  t.alike(await core.get(0), b4a.from('hello world'))
-
-  await core.close()
-})
-
-test('preload - from another core', async function (t) {
-  t.plan(2)
-
-  const first = await create(t)
-
-  const second = new Hypercore(null, {
-    preload: () => {
-      return { from: first }
-    }
-  })
-  await second.ready()
-
-  t.alike(first.key, second.key)
-  t.is(first.sessions, second.sessions)
-
-  await second.close()
-})
+const { createStorage } = require('./helpers')
 
 test('preload - custom keypair', async function (t) {
   const keyPair = crypto.keyPair()
   const storage = await createStorage(t)
 
-  const core = new Hypercore(storage, keyPair.publicKey, {
-    preload: () => {
-      return { keyPair }
-    }
+  const preload = new Promise((resolve) => {
+    resolve({ keyPair })
   })
+
+  const core = new Hypercore(storage, keyPair.publicKey, { preload })
   await core.ready()
 
   t.ok(core.writable)
   t.alike(core.key, keyPair.publicKey)
-
-  await core.close()
-})
-
-test('preload - sign/storage', async function (t) {
-  const keyPair = crypto.keyPair()
-  const storage = await createStorage(t)
-  const core = new Hypercore(null, keyPair.publicKey, {
-    valueEncoding: 'utf-8',
-    preload: () => {
-      return {
-        storage,
-        keyPair
-      }
-    }
-  })
-  await core.ready()
-
-  t.ok(core.writable)
-  await core.append('hello world')
-  t.is(core.length, 1)
-  t.is(await core.get(0), 'hello world')
 
   await core.close()
 })
