@@ -308,7 +308,7 @@ class Hypercore extends EventEmitter {
       // atm we always copy the state in passCapabilities
       const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
-      this.state = await this.core.createSession(opts.name, checkout, !!opts.overwrite)
+      this.state = await this.state.createSession(opts.name, checkout, !!opts.overwrite)
       if (state) state.unref() // ref'ed above in setup session
 
       if (checkout !== -1) {
