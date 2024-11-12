@@ -126,8 +126,8 @@ test('bitfield - count', async function (t) {
   const s = await createStorage(t)
   const b = await Bitfield.open(s)
 
-  for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
-    b.setRange(start, length, true)
+  for (const [start, end] of [[0, 2], [5, 6], [7, 9], [13, 14], [16, 19], [20, 25]]) {
+    b.setRange(start, end, true)
   }
 
   t.is(b.count(3, 18, true), 8)
@@ -251,7 +251,7 @@ test('bitfield - set range on page boundary', async function (t) {
   const s = await createStorage(t)
   const b = await Bitfield.open(s)
 
-  b.setRange(2032, 26, true)
+  b.setRange(2032, 2058, true)
 
   t.is(b.findFirst(true, 2048), 2048)
 })
