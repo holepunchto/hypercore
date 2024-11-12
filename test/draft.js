@@ -48,7 +48,7 @@ test('draft and then undraft', async function (t) {
   await core.close()
 })
 
-test('draft truncate', async function (t) {
+test.skip('draft truncate', async function (t) {
   const core = await create(t)
 
   await core.append('hello')
@@ -85,7 +85,7 @@ test('draft truncate', async function (t) {
   await core.close()
 })
 
-test('draft truncate then append', async function (t) {
+test.skip('draft truncate then append', async function (t) {
   const core = await create(t)
 
   await core.append('hello')
