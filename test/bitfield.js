@@ -7,7 +7,7 @@ const BitInterlude = require('../lib/bit-interlude')
 
 test('bitfield - set and get', async function (t) {
   const storage = await createStorage(t)
-  const b = await Bitfield.open(storage)
+  const b = await Bitfield.open(storage, 0)
 
   t.absent(b.get(42))
   b.set(42, true)
@@ -22,7 +22,7 @@ test('bitfield - set and get', async function (t) {
 })
 
 test('bitfield - random set and gets', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const b = await Bitfield.open(await createStorage(t), 0)
   const set = new Set()
 
   for (let i = 0; i < 200; i++) {
@@ -57,7 +57,7 @@ test('bitfield - reload', async function (t) {
 
   {
     const storage = await createStorage(t, dir)
-    const bitfield = await Bitfield.open(storage)
+    const bitfield = await Bitfield.open(storage, 0)
     const b = new BitInterlude(bitfield)
     b.setRange(142, 143, true)
     b.setRange(40000, 40001, true)
@@ -67,7 +67,7 @@ test('bitfield - reload', async function (t) {
   }
 
   {
-    const b = await Bitfield.open(await createStorage(t, dir))
+    const b = await Bitfield.open(await createStorage(t, dir), 1424242425)
     t.ok(b.get(142))
     t.ok(b.get(40000))
     t.ok(b.get(1424242424))
@@ -116,7 +116,7 @@ test('bitfield - want', async function (t) {
 })
 
 test('bitfield - sparse array overflow', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   // Previously bugged due to missing bounds check in sparse array
   b.set(7995511118690925, true)
@@ -124,7 +124,7 @@ test('bitfield - sparse array overflow', async function (t) {
 
 test('bitfield - count', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   for (const [start, end] of [[0, 2], [5, 6], [7, 9], [13, 14], [16, 19], [20, 25]]) {
     b.setRange(start, end, true)
@@ -135,7 +135,7 @@ test('bitfield - count', async function (t) {
 })
 
 test('bitfield - find first, all zeroes', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   t.is(b.findFirst(false, 0), 0)
   t.is(b.findFirst(true, 0), -1)
@@ -159,7 +159,7 @@ test('bitfield - find first, all zeroes', async function (t) {
 
 test('bitfield - find first, all ones', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -186,7 +186,7 @@ test('bitfield - find first, all ones', async function (t) {
 })
 
 test('bitfield - find last, all zeroes', async function (t) {
-  const b = await Bitfield.open(await createStorage(t))
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   t.is(b.findLast(false, 0), 0)
   t.is(b.findLast(true, 0), -1)
@@ -210,7 +210,7 @@ test('bitfield - find last, all zeroes', async function (t) {
 
 test('bitfield - find last, all ones', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -238,7 +238,7 @@ test('bitfield - find last, all ones', async function (t) {
 
 test('bitfield - find last, ones around page boundary', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   b.set(32767, true)
   b.set(32768, true)
@@ -249,7 +249,7 @@ test('bitfield - find last, ones around page boundary', async function (t) {
 
 test('bitfield - set range on page boundary', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   b.setRange(2032, 2058, true)
 
@@ -258,7 +258,7 @@ test('bitfield - set range on page boundary', async function (t) {
 
 test('set last bits in segment and findFirst', async function (t) {
   const s = await createStorage(t)
-  const b = await Bitfield.open(s)
+  const b = await Bitfield.open(s, 0)
 
   b.set(2097150, true)
 
