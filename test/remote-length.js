@@ -126,8 +126,8 @@ test('truncates by the writer result in the updated contiguous length being anno
 
 // Get peer b as seen by peer a (b is the remote peer).
 function getPeer (a, b) {
-  for (const aPeer of a.replicator.peers) {
-    for (const bPeer of b.replicator.peers) {
+  for (const aPeer of a.core.replicator.peers) {
+    for (const bPeer of b.core.replicator.peers) {
       if (b4a.equals(aPeer.stream.remotePublicKey, bPeer.stream.publicKey)) return aPeer
     }
   }

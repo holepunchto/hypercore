@@ -31,8 +31,8 @@ test('basic replication stats', async function (t) {
 
   const b = await create(t, a.key)
 
-  const aStats = a.replicator.stats
-  const bStats = b.replicator.stats
+  const aStats = a.core.replicator.stats
+  const bStats = b.core.replicator.stats
 
   t.is(aStats.wireSync.rx, 0, 'wireSync init 0')
   t.is(aStats.wireSync.tx, 0, 'wireSync init 0')
@@ -61,7 +61,7 @@ test('basic replication stats', async function (t) {
 
   await r.done()
 
-  const aPeerStats = a.replicator.peers[0].stats
+  const aPeerStats = a.core.replicator.peers[0].stats
   t.alike(aPeerStats, aStats, 'same stats for peer as entire replicator (when there is only 1 peer)')
 
   t.ok(aStats.wireSync.rx > 0, 'wiresync incremented')
@@ -93,9 +93,9 @@ test('basic replication stats', async function (t) {
   const c = await create(t, a.key)
   replicate(c, b, t)
   c.get(1).catch(() => {})
-  await new Promise(resolve => setImmediate(resolve))
-  await c.storage.idle()
-  const cStats = c.replicator.stats
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  await c.core.storage.db.idle()
+  const cStats = c.core.replicator.stats
   t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
   t.is(bStats.wireBitfield.tx, cStats.wireBitfield.rx, 'bitfield received == transmitted')
 
@@ -113,14 +113,14 @@ test('basic downloading is set immediately after ready', async function (t) {
   const a = await createA()
 
   a.on('ready', function () {
-    t.ok(a.replicator.downloading)
+    t.ok(a.core.replicator.downloading)
   })
 
   const createB = await createStored(t)
   const b = await createB({ active: false })
 
   b.on('ready', function () {
-    t.absent(b.replicator.downloading)
+    t.absent(b.core.replicator.downloading)
   })
 
   t.teardown(async () => {
@@ -333,7 +333,7 @@ test('invalid capability fails', async function (t) {
   const a = await create(t)
   const b = await create(t)
 
-  b.replicator.discoveryKey = a.discoveryKey
+  b.core.discoveryKey = a.discoveryKey
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1198,92 +1198,6 @@ test('large linear download', async function (t) {
   t.is(d, 1000)
 })
 
-test('replication session', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  const [s1, s2] = replicate(a, b, t, { session: true, teardown: false })
-
-  t.is(a.sessions.length, 1)
-  t.is(b.sessions.length, 1)
-  t.is(a.core.state.active, 2)
-  t.is(b.core.state.active, 2)
-
-  s1.destroy()
-  s2.destroy()
-
-  await Promise.all([new Promise(resolve => s1.on('close', resolve)), new Promise(resolve => s2.on('close', resolve))])
-
-  t.is(a.sessions.length, 1)
-  t.is(b.sessions.length, 1)
-  t.is(a.core.state.active, 1)
-  t.is(b.core.state.active, 1)
-})
-
-test('replication session after stream opened', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  const [s1, s2] = replicate(a, b, t, { session: true, teardown: false })
-
-  await s1.noiseStream.opened
-  await s2.noiseStream.opened
-
-  t.is(a.sessions.length, 1)
-  t.is(b.sessions.length, 1)
-  t.is(a.core.state.active, 2)
-  t.is(b.core.state.active, 2)
-
-  s1.destroy()
-  s2.destroy()
-
-  await Promise.all([new Promise(resolve => s1.on('close', resolve)), new Promise(resolve => s2.on('close', resolve))])
-
-  t.is(a.sessions.length, 1)
-  t.is(b.sessions.length, 1)
-  t.is(a.core.state.active, 1)
-  t.is(b.core.state.active, 1)
-})
-
-test('replication session keeps the core open', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  replicate(a, b, t, { session: true })
-
-  await a.close()
-  await eventFlush()
-
-  const blk = await b.get(2)
-
-  t.alike(blk, b4a.from('c'), 'still replicating due to session')
-})
-
-test('force close kills replication session', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-
-  replicate(a, b, t, { session: true })
-
-  await a.close({ force: true })
-  await eventFlush()
-
-  const blk = b.get(2, { timeout: 1000 })
-
-  t.ok(a.core.closed)
-  t.ok(a.replicator.destroyed)
-
-  await t.exception(blk, /REQUEST_TIMEOUT/)
-})
-
 test('replicate range that fills initial size of bitfield page', async function (t) {
   const a = await create(t)
   await a.append(new Array(2 ** 15).fill('a'))
@@ -1363,12 +1277,12 @@ test('cancel block', async function (t) {
 
   t.alike(await b.get(1), b4a.from('b'))
 
+  t.ok(a.core.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
+  t.is(a.core.replicator.stats.wireCancel.rx, b.core.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
+
   await a.close()
   await b.close()
   await session.close()
-
-  t.ok(a.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
-  t.is(a.replicator.stats.wireCancel.rx, b.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
 
   n1.destroy()
   n2.destroy()
@@ -1470,29 +1384,6 @@ test('retry failed block requests to another peer', async function (t) {
       await unreplicate([n1, n2, n5, n6])
     }
   }
-})
-
-test('idle replication sessions auto gc', async function (t) {
-  const a = await create(t, { active: false, notDownloadingLinger: 50 })
-  const b = await create(t, a.key, { autoClose: true, active: false, notDownloadingLinger: 50 })
-
-  await a.append('test')
-  const s = b.session()
-
-  replicate(a, b, t, { session: true })
-
-  t.alike(await s.get(0), b4a.from('test'), 'replicates')
-
-  let closed = false
-  b.on('close', function () {
-    closed = true
-  })
-
-  await s.close()
-
-  await pollUntil(() => closed, 75)
-
-  t.ok(closed, 'replication session gced')
 })
 
 test('manifests eagerly sync', async function (t) {
@@ -1621,12 +1512,12 @@ test('can define default max-inflight blocks for replicator peers', async functi
   await b.get(0)
 
   t.alike(
-    a.replicator.peers[0].inflightRange,
+    a.core.replicator.peers[0].inflightRange,
     [123, 123],
     'Uses the custom inflight range'
   )
   t.alike(
-    b.replicator.peers[0].inflightRange,
+    b.core.replicator.peers[0].inflightRange,
     [16, 512],
     'Uses default if no inflight range specified'
   )
@@ -1717,12 +1608,12 @@ test('handshake is unslabbed', async function (t) {
   await r.done()
 
   t.is(
-    a.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    a.core.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
     32,
     'unslabbed handshake capability buffer'
   )
   t.is(
-    b.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
+    b.core.replicator.peers[0].channel.handshake.capability.buffer.byteLength,
     32,
     'unslabbed handshake capability buffer'
   )
@@ -1758,67 +1649,12 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
-test('replication count should never go negative', async function (t) {
-  t.plan(2 + 3)
-
-  const a = await create(t, { autoClose: true })
-  const b = await create(t, a.key, { autoClose: true })
-  const c = await create(t, a.key, { autoClose: true })
-
-  const refA = a.session()
-  const refB = b.session()
-  const refC = b.session()
-
-  await a.append(['a'])
-
-  const s1 = a.replicate(true, { session: true })
-  const s2 = Hypercore.createProtocolStream(false)
-
-  s1.pipe(s2).pipe(s1)
-
-  const s3 = a.replicate(true, { session: true })
-  const s4 = Hypercore.createProtocolStream(false)
-
-  s3.pipe(s4).pipe(s3)
-
-  await eventFlush()
-
-  b.replicate(s2, { session: true })
-  c.replicate(s4, { session: true })
-
-  // get some values just to know all the stream plumbing is done
-  t.ok(!!(await b.get(0)), 'b got it')
-  t.ok(!!(await c.get(0)), 'c got it')
-
-  a.on('close', () => t.pass('a closed'))
-  b.on('close', () => t.pass('b closed'))
-  c.on('close', () => t.pass('c closed'))
-
-  await Promise.all([destroyStream(s1), destroyStream(s2), destroyStream(s3), destroyStream(s4)])
-
-  await refA.close()
-  await refB.close()
-  await refC.close()
-
-  function destroyStream (s) {
-    s.destroy()
-    return new Promise(resolve => s.once('close', resolve))
-  }
-})
-
 async function waitForRequestBlock (core) {
   while (true) {
-    const reqBlock = core.replicator._inflight._requests.find(req => req && req.block)
+    const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
     if (reqBlock) break
 
     await new Promise(resolve => setImmediate(resolve))
-  }
-}
-
-async function pollUntil (fn, time) {
-  for (let i = 0; i < 5; i++) {
-    if (fn()) return
-    await new Promise(resolve => setTimeout(resolve, time))
   }
 }
 
