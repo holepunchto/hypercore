@@ -210,108 +210,6 @@ test('core - verify parallel upgrades', async function (t) {
   t.alike(tree2.signature, tree1.signature)
 })
 
-test('core - update hook is triggered', async function (t) {
-  const { core } = await create(t)
-  const { core: clone } = await create(t, { keyPair: { publicKey: core.header.keyPair.publicKey } })
-
-  let ran = 0
-
-  core.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b01, 'was appended')
-    t.is(from, null, 'was local')
-    t.alike(bitfield, { drop: false, start: 0, length: 4 })
-    ran |= 1
-  }
-
-  await core.state.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
-
-  const peer = {}
-
-  clone.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b01, 'was appended')
-    t.is(from, peer, 'was remote')
-    t.alike(bitfield, { drop: false, start: 1, length: 1 })
-    t.alike(value, b4a.from('b'))
-    ran |= 2
-  }
-
-  {
-    const p = await getProof(core, { block: { index: 1, nodes: 0, value: true }, upgrade: { start: 0, length: 2 } })
-    p.block.value = await getBlock(core, 1)
-    await clone.verify(p, peer)
-  }
-
-  clone.onupdate = ({ status, bitfield, value, from }) => {
-    t.is(status, 0b00, 'no append or truncate')
-    t.is(from, peer, 'was remote')
-    t.alike(bitfield, { drop: false, start: 3, length: 1 })
-    t.alike(value, b4a.from('d'))
-    ran |= 4
-  }
-
-  {
-    const p = await getProof(core, { block: { index: 3, nodes: await clone.tree.nodes(6), value: true } })
-    p.block.value = await getBlock(core, 3)
-    await clone.verify(p, peer)
-  }
-
-  core.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b10, 'was truncated')
-    t.is(from, null, 'was local')
-    t.alike(bitfield, { drop: true, start: 1, length: 3 })
-    ran |= 8
-  }
-
-  await core.state.truncate(1, 1)
-
-  core.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b01, 'was appended')
-    t.is(from, null, 'was local')
-    t.alike(bitfield, { drop: false, start: 1, length: 1 })
-    ran |= 16
-  }
-
-  await core.state.append([b4a.from('e')])
-
-  clone.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b11, 'was appended and truncated')
-    t.is(from, peer, 'was remote')
-    t.alike(bitfield, { drop: true, start: 1, length: 3 })
-    ran |= 32
-  }
-
-  {
-    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 2 } })
-    const r = await clone.tree.reorg(p)
-    await clone.reorg(r, peer)
-  }
-
-  core.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b10, 'was truncated')
-    t.is(from, null, 'was local')
-    t.alike(bitfield, { drop: true, start: 1, length: 1 })
-    ran |= 64
-  }
-
-  await core.state.truncate(1, 2)
-
-  clone.onupdate = ({ status, bitfield, value, from }) => {
-    t.ok(status & 0b10, 'was truncated')
-    t.is(from, peer, 'was remote')
-    t.alike(bitfield, { drop: true, start: 1, length: 1 })
-    ran |= 128
-  }
-
-  {
-    const p = await getProof(core, { hash: { index: 0, nodes: 0 }, upgrade: { start: 0, length: 1 } })
-    const r = await clone.tree.reorg(p)
-
-    await clone.reorg(r, peer)
-  }
-
-  t.is(ran, 255, 'ran all')
-})
-
 test('core - clone', async function (t) {
   const { core } = await create(t)
 
@@ -510,7 +408,8 @@ async function create (t, opts = {}) {
 
     if (!opts.discoveryKey) opts.discoveryKey = dkey
 
-    const core = await Core.open(db, opts)
+    const core = new Core(db, opts)
+    await core.ready()
     t.teardown(() => core.close())
     return core
   }

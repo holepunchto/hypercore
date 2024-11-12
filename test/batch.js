@@ -760,7 +760,7 @@ test('clear', async function (t) {
 
   t.is(clone.length, 1, 'clone length is still 1')
 
-  const b2 = clone.batch()
+  const b2 = clone.session({ name: 'b2' })
   await b2.ready()
 
   t.is(b2.length, 1, 'reset the batch')

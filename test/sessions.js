@@ -19,6 +19,7 @@ test('sessions - can create writable sessions from a read-only core', async func
 
   const session = core.session({ keyPair })
   await session.ready()
+
   t.ok(session.writable)
 
   try {
@@ -41,95 +42,6 @@ test('sessions - can create writable sessions from a read-only core', async func
   await core.close()
 })
 
-test('sessions - auto close', async function (t) {
-  const storage = await createStorage(t)
-  const core = new Hypercore(storage, { autoClose: true })
-
-  let closed = false
-  core.on('close', function () {
-    closed = true
-  })
-
-  const a = core.session()
-  const b = core.session()
-
-  await a.close()
-  t.absent(closed, 'not closed yet')
-
-  await b.close()
-  t.ok(closed, 'all closed')
-})
-
-test('sessions - auto close different order', async function (t) {
-  const storage = await createStorage(t)
-  const core = new Hypercore(storage, { autoClose: true })
-
-  const a = core.session()
-  const b = core.session()
-
-  let closed = false
-  a.on('close', function () {
-    closed = true
-  })
-
-  await core.close()
-  t.absent(closed, 'not closed yet')
-
-  await b.close()
-  t.ok(closed, 'all closed')
-})
-
-test('sessions - auto close with all closing', async function (t) {
-  const storage = await createStorage(t)
-  const core = new Hypercore(storage, { autoClose: true })
-
-  const a = core.session()
-  const b = core.session()
-
-  let closed = 0
-  a.on('close', () => closed++)
-  b.on('close', () => closed++)
-  core.on('close', () => closed++)
-
-  await Promise.all([core.close(), a.close(), b.close()])
-  t.is(closed, 3, 'all closed')
-})
-
-test('sessions - auto close when using from option', async function (t) {
-  const storage = await createStorage(t)
-  const core1 = new Hypercore(storage, {
-    autoClose: true
-  })
-  const core2 = new Hypercore({
-    preload: () => {
-      return {
-        from: core1
-      }
-    }
-  })
-  await core2.close()
-  t.ok(core1.closed)
-})
-
-test('sessions - close with from option', async function (t) {
-  const storage = await createStorage(t)
-  const core1 = new Hypercore(storage)
-  await core1.append('hello world')
-
-  const core2 = new Hypercore({
-    preload: () => {
-      return {
-        from: core1
-      }
-    }
-  })
-  await core2.close()
-
-  t.absent(core1.closed)
-  t.alike(await core1.get(0), b4a.from('hello world'))
-  await core1.close()
-})
-
 test('sessions - custom valueEncoding on session', async function (t) {
   const storage = await createStorage(t)
   const core1 = new Hypercore(storage)
@@ -145,45 +57,10 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
-test('sessions - custom preload hook on first/later sessions', async function (t) {
-  const preloadsTest = t.test('both preload hooks called')
-  preloadsTest.plan(2)
-
-  const storage = await createStorage(t)
-  const core1 = new Hypercore(storage, {
-    preload: () => {
-      preloadsTest.pass('first hook called')
-      return null
-    }
-  })
-  const core2 = core1.session({
-    preload: () => {
-      preloadsTest.pass('second hook called')
-      return null
-    }
-  })
-  await core2.ready()
-
-  await preloadsTest
-
-  await core2.close()
-  await core1.close()
-})
-
-test('session inherits non-sparse setting', async function (t) {
-  const a = await create(t, { sparse: false })
-  const s = a.session()
-
-  t.is(s.sparse, false)
-
-  await s.close()
-  await a.close()
-})
-
 test('session on a from instance, pre-ready', async function (t) {
   const a = await create(t)
 
-  const b = new Hypercore({ from: a })
+  const b = new Hypercore({ core: a.core })
   const c = b.session()
 
   await a.ready()
@@ -200,14 +77,14 @@ test('session on a from instance, pre-ready', async function (t) {
 test('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 
-  const b = new Hypercore({ from: a, encryptionKey: null })
+  const b = new Hypercore({ core: a.core, encryptionKey: null })
   await b.ready()
 
-  const c = new Hypercore({ from: a, encryptionKey: null })
+  const c = new Hypercore({ core: a.core, encryptionKey: null })
   await c.ready()
   await c.setEncryptionKey(b4a.alloc(32))
 
-  const d = new Hypercore({ from: a, encryptionKey: null })
+  const d = new Hypercore({ core: a.core, encryptionKey: null })
   await d.ready()
 
   t.absent(a.encryption)
