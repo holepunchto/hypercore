@@ -325,6 +325,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
+    this.state.addSession(this)
     this.opened = true
   }
 
@@ -365,6 +366,7 @@ class Hypercore extends EventEmitter {
     if (this.closed === true) return
 
     this.core.removeSession(this)
+    this.state.removeSession(this)
 
     this.readable = false
     this.writable = false
