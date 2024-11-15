@@ -57,23 +57,6 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
-test('session on a from instance, pre-ready', async function (t) {
-  const a = await create(t)
-
-  const b = new Hypercore({ core: a.core })
-  const c = b.session()
-
-  await a.ready()
-  await b.ready()
-  await c.ready()
-
-  t.is(a.sessions, b.sessions)
-  t.is(a.sessions, c.sessions)
-
-  await b.close()
-  await c.close()
-})
-
 test('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 

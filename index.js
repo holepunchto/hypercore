@@ -77,9 +77,13 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.active !== false
+    this._stateIndex = -1 // maintained by session state
+    this._monitorIndex = -1 // maintained by replication state
 
     this.opening = this._open(storage, key, opts)
     this.opening.catch(safetyCatch)
+
+    this.on('newListener', maybeAddMonitor)
   }
 
   [inspect] (depth, opts) {
@@ -251,16 +255,18 @@ class Hypercore extends EventEmitter {
     if (key === null) key = opts.key || null
 
     if (this.core === null) initOnce(this, storage, key, opts)
-
-    this.core.addSession(this)
+    if (this._monitorIndex === -2) this.core.addMonitor(this)
 
     try {
       await this._openSession(key, opts)
     } catch (err) {
-      this.core.removeSession(this)
-      if (this.core.autoClose && this.core.sessions.length === 0) await this.core.close()
+      if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
       if (this.exclusive) this.core.unlockExclusive()
-      this.emit('close', this.sessions.length === 0)
+
+      this.core.removeMonitor(this)
+      if (this.state !== null) this.state.removeSession(this)
+
+      this.emit('close', this.core.hasSession() === false)
       throw err
     }
 
@@ -312,6 +318,8 @@ class Hypercore extends EventEmitter {
       this.state = this.core.state.ref()
     }
 
+    this.state.addSession(this)
+
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
@@ -325,7 +333,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
-    this.state.addSession(this)
+
     this.opened = true
   }
 
@@ -364,7 +372,7 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (this.closed === true) return
 
-    this.core.removeSession(this)
+    this.core.removeMonitor(this)
     this.state.removeSession(this)
 
     this.readable = false
@@ -387,7 +395,7 @@ class Hypercore extends EventEmitter {
 
     if (this.exclusive) this.core.unlockExclusive()
 
-    if (this.core.sessions.length) {
+    if (this.core.hasSession()) {
       // emit "fake" close as this is a session
       this.closed = true
       this.emit('close', false)
@@ -500,8 +508,9 @@ class Hypercore extends EventEmitter {
     return this.opened === false ? null : this.core.globalCache
   }
 
+  // deprecated
   get sessions () {
-    return this.opened === false ? [] : this.core.sessions
+    return this.opened === false ? [] : this.core.allSessions()
   }
 
   ready () {
@@ -956,4 +965,15 @@ function initOnce (session, storage, key, opts) {
     manifest: opts.manifest,
     globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
   })
+}
+
+function maybeAddMonitor (name) {
+  if (name !== 'download' && name !== 'manifest' && name !== 'upload') return
+  if (this._monitorIndex >= 0 || this.closing) return
+
+  if (this.core === null) {
+    this._monitorIndex = -2
+  } else {
+    this.core.addMonitor(this)
+  }
 }
