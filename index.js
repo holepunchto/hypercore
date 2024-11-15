@@ -337,8 +337,7 @@ class Hypercore extends EventEmitter {
     return {
       length: this.state.tree.length,
       byteLength: this.state.tree.byteLength,
-      fork: this.state.tree.fork,
-      compatLength: this.state.tree.length
+      fork: this.state.tree.fork
     }
   }
 
@@ -673,10 +672,10 @@ class Hypercore extends EventEmitter {
 
     // snapshot should check if core has block
     if (this._snapshot !== null) {
-      checkSnapshot(this._snapshot, index)
+      checkSnapshot(this, index)
       const coreBlock = await readBlock(this.core.state.storage.createReadBatch(), index)
 
-      checkSnapshot(this._snapshot, index)
+      checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
     }
 
@@ -700,7 +699,7 @@ class Hypercore extends EventEmitter {
     if (timeout) req.context.setTimeout(req, timeout)
 
     const replicatedBlock = await req.promise
-    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
+    if (this._snapshot !== null) checkSnapshot(this, index)
 
     return maybeUnslab(replicatedBlock)
   }
@@ -931,7 +930,7 @@ function maybeUnslab (block) {
 }
 
 function checkSnapshot (snapshot, index) {
-  if (index >= snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE()
 }
 
 function readBlock (reader, index) {
