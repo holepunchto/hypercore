@@ -629,6 +629,7 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
+      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
       this.encryption.decrypt(index, block)
     }
 
@@ -891,6 +892,12 @@ class Hypercore extends EventEmitter {
     }
     return block
   }
+
+  _updateEncryption () {
+    const e = this.encryption
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    if (e === this.core.encryption) this.core.encryption = this.encryption
+  }
 }
 
 module.exports = Hypercore
@@ -906,6 +913,8 @@ function toHex (buf) {
 function preappend (blocks) {
   const offset = this.state.tree.length
   const fork = this.state.tree.fork
+
+  if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
   for (let i = 0; i < blocks.length; i++) {
     this.encryption.encrypt(offset + i, blocks[i], fork)
