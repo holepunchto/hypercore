@@ -862,6 +862,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.extensions.set(name, ext)
+    this.core.addMonitor(this)
     for (const peer of this.peers) {
       peer.extensions.set(name, ext)
     }
@@ -968,7 +969,7 @@ function initOnce (session, storage, key, opts) {
 }
 
 function maybeAddMonitor (name) {
-  if (name !== 'download' && name !== 'manifest' && name !== 'upload') return
+  if (name === 'append' || name === 'truncate') return
   if (this._monitorIndex >= 0 || this.closing) return
 
   if (this.core === null) {
