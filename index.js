@@ -961,7 +961,6 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
 
     const activeRequests = (range && range.activeRequests) || this.activeRequests
-
     return this.replicator.addRange(activeRequests, range)
   }
 
