@@ -1,5 +1,6 @@
 const Hypercore = require('../../')
 const RAM = require('random-access-memory')
+const streamx = require('streamx')
 
 exports.create = async function create (...args) {
   const core = new Hypercore(RAM, ...args)
@@ -23,8 +24,11 @@ exports.createStored = function createStored () {
 }
 
 exports.replicate = function replicate (a, b, t, opts = {}) {
+  const bytesPerSecond = opts.bytesPerSecond || null
+
   const s1 = a.replicate(true, { keepAlive: false, ...opts })
-  const s2 = b.replicate(false, { keepAlive: false, ...opts })
+  const s2Fast = b.replicate(false, { keepAlive: false, ...opts })
+  const s2 = bytesPerSecond ? makeSlow(s2Fast, bytesPerSecond) : s2Fast
 
   const closed1 = new Promise(resolve => s1.once('close', resolve))
   const closed2 = new Promise(resolve => s2.once('close', resolve))
@@ -58,4 +62,24 @@ exports.unreplicate = function unreplicate (streams) {
 
 exports.eventFlush = async function eventFlush () {
   await new Promise(resolve => setImmediate(resolve))
+}
+
+function makeSlow (stream, bytesPerSecond) {
+  const d = new streamx.Duplex({
+    write (data, cb) {
+      const datas = [data]
+      let size = 0
+      for (const d of datas) size += d.byteLength
+
+      const wait = Math.ceil(1000 * size / bytesPerSecond) || 1
+
+      setTimeout(() => {
+        for (const data of datas) stream.write(data)
+        cb(null)
+      }, wait)
+    }
+  })
+
+  stream.on('data', (data) => d.push(data))
+  return d
 }
