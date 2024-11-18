@@ -1,5 +1,6 @@
 const Hypercore = require('../../')
 const RAM = require('random-access-memory')
+const DebuggingStream = require('debugging-stream')
 
 exports.create = async function create (...args) {
   const core = new Hypercore(RAM, ...args)
@@ -54,6 +55,38 @@ exports.unreplicate = function unreplicate (streams) {
       s.destroy()
     })
   }))
+}
+
+exports.replicateDebugStream = function replicate (a, b, t, opts = {}) {
+  const { latency, speed, jitter } = opts
+
+  const s1 = a.replicate(true, { keepAlive: false, ...opts })
+  const s2Base = b.replicate(false, { keepAlive: false, ...opts })
+  const s2 = new DebuggingStream(s2Base, { latency, speed, jitter })
+
+  s1.on('error', err => t.comment(`replication stream error (initiator): ${err}`))
+  s2.on('error', err => t.comment(`replication stream error (responder): ${err}`))
+
+  if (opts.teardown !== false) {
+    t.teardown(async function () {
+      let missing = 2
+      await new Promise(resolve => {
+        s1.on('close', onclose)
+        s1.destroy()
+
+        s2.on('close', onclose)
+        s2.destroy()
+
+        function onclose () {
+          if (--missing === 0) resolve()
+        }
+      })
+    })
+  }
+
+  s1.pipe(s2).pipe(s1)
+
+  return [s1, s2]
 }
 
 exports.eventFlush = async function eventFlush () {

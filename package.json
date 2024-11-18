@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "brittle": "^3.0.0",
+    "debugging-stream": "^3.1.0",
     "hyperswarm": "^4.3.6",
     "rache": "^1.0.0",
     "random-access-memory": "^6.1.0",
