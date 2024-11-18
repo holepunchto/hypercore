@@ -1,11 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-<<<<<<< HEAD
-const { create, createStored, replicate, unreplicate, eventFlush } = require('./helpers')
-=======
-const { create, replicate, unreplicate, eventFlush, replicateDebugStream } = require('./helpers')
->>>>>>> main
+const { create, createStored, replicate, unreplicate, eventFlush, replicateDebugStream } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
