@@ -77,9 +77,13 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.active !== false
+    this._stateIndex = -1 // maintained by session state
+    this._monitorIndex = -1 // maintained by replication state
 
     this.opening = this._open(storage, key, opts)
     this.opening.catch(safetyCatch)
+
+    this.on('newListener', maybeAddMonitor)
   }
 
   [inspect] (depth, opts) {
@@ -251,16 +255,18 @@ class Hypercore extends EventEmitter {
     if (key === null) key = opts.key || null
 
     if (this.core === null) initOnce(this, storage, key, opts)
-
-    this.core.addSession(this)
+    if (this._monitorIndex === -2) this.core.addMonitor(this)
 
     try {
       await this._openSession(key, opts)
     } catch (err) {
-      this.core.removeSession(this)
-      if (this.core.autoClose && this.core.sessions.length === 0) await this.core.close()
+      if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
       if (this.exclusive) this.core.unlockExclusive()
-      this.emit('close', this.sessions.length === 0)
+
+      this.core.removeMonitor(this)
+      if (this.state !== null) this.state.removeSession(this)
+
+      this.emit('close', this.core.hasSession() === false)
       throw err
     }
 
@@ -312,6 +318,8 @@ class Hypercore extends EventEmitter {
       this.state = this.core.state.ref()
     }
 
+    this.state.addSession(this)
+
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
@@ -325,6 +333,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
+
     this.opened = true
   }
 
@@ -336,8 +345,7 @@ class Hypercore extends EventEmitter {
     return {
       length: this.state.tree.length,
       byteLength: this.state.tree.byteLength,
-      fork: this.state.tree.fork,
-      compatLength: this.state.tree.length
+      fork: this.state.tree.fork
     }
   }
 
@@ -364,7 +372,8 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (this.closed === true) return
 
-    this.core.removeSession(this)
+    this.core.removeMonitor(this)
+    this.state.removeSession(this)
 
     this.readable = false
     this.writable = false
@@ -386,7 +395,7 @@ class Hypercore extends EventEmitter {
 
     if (this.exclusive) this.core.unlockExclusive()
 
-    if (this.core.sessions.length) {
+    if (this.core.hasSession()) {
       // emit "fake" close as this is a session
       this.closed = true
       this.emit('close', false)
@@ -499,8 +508,9 @@ class Hypercore extends EventEmitter {
     return this.opened === false ? null : this.core.globalCache
   }
 
+  // deprecated
   get sessions () {
-    return this.opened === false ? [] : this.core.sessions
+    return this.opened === false ? [] : this.core.allSessions()
   }
 
   ready () {
@@ -627,6 +637,7 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
+      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
       this.encryption.decrypt(index, block)
     }
 
@@ -670,10 +681,10 @@ class Hypercore extends EventEmitter {
 
     // snapshot should check if core has block
     if (this._snapshot !== null) {
-      checkSnapshot(this._snapshot, index)
+      checkSnapshot(this, index)
       const coreBlock = await readBlock(this.core.state.storage.createReadBatch(), index)
 
-      checkSnapshot(this._snapshot, index)
+      checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
     }
 
@@ -697,7 +708,7 @@ class Hypercore extends EventEmitter {
     if (timeout) req.context.setTimeout(req, timeout)
 
     const replicatedBlock = await req.promise
-    if (this._snapshot !== null) checkSnapshot(this._snapshot, index)
+    if (this._snapshot !== null) checkSnapshot(this, index)
 
     return maybeUnslab(replicatedBlock)
   }
@@ -851,6 +862,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.extensions.set(name, ext)
+    this.core.addMonitor(this)
     for (const peer of this.peers) {
       peer.extensions.set(name, ext)
     }
@@ -889,6 +901,12 @@ class Hypercore extends EventEmitter {
     }
     return block
   }
+
+  _updateEncryption () {
+    const e = this.encryption
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    if (e === this.core.encryption) this.core.encryption = this.encryption
+  }
 }
 
 module.exports = Hypercore
@@ -905,6 +923,8 @@ function preappend (blocks) {
   const offset = this.state.tree.length
   const fork = this.state.tree.fork
 
+  if (this.encryption.compat !== this.core.compat) this._updateEncryption()
+
   for (let i = 0; i < blocks.length; i++) {
     this.encryption.encrypt(offset + i, blocks[i], fork)
   }
@@ -920,7 +940,7 @@ function maybeUnslab (block) {
 }
 
 function checkSnapshot (snapshot, index) {
-  if (index >= snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
+  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE()
 }
 
 function readBlock (reader, index) {
@@ -946,4 +966,15 @@ function initOnce (session, storage, key, opts) {
     manifest: opts.manifest,
     globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
   })
+}
+
+function maybeAddMonitor (name) {
+  if (name === 'append' || name === 'truncate') return
+  if (this._monitorIndex >= 0 || this.closing) return
+
+  if (this.core === null) {
+    this._monitorIndex = -2
+  } else {
+    this.core.addMonitor(this)
+  }
 }
