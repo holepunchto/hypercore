@@ -2,7 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const RAM = require('random-access-memory')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const { create, replicate, unreplicate, eventFlush } = require('./helpers')
+const { create, replicate, unreplicate, eventFlush, replicateDebugStream } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
@@ -1779,7 +1779,7 @@ test('replication count should never go negative', async function (t) {
   }
 })
 
-test('uses hotswaps to avoid long download tail', async t => {
+test.solo('uses hotswaps to avoid long download tail', async t => {
   const core = await create()
   const slowCore = await create(core.key)
 
@@ -1796,8 +1796,8 @@ test('uses hotswaps to avoid long download tail', async t => {
 
   const peerCore = await create(core.key)
   await peerCore.ready()
-  const [fastStream] = replicate(core, peerCore, t, { bytesPerSecond: 10_000_000 })
-  const [slowStream] = replicate(slowCore, peerCore, t, { bytesPerSecond: 1_000_000 })
+  const [fastStream] = replicateDebugStream(core, peerCore, t, { speed: 10_000_000 })
+  const [slowStream] = replicateDebugStream(slowCore, peerCore, t, { speed: 1_000_000 })
   const fastKey = fastStream.publicKey
   const slowKey = slowStream.publicKey
   const peerKey = fastStream.remotePublicKey
@@ -1810,9 +1810,10 @@ test('uses hotswaps to avoid long download tail', async t => {
   const slowPeer = peerCore.replicator.peers.filter(
     p => b4a.equals(p.stream.remotePublicKey, slowKey))[0]
 
-  t.ok(fastPeer.stats.hotswaps > 0, 'hotswaps happened')
+  t.ok(fastPeer.stats.hotswaps > 0, 'hotswaps happened for fast peer')
+  t.ok(fastPeer.stats.hotswaps > 0, 'No hotswaps happened for slow peer')
   t.ok(slowPeer.stats.wireCancel.tx > 0, 'slow peer cancelled requests')
-  t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'received more data from fast peer')
+  t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'sanity check: received more data from fast peer')
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
 })
 
