@@ -1779,7 +1779,7 @@ test('replication count should never go negative', async function (t) {
   }
 })
 
-test.solo('uses hotswaps to avoid long download tail', async t => {
+test('uses hotswaps to avoid long download tail', async t => {
   const core = await create()
   const slowCore = await create(core.key)
 
