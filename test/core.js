@@ -4,7 +4,7 @@ const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
 const Core = require('../lib/core')
 
-test('core - gpend', async function (t) {
+test('core - append', async function (t) {
   const { core } = await create(t)
 
   {
