@@ -742,12 +742,12 @@ test('multisig - persist to disk', async function (t) {
   await core.close()
   await storage.close()
 
-  const clone = new Hypercore(await createStorage(t, dir), { manifest })
-  await t.execution(clone.ready())
+  const reopened = new Hypercore(await createStorage(t, dir), { manifest })
+  await t.execution(reopened.ready())
 
   const core2 = await create(t, { manifest })
 
-  const s1 = clone.replicate(true)
+  const s1 = reopened.replicate(true)
   const s2 = core2.replicate(false)
 
   const p = new Promise((resolve, reject) => {
@@ -761,13 +761,13 @@ test('multisig - persist to disk', async function (t) {
 
   await t.execution(p)
 
-  t.is(core2.length, clone.length)
+  t.is(core2.length, reopened.length)
 
-  await core2.download({ start: 0, end: clone.length }).downloaded()
+  await core2.download({ start: 0, end: reopened.length }).downloaded()
 
   t.alike(await core2.get(0), b4a.from('0'))
 
-  await clone.close()
+  await reopened.close()
 })
 
 test('multisig - overlapping appends', async function (t) {

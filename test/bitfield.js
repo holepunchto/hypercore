@@ -58,11 +58,11 @@ test('bitfield - reload', async function (t) {
   {
     const storage = await createStorage(t, dir)
     const bitfield = await Bitfield.open(storage, 0)
-    const b = new BitInterlude(bitfield)
+    const b = new BitInterlude()
     b.setRange(142, 143, true)
     b.setRange(40000, 40001, true)
     b.setRange(1424242424, 1424242425, true)
-    await flush(storage, b)
+    await flush(storage, b, bitfield)
     await storage.db.close()
   }
 
@@ -282,8 +282,8 @@ async function createStorage (t, dir) {
   return (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
 }
 
-async function flush (s, b) {
+async function flush (s, b, bitfield) {
   const w = s.createWriteBatch()
-  b.flush(w)
+  b.flush(w, bitfield)
   await w.flush()
 }

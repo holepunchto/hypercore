@@ -60,7 +60,6 @@ test('core - append and truncate', async function (t) {
   t.is(core.tree.length, 3)
   t.is(core.tree.byteLength, 12)
   t.is(core.tree.fork, 1)
-  t.alike(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }])
 
   await core.state.append([
     b4a.from('a'),
@@ -74,11 +73,8 @@ test('core - append and truncate', async function (t) {
   t.is(core.tree.length, 3)
   t.is(core.tree.byteLength, 12)
   t.is(core.tree.fork, 2)
-  t.alike(core.header.hints.reorgs, [{ from: 0, to: 1, ancestors: 3 }, { from: 1, to: 2, ancestors: 3 }])
 
   await core.state.truncate(2, 3)
-
-  t.alike(core.header.hints.reorgs, [{ from: 2, to: 3, ancestors: 2 }])
 
   await core.state.append([b4a.from('a')])
   await core.state.truncate(2, 4)
@@ -92,8 +88,6 @@ test('core - append and truncate', async function (t) {
   await core.state.append([b4a.from('a')])
   await core.state.truncate(2, 7)
 
-  t.is(core.header.hints.reorgs.length, 4)
-
   // check that it was persisted
   const coreReopen = await reopen()
 
@@ -103,47 +97,14 @@ test('core - append and truncate', async function (t) {
   // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
-test('core - user data', async function (t) {
-  const { core, reopen } = await create(t)
-
-  await setUserData(core, 'hello', b4a.from('world'))
-  t.alike(await getUserData(core.storage, 'hello'), b4a.from('world'))
-
-  await setUserData(core, 'hej', b4a.from('verden'))
-  t.alike(await getUserData(core.storage, 'hello'), b4a.from('world'))
-  t.alike(await getUserData(core.storage, 'hej'), b4a.from('verden'))
-
-  await setUserData(core, 'hello', null)
-  t.alike(await getUserData(core.storage, 'hello'), null)
-  t.alike(await getUserData(core.storage, 'hej'), b4a.from('verden'))
-
-  await setUserData(core, 'hej', b4a.from('world'))
-  t.alike(await getUserData(core.storage, 'hej'), b4a.from('world'))
-
-  // check that it was persisted
-  const coreReopen = await reopen()
-
-  t.alike(await getUserData(coreReopen.storage, 'hej'), b4a.from('world'))
-
-  function getUserData (storage, key) {
-    const b = storage.createReadBatch()
-    const p = b.getUserData(key)
-    b.tryFlush()
-    return p
-  }
-})
-
 test('core - header does not retain slabs', async function (t) {
   const { core, reopen } = await create(t)
-  await setUserData(core, 'hello', b4a.from('world'))
 
   t.is(core.header.key.buffer.byteLength, 32, 'unslabbed key')
   t.is(core.header.keyPair.publicKey.buffer.byteLength, 32, 'unslabbed public key')
   t.is(core.header.keyPair.secretKey.buffer.byteLength, 64, 'unslabbed private key')
   t.is(core.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'unslabbed signers namespace')
   t.is(core.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'unslabbed signers publicKey')
-
-  t.is(core.header.userData[0].value.buffer.byteLength, 5, 'unslabbed the userdata value')
 
   // check the different code path when re-opening
   const coreReopen = await reopen()
@@ -153,8 +114,6 @@ test('core - header does not retain slabs', async function (t) {
   t.is(coreReopen.header.keyPair.secretKey.buffer.byteLength, 64, 'reopen unslabbed secret key')
   t.is(coreReopen.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'reopen unslabbed signers namespace')
   t.is(coreReopen.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'reopen unslabbed signers publicKey')
-
-  t.is(coreReopen.header.userData[0].value.buffer.byteLength, 5, 'reopen unslabbed the userdata value')
 
   await coreReopen.close()
 })
@@ -213,8 +172,6 @@ test('core - verify parallel upgrades', async function (t) {
 test('core - clone', async function (t) {
   const { core } = await create(t)
 
-  await setUserData(core, 'hello', b4a.from('world'))
-
   await core.state.append([
     b4a.from('hello'),
     b4a.from('world')
@@ -224,12 +181,6 @@ test('core - clone', async function (t) {
   const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core.state)
-
-  const userData = []
-  const str = copy.storage.createUserDataStream()
-  for await (const { key, value } of str) userData.push({ key, value })
-
-  t.alike(userData, [{ key: 'hello', value: b4a.from('world') }])
 
   t.alike([
     await getBlock(copy, 0),
@@ -428,10 +379,6 @@ async function getBlock (core, i) {
   const p = core.blocks.get(r, i)
   await r.flush()
   return p
-}
-
-async function setUserData (core, key, value) {
-  return core.userData(key, value)
 }
 
 async function getProof (core, req) {

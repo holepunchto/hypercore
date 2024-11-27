@@ -1630,7 +1630,7 @@ test('merkle-tree signature gets unslabbed', async function (t) {
 
   t.is(
     b.core.tree.signature.buffer.byteLength,
-    64,
+    b.core.tree.signature.byteLength,
     'Signature got unslabbed'
   )
 })
