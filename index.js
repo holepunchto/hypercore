@@ -260,7 +260,9 @@ class Hypercore extends EventEmitter {
     try {
       await this._openSession(key, opts)
     } catch (err) {
+      if (this.closing) return
       if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
+
       if (this.exclusive) this.core.unlockExclusive()
 
       this.core.removeMonitor(this)
@@ -308,10 +310,12 @@ class Hypercore extends EventEmitter {
       // atm we always copy the state in passCapabilities
       const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
-      this.state = await this.core.createSession(opts.name, checkout, !!opts.overwrite)
+      const parent = opts.parent || this.core
+
+      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, this.draft)
       if (state) state.unref() // ref'ed above in setup session
 
-      if (checkout !== -1) {
+      if (checkout !== -1 && checkout < this.state.tree.length) {
         await this.state.truncate(checkout, this.fork)
       }
     } else if (this.state === null) {
