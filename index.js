@@ -612,6 +612,21 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
+    if (this.state.isDefault()) {
+      if (end === start + 1) return this.core.bitfield.get(start)
+
+      const i = this.core.bitfield.firstUnset(start)
+      return i === -1 || i >= end
+    }
+
+    if (end === start + 1) {
+      const reader = this.state.storage.createReadBatch()
+      const block = reader.getBlock(start)
+      reader.tryFlush()
+
+      return (await block) !== null
+    }
+
     let count = 0
 
     const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
