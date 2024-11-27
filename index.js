@@ -323,7 +323,7 @@ class Hypercore extends EventEmitter {
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
       for (const [key, value] of Object.entries(opts.userData)) {
-        this.core.setUserData(batch, key, value)
+        batch.setUserData(key, value)
       }
       await batch.flush()
     }
@@ -612,10 +612,15 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
-    if (end === start + 1) return this.state.bitfield.get(start)
+    let count = 0
 
-    const i = this.state.bitfield.firstUnset(start)
-    return i === -1 || i >= end
+    const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
+    for await (const block of stream) {
+      if (block === null) return false
+      count++
+    }
+
+    return count === (end - start)
   }
 
   async get (index, opts) {
@@ -690,7 +695,7 @@ class Hypercore extends EventEmitter {
 
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
-    if (this.core.state.bitfield.get(index)) {
+    if (this.core.bitfield.get(index)) {
       return readBlock(this.state.storage.createReadBatch(), index)
     }
 
