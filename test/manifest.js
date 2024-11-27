@@ -169,10 +169,10 @@ test('create verifier - multi signer', async function (t) {
   const asig = crypto.sign(batch.signable(verifier.manifestHash), a.secretKey)
   const bsig = crypto.sign(batch.signable(verifier.manifestHash), b.secretKey)
 
-  const signature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: bsig }])
-  const badSignature = assemble([{ signer: 0, signature: asig }, { signer: 1, signature: asig }])
-  const secondBadSignature = assemble([{ signer: 0, signature: asig }, { signer: 0, signature: asig }])
-  const thirdBadSignature = assemble([{ signer: 0, signature: asig }])
+  const signature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 1, signature: bsig, patch: 0 }])
+  const badSignature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 1, signature: asig, patch: 0 }])
+  const secondBadSignature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 0, signature: asig, patch: 0 }])
+  const thirdBadSignature = assemble([{ signer: 0, signature: asig, patch: 0 }])
 
   t.ok(verifier.verify(batch, signature))
   t.absent(verifier.verify(batch, badSignature))
