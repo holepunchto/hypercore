@@ -64,6 +64,7 @@ class Hypercore extends EventEmitter {
     this.exclusive = false
     this.opened = false
     this.closed = false
+    this.weak = !!opts.weak
     this.snapshotted = !!opts.snapshot
     this.draft = !!opts.draft
     this.onwait = opts.onwait || null
@@ -206,6 +207,7 @@ class Hypercore extends EventEmitter {
     const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
+    const weak = opts.weak === undefined ? this.weak : opts.weak
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
@@ -214,6 +216,7 @@ class Hypercore extends EventEmitter {
       onwait,
       timeout,
       writable,
+      weak,
       parent: this
     })
 
