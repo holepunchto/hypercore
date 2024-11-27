@@ -959,7 +959,7 @@ function initOnce (session, storage, key, opts) {
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
     inflightRange: opts.inflightRange,
-    compat: opts.compat,
+    compat: opts.compat === true,
     force: opts.force,
     createIfMissing: opts.createIfMissing,
     discoveryKey: opts.discoveryKey,
