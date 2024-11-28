@@ -97,6 +97,58 @@ test('core - append and truncate', async function (t) {
   // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
+test('core - user data', async function (t) {
+  const { core, reopen } = await create(t)
+
+  await setUserData(core.storage, 'hello', b4a.from('world'))
+
+  for await (const { key, value } of core.createUserDataStream()) {
+    t.alike(key, 'hello')
+    t.alike(value, b4a.from('world'))
+  }
+
+  t.is(await countEntries(core.createUserDataStream({ gt: 'x', lt: 'z' })), 0)
+
+  await setUserData(core.storage, 'hej', b4a.from('verden'))
+
+  t.is(await countEntries(core.createUserDataStream()), 2)
+
+  for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) {
+    t.alike(key, 'hello')
+    t.alike(value, b4a.from('world'))
+  }
+
+  await setUserData(core.storage, 'hello', null)
+
+  t.is(await countEntries(core.createUserDataStream()), 1)
+  t.is(await countEntries(core.createUserDataStream({ gt: 'hej' })), 0)
+
+  await setUserData(core.storage, 'hej', b4a.from('world'))
+
+  // check that it was persisted
+  const coreReopen = await reopen()
+
+  for await (const { key, value } of coreReopen.createUserDataStream()) {
+    t.alike(key, 'hej')
+    t.alike(value, b4a.from('world'))
+  }
+
+  t.is(await countEntries(coreReopen.createUserDataStream({ gt: 'hej' })), 0)
+
+  function setUserData (storage, key, value) {
+    const b = storage.createWriteBatch()
+    b.setUserData(key, value)
+    return b.flush()
+  }
+
+  async function countEntries (stream) {
+    let count = 0
+    // eslint-disable-next-line no-unused-vars
+    for await (const entry of stream) count++
+    return count
+  }
+})
+
 test('core - header does not retain slabs', async function (t) {
   const { core, reopen } = await create(t)
 
