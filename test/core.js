@@ -97,6 +97,73 @@ test('core - append and truncate', async function (t) {
   // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
+test('core - user data', async function (t) {
+  const { core, reopen } = await create(t)
+
+  await setUserData(core.storage, 'hello', b4a.from('world'))
+
+  let count = 0
+  for await (const { key, value } of core.getUserDataStream()) {
+    count++
+    t.alike(key, 'hello')
+    t.alike(value, b4a.from('world'))
+  }
+  t.is(count, 1)
+
+  count = 0
+  for await (const { key, value } of core.getUserDataStream({ gt: 'x', lt: 'z' })) {
+    count++
+  }
+  t.is(count, 0)
+
+  await setUserData(core.storage, 'hej', b4a.from('verden'))
+
+  count = 0
+  for await (const { key, value } of core.getUserDataStream()) count++
+  t.is(count, 2)
+
+  count = 0
+  for await (const { key, value } of core.getUserDataStream({ gt: 'hej' })) {
+    count++
+    t.alike(key, 'hello')
+    t.alike(value, b4a.from('world'))
+  }
+  t.is(count, 1)
+
+  await setUserData(core.storage, 'hello', null)
+
+  count = 0
+  for await (const { key, value } of core.getUserDataStream()) count++
+  t.is(count, 1)
+
+  count = 0
+  for await (const { key, value } of core.getUserDataStream({ gt: 'hej' })) count++
+  t.is(count, 0)
+
+  await setUserData(core.storage, 'hej', b4a.from('world'))
+
+  // check that it was persisted
+  const coreReopen = await reopen()
+
+  count = 0
+  for await (const { key, value } of coreReopen.getUserDataStream()) {
+    count++
+    t.alike(key, 'hej')
+    t.alike(value, b4a.from('world'))
+  }
+  t.is(count, 1)
+
+  count = 0
+  for await (const { key, value } of coreReopen.getUserDataStream({ gt: 'hej' })) count++
+  t.is(count, 0)
+
+  function setUserData (storage, key, value) {
+    const b = storage.createWriteBatch()
+    b.setUserData(key, value)
+    return b.flush()
+  }
+})
+
 test('core - header does not retain slabs', async function (t) {
   const { core, reopen } = await create(t)
 
