@@ -102,65 +102,50 @@ test('core - user data', async function (t) {
 
   await setUserData(core.storage, 'hello', b4a.from('world'))
 
-  let count = 0
   for await (const { key, value } of core.createUserDataStream()) {
-    count++
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
   }
-  t.is(count, 1)
 
-  count = 0
-  for await (const { key, value } of core.createUserDataStream({ gt: 'x', lt: 'z' })) {
-    count++
-  }
-  t.is(count, 0)
+  t.is(await countEntries(core.createUserDataStream({ gt: 'x', lt: 'z' })), 0)
 
   await setUserData(core.storage, 'hej', b4a.from('verden'))
 
-  count = 0
-  for await (const { key, value } of core.createUserDataStream()) count++
-  t.is(count, 2)
+  t.is(await countEntries(core.createUserDataStream()), 2)
 
-  count = 0
   for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) {
-    count++
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
   }
-  t.is(count, 1)
 
   await setUserData(core.storage, 'hello', null)
 
-  count = 0
-  for await (const entry of core.createUserDataStream()) count++
-  t.is(count, 1)
-
-  count = 0
-  for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) count++
-  t.is(count, 0)
+  t.is(await countEntries(core.createUserDataStream()), 1)
+  t.is(await countEntries(core.createUserDataStream({ gt: 'hej' })), 0)
 
   await setUserData(core.storage, 'hej', b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
 
-  count = 0
   for await (const { key, value } of coreReopen.createUserDataStream()) {
-    count++
     t.alike(key, 'hej')
     t.alike(value, b4a.from('world'))
   }
-  t.is(count, 1)
 
-  count = 0
-  for await (const { key, value } of coreReopen.createUserDataStream({ gt: 'hej' })) count++
-  t.is(count, 0)
+  t.is(await countEntries(coreReopen.createUserDataStream({ gt: 'hej' })), 0)
 
   function setUserData (storage, key, value) {
     const b = storage.createWriteBatch()
     b.setUserData(key, value)
     return b.flush()
+  }
+
+  async function countEntries (stream) {
+    let count = 0
+    // eslint-disable-next-line no-unused-vars
+    for await (const entry of stream) count++
+    return count
   }
 })
 
