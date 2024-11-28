@@ -103,7 +103,7 @@ test('core - user data', async function (t) {
   await setUserData(core.storage, 'hello', b4a.from('world'))
 
   let count = 0
-  for await (const { key, value } of core.getUserDataStream()) {
+  for await (const { key, value } of core.createUserDataStream()) {
     count++
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
@@ -111,7 +111,7 @@ test('core - user data', async function (t) {
   t.is(count, 1)
 
   count = 0
-  for await (const { key, value } of core.getUserDataStream({ gt: 'x', lt: 'z' })) {
+  for await (const { key, value } of core.createUserDataStream({ gt: 'x', lt: 'z' })) {
     count++
   }
   t.is(count, 0)
@@ -119,11 +119,11 @@ test('core - user data', async function (t) {
   await setUserData(core.storage, 'hej', b4a.from('verden'))
 
   count = 0
-  for await (const { key, value } of core.getUserDataStream()) count++
+  for await (const { key, value } of core.createUserDataStream()) count++
   t.is(count, 2)
 
   count = 0
-  for await (const { key, value } of core.getUserDataStream({ gt: 'hej' })) {
+  for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) {
     count++
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
@@ -133,11 +133,11 @@ test('core - user data', async function (t) {
   await setUserData(core.storage, 'hello', null)
 
   count = 0
-  for await (const { key, value } of core.getUserDataStream()) count++
+  for await (const entry of core.createUserDataStream()) count++
   t.is(count, 1)
 
   count = 0
-  for await (const { key, value } of core.getUserDataStream({ gt: 'hej' })) count++
+  for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) count++
   t.is(count, 0)
 
   await setUserData(core.storage, 'hej', b4a.from('world'))
@@ -146,7 +146,7 @@ test('core - user data', async function (t) {
   const coreReopen = await reopen()
 
   count = 0
-  for await (const { key, value } of coreReopen.getUserDataStream()) {
+  for await (const { key, value } of coreReopen.createUserDataStream()) {
     count++
     t.alike(key, 'hej')
     t.alike(value, b4a.from('world'))
@@ -154,7 +154,7 @@ test('core - user data', async function (t) {
   t.is(count, 1)
 
   count = 0
-  for await (const { key, value } of coreReopen.getUserDataStream({ gt: 'hej' })) count++
+  for await (const { key, value } of coreReopen.createUserDataStream({ gt: 'hej' })) count++
   t.is(count, 0)
 
   function setUserData (storage, key, value) {
