@@ -203,13 +203,29 @@ class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
+    const Clz = opts.class || Hypercore
+
+    return new Clz(null, this.key, this._loadSessionOpts(opts))
+  }
+
+  _loadSessionOpts (opts) {
+    if (this.opened === true) return this._getSessionOpts(opts)
+
+    return {
+      preload: new Promise((resolve, reject) => {
+        this.opening.then(() => resolve(this._getSessionOpts(opts)), reject)
+      })
+    }
+  }
+
+  _getSessionOpts (opts) {
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
-    const Clz = opts.class || Hypercore
-    const s = new Clz(null, this.key, {
+
+    return {
       ...opts,
       core: this.core,
       wait,
@@ -218,9 +234,7 @@ class Hypercore extends EventEmitter {
       writable,
       weak,
       parent: this
-    })
-
-    return s
+    }
   }
 
   async setEncryptionKey (encryptionKey, opts) {
