@@ -276,7 +276,7 @@ class Hypercore extends EventEmitter {
       if (this.exclusive) this.core.unlockExclusive()
 
       this.core.removeMonitor(this)
-      this._removeSession(this)
+      this._removeSession()
 
       if (this.state !== null) this.state.removeSession(this)
 
@@ -397,7 +397,7 @@ class Hypercore extends EventEmitter {
 
     this.core.removeMonitor(this)
     this.state.removeSession(this)
-    this._removeSession(this)
+    this._removeSession()
 
     this.readable = false
     this.writable = false
