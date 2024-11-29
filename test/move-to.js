@@ -1,9 +1,8 @@
 const test = require('brittle')
-const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
 const { create } = require('./helpers')
 
-test('core - append', async function (t) {
+test('move - basic', async function (t) {
   const core = await create(t)
 
   const sess = core.session({ name: 'session' })
@@ -25,7 +24,7 @@ test('core - append', async function (t) {
       hash: core.state.tree.hash()
     },
     signers: [{
-      publicKey: keyPair.publicKey 
+      publicKey: keyPair.publicKey
     }]
   }
 
@@ -34,11 +33,12 @@ test('core - append', async function (t) {
 
   t.is(core2.length, 3)
 
-  await sess.moveTo(core2.core)
+  await sess.state.moveTo(core2.core)
   await sess.append('4')
 
   await core2.core.commit(sess.state)
 
+  await core.close()
   await core2.close()
   await sess.close()
 })
