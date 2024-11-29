@@ -560,6 +560,22 @@ class Hypercore extends EventEmitter {
     return p
   }
 
+  transferSession (core) {
+    // todo: validate we can move
+
+    if (this.weak === false) {
+      this.core.activeSessions--
+      core.activeSessions++
+    }
+
+    if (this._monitorIndex >= 0) {
+      this.core.removeMonitor(this)
+      core.addMonitor(this)
+    }
+
+    this.core = core
+  }
+
   createTreeBatch () {
     return this.state.tree.batch()
   }
