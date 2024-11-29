@@ -93,6 +93,8 @@ test('move - snapshots', async function (t) {
   t.is(snap.length, 3)
 
   t.alike(await snap.get(0), b4a.from('hello'))
+  t.alike(await snap.get(1), b4a.from('world'))
+  t.alike(await snap.get(2), b4a.from('again'))
 
   await snap.close()
   await core.close()
