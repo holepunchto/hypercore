@@ -566,11 +566,9 @@ class Hypercore extends EventEmitter {
   async update (opts) {
     if (this.opened === false) await this.opening
     if (this.closing !== null) return false
+    if (this.snapshotted) return false
 
-    if (this.writable && (!opts || opts.force !== true)) {
-      if (!this.snapshotted) return false
-      return this._updateSnapshot()
-    }
+    if (this.writable && (!opts || opts.force !== true)) return false
 
     const remoteWait = this._shouldWait(opts, this.core.replicator.findingPeers > 0)
 
@@ -588,7 +586,6 @@ class Hypercore extends EventEmitter {
     }
 
     if (!upgraded) return false
-    if (this.snapshotted) return this._updateSnapshot()
     return true
   }
 
