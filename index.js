@@ -57,6 +57,7 @@ class Hypercore extends EventEmitter {
     this.valueEncoding = null
     this.encodeBatch = null
     this.activeRequests = []
+    this.sessions = opts.sessions || []
 
     this.keyPair = opts.keyPair || null
     this.readable = true
@@ -78,6 +79,8 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.active !== false
+
+    this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
     this._monitorIndex = -1 // maintained by replication state
 
@@ -212,6 +215,7 @@ class Hypercore extends EventEmitter {
     const s = new Clz(null, this.key, {
       ...opts,
       core: this.core,
+      sessions: this.sessions,
       wait,
       onwait,
       timeout,
@@ -254,6 +258,9 @@ class Hypercore extends EventEmitter {
   async _open (storage, key, opts) {
     if (opts.preload) opts = { ...opts, ...(await opts.preload) }
 
+    if (opts.sessions && opts.sessions !== this.sessions) this.sessions = opts.sessions
+    this._sessionIndex = this.sessions.push(this) - 1
+
     if (storage === null) storage = opts.storage || null
     if (key === null) key = opts.key || null
 
@@ -269,6 +276,8 @@ class Hypercore extends EventEmitter {
       if (this.exclusive) this.core.unlockExclusive()
 
       this.core.removeMonitor(this)
+      this._removeSession(this)
+
       if (this.state !== null) this.state.removeSession(this)
 
       this.emit('close', this.core.hasSession() === false)
@@ -276,6 +285,13 @@ class Hypercore extends EventEmitter {
     }
 
     this.emit('ready')
+  }
+
+  _removeSession () {
+    if (this._sessionIndex === -1) return
+    const head = this.sessions.pop()
+    if (head !== this) this.sessions[(head._sessionIndex = this._sessionIndex)] = head
+    this._sessionIndex = -1
   }
 
   async _openSession (key, opts) {
@@ -381,6 +397,7 @@ class Hypercore extends EventEmitter {
 
     this.core.removeMonitor(this)
     this.state.removeSession(this)
+    this._removeSession(this)
 
     this.readable = false
     this.writable = false
@@ -513,11 +530,6 @@ class Hypercore extends EventEmitter {
 
   get globalCache () {
     return this.opened === false ? null : this.core.globalCache
-  }
-
-  // deprecated
-  get sessions () {
-    return this.opened === false ? [] : this.core.allSessions()
   }
 
   ready () {
