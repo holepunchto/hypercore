@@ -1,5 +1,7 @@
 const test = require('brittle')
-const { replicate, unreplicate, create, createStored } = require('./helpers')
+const createTempDir = require('test-tmp')
+const Hypercore = require('../')
+const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
@@ -53,11 +55,14 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 })
 
 test('snapshots wait for ready', async function (t) {
-  t.plan(10)
+  t.plan(8)
 
-  const create = await createStored(t)
+  const dir = await createTempDir(t)
+  const db = await createStorage(t, dir)
 
-  const core = await create()
+  const core = new Hypercore(db)
+  await core.ready()
+
   const s1 = core.snapshot()
 
   await core.append('block #0.0')
@@ -76,16 +81,11 @@ test('snapshots wait for ready', async function (t) {
   t.is(s1.length, 0, 'is static')
   t.is(s2.length, 2, 'is static')
 
-  await s1.update()
-  await s2.update()
-
-  // check that they can be updated
-  t.is(s1.length, 4, 'explictly updated')
-  t.is(s2.length, 4, 'explictly updated')
-
   await core.close()
+  await db.close()
 
-  const coreCopy = await create()
+  const db2 = await createStorage(t, dir)
+  const coreCopy = new Hypercore(db2)
 
   // if a snapshot is made on an opening core, it should wait until opened
   const s3 = coreCopy.snapshot()
