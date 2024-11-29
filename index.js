@@ -744,10 +744,11 @@ class Hypercore extends EventEmitter {
 
     // snapshot should check if core has block
     if (this._snapshot !== null) {
+      checkSnapshot(this, index)
       const coreBlock = await readBlock(this.core.state.storage.createReadBatch(), index)
-      if (coreBlock !== null) return coreBlock
 
       checkSnapshot(this, index)
+      if (coreBlock !== null) return coreBlock
     }
 
     // lets check the bitfield to see if we got it during the above async calls
