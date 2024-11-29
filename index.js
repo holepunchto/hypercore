@@ -765,6 +765,24 @@ class Hypercore extends EventEmitter {
     return this.state.tree.restoreBatch(length)
   }
 
+  async moveTo (core) {
+    const prevCore = this.core
+
+    const state = await core.state.createSession(this.state.name, -1)
+
+    this.core = core
+    this.state.removeSession(this)
+
+    state.addSession(this)
+
+    this.state = state
+
+    if (this._monitorIndex >= 0) {
+      prevCore.removeMonitor(this)
+      this.core.addMonitor(this)
+    }
+  }
+
   _shouldWait (opts, defaultValue) {
     if (opts) {
       if (opts.wait === false) return false
