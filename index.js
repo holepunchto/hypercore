@@ -70,6 +70,7 @@ class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this.preload = opts.preload || null
     this.closing = null
     this.opening = null
 
@@ -211,6 +212,7 @@ class Hypercore extends EventEmitter {
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
+      preload: this.preload,
       core: this.core,
       wait,
       onwait,
@@ -252,7 +254,11 @@ class Hypercore extends EventEmitter {
   }
 
   async _open (storage, key, opts) {
-    if (opts.preload) opts = { ...opts, ...(await opts.preload) }
+    if (opts.preload) {
+      this.preload = opts.preload
+      opts = { ...opts, ...(await this.preload) }
+      this.preload = null
+    }
 
     if (storage === null) storage = opts.storage || null
     if (key === null) key = opts.key || null
