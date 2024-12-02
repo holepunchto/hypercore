@@ -261,6 +261,8 @@ class Hypercore extends EventEmitter {
     if (opts.preload) opts = { ...opts, ...(await opts.preload) }
 
     if (opts.sessions && opts.sessions !== this.sessions) this.sessions = opts.sessions
+    if (opts.ongc) this.ongc = opts.ongc
+
     this._sessionIndex = this.sessions.push(this) - 1
 
     if (storage === null) storage = opts.storage || null
