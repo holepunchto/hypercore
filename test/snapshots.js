@@ -147,3 +147,36 @@ test('snapshots are consistent', async function (t) {
 
   await snapshot.close()
 })
+
+test('snapshot over named batch persists after truncate', async function (t) {
+  t.plan(8)
+
+  const core = await create(t)
+
+  await core.append('block #0.0')
+  await core.append('block #1.0')
+  await core.append('block #2.0')
+
+  const session = core.session({ name: 'session' })
+  const snapshot = session.snapshot({ valueEncoding: 'utf-8' })
+
+  t.is(snapshot.length, 3)
+
+  t.is(await snapshot.get(1), 'block #1.0')
+
+  await core.truncate(1)
+  await core.append('block #1.1')
+
+  t.is(core.fork, 1, 'clone updated')
+  t.is(core.length, 2, 'core updated')
+
+  // t.is(snapshot.fork, 0, 'snapshot remains')
+  t.is(snapshot.length, 3, 'snapshot remains')
+
+  t.is(await snapshot.get(0), 'block #0.0')
+  t.is(await snapshot.get(1), 'block #1.0')
+  t.is(await snapshot.get(2), 'block #2.0')
+
+  await core.close()
+  await snapshot.close()
+})
