@@ -80,6 +80,7 @@ class Hypercore extends EventEmitter {
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._findingPeers = 0
+    this._sessionOpen = false
     this._active = opts.active !== false
 
     this._sessionIndex = -1
@@ -326,7 +327,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.parent) {
-      await opts.parent.ready()
+      if (!opts.parent._sessionOpen) await opts.parent.ready()
       this._setupSession(opts.parent)
     }
 
@@ -353,6 +354,7 @@ class Hypercore extends EventEmitter {
     }
 
     this.state.addSession(this)
+    this._sessionOpen = true
 
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
