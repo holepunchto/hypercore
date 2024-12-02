@@ -58,6 +58,7 @@ class Hypercore extends EventEmitter {
     this.encodeBatch = null
     this.activeRequests = []
     this.sessions = opts.sessions || []
+    this.ongc = opts.ongc || null
 
     this.keyPair = opts.keyPair || null
     this.readable = true
@@ -216,6 +217,7 @@ class Hypercore extends EventEmitter {
       ...opts,
       core: this.core,
       sessions: this.sessions,
+      ongc: this.ongc,
       wait,
       onwait,
       timeout,
@@ -292,6 +294,7 @@ class Hypercore extends EventEmitter {
     const head = this.sessions.pop()
     if (head !== this) this.sessions[(head._sessionIndex = this._sessionIndex)] = head
     this._sessionIndex = -1
+    if (this.ongc !== null) this.ongc(this)
   }
 
   async _openSession (key, opts) {
