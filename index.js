@@ -772,10 +772,17 @@ class Hypercore extends EventEmitter {
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    const replicatedBlock = await req.promise
-    if (this._snapshot !== null) checkSnapshot(this, index)
+    const core = this.core
 
-    return maybeUnslab(replicatedBlock)
+    try {
+      const replicatedBlock = await req.promise
+      if (this._snapshot !== null) checkSnapshot(this, index)
+      return maybeUnslab(replicatedBlock)
+    } catch (err) {
+      if (core === this.core || err.code !== 'REQUEST_CANCELLED') throw err
+      // session moved, retry
+      return this._get(index, opts)
+    }
   }
 
   async restoreBatch (length, blocks) {
