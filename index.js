@@ -248,7 +248,7 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
-  _setupSession (parent, sharedLength) {
+  _setupSession (parent, snapshotLength) {
     if (!this.keyPair) this.keyPair = parent.keyPair
     this.writable = this._isWritable()
 
@@ -256,7 +256,7 @@ class Hypercore extends EventEmitter {
       this.state = this.draft
         ? parent.state.memoryOverlay()
         : this.snapshotted
-          ? parent.state.snapshot(sharedLength)
+          ? parent.state.snapshot(snapshotLength)
           : parent.state.ref()
     }
 
@@ -331,7 +331,7 @@ class Hypercore extends EventEmitter {
 
     if (opts.parent) {
       if (opts.parent.state === null) await opts.parent.ready()
-      this._setupSession(opts.parent, opts.sharedLength)
+      this._setupSession(opts.parent, opts.snapshotLength)
     }
 
     if (opts.exclusive) {
