@@ -331,7 +331,7 @@ class Hypercore extends EventEmitter {
 
     if (opts.parent) {
       if (opts.parent.state === null) await opts.parent.ready()
-      this._setupSession(opts.parent, opts.snapshotLength)
+      this._setupSession(opts.parent, opts.length)
     }
 
     if (opts.exclusive) {
