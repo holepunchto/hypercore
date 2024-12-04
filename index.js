@@ -49,7 +49,7 @@ class Hypercore extends EventEmitter {
 
     if (!storage) storage = opts.storage
 
-    this.core = opts.core || null
+    this.core = null
     this.state = null
     this.encryption = null
     this.extensions = new Map()
@@ -57,8 +57,8 @@ class Hypercore extends EventEmitter {
     this.valueEncoding = null
     this.encodeBatch = null
     this.activeRequests = []
-    this.sessions = opts.sessions || []
-    this.ongc = opts.ongc || null
+    this.sessions = null
+    this.ongc = null
 
     this.keyPair = opts.keyPair || null
     this.readable = true
@@ -72,7 +72,7 @@ class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
-    this.preload = opts.preload || null
+    this.preload = null
     this.closing = null
     this.opening = null
 
@@ -216,10 +216,6 @@ class Hypercore extends EventEmitter {
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
-      preload: this.preload,
-      core: this.core,
-      sessions: this.sessions,
-      ongc: this.ongc,
       wait,
       onwait,
       timeout,
@@ -260,25 +256,32 @@ class Hypercore extends EventEmitter {
   }
 
   async _open (storage, key, opts) {
-    if (opts.preload) {
-      this.preload = opts.preload
+    const preload = opts.preload || (opts.parent && opts.parent.preload)
+
+    if (preload) {
+      this.sessions = [] // in case someone looks at it like with peers
+      this.preload = preload
       opts = { ...opts, ...(await this.preload) }
       this.preload = null
     }
 
-    if (opts.sessions && opts.sessions !== this.sessions) this.sessions = opts.sessions
-    if (opts.ongc) this.ongc = opts.ongc
+    const parent = opts.parent || null
+    const core = opts.core || (parent && parent.core)
+    const sessions = opts.sessions || (parent && parent.sessions)
+    const ongc = opts.ongc || (parent && parent.ongc)
 
+    if (core) this.core = core
+    if (ongc) this.ongc = ongc
+    if (sessions) this.sessions = sessions
+
+    if (this.sessions === null) this.sessions = []
     this._sessionIndex = this.sessions.push(this) - 1
-
-    if (storage === null) storage = opts.storage || null
-    if (key === null) key = opts.key || null
 
     if (this.core === null) initOnce(this, storage, key, opts)
     if (this._monitorIndex === -2) this.core.addMonitor(this)
 
     try {
-      await this._openSession(key, opts)
+      await this._openSession(opts)
     } catch (err) {
       if (this.closing) return
       if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
@@ -305,7 +308,7 @@ class Hypercore extends EventEmitter {
     if (this.ongc !== null) this.ongc(this)
   }
 
-  async _openSession (key, opts) {
+  async _openSession (opts) {
     if (this.core.opened === false) await this.core.ready()
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
@@ -996,7 +999,10 @@ function readBlock (reader, index) {
 }
 
 function initOnce (session, storage, key, opts) {
-  session.core = opts.core || new Core(Hypercore.defaultStorage(storage), {
+  if (storage === null) storage = opts.storage || null
+  if (key === null) key = opts.key || null
+
+  session.core = new Core(Hypercore.defaultStorage(storage), {
     eagerUpgrade: true,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
