@@ -162,6 +162,8 @@ test('snapshot over named batch persists after truncate', async function (t) {
   const snapshot = session.snapshot({ valueEncoding: 'utf-8' })
   await snapshot.ready()
 
+  await session.close()
+
   t.is(snapshot.length, 3)
 
   t.is(await snapshot.get(1), 'block #1.0')
