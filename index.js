@@ -49,7 +49,9 @@ class Hypercore extends EventEmitter {
 
     if (!storage) storage = opts.storage
 
-    this.core = opts.core || null
+    const parent = opts.parent || null
+
+    this.core = opts.core || (parent && parent.core)
     this.state = null
     this.encryption = null
     this.extensions = new Map()
@@ -57,8 +59,8 @@ class Hypercore extends EventEmitter {
     this.valueEncoding = null
     this.encodeBatch = null
     this.activeRequests = []
-    this.sessions = opts.sessions || []
-    this.ongc = opts.ongc || null
+    this.sessions = opts.sessions || (parent && parent.sessions) || []
+    this.ongc = opts.ongc || (parent && parent.ongc)
 
     this.keyPair = opts.keyPair || null
     this.readable = true
@@ -72,7 +74,7 @@ class Hypercore extends EventEmitter {
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
-    this.preload = opts.preload || null
+    this.preload = opts.preload || (parent && parent.preload)
     this.closing = null
     this.opening = null
 
@@ -216,10 +218,6 @@ class Hypercore extends EventEmitter {
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
-      preload: this.preload,
-      core: this.core,
-      sessions: this.sessions,
-      ongc: this.ongc,
       wait,
       onwait,
       timeout,
@@ -264,10 +262,16 @@ class Hypercore extends EventEmitter {
       this.preload = opts.preload
       opts = { ...opts, ...(await this.preload) }
       this.preload = null
-    }
 
-    if (opts.sessions && opts.sessions !== this.sessions) this.sessions = opts.sessions
-    if (opts.ongc) this.ongc = opts.ongc
+      const parent = opts.parent || null
+      const core = opts.core || (parent && parent.core)
+      const sessions = opts.sessions || (parent && parent.sessions)
+      const ongc = opts.ongc || (parent && parent.ongc)
+
+      if (core) this.core = core
+      if (sessions) this.sessions = sessions
+      if (ongc) this.ongc = ongc
+    }
 
     this._sessionIndex = this.sessions.push(this) - 1
 
@@ -996,7 +1000,7 @@ function readBlock (reader, index) {
 }
 
 function initOnce (session, storage, key, opts) {
-  session.core = opts.core || new Core(Hypercore.defaultStorage(storage), {
+  session.core = new Core(Hypercore.defaultStorage(storage), {
     eagerUpgrade: true,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
