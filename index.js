@@ -395,6 +395,7 @@ class Hypercore extends EventEmitter {
   }
 
   _isWritable () {
+    if (this.draft) return true
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
