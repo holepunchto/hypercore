@@ -4,7 +4,7 @@ const { create, replicate, eventFlush } = require('./helpers')
 test('basic extension', async function (t) {
   const messages = ['world', 'hello']
 
-  const a = await create()
+  const a = await create(t)
   a.registerExtension('test-extension', {
     encoding: 'utf-8',
     onmessage: (message, peer) => {
@@ -13,7 +13,7 @@ test('basic extension', async function (t) {
     }
   })
 
-  const b = await create(a.key)
+  const b = await create(t, a.key)
   const bExt = b.registerExtension('test-extension', {
     encoding: 'utf-8'
   })
@@ -33,8 +33,8 @@ test('basic extension', async function (t) {
 test('two extensions', async function (t) {
   const messages = ['world', 'hello']
 
-  const a = await create()
-  const b = await create(a.key)
+  const a = await create(t)
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
