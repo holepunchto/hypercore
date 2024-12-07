@@ -20,6 +20,7 @@ const {
   ASSERTION,
   BAD_ARGUMENT,
   SESSION_CLOSED,
+  SESSION_MOVED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE,
   DECODING_ERROR
@@ -329,7 +330,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.parent) {
-      if (opts.parent.state === null) await opts.parent.ready()
+      if (opts.parent._stateIndex === -1) await opts.parent.ready()
       this._setupSession(opts.parent)
     }
 
@@ -564,6 +565,26 @@ class Hypercore extends EventEmitter {
     return p
   }
 
+  transferSession (core) {
+    // todo: validate we can move
+
+    if (this.weak === false) {
+      this.core.activeSessions--
+      core.activeSessions++
+    }
+
+    if (this._monitorIndex >= 0) {
+      this.core.removeMonitor(this)
+      core.addMonitor(this)
+    }
+
+    const old = this.core
+
+    this.core = core
+
+    old.replicator.clearRequests(this.activeRequests, SESSION_MOVED())
+  }
+
   createTreeBatch () {
     return this.state.tree.batch()
   }
@@ -609,7 +630,12 @@ class Hypercore extends EventEmitter {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
       const req = this.core.replicator.addUpgrade(activeRequests)
 
-      upgraded = await req.promise
+      try {
+        upgraded = await req.promise
+      } catch (err) {
+        if (isSessionMoved(err)) return this.update(opts)
+        throw err
+      }
     }
 
     if (!upgraded) return false
@@ -636,7 +662,12 @@ class Hypercore extends EventEmitter {
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    return req.promise
+    try {
+      return await req.promise
+    } catch (err) {
+      if (isSessionMoved(err)) return this.seek(bytes, opts)
+      throw err
+    }
   }
 
   async has (start, end = start + 1) {
@@ -758,9 +789,16 @@ class Hypercore extends EventEmitter {
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    const replicatedBlock = await req.promise
-    if (this._snapshot !== null) checkSnapshot(this, index)
+    let replicatedBlock = null
 
+    try {
+      replicatedBlock = await req.promise
+    } catch (err) {
+      if (isSessionMoved(err)) return this._get(index, opts)
+      throw err
+    }
+
+    if (this._snapshot !== null) checkSnapshot(this, index)
     return maybeUnslab(replicatedBlock)
   }
 
@@ -790,19 +828,7 @@ class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    const req = this._download(range)
-
-    // do not crash in the background...
-    req.catch(safetyCatch)
-
-    return new Download(req)
-  }
-
-  async _download (range) {
-    if (this.opened === false) await this.opening
-
-    const activeRequests = (range && range.activeRequests) || this.activeRequests
-    return this.core.replicator.addRange(activeRequests, range)
+    return new Download(this, range)
   }
 
   // TODO: get rid of this / deprecate it?
@@ -1030,4 +1056,8 @@ function maybeAddMonitor (name) {
   } else {
     this.core.addMonitor(this)
   }
+}
+
+function isSessionMoved (err) {
+  return err.code === 'SESSION_MOVED'
 }
