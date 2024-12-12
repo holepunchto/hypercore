@@ -249,8 +249,11 @@ class Hypercore extends EventEmitter {
     if (!this.keyPair) this.keyPair = parent.keyPair
     this.writable = this._isWritable()
 
-    if (parent.state) {
-      this.state = this.draft ? parent.state.memoryOverlay() : this.snapshotted ? parent.state.snapshot() : parent.state.ref()
+    const s = parent.state
+
+    if (s) {
+      const shouldSnapshot = this.snapshotted && !s.isSnapshot()
+      this.state = this.draft ? s.memoryOverlay() : shouldSnapshot ? s.snapshot() : s.ref()
     }
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
