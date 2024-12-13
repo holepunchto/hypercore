@@ -4,6 +4,8 @@ const crypto = require('hypercore-crypto')
 const { create } = require('./helpers')
 
 test('move - basic', async function (t) {
+  t.plan(9)
+
   const core = await create(t)
 
   const sess = core.session({ name: 'session' })
@@ -33,6 +35,8 @@ test('move - basic', async function (t) {
   await core2.core.copyPrologue(core.state)
 
   t.is(core2.length, 3)
+
+  sess.once('migrate', key => { t.alike(key, core2.key) })
 
   await sess.state.moveTo(core2.core)
   await sess.append('4')

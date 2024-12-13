@@ -586,6 +586,8 @@ class Hypercore extends EventEmitter {
     this.core = core
 
     old.replicator.clearRequests(this.activeRequests, SESSION_MOVED())
+
+    this.emit('migrate', this.key)
   }
 
   createTreeBatch () {
