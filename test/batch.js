@@ -467,7 +467,7 @@ test('flush with bg activity persists non conflicting values', async function (t
   t.alike(await clone.get(2, { wait: false }), b4a.from('c'))
 
   t.is(b.byteLength, clone.byteLength)
-  t.is(b.flushedLength, b.length, 'nothing buffered')
+  t.is(b.signedLength, b.length, 'nothing buffered')
 
   await b.close()
 })
@@ -610,7 +610,7 @@ test('encryption and bigger batches', async function (t) {
 
 //   t.is(batch.length, 6)
 //   t.is(batch.byteLength, 6)
-//   t.is(batch.flushedLength, 3)
+//   t.is(batch.signedLength, 3)
 //   t.alike(await batch.seek(4), [4, 0])
 
 //   const clone = await create(t, core.key)
@@ -703,7 +703,7 @@ test('persistent batch', async function (t) {
 
   t.is(batch.length, 6)
   t.is(batch.byteLength, 6)
-  // t.is(batch.flushedLength, 3)
+  // t.is(batch.signedLength, 3)
   // t.alike(await batch.seek(4), [4, 0])
 
   await core.close()
@@ -716,7 +716,7 @@ test('persistent batch', async function (t) {
 
   t.is(reopened.length, 6)
   t.is(reopened.byteLength, 6)
-  // t.is(batch.flushedLength, 3)
+  // t.is(batch.signedLength, 3)
   // t.alike(await batch.seek(4), [4, 0])
 
   await reopened.close()
