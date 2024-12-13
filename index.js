@@ -504,7 +504,7 @@ class Hypercore extends EventEmitter {
     return this.opened === false ? 0 : this.state.tree.length
   }
 
-  get flushedLength () {
+  get signedLength () {
     if (this.opened === false) return 0
     if (this.state === this.core.state) return this.core.tree.length
     const flushed = this.state.flushedLength()
