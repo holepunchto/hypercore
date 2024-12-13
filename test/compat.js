@@ -30,5 +30,7 @@ for (const abi of abis) {
     }
 
     t.pass('blocks match')
+
+    await core.close()
   })
 }
