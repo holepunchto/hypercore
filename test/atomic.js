@@ -1,9 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const createTempDir = require('test-tmp')
 
-const Hypercore = require('../')
-const { create, createStorage, eventFlush } = require('./helpers')
+const { create } = require('./helpers')
 
 test('atomic - append', async function (t) {
   const core = await create(t)
