@@ -555,9 +555,9 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  async setUserData (key, value, { atomizer = null } = {}) {
+  async setUserData (key, value, { atom = null } = {}) {
     if (this.opened === false) await this.opening
-    await this.state.setUserData(key, value, atomizer)
+    await this.state.setUserData(key, value, atom)
   }
 
   async getUserData (key) {
@@ -871,7 +871,7 @@ class Hypercore extends EventEmitter {
     const isDefault = this.state === this.core.state
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
-    const { keyPair = defaultKeyPair, signature = null, atomizer = null } = opts
+    const { keyPair = defaultKeyPair, signature = null, atom = null } = opts
     const writable = !!this.draft || !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
 
     if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
@@ -893,7 +893,7 @@ class Hypercore extends EventEmitter {
       }
     }
 
-    return this.state.append(buffers, { keyPair, signature, preappend, atomizer })
+    return this.state.append(buffers, { keyPair, signature, preappend, atom })
   }
 
   async treeHash (length) {

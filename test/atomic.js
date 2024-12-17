@@ -18,13 +18,13 @@ test('atomic - append', async function (t) {
     appends++
   })
 
-  const atomizer = core.state.storage.atomizer()
+  const atom = core.state.storage.atom()
 
-  atomizer.enter()
+  atom.enter()
 
   const promises = [
-    core.append('1', { atomizer }),
-    core2.append('2', { atomizer })
+    core.append('1', { atom }),
+    core2.append('2', { atom })
   ]
 
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -33,7 +33,7 @@ test('atomic - append', async function (t) {
   t.is(core2.length, 0)
   t.is(appends, 0)
 
-  atomizer.exit()
+  atom.exit()
   await Promise.all(promises)
 
   t.is(core.length, 1)
@@ -62,13 +62,13 @@ test('atomic - overwrite', async function (t) {
   await draft2.append('to the')
   await draft2.append('beginning')
 
-  const atomizer = core.state.storage.atomizer()
+  const atom = core.state.storage.atom()
 
-  atomizer.enter()
+  atom.enter()
 
   const overwrite = [
-    core.core.commit(draft.state, { treeLength: core.length, atomizer }),
-    core2.core.commit(draft2.state, { treeLength: core2.length, atomizer })
+    core.core.commit(draft.state, { treeLength: core.length, atom }),
+    core2.core.commit(draft2.state, { treeLength: core2.length, atom })
   ]
 
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -76,7 +76,7 @@ test('atomic - overwrite', async function (t) {
   t.is(core.length, 2)
   t.is(core2.length, 1)
 
-  atomizer.exit()
+  atom.exit()
   await t.execution(Promise.all(overwrite))
 
   t.is(core.length, 3)
@@ -93,17 +93,17 @@ test('atomic - user data', async function (t) {
 
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  const atomizer = core.state.storage.atomizer()
+  const atom = core.state.storage.atom()
 
-  atomizer.enter()
+  atom.enter()
 
-  const userData = core.setUserData('hello', 'done', { atomizer })
+  const userData = core.setUserData('hello', 'done', { atom })
 
   await new Promise(resolve => setTimeout(resolve, 100))
 
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  atomizer.exit()
+  atom.exit()
   await t.execution(userData)
 
   t.alike(await core.getUserData('hello'), b4a.from('done'))
@@ -117,13 +117,13 @@ test('atomic - append and user data', async function (t) {
   t.is(core.length, 0)
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  const atomizer = core.state.storage.atomizer()
+  const atom = core.state.storage.atom()
 
-  atomizer.enter()
+  atom.enter()
 
   const promises = [
-    core.setUserData('hello', 'done', { atomizer }),
-    core.append('append', { atomizer })
+    core.setUserData('hello', 'done', { atom }),
+    core.append('append', { atom })
   ]
 
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -131,7 +131,7 @@ test('atomic - append and user data', async function (t) {
   t.alike(await core.getUserData('hello'), b4a.from('world'))
   t.is(core.length, 0)
 
-  atomizer.exit()
+  atom.exit()
   await t.execution(Promise.all(promises))
 
   t.is(core.length, 1)
@@ -166,15 +166,15 @@ test('atomic - overwrite and user data', async function (t) {
   await draft2.append('to the')
   await draft2.append('beginning')
 
-  const atomizer = core.state.storage.atomizer()
+  const atom = core.state.storage.atom()
 
-  atomizer.enter()
+  atom.enter()
 
   const promises = [
-    core.core.commit(draft.state, { treeLength: core.length, atomizer }),
-    core2.core.commit(draft2.state, { treeLength: core2.length, atomizer }),
-    core.setUserData('hello', 'world', { atomizer }),
-    core2.setUserData('goodbye', 'everybody', { atomizer })
+    core.core.commit(draft.state, { treeLength: core.length, atom }),
+    core2.core.commit(draft2.state, { treeLength: core2.length, atom }),
+    core.setUserData('hello', 'world', { atom }),
+    core2.setUserData('goodbye', 'everybody', { atom })
   ]
 
   await new Promise(resolve => setTimeout(resolve, 100))
@@ -184,7 +184,7 @@ test('atomic - overwrite and user data', async function (t) {
   t.alike(await core.getUserData('hello'), null)
   t.alike(await core.getUserData('goodbye'), null)
 
-  atomizer.exit()
+  atom.exit()
   await t.execution(Promise.all(promises))
 
   t.is(core.length, 3)
