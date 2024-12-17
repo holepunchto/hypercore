@@ -555,9 +555,9 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  async setUserData (key, value, { flush = false } = {}) {
+  async setUserData (key, value, { atomizer = null } = {}) {
     if (this.opened === false) await this.opening
-    await this.state.setUserData(key, value)
+    await this.state.setUserData(key, value, atomizer)
   }
 
   async getUserData (key) {

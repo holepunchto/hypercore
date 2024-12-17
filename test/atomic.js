@@ -78,7 +78,7 @@ test('atomic - overwrite', async function (t) {
   t.is(core2.length, 1)
 
   atomizer.exit()
-  await Promise.all(overwrite)
+  await t.execution(Promise.all(overwrite))
 
   t.is(core.length, 3)
   t.is(core2.length, 4)
@@ -120,8 +120,31 @@ test('atomic - overwrite', async function (t) {
   t.is(core2.length, 1)
 
   atomizer.exit()
-  await Promise.all(overwrite)
+  await t.execution(Promise.all(overwrite))
 
   t.is(core.length, 3)
   t.is(core2.length, 4)
+})
+
+test('atomic - user data', async function (t) {
+  const core = await create(t)
+
+  await core.setUserData('hello', 'world')
+
+  t.alike(await core.getUserData('hello'), b4a.from('world'))
+
+  const atomizer = core.state.storage.atomizer()
+
+  atomizer.enter()
+
+  const userData = core.setUserData('hello', 'done', { atomizer })
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.alike(await core.getUserData('hello'), b4a.from('world'))
+
+  atomizer.exit()
+  await t.execution(userData)
+
+  t.alike(await core.getUserData('hello'), b4a.from('done'))
 })
