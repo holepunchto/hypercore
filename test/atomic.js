@@ -83,3 +83,45 @@ test('atomic - overwrite', async function (t) {
   t.is(core.length, 3)
   t.is(core2.length, 4)
 })
+
+test('atomic - overwrite', async function (t) {
+  const core = await create(t)
+  const core2 = await create(t)
+
+  await core.append('hello')
+  await core.append('world')
+
+  await core2.append('hello')
+
+  t.is(core.length, 2)
+  t.is(core2.length, 1)
+
+  const draft = core.session({ draft: true })
+  const draft2 = core2.session({ draft: true })
+
+  await draft.append('all the way')
+
+  await draft2.append('back')
+  await draft2.append('to the')
+  await draft2.append('beginning')
+
+  const atomizer = core.state.storage.atomizer()
+
+  atomizer.enter()
+
+  const overwrite = [
+    core.core.commit(draft.state, { treeLength: core.length, atomizer }),
+    core2.core.commit(draft2.state, { treeLength: core2.length, atomizer })
+  ]
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(core.length, 2)
+  t.is(core2.length, 1)
+
+  atomizer.exit()
+  await Promise.all(overwrite)
+
+  t.is(core.length, 3)
+  t.is(core2.length, 4)
+})
