@@ -184,7 +184,7 @@ test('atomic - overwrite and user data', async function (t) {
   t.is(core.length, 3)
   t.is(core2.length, 4)
   t.alike(await core.getUserData('hello'), b4a.from('world'))
-  t.alike(await core.getUserData('goodbye'), b4a.from('everybody'))
+  t.alike(await core2.getUserData('goodbye'), b4a.from('everybody'))
 
   draft.close()
   draft2.close()
