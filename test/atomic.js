@@ -1,7 +1,8 @@
 const test = require('brittle')
 const b4a = require('b4a')
 
-const { create } = require('./helpers')
+const Hypercore = require('../')
+const { create, createStorage } = require('./helpers')
 
 test('atomic - append', async function (t) {
   const core = await create(t)
@@ -81,8 +82,8 @@ test('atomic - overwrite', async function (t) {
   t.is(core.length, 3)
   t.is(core2.length, 4)
 
-  draft.close()
-  draft2.close()
+  await draft.close()
+  await draft2.close()
 })
 
 test('atomic - user data', async function (t) {
@@ -138,8 +139,13 @@ test('atomic - append and user data', async function (t) {
 })
 
 test('atomic - overwrite and user data', async function (t) {
-  const core = await create(t)
-  const core2 = await create(t)
+  const storage = await createStorage(t)
+
+  const core = new Hypercore(storage)
+  const core2 = new Hypercore(storage)
+
+  await core.ready()
+  await core2.ready()
 
   await core.append('hello')
   await core.append('world')
@@ -186,6 +192,9 @@ test('atomic - overwrite and user data', async function (t) {
   t.alike(await core.getUserData('hello'), b4a.from('world'))
   t.alike(await core2.getUserData('goodbye'), b4a.from('everybody'))
 
-  draft.close()
-  draft2.close()
+  await draft.close()
+  await draft2.close()
+
+  await core.close()
+  await core2.close()
 })
