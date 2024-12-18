@@ -198,3 +198,55 @@ test('atomic - overwrite and user data', async function (t) {
   await core.close()
   await core2.close()
 })
+
+test('atomic - move to', async function (t) {
+  const storage = await createStorage(t)
+
+  const core = new Hypercore(storage)
+  const core2 = new Hypercore(storage)
+
+  await core.ready()
+  await core2.ready()
+
+  await core.append('hello')
+  await core.append('world')
+
+  await core2.append('hello')
+
+  t.is(core.length, 2)
+  t.is(core2.length, 1)
+
+  const session = core.session({ name: 'moveable' })
+  await session.ready()
+
+  let truncates = 0
+  session.on('truncate', () => { truncates++ })
+
+  t.is(session.length, 2)
+  t.ok(session.core === core.core)
+  t.is(truncates, 0)
+
+  const atom = core.state.storage.atom()
+
+  atom.enter()
+
+  const moving = session.state.moveTo(core2.core, 1, { atom })
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(session.length, 2)
+  t.ok(session.core === core.core)
+  t.is(truncates, 0)
+
+  atom.exit()
+  await t.execution(moving)
+
+  t.is(session.length, 1)
+  t.ok(session.core !== core.core)
+  t.ok(session.core === core2.core)
+  t.is(truncates, 1)
+
+  await core.close()
+  await session.close()
+  await core2.close()
+})
