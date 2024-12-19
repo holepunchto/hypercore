@@ -4,7 +4,7 @@ const b4a = require('b4a')
 const { create } = require('./helpers')
 
 test('basic read stream', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   const expected = [
     'hello',
@@ -23,7 +23,7 @@ test('basic read stream', async function (t) {
 })
 
 test('read stream with start / end', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   const datas = [
     'hello',
@@ -56,7 +56,7 @@ test('read stream with start / end', async function (t) {
 })
 
 test('basic write+read stream', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   const expected = [
     'hello',
@@ -80,7 +80,7 @@ test('basic write+read stream', async function (t) {
 })
 
 test('basic byte stream', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   const expected = [
     'hello',
@@ -99,7 +99,7 @@ test('basic byte stream', async function (t) {
 })
 
 test('basic byte stream with byteOffset / byteLength', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   await core.append([
     'hello',
@@ -122,7 +122,7 @@ test('basic byte stream with byteOffset / byteLength', async function (t) {
 })
 
 test('basic byte stream with byteOffset / byteLength of a core that has valueEncoding', async function (t) {
-  const core = await create({ valueEncoding: 'utf8' })
+  const core = await create(t, { valueEncoding: 'utf8' })
 
   await core.append([
     'hello',
@@ -146,7 +146,7 @@ test('basic byte stream with byteOffset / byteLength of a core that has valueEnc
 })
 
 test('byte stream with lower byteLength than byteOffset', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   await core.append([
     'hello',
@@ -168,7 +168,7 @@ test('byte stream with lower byteLength than byteOffset', async function (t) {
 })
 
 test('basic byte stream with custom byteOffset but default byteLength', async function (t) {
-  const core = await create()
+  const core = await create(t)
 
   await core.append([
     'hello',
