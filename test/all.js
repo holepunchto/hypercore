@@ -33,6 +33,7 @@ async function runTests () {
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')
+  await import('./atomic.js')
 
   test.resume()
 }
