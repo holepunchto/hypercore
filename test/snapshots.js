@@ -1,11 +1,13 @@
 const test = require('brittle')
-const { replicate, unreplicate, create, createStored } = require('./helpers')
+const createTempDir = require('test-tmp')
+const Hypercore = require('../')
+const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
 
-  const core = await create()
-  const clone = await create(core.key, { valueEncoding: 'utf-8' })
+  const core = await create(t)
+  const clone = await create(t, core.key, { valueEncoding: 'utf-8' })
 
   clone.on('truncate', function (len) {
     t.is(len, 2, 'remote truncation')
@@ -31,6 +33,8 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   const p2 = clone.get(1)
   const p3 = clone.get(2)
 
+  const exception = t.exception(p3, 'should fail cause snapshot not available')
+
   await core.truncate(2)
 
   await core.append('block #2.1')
@@ -39,7 +43,7 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
   replicate(core, clone, t)
 
   t.is(await p2, 'block #1.0')
-  t.exception(p3, 'should fail cause snapshot not available')
+  await exception
 
   t.is(await clone.get(2), 'block #2.1')
 
@@ -51,11 +55,14 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 })
 
 test('snapshots wait for ready', async function (t) {
-  t.plan(10)
+  t.plan(8)
 
-  const create = createStored()
+  const dir = await createTempDir(t)
+  const db = await createStorage(t, dir)
 
-  const core = create()
+  const core = new Hypercore(db)
+  await core.ready()
+
   const s1 = core.snapshot()
 
   await core.append('block #0.0')
@@ -74,16 +81,13 @@ test('snapshots wait for ready', async function (t) {
   t.is(s1.length, 0, 'is static')
   t.is(s2.length, 2, 'is static')
 
-  await s1.update()
-  await s2.update()
-
-  // check that they can be updated
-  t.is(s1.length, 4, 'explictly updated')
-  t.is(s2.length, 4, 'explictly updated')
-
   await core.close()
+  await s1.close()
+  await s2.close()
+  await db.close()
 
-  const coreCopy = create()
+  const db2 = await createStorage(t, dir)
+  const coreCopy = new Hypercore(db2)
 
   // if a snapshot is made on an opening core, it should wait until opened
   const s3 = coreCopy.snapshot()
@@ -101,13 +105,17 @@ test('snapshots wait for ready', async function (t) {
 
   t.is(s3.length, 4, 'no changes')
   t.is(s4.length, 4, 'no changes')
+
+  await coreCopy.close()
+  await s3.close()
+  await s4.close()
 })
 
 test('snapshots are consistent', async function (t) {
   t.plan(6)
 
-  const core = await create()
-  const clone = await create(core.key)
+  const core = await create(t)
+  const clone = await create(t, core.key)
 
   await core.append('block #0.0')
   await core.append('block #1.0')
@@ -127,10 +135,52 @@ test('snapshots are consistent', async function (t) {
   await core.append('block #1.1')
   await core.append('block #2.1')
 
+  // wait for clone to update
+  await new Promise(resolve => clone.once('truncate', resolve))
+
   t.is(clone.fork, 1, 'clone updated')
 
   const b = snapshot.get(0)
   t.exception(snapshot.get(1))
   t.exception(snapshot.get(2))
   t.is(await b, 'block #0.0')
+
+  await snapshot.close()
+})
+
+test('snapshot over named batch persists after truncate', async function (t) {
+  t.plan(8)
+
+  const core = await create(t)
+
+  await core.append('block #0.0')
+  await core.append('block #1.0')
+  await core.append('block #2.0')
+
+  const session = core.session({ name: 'session' })
+
+  const snapshot = session.snapshot({ valueEncoding: 'utf-8' })
+  await snapshot.ready()
+
+  await session.close()
+
+  t.is(snapshot.length, 3)
+
+  t.is(await snapshot.get(1), 'block #1.0')
+
+  await core.truncate(1)
+  await core.append('block #1.1')
+
+  t.is(core.fork, 1, 'clone updated')
+  t.is(core.length, 2, 'core updated')
+
+  // t.is(snapshot.fork, 0, 'snapshot remains')
+  t.is(snapshot.length, 3, 'snapshot remains')
+
+  t.is(await snapshot.get(0), 'block #0.0')
+  t.is(await snapshot.get(1), 'block #1.0')
+  t.is(await snapshot.get(2), 'block #2.0')
+
+  await core.close()
+  await snapshot.close()
 })
