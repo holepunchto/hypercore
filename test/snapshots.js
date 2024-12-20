@@ -82,6 +82,8 @@ test('snapshots wait for ready', async function (t) {
   t.is(s2.length, 2, 'is static')
 
   await core.close()
+  await s1.close()
+  await s2.close()
   await db.close()
 
   const db2 = await createStorage(t, dir)
@@ -105,8 +107,6 @@ test('snapshots wait for ready', async function (t) {
   t.is(s4.length, 4, 'no changes')
 
   await coreCopy.close()
-  await s1.close()
-  await s2.close()
   await s3.close()
   await s4.close()
 })
