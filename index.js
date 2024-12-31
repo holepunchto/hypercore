@@ -943,7 +943,10 @@ class Hypercore extends EventEmitter {
     }
 
     this.extensions.set(name, ext)
-    this.core.addMonitor(this)
+
+    if (this.core === null) this._monitorIndex = -2
+    else this.core.addMonitor(this)
+
     for (const peer of this.peers) {
       peer.extensions.set(name, ext)
     }
