@@ -476,8 +476,7 @@ class Hypercore extends EventEmitter {
     if (this.opened) {
       this.core.replicator.attachTo(mux)
     } else {
-      const replicator = this.core.replicator
-      this.opening.then(replicator.attachTo.bind(replicator, mux), mux.destroy.bind(mux))
+      this.opening.then(() => this.core.replicator.attachTo(mux), mux.destroy.bind(mux))
     }
 
     return mux
