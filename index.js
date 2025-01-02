@@ -359,7 +359,11 @@ class Hypercore extends EventEmitter {
       this.state = this.core.state.ref()
     }
 
+    if (this.snapshotted && this.core) this._updateSnapshot()
+
     this.state.addSession(this)
+    // TODO: we need to rework the core reference flow, as the state and session do not always agree now due to moveTo
+    this.core = this.state.core // in case it was wrong...
 
     if (opts.userData) {
       const batch = this.state.storage.createWriteBatch()
@@ -777,7 +781,9 @@ class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      return readBlock(this.state.storage.createReadBatch(), index)
+      const coreBlock = await readBlock(this.state.storage.createReadBatch(), index)
+      // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
+      if (coreBlock !== null) return coreBlock
     }
 
     if (!this._shouldWait(opts, this.wait)) return null
