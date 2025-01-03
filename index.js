@@ -535,7 +535,7 @@ class Hypercore extends EventEmitter {
 
   get fork () {
     if (this.opened === false) return 0
-    return this.core.tree.fork
+    return this.state.tree.fork
   }
 
   get peers () {
