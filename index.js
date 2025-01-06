@@ -189,8 +189,7 @@ class Hypercore extends EventEmitter {
   }
 
   static defaultStorage (storage, opts = {}) {
-    if (typeof storage !== 'string') {
-      // todo: validate it is rocksdb instance
+    if (typeof storage !== 'string' && CoreStorage.isCoreStorage(storage)) {
       return storage
     }
 
