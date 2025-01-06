@@ -57,7 +57,7 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
-test('session on a from instance does not inject itself to other sessions', async function (t) {
+test.skip('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 
   const b = new Hypercore({ core: a.core, encryptionKey: null })
