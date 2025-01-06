@@ -231,6 +231,7 @@ class Hypercore extends EventEmitter {
   async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
     this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
+    if (!this.core.encryption) this.core.encryption = this.encryption
   }
 
   setKeyPair (keyPair) {
