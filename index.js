@@ -189,9 +189,7 @@ class Hypercore extends EventEmitter {
   }
 
   static defaultStorage (storage, opts = {}) {
-    if (typeof storage !== 'string' && CoreStorage.isCoreStorage(storage)) {
-      return storage
-    }
+    if (CoreStorage.isCoreStorage(storage)) return storage
 
     const directory = storage
     return new CoreStorage(directory, opts)
