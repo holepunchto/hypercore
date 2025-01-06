@@ -559,6 +559,10 @@ module.exports = class Hypercore extends EventEmitter {
     return this.core.tree.length
   }
 
+  get signedLength () {
+    return this.length
+  }
+
   get indexedLength () {
     return this.length
   }
