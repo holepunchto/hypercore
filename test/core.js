@@ -363,7 +363,7 @@ test('core - copyPrologue many', async function (t) {
 
   // upgrade clone
   {
-    const batch = core.tree.batch(core.state)
+    const batch = core.state.createTreeBatch()
     const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
     p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
     t.ok(await copy2.verify(p))
@@ -437,7 +437,7 @@ async function getBlock (core, i) {
 
 async function getProof (core, req) {
   const batch = core.storage.createReadBatch()
-  const p = await core.tree.proof(batch, core.state, req)
+  const p = await core.tree.proof(batch, core.state.createTreeBatch(), req)
   const block = req.block ? core.blocks.get(batch, req.block.index) : null
   batch.tryFlush()
   const proof = await p.settle()

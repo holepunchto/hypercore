@@ -592,7 +592,7 @@ class Hypercore extends EventEmitter {
   }
 
   createTreeBatch () {
-    return this.state.tree.batch(this.state)
+    return this.state.createTreeBatch()
   }
 
   findingPeers () {
@@ -652,8 +652,8 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.state.tree
-    const s = tree.seek(this.state, bytes, this.padding)
+    const tree = (opts && opts.tree) || this.state.createTreeBatch()
+    const s = tree.seek(bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -812,7 +812,8 @@ class Hypercore extends EventEmitter {
 
   async restoreBatch (length, blocks) {
     if (this.opened === false) await this.opening
-    return this.state.tree.restoreBatch(length)
+    const batch = this.state.createTreeBatch()
+    return batch.restore(length)
   }
 
   _shouldWait (opts, defaultValue) {

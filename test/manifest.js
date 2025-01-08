@@ -1147,7 +1147,7 @@ test('multisig - prologue verify hash', async function (t) {
   t.is(core.length, 0)
 
   const batch = s0.core.storage.createReadBatch()
-  const p = await s0.core.tree.proof(batch, s0.state, { upgrade: { start: 0, length: 2 } })
+  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1205,7 +1205,7 @@ test('multisig - prologue morphs request', async function (t) {
   t.is(core.length, 0)
 
   const batch = s0.core.storage.createReadBatch()
-  const p = await s0.core.tree.proof(batch, s0.core.state, { upgrade: { start: 0, length: 4 } })
+  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1247,7 +1247,7 @@ test('multisig - prologue morphs request', async function (t) {
   t.is(remote.length, 5)
 
   const rb = remote.core.storage.createReadBatch()
-  const rp = await remote.core.tree.proof(rb, remote.state, { upgrade: { start: 0, length: 4 } })
+  const rp = await remote.core.tree.proof(rb, remote.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
   rb.tryFlush()
 
   await t.execution(rp.settle())

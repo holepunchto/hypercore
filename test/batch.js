@@ -323,7 +323,7 @@ test('batched tree batch proofs are equivalent', async function (t) {
   const reader1 = core.state.storage.createReadBatch()
   const treeBatch = core.createTreeBatch()
   const proofIntermediate = await treeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
-  const treeProofIntermediate = await core.core.tree.proof(reader1, core.state, { upgrade: { start: 0, length: 2 } })
+  const treeProofIntermediate = await core.core.tree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
 
   await reader1.flush()
 
@@ -801,7 +801,7 @@ test('copy from with encrypted batch', async function (t) {
     encryptionKey
   })
 
-  const tree = clone.core.tree.batch(clone.state)
+  const tree = clone.core.state.createTreeBatch()
 
   for (let i = 0; i < blocks; i++) {
     await tree.append(await b.get(i, { raw: true }))
