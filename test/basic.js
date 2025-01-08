@@ -228,13 +228,13 @@ test('treeHash gets the tree hash at a given core length', async function (t) {
   const core = new Hypercore(await createStorage(t))
   await core.ready()
 
-  const { core: { tree } } = core
+  const { core: { state } } = core
 
-  const hashes = [tree.hash()]
+  const hashes = [state.hash()]
 
   for (let i = 1; i < 10; i++) {
     await core.append([`${i}`])
-    hashes.push(tree.hash())
+    hashes.push(state.hash())
   }
 
   for (let i = 0; i < 10; i++) {

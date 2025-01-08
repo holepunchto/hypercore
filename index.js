@@ -350,7 +350,7 @@ class Hypercore extends EventEmitter {
       this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, this.draft)
       if (state) state.unref() // ref'ed above in setup session
 
-      if (checkout !== -1 && checkout < this.state.tree.length) {
+      if (checkout !== -1 && checkout < this.state.length) {
         await this.state.truncate(checkout, this.fork)
       }
     } else if (this.state === null) {
@@ -386,9 +386,9 @@ class Hypercore extends EventEmitter {
 
   _getSnapshot () {
     return {
-      length: this.state.tree.length,
-      byteLength: this.state.tree.byteLength,
-      fork: this.state.tree.fork
+      length: this.state.length,
+      byteLength: this.state.byteLength,
+      fork: this.state.fork
     }
   }
 
@@ -502,15 +502,15 @@ class Hypercore extends EventEmitter {
 
   get length () {
     if (this._snapshot) return this._snapshot.length
-    return this.opened === false ? 0 : this.state.tree.length
+    return this.opened === false ? 0 : this.state.length
   }
 
   get signedLength () {
     if (this.opened === false) return 0
-    if (this.state === this.core.state) return this.core.tree.length
+    if (this.state === this.core.state) return this.core.state.length
     const flushed = this.state.flushedLength()
 
-    return flushed === -1 ? this.state.tree.length : flushed
+    return flushed === -1 ? this.state.length : flushed
   }
 
   /**
@@ -519,12 +519,12 @@ class Hypercore extends EventEmitter {
   get byteLength () {
     if (this.opened === false) return 0
     if (this._snapshot) return this._snapshot.byteLength
-    return this.state.tree.byteLength - (this.state.tree.length * this.padding)
+    return this.state.byteLength - (this.state.length * this.padding)
   }
 
   get contiguousLength () {
     if (this.opened === false) return 0
-    return Math.min(this.core.tree.length, this.core.header.hints.contiguousLength)
+    return Math.min(this.core.state.length, this.core.header.hints.contiguousLength)
   }
 
   get contiguousByteLength () {
@@ -533,7 +533,7 @@ class Hypercore extends EventEmitter {
 
   get fork () {
     if (this.opened === false) return 0
-    return this.state.tree.fork
+    return this.state.fork
   }
 
   get peers () {
@@ -592,7 +592,7 @@ class Hypercore extends EventEmitter {
   }
 
   createTreeBatch () {
-    return this.state.tree.batch()
+    return this.state.tree.batch(this.state)
   }
 
   findingPeers () {
@@ -653,7 +653,7 @@ class Hypercore extends EventEmitter {
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
     const tree = (opts && opts.tree) || this.state.tree
-    const s = tree.seek(bytes, this.padding)
+    const s = tree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -853,14 +853,14 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
 
     const {
-      fork = this.state.tree.fork + 1,
+      fork = this.state.fork + 1,
       keyPair = this.keyPair,
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
 
     const isDefault = this.state === this.core.state
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.tree.fork)) throw SESSION_NOT_WRITABLE()
+    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork)) throw SESSION_NOT_WRITABLE()
 
     await this.state.truncate(newLength, fork, { keyPair, signature })
 
@@ -902,7 +902,7 @@ class Hypercore extends EventEmitter {
   async treeHash (length) {
     if (length === undefined) {
       await this.ready()
-      length = this.state.tree.length
+      length = this.state.length
     }
 
     const roots = await this.state.tree.getRoots(length)
@@ -1007,8 +1007,8 @@ function toHex (buf) {
 }
 
 function preappend (blocks) {
-  const offset = this.state.tree.length
-  const fork = this.state.tree.fork
+  const offset = this.state.length
+  const fork = this.state.fork
 
   if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 

@@ -14,7 +14,7 @@ test('encrypted append and get', async function (t) {
 
   const info = await a.info()
   t.is(info.byteLength, 5)
-  t.is(a.core.tree.byteLength, 5 + a.padding)
+  t.is(a.core.state.byteLength, 5 + a.padding)
 
   const unencrypted = await a.get(0)
   t.alike(unencrypted, b4a.from('hello'))

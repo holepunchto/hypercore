@@ -111,6 +111,7 @@ test('snapshots wait for ready', async function (t) {
   await s4.close()
 })
 
+// flake
 test('snapshots are consistent', async function (t) {
   t.plan(6)
 

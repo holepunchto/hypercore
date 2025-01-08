@@ -14,8 +14,8 @@ test('core - append', async function (t) {
     ])
 
     t.alike(info, { length: 2, byteLength: 10 })
-    t.is(core.tree.length, 2)
-    t.is(core.tree.byteLength, 10)
+    t.is(core.state.length, 2)
+    t.is(core.state.byteLength, 10)
     t.alike([
       await getBlock(core, 0),
       await getBlock(core, 1)
@@ -31,8 +31,8 @@ test('core - append', async function (t) {
     ])
 
     t.alike(info, { length: 3, byteLength: 13 })
-    t.is(core.tree.length, 3)
-    t.is(core.tree.byteLength, 13)
+    t.is(core.state.length, 3)
+    t.is(core.state.byteLength, 13)
     t.alike([
       await getBlock(core, 0),
       await getBlock(core, 1),
@@ -57,9 +57,9 @@ test('core - append and truncate', async function (t) {
 
   await core.state.truncate(3, 1)
 
-  t.is(core.tree.length, 3)
-  t.is(core.tree.byteLength, 12)
-  t.is(core.tree.fork, 1)
+  t.is(core.state.length, 3)
+  t.is(core.state.byteLength, 12)
+  t.is(core.state.fork, 1)
 
   await core.state.append([
     b4a.from('a'),
@@ -70,9 +70,9 @@ test('core - append and truncate', async function (t) {
 
   await core.state.truncate(3, 2)
 
-  t.is(core.tree.length, 3)
-  t.is(core.tree.byteLength, 12)
-  t.is(core.tree.fork, 2)
+  t.is(core.state.length, 3)
+  t.is(core.state.byteLength, 12)
+  t.is(core.state.fork, 2)
 
   await core.state.truncate(2, 3)
 
@@ -91,9 +91,9 @@ test('core - append and truncate', async function (t) {
   // check that it was persisted
   const coreReopen = await reopen()
 
-  t.is(coreReopen.tree.length, 2)
-  t.is(coreReopen.tree.byteLength, 10)
-  t.is(coreReopen.tree.fork, 7)
+  t.is(coreReopen.state.length, 2)
+  t.is(coreReopen.state.byteLength, 10)
+  t.is(coreReopen.state.fork, 7)
   // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
@@ -190,7 +190,8 @@ test('core - verify', async function (t) {
   t.alike(tree1.signature, tree2.signature)
 
   {
-    const p = await getProof(core, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+    const nodes = await clone.tree.missingNodes(2, clone.state.length)
+    const p = await getProof(core, { block: { index: 1, nodes, value: true } })
     await clone.verify(p)
   }
 })
@@ -229,7 +230,7 @@ test('core - clone', async function (t) {
     b4a.from('world')
   ])
 
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const manifest = { prologue: { hash: await core.state.hash(), length: core.state.length } }
   const { core: copy } = (await create(t, { manifest }))
 
   await copy.copyPrologue(core.state)
@@ -242,10 +243,10 @@ test('core - clone', async function (t) {
     b4a.from('world')
   ])
 
-  const signature = copy.tree.signature
-  const roots = copy.tree.roots.map(r => r.index)
+  const signature = copy.state.signature
+  const roots = copy.state.roots.map(r => r.index)
 
-  for (let i = 0; i <= core.tree.length * 2; i++) {
+  for (let i = 0; i <= core.state.length * 2; i++) {
     t.alike(
       await copy.tree.get(i, false),
       await core.tree.get(i, false)
@@ -255,8 +256,8 @@ test('core - clone', async function (t) {
   await core.state.append([b4a.from('c')])
 
   // copy should be independent
-  t.alike(copy.tree.signature, signature)
-  t.alike(copy.tree.roots.map(r => r.index), roots)
+  t.alike(copy.state.signature, signature)
+  t.alike(copy.state.roots.map(r => r.index), roots)
   t.is(copy.header.hints.contiguousLength, 2)
 })
 
@@ -265,7 +266,7 @@ test('core - clone verify', async function (t) {
 
   await core.state.append([b4a.from('a'), b4a.from('b')])
 
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const manifest = { prologue: { hash: await core.state.hash(), length: core.state.length } }
   const { core: copy } = await create(t, { manifest })
   const { core: clone } = await create(t, { manifest })
 
@@ -282,7 +283,8 @@ test('core - clone verify', async function (t) {
   t.is(clone.header.tree.length, 2)
 
   {
-    const p = await getProof(copy, { block: { index: 1, nodes: await clone.tree.nodes(2), value: true } })
+    const nodes = await clone.tree.missingNodes(2, clone.state.length)
+    const p = await getProof(copy, { block: { index: 1, nodes, value: true } })
     p.block.value = await getBlock(copy, 1)
     await clone.verify(p)
   }
@@ -300,7 +302,7 @@ test('core - partial clone', async function (t) {
   await core.state.append([b4a.from('0')])
   await core.state.append([b4a.from('1')])
 
-  const manifest = { prologue: { hash: await core.tree.hash(), length: core.tree.length } }
+  const manifest = { prologue: { hash: await core.state.hash(), length: core.state.length } }
 
   await core.state.append([b4a.from('2')])
   await core.state.append([b4a.from('3')])
@@ -309,8 +311,8 @@ test('core - partial clone', async function (t) {
 
   await copy.copyPrologue(core.state)
 
-  t.is(core.tree.length, 4)
-  t.is(copy.tree.length, 2)
+  t.is(core.state.length, 4)
+  t.is(copy.state.length, 2)
 
   t.is(core.header.hints.contiguousLength, 4)
   t.is(copy.header.hints.contiguousLength, 2)
@@ -343,7 +345,7 @@ test('core - copyPrologue many', async function (t) {
   await core.state.append([b4a.from('a'), b4a.from('b')])
 
   const manifest = { ...core.header.manifest }
-  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  manifest.prologue = { length: core.state.length, hash: core.state.hash() }
 
   const { core: copy } = await create(t, { manifest })
   const { core: copy2 } = await create(t, { manifest })
@@ -353,15 +355,15 @@ test('core - copyPrologue many', async function (t) {
 
   t.alike(copy.header.manifest.signers[0].publicKey, core.header.manifest.signers[0].publicKey)
 
-  t.is(copy.tree.length, core.tree.length)
-  t.is(copy.tree.byteLength, core.tree.byteLength)
+  t.is(copy.state.length, core.state.length)
+  t.is(copy.state.byteLength, core.state.byteLength)
 
   // copy should be independent
   await core.state.append([b4a.from('c')])
 
   // upgrade clone
   {
-    const batch = core.tree.batch()
+    const batch = core.tree.batch(core.state)
     const p = await getProof(core, { upgrade: { start: 0, length: 3 } })
     p.upgrade.signature = copy2.verifier.sign(batch, core.header.keyPair)
     t.ok(await copy2.verify(p))
@@ -370,20 +372,20 @@ test('core - copyPrologue many', async function (t) {
   await t.execution(copy2.copyPrologue(core.state))
   await t.execution(copy3.copyPrologue(core.state))
 
-  t.is(copy2.tree.length, core.tree.length)
-  t.is(copy.tree.length, copy3.tree.length)
+  t.is(copy2.state.length, core.state.length)
+  t.is(copy.state.length, copy3.state.length)
 
   t.is(copy2.header.tree.length, core.header.tree.length)
   t.is(copy.header.tree.length, copy3.header.tree.length)
 
-  t.is(copy2.tree.byteLength, core.tree.byteLength)
-  t.is(copy.tree.byteLength, copy3.tree.byteLength)
+  t.is(copy2.state.byteLength, core.state.byteLength)
+  t.is(copy.state.byteLength, copy3.state.byteLength)
 
-  manifest.prologue = { length: core.tree.length, hash: core.tree.hash() }
+  manifest.prologue = { length: core.state.length, hash: core.state.hash() }
   const { core: copy4 } = await create(t, { manifest })
   await copy4.copyPrologue(copy2.state)
 
-  t.is(copy4.tree.length, 3)
+  t.is(copy4.state.length, 3)
   t.is(copy4.header.tree.length, 3)
 
   t.is(core.header.hints.contiguousLength, 3)
@@ -435,7 +437,7 @@ async function getBlock (core, i) {
 
 async function getProof (core, req) {
   const batch = core.storage.createReadBatch()
-  const p = await core.tree.proof(batch, req)
+  const p = await core.tree.proof(batch, core.state, req)
   const block = req.block ? core.blocks.get(batch, req.block.index) : null
   batch.tryFlush()
   const proof = await p.settle()
