@@ -652,8 +652,8 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.state.createTreeBatch()
-    const s = tree.seek(bytes, this.padding)
+    const tree = (opts && opts.tree) || this.state.core.tree
+    const s = tree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
