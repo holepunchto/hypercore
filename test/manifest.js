@@ -1039,7 +1039,7 @@ test('multisig - prologue', async function (t) {
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
 
-  const hash = b4a.from(signers[0].core.tree.hash())
+  const hash = b4a.from(signers[0].core.state.hash())
 
   const manifest = createMultiManifest(signers)
   const manifestWithPrologue = createMultiManifest(signers, { hash, length: 2 })
@@ -1092,7 +1092,7 @@ test('multisig - prologue replicate', async function (t) {
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
 
-  const hash = b4a.from(signers[0].core.tree.hash())
+  const hash = b4a.from(signers[0].core.state.hash())
 
   const manifest = createMultiManifest(signers, { hash, length: 2 })
 
@@ -1133,10 +1133,12 @@ test('multisig - prologue verify hash', async function (t) {
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
-  await signers[0].append(b4a.from('0'))
-  await signers[0].append(b4a.from('1'))
+  const s0 = signers[0]
 
-  const hash = b4a.from(signers[0].core.tree.hash())
+  await s0.append(b4a.from('0'))
+  await s0.append(b4a.from('1'))
+
+  const hash = b4a.from(s0.core.state.hash())
 
   const manifest = createMultiManifest(signers, { hash, length: 2 })
 
@@ -1144,8 +1146,8 @@ test('multisig - prologue verify hash', async function (t) {
 
   t.is(core.length, 0)
 
-  const batch = signers[0].core.storage.createReadBatch()
-  const p = await signers[0].core.tree.proof(batch, { upgrade: { start: 0, length: 2 } })
+  const batch = s0.core.storage.createReadBatch()
+  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1181,27 +1183,29 @@ test('multisig - prologue morphs request', async function (t) {
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
 
-  await signers[0].append(b4a.from('0'))
-  await signers[1].append(b4a.from('0'))
+  const [s0, s1] = signers
 
-  await signers[0].append(b4a.from('1'))
-  await signers[1].append(b4a.from('1'))
+  await s0.append(b4a.from('0'))
+  await s1.append(b4a.from('0'))
 
-  await signers[0].append(b4a.from('2'))
-  await signers[1].append(b4a.from('2'))
+  await s0.append(b4a.from('1'))
+  await s1.append(b4a.from('1'))
 
-  await signers[0].append(b4a.from('3'))
-  await signers[1].append(b4a.from('3'))
+  await s0.append(b4a.from('2'))
+  await s1.append(b4a.from('2'))
 
-  const hash = b4a.from(signers[0].core.tree.hash())
+  await s0.append(b4a.from('3'))
+  await s1.append(b4a.from('3'))
+
+  const hash = b4a.from(s0.core.state.hash())
   const manifest = createMultiManifest(signers, { hash, length: 4 })
 
   const core = await create(t, { manifest })
 
   t.is(core.length, 0)
 
-  const batch = signers[0].core.storage.createReadBatch()
-  const p = await signers[0].core.tree.proof(batch, { upgrade: { start: 0, length: 4 } })
+  const batch = s0.core.storage.createReadBatch()
+  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1211,11 +1215,11 @@ test('multisig - prologue morphs request', async function (t) {
 
   t.is(core.length, 4)
 
-  await signers[0].append(b4a.from('4'))
-  await signers[1].append(b4a.from('4'))
+  await s0.append(b4a.from('4'))
+  await s1.append(b4a.from('4'))
 
-  const proof2 = await partialCoreSignature(core, signers[0], 5)
-  const proof3 = await partialCoreSignature(core, signers[1], 5)
+  const proof2 = await partialCoreSignature(core, s0, 5)
+  const proof3 = await partialCoreSignature(core, s1, 5)
 
   multisig = assemble([proof2, proof3])
 
@@ -1243,7 +1247,7 @@ test('multisig - prologue morphs request', async function (t) {
   t.is(remote.length, 5)
 
   const rb = remote.core.storage.createReadBatch()
-  const rp = await remote.core.tree.proof(rb, { upgrade: { start: 0, length: 4 } })
+  const rp = await remote.core.tree.proof(rb, remote.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
   rb.tryFlush()
 
   await t.execution(rp.settle())
@@ -1260,7 +1264,7 @@ test('multisig - append/truncate before prologue', async function (t) {
   await signers[0].append(b4a.from('1'))
   await signers[1].append(b4a.from('1'))
 
-  const hash = b4a.from(signers[0].core.tree.hash())
+  const hash = b4a.from(signers[0].core.state.hash())
   const manifest = createMultiManifest(signers, { hash, length: 2 })
 
   let multisig = null
@@ -1268,13 +1272,13 @@ test('multisig - append/truncate before prologue', async function (t) {
 
   const core = await create(t, { manifest })
 
-  const proof = await partialSignature(signers[0].core.tree, 0, 2)
-  const proof2 = await partialSignature(signers[1].core.tree, 1, 2)
+  const proof = await partialSignature(signers[0].core, 0, 2)
+  const proof2 = await partialSignature(signers[1].core, 1, 2)
 
   multisig = assemble([proof, proof2])
 
-  const partialProof = await partialSignature(signers[0].core.tree, 0, 1)
-  const partialProof2 = await partialSignature(signers[1].core.tree, 1, 1)
+  const partialProof = await partialSignature(signers[0].core, 0, 1)
+  const partialProof2 = await partialSignature(signers[1].core, 1, 1)
 
   partialMultisig = assemble([partialProof, partialProof2])
 
@@ -1491,6 +1495,6 @@ async function partialCoreSignature (core, s, len) {
   for (; index < core.manifest.signers.length; index++) {
     if (b4a.equals(core.manifest.signers[index].publicKey, s.keyPair.publicKey)) break
   }
-  const proof = await partialSignature(s.core.tree, index, len, s.core.tree.length, sig)
+  const proof = await partialSignature(s.core, index, len, s.core.state.length, sig)
   return proof
 }

@@ -3,7 +3,7 @@ const createTempDir = require('test-tmp')
 const b4a = require('b4a')
 
 const Hypercore = require('../')
-const { create, createStorage, replicate, eventFlush } = require('./helpers')
+const { create, createStorage, replicate } = require('./helpers')
 
 const NS = b4a.alloc(32)
 
@@ -323,16 +323,17 @@ test('batched tree batch proofs are equivalent', async function (t) {
   const reader1 = core.state.storage.createReadBatch()
   const treeBatch = core.createTreeBatch()
   const proofIntermediate = await treeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
-  const treeProofIntermediate = await core.core.tree.proof(reader1, { upgrade: { start: 0, length: 2 } })
+  const treeProofIntermediate = await core.core.tree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
 
   await reader1.flush()
 
   const proof = await proofIntermediate.settle()
   const treeProof = await treeProofIntermediate.settle()
 
+  t.alike(proof, treeProof)
+
   treeProof.upgrade.signature = null
 
-  t.alike(proof, batchProof)
   t.alike(treeProof, batchProof)
 
   await b.close()
@@ -452,14 +453,17 @@ test('flush with bg activity persists non conflicting values', async function (t
   const b = clone.session({ name: 'batch' })
 
   // bg
+  const promise = new Promise(resolve => clone.on('append', resolve))
+
   await core.append('b')
   await core.append('c')
 
   await b.append('b')
   await b.append('c')
 
-  await eventFlush()
+  await promise
 
+  t.is(clone.length, 3)
   t.ok(await clone.core.commit(b.state), 'flushed!')
 
   t.alike(await clone.get(0, { wait: false }), b4a.from('a'))
@@ -797,7 +801,7 @@ test('copy from with encrypted batch', async function (t) {
     encryptionKey
   })
 
-  const tree = clone.core.tree.batch()
+  const tree = clone.core.state.createTreeBatch()
 
   for (let i = 0; i < blocks; i++) {
     await tree.append(await b.get(i, { raw: true }))
