@@ -100,30 +100,30 @@ test('core - append and truncate', async function (t) {
 test('core - user data', async function (t) {
   const { core, reopen } = await create(t)
 
-  await setUserData(core.storage, 'hello', b4a.from('world'))
+  await putUserData(core.storage, 'hello', b4a.from('world'))
 
   for await (const { key, value } of core.createUserDataStream()) {
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
   }
 
-  t.is(await countEntries(core.createUserDataStream({ gt: 'x', lt: 'z' })), 0)
+  t.is(await countEntries(core.createUserDataStream('x', 'z')), 0)
 
-  await setUserData(core.storage, 'hej', b4a.from('verden'))
+  await putUserData(core.storage, 'hej', b4a.from('verden'))
 
   t.is(await countEntries(core.createUserDataStream()), 2)
 
-  for await (const { key, value } of core.createUserDataStream({ gt: 'hej' })) {
+  for await (const { key, value } of core.createUserDataStream('hello')) {
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
   }
 
-  await setUserData(core.storage, 'hello', null)
+  await putUserData(core.storage, 'hello', null)
 
   t.is(await countEntries(core.createUserDataStream()), 1)
-  t.is(await countEntries(core.createUserDataStream({ gt: 'hej' })), 0)
+  t.is(await countEntries(core.createUserDataStream('hello')), 0)
 
-  await setUserData(core.storage, 'hej', b4a.from('world'))
+  await putUserData(core.storage, 'hej', b4a.from('world'))
 
   // check that it was persisted
   const coreReopen = await reopen()
@@ -133,11 +133,11 @@ test('core - user data', async function (t) {
     t.alike(value, b4a.from('world'))
   }
 
-  t.is(await countEntries(coreReopen.createUserDataStream({ gt: 'hej' })), 0)
+  t.is(await countEntries(coreReopen.createUserDataStream('hello')), 0)
 
-  function setUserData (storage, key, value) {
-    const b = storage.createWriteBatch()
-    b.setUserData(key, value)
+  function putUserData (storage, key, value) {
+    const b = storage.write()
+    b.putUserData(key, value)
     return b.flush()
   }
 
@@ -429,14 +429,14 @@ async function create (t, opts = {}) {
 }
 
 async function getBlock (core, i) {
-  const r = core.storage.createReadBatch()
+  const r = core.storage.read()
   const p = core.blocks.get(r, i)
-  await r.flush()
+  r.tryFlush()
   return p
 }
 
 async function getProof (core, req) {
-  const batch = core.storage.createReadBatch()
+  const batch = core.storage.read()
   const p = await core.tree.proof(batch, core.state.createTreeBatch(), req)
   const block = req.block ? core.blocks.get(batch, req.block.index) : null
   batch.tryFlush()
@@ -446,8 +446,8 @@ async function getProof (core, req) {
 }
 
 function getCoreHead (storage) {
-  const b = storage.createReadBatch()
-  const p = b.getCoreHead()
+  const b = storage.read()
+  const p = b.getHead()
   b.tryFlush()
   return p
 }

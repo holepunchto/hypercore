@@ -283,7 +283,7 @@ async function createStorage (t, dir) {
 }
 
 async function flush (s, b, bitfield) {
-  const w = s.createWriteBatch()
+  const w = s.write()
   b.flush(w, bitfield)
   await w.flush()
 }
