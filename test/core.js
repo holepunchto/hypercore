@@ -107,13 +107,13 @@ test('core - user data', async function (t) {
     t.alike(value, b4a.from('world'))
   }
 
-  t.is(await countEntries(core.createUserDataStream('x', 'z')), 0)
+  t.is(await countEntries(core.createUserDataStream({ gte: 'x', lt: 'z' })), 0)
 
   await putUserData(core.storage, 'hej', b4a.from('verden'))
 
   t.is(await countEntries(core.createUserDataStream()), 2)
 
-  for await (const { key, value } of core.createUserDataStream('hello')) {
+  for await (const { key, value } of core.createUserDataStream({ gte: 'hello' })) {
     t.alike(key, 'hello')
     t.alike(value, b4a.from('world'))
   }
@@ -121,7 +121,7 @@ test('core - user data', async function (t) {
   await putUserData(core.storage, 'hello', null)
 
   t.is(await countEntries(core.createUserDataStream()), 1)
-  t.is(await countEntries(core.createUserDataStream('hello')), 0)
+  t.is(await countEntries(core.createUserDataStream({ gte: 'hello' })), 0)
 
   await putUserData(core.storage, 'hej', b4a.from('world'))
 
@@ -133,7 +133,7 @@ test('core - user data', async function (t) {
     t.alike(value, b4a.from('world'))
   }
 
-  t.is(await countEntries(coreReopen.createUserDataStream('hello')), 0)
+  t.is(await countEntries(coreReopen.createUserDataStream({ gte: 'hello' })), 0)
 
   function putUserData (storage, key, value) {
     const b = storage.write()
