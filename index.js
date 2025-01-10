@@ -251,7 +251,7 @@ class Hypercore extends EventEmitter {
 
     if (s) {
       const shouldSnapshot = this.snapshotted && !s.isSnapshot()
-      this.state = this.draft ? s.memoryOverlay() : shouldSnapshot ? s.snapshot() : s.ref()
+      this.state = shouldSnapshot ? s.snapshot() : s.ref()
     }
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -340,14 +340,17 @@ class Hypercore extends EventEmitter {
       await this.core.lockExclusive()
     }
 
-    if (opts.name) {
+    const parent = opts.parent || this.core
+
+    if (opts.atom) {
+      this.state = await parent.state.createSession(null, -1, false, opts.atom)
+    } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
       const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
-      const parent = opts.parent || this.core
 
-      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, this.draft)
+      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)
       if (state) state.unref() // ref'ed above in setup session
 
       if (checkout !== -1 && checkout < this.state.length) {

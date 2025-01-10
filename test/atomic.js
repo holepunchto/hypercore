@@ -20,24 +20,31 @@ test('atomic - append', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const a1 = core.session({ atom })
+  const a2 = core2.session({ atom })
 
-  const promises = [
-    core.append('1', { atom }),
-    core2.append('2', { atom })
-  ]
+  await a1.append('1')
+  await a2.append('2')
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(a1.length, 1)
+  t.is(a2.length, 1)
 
   t.is(core.length, 0)
   t.is(core2.length, 0)
+
+  t.is(core.core.bitfield.get(0), false)
+  t.is(core2.core.bitfield.get(0), false)
+
   t.is(appends, 0)
 
-  atom.exit()
-  await Promise.all(promises)
+  await atom.flush()
 
   t.is(core.length, 1)
   t.is(core2.length, 1)
+
+  t.is(core.core.bitfield.get(0), true)
+  t.is(core2.core.bitfield.get(0), true)
+
   t.is(appends, 1)
 })
 
