@@ -26,7 +26,7 @@ test('nodes', async function (t) {
 test('proof only block', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     block: { index: 4, nodes: 2 }
   })
@@ -45,7 +45,7 @@ test('proof only block', async function (t) {
 test('proof with upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 10 }
@@ -67,7 +67,7 @@ test('proof with upgrade', async function (t) {
 test('proof with upgrade + additional', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 8 }
@@ -89,7 +89,7 @@ test('proof with upgrade + additional', async function (t) {
 test('proof with upgrade from existing state', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 9 }
@@ -111,7 +111,7 @@ test('proof with upgrade from existing state', async function (t) {
 test('proof with upgrade from existing state + additional', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 5 }
@@ -133,7 +133,7 @@ test('proof with upgrade from existing state + additional', async function (t) {
 test('proof block and seek, no upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 8, padding: 0 },
     block: { index: 4, nodes: 2 }
@@ -152,7 +152,7 @@ test('proof block and seek, no upgrade', async function (t) {
 test('proof block and seek #2, no upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 10, padding: 0 },
     block: { index: 4, nodes: 2 }
@@ -171,7 +171,7 @@ test('proof block and seek #2, no upgrade', async function (t) {
 test('proof block and seek #3, no upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 }
@@ -190,7 +190,7 @@ test('proof block and seek #3, no upgrade', async function (t) {
 test('proof seek with padding, no upgrade', async function (t) {
   const { storage, tree } = await create(t, 16)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 7, padding: 1 },
     block: { index: 0, nodes: 4 }
@@ -207,7 +207,7 @@ test('proof seek with padding, no upgrade', async function (t) {
 test('proof block and seek that results in tree, no upgrade', async function (t) {
   const { storage, tree } = await create(t, 16)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 26, padding: 0 },
     block: { index: 0, nodes: 4 }
@@ -224,7 +224,7 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
 test('proof block and seek, with upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 },
@@ -247,7 +247,7 @@ test('proof block and seek, with upgrade', async function (t) {
 test('proof seek with upgrade', async function (t) {
   const { storage, tree } = await create(t, 10)
 
-  const b = storage.createReadBatch()
+  const b = storage.read()
   const p = await tree.proof(b, {
     seek: { bytes: 13, padding: 0 },
     upgrade: { start: 0, length: 10 }
@@ -268,7 +268,7 @@ test('verify proof #1', async function (t) {
   const { storage, tree } = await create(t, 10)
   const clone = await create(t)
 
-  const batch = storage.createReadBatch()
+  const batch = storage.read()
   const proof = await tree.proof(batch, {
     hash: { index: 6, nodes: 0 },
     upgrade: { start: 0, length: 10 }
@@ -295,7 +295,7 @@ test('verify proof #2', async function (t) {
   const { storage, tree } = await create(t, 10)
   const clone = await create(t)
 
-  const batch = storage.createReadBatch()
+  const batch = storage.read()
   const proof = await tree.proof(batch, {
     seek: { bytes: 10, padding: 0 },
     upgrade: { start: 0, length: 10 }
@@ -320,7 +320,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   const clone = await create(t)
 
   {
-    const batch = storage.createReadBatch()
+    const batch = storage.read()
     const p = await tree.proof(batch, {
       upgrade: { start: 0, length: 4 }
     })
@@ -343,7 +343,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
   b.finalise()
 
   {
-    const batch = storage.createReadBatch()
+    const batch = storage.read()
     const p = await tree.proof(batch, {
       upgrade: { start: 4, length: 1 }
     })
@@ -617,7 +617,7 @@ test('check if a length is upgradeable', async function (t) {
   t.is(await tree.upgradeable(4), true)
   t.is(await tree.upgradeable(5), true)
 
-  const batch = storage.createReadBatch()
+  const batch = storage.read()
   const proof = await tree.proof(batch, {
     upgrade: { start: 0, length: 5 }
   })
@@ -842,7 +842,7 @@ async function audit (tree) {
 async function reorg (local, remote) {
   const upgrade = { start: 0, length: remote.tree.length }
 
-  const batch = remote.storage.createReadBatch()
+  const batch = remote.storage.read()
   const proof = await remote.tree.proof(batch, { upgrade })
 
   batch.tryFlush()
@@ -852,7 +852,7 @@ async function reorg (local, remote) {
     const index = 2 * (r.want.end - 1)
     const nodes = r.want.nodes
 
-    const batch = remote.storage.createReadBatch()
+    const batch = remote.storage.read()
     const proof = await remote.tree.proof(batch, { hash: { index, nodes } })
 
     batch.tryFlush()

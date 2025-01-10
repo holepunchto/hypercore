@@ -310,22 +310,22 @@ test('batched tree batch proofs are equivalent', async function (t) {
 
   await b.append(['a', 'b', 'c'])
 
-  const reader = b.state.storage.createReadBatch()
+  const reader = b.state.storage.read()
   const batchTreeBatch = b.createTreeBatch()
   const batchProofIntermediate = await batchTreeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
 
-  await reader.flush()
+  reader.tryFlush()
 
   const batchProof = await batchProofIntermediate.settle()
 
   await core.core.commit(b.state)
 
-  const reader1 = core.state.storage.createReadBatch()
+  const reader1 = core.state.storage.read()
   const treeBatch = core.createTreeBatch()
   const proofIntermediate = await treeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
   const treeProofIntermediate = await core.core.tree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
 
-  await reader1.flush()
+  reader1.tryFlush()
 
   const proof = await proofIntermediate.settle()
   const treeProof = await treeProofIntermediate.settle()

@@ -244,7 +244,7 @@ test('session keeps encryption', async function (t) {
 })
 
 function getBlock (core, index) {
-  const batch = core.core.storage.createReadBatch()
+  const batch = core.core.storage.read()
   const b = core.core.blocks.get(batch, index)
   batch.tryFlush()
   return b
