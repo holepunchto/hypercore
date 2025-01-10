@@ -23,10 +23,11 @@ test('atomic - append', async function (t) {
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
 
-  await a1.append('1')
-  await a2.append('2')
+  await a1.append('1.1')
+  await a1.append('1.2')
+  await a2.append('2.2')
 
-  t.is(a1.length, 1)
+  t.is(a1.length, 2)
   t.is(a2.length, 1)
 
   t.is(core.length, 0)
@@ -39,7 +40,7 @@ test('atomic - append', async function (t) {
 
   await atom.flush()
 
-  t.is(core.length, 1)
+  t.is(core.length, 2)
   t.is(core2.length, 1)
 
   t.is(core.core.bitfield.get(0), true)
