@@ -238,18 +238,18 @@ test('atomic - move to', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const atomic = session.session({ atom })
+  await atomic.ready()
 
-  const moving = session.state.moveTo(core2.core, 1, { atom })
+  await atomic.state.moveTo(core2.core, 1)
 
-  await new Promise(resolve => setTimeout(resolve, 100))
-
+  t.is(atomic.length, 1)
   t.is(session.length, 2)
   t.ok(session.core === core.core)
   t.is(truncates, 0)
 
-  atom.exit()
-  await t.execution(moving)
+  t.is(atomic.length, 1)
+  await atom.flush()
 
   t.is(session.length, 1)
   t.ok(session.core !== core.core)
