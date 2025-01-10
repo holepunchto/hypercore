@@ -456,6 +456,11 @@ class Hypercore extends EventEmitter {
     this.emit('close', true)
   }
 
+  async commit (state, opts) {
+    await this.ready()
+    return this.state.commit(state, opts)
+  }
+
   replicate (isInitiator, opts = {}) {
     // Only limitation here is that ondiscoverykey doesn't work atm when passing a muxer directly,
     // because it doesn't really make a lot of sense.

@@ -61,8 +61,8 @@ test('atomic - overwrite', async function (t) {
   t.is(core.length, 2)
   t.is(core2.length, 1)
 
-  const draft = core.session({ draft: true })
-  const draft2 = core2.session({ draft: true })
+  const draft = core.session({ name: 'writer' })
+  const draft2 = core2.session({ name: 'writer' })
 
   await draft.append('all the way')
 
@@ -72,20 +72,19 @@ test('atomic - overwrite', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const a1 = core.session({ atom })
+  const a2 = core2.session({ atom })
 
-  const overwrite = [
-    core.core.commit(draft.state, { treeLength: core.length, atom }),
-    core2.core.commit(draft2.state, { treeLength: core2.length, atom })
-  ]
+  await a1.commit(draft.state, { treeLength: core.length })
+  await a2.commit(draft2.state, { treeLength: core2.length })
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(a1.length, 3)
+  t.is(a2.length, 4)
 
   t.is(core.length, 2)
   t.is(core2.length, 1)
 
-  atom.exit()
-  await t.execution(Promise.all(overwrite))
+  await atom.flush()
 
   t.is(core.length, 3)
   t.is(core2.length, 4)
@@ -103,16 +102,13 @@ test('atomic - user data', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const atomic = core.session({ atom })
+  await atomic.setUserData('hello', 'done')
 
-  const userData = core.setUserData('hello', 'done', { atom })
-
-  await new Promise(resolve => setTimeout(resolve, 100))
-
+  t.alike(await atomic.getUserData('hello'), b4a.from('done'))
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  atom.exit()
-  await t.execution(userData)
+  await atom.flush()
 
   t.alike(await core.getUserData('hello'), b4a.from('done'))
 })
@@ -127,20 +123,18 @@ test('atomic - append and user data', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const atomic = core.session({ atom })
 
-  const promises = [
-    core.setUserData('hello', 'done', { atom }),
-    core.append('append', { atom })
-  ]
-
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await atomic.setUserData('hello', 'done')
+  await atomic.append('append')
 
   t.alike(await core.getUserData('hello'), b4a.from('world'))
-  t.is(core.length, 0)
+  t.alike(await atomic.getUserData('hello'), b4a.from('done'))
 
-  atom.exit()
-  await t.execution(Promise.all(promises))
+  t.is(core.length, 0)
+  t.is(atomic.length, 1)
+
+  await atom.flush()
 
   t.is(core.length, 1)
   t.alike(await core.getUserData('hello'), b4a.from('done'))
@@ -165,8 +159,8 @@ test('atomic - overwrite and user data', async function (t) {
   t.alike(await core.getUserData('hello'), null)
   t.alike(await core.getUserData('goodbye'), null)
 
-  const draft = core.session({ draft: true })
-  const draft2 = core2.session({ draft: true })
+  const draft = core.session({ name: 'writer' })
+  const draft2 = core2.session({ name: 'writer' })
 
   await draft.append('all the way')
 
@@ -176,29 +170,37 @@ test('atomic - overwrite and user data', async function (t) {
 
   const atom = core.state.storage.atom()
 
-  atom.enter()
+  const a1 = core.session({ atom })
+  const a2 = core2.session({ atom })
 
-  const promises = [
-    core.core.commit(draft.state, { treeLength: core.length, atom }),
-    core2.core.commit(draft2.state, { treeLength: core2.length, atom }),
-    core.setUserData('hello', 'world', { atom }),
-    core2.setUserData('goodbye', 'everybody', { atom })
-  ]
+  await a1.commit(draft.state, { treeLength: core.length, atom })
+  await a2.commit(draft2.state, { treeLength: core2.length, atom })
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await a1.setUserData('hello', 'world', { atom })
+  await a2.setUserData('goodbye', 'everybody', { atom })
 
   t.is(core.length, 2)
   t.is(core2.length, 1)
+
+  t.is(a1.length, 3)
+  t.is(a2.length, 4)
+
   t.alike(await core.getUserData('hello'), null)
   t.alike(await core.getUserData('goodbye'), null)
 
-  atom.exit()
-  await t.execution(Promise.all(promises))
+  t.alike(await a1.getUserData('hello'), b4a.from('world'))
+  t.alike(await a2.getUserData('goodbye'), b4a.from('everybody'))
+
+  await atom.flush()
 
   t.is(core.length, 3)
   t.is(core2.length, 4)
+
   t.alike(await core.getUserData('hello'), b4a.from('world'))
   t.alike(await core2.getUserData('goodbye'), b4a.from('everybody'))
+
+  await a1.close()
+  await a2.close()
 
   await draft.close()
   await draft2.close()
