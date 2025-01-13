@@ -19,7 +19,7 @@ async function runTests () {
   await import('./encryption.js')
   await import('./extension.js')
   await import('./manifest.js')
-  // await import('./merkle-tree.js')
+  await import('./merkle-tree.js')
   await import('./mutex.js')
   // await import('./oplog.js')
   await import('./preload.js')
