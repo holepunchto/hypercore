@@ -52,7 +52,7 @@
     "hypercore-crypto": "^3.2.1",
     "hypercore-errors": "^1.2.0",
     "hypercore-id-encoding": "^1.2.0",
-    "hypercore-storage": "latest",
+    "hypercore-storage": "^1.0.0",
     "is-options": "^1.0.1",
     "protomux": "^3.5.0",
     "quickbit-universal": "^2.2.0",
