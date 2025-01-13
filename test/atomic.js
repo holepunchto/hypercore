@@ -129,8 +129,8 @@ test('atomic - overwrite', async function (t) {
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
 
-  await a1.commit(draft.state, { treeLength: core.length })
-  await a2.commit(draft2.state, { treeLength: core2.length })
+  await a1.commit(draft, { treeLength: core.length })
+  await a2.commit(draft2, { treeLength: core2.length })
 
   t.is(a1.length, 3)
   t.is(a2.length, 4)
@@ -227,8 +227,8 @@ test('atomic - overwrite and user data', async function (t) {
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
 
-  await a1.commit(draft.state, { treeLength: core.length, atom })
-  await a2.commit(draft2.state, { treeLength: core2.length, atom })
+  await a1.commit(draft, { treeLength: core.length, atom })
+  await a2.commit(draft2, { treeLength: core2.length, atom })
 
   await a1.setUserData('hello', 'world', { atom })
   await a2.setUserData('goodbye', 'everybody', { atom })

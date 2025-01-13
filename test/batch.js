@@ -28,7 +28,7 @@ test('batch append', async function (t) {
 
   t.is(core.length, 3)
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   t.is(core.length, 5)
 
@@ -56,7 +56,7 @@ test('append to core during batch', async function (t) {
   const b = core.session({ name: 'batch' })
   await core.append('d')
   await b.append('e')
-  await t.exception(core.commit(b.state))
+  await t.exception(core.commit(b))
 
   t.is(core.length, 4)
 
@@ -72,7 +72,7 @@ test('append to session during batch, create before batch', async function (t) {
   await b.append('d')
   await s.append('d')
 
-  t.ok(await core.commit(b.state))
+  t.ok(await core.commit(b))
   t.is(s.length, 4)
 
   await b.close()
@@ -88,7 +88,7 @@ test('append to session during batch, create after batch', async function (t) {
   const s = core.session()
   await s.append('d')
 
-  t.ok(await core.commit(b.state))
+  t.ok(await core.commit(b))
   t.is(s.length, 4)
 
   await s.close()
@@ -106,7 +106,7 @@ test('batch truncate', async function (t) {
   t.alike(await b.get(3), b4a.from('de'))
   t.alike(await b.get(4, { wait: false }), null)
 
-  await core.commit(b.state)
+  await core.commit(b)
   t.is(core.length, 4)
 
   await b.close()
@@ -119,7 +119,7 @@ test('truncate core during batch', async function (t) {
   const b = core.session({ name: 'batch' })
   await b.append('a')
   await core.truncate(2)
-  await t.exception(core.commit(b.state))
+  await t.exception(core.commit(b))
   t.is(core.length, 2)
 
   await b.close()
@@ -133,7 +133,7 @@ test('batch truncate committed', async function (t) {
   await b.append(['de', 'fg'])
   await t.execution(b.truncate(2))
 
-  await t.exception(core.commit(b.state))
+  await t.exception(core.commit(b))
 
   await b.close()
 })
@@ -158,7 +158,7 @@ test('batch close after flush', async function (t) {
   const b = core.session({ name: 'batch' })
   await b.ready()
 
-  await core.commit(b.state)
+  await core.commit(b)
   await b.close()
 })
 
@@ -170,7 +170,7 @@ test('batch flush after close', async function (t) {
   await b.ready()
 
   await b.close()
-  await t.exception(core.commit(b.state))
+  await t.exception(core.commit(b))
 })
 
 test('batch info', async function (t) {
@@ -186,7 +186,7 @@ test('batch info', async function (t) {
   t.is(info.byteLength, 7)
   t.unlike(await core.info(), info)
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   info.contiguousLength = core.contiguousLength
   t.alike(await core.info(), info)
@@ -205,9 +205,9 @@ test('simultaneous batches', async function (t) {
   await c.append(['a', 'c'])
   await d.append('c')
 
-  t.ok(await core.commit(b.state))
-  t.ok(await core.commit(c.state))
-  await t.exception(core.commit(d.state))
+  t.ok(await core.commit(b))
+  t.ok(await core.commit(c))
+  await t.exception(core.commit(d))
 
   await b.close()
   await c.close()
@@ -220,11 +220,11 @@ test('multiple batches', async function (t) {
 
   const b = core.session({ name: 'batch1' })
   await b.append('a')
-  await core.commit(b.state)
+  await core.commit(b)
 
   const b2 = session.session({ name: 'batch2' })
   await b2.append('b')
-  await core.commit(b2.state)
+  await core.commit(b2)
 
   t.is(core.length, 2)
 
@@ -240,19 +240,19 @@ test('partial flush', async function (t) {
 
   await b.append(['a', 'b', 'c', 'd'])
 
-  await core.commit(b.state, { length: 2 })
+  await core.commit(b, { length: 2 })
 
   t.is(core.length, 2)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await core.commit(b.state, { length: 3 })
+  await core.commit(b, { length: 3 })
 
   t.is(core.length, 3)
   t.is(b.length, 4)
   t.is(b.byteLength, 4)
 
-  await core.commit(b.state, { length: 4 })
+  await core.commit(b, { length: 4 })
 
   t.is(core.length, 4)
   t.is(b.length, 4)
@@ -271,7 +271,7 @@ test('can make a tree batch', async function (t) {
   const batchTreeBatch = b.createTreeBatch()
   const batchHash = batchTreeBatch.hash()
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   const treeBatch = core.createTreeBatch()
   const hash = treeBatch.hash()
@@ -291,7 +291,7 @@ test('batched tree batch contains new nodes', async function (t) {
   const batchTreeBatch = b.createTreeBatch()
   const batchNode = await batchTreeBatch.get(0)
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   const treeBatch = core.createTreeBatch()
   const node = await treeBatch.get(0)
@@ -316,7 +316,7 @@ test('batched tree batch proofs are equivalent', async function (t) {
 
   const batchProof = await batchProofIntermediate.settle()
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   const reader1 = core.state.storage.read()
   const treeBatch = core.createTreeBatch()
@@ -384,7 +384,7 @@ test('create tree batches', async function (t) {
   await t.exception(b.restoreBatch(6))
   await t.exception(b.restoreBatch(8, blocks))
 
-  await core.commit(b.state)
+  await core.commit(b)
 
   t.is(core.length, 5)
 
@@ -429,11 +429,11 @@ test('flush with bg activity', async function (t) {
 
   await b.append('b')
 
-  await t.exception(core.commit(b.state)) // core is ahead, not flushing
+  await t.exception(core.commit(b)) // core is ahead, not flushing
 
   await b.append('c')
 
-  t.ok(await core.commit(b.state), 'flushed!')
+  t.ok(await core.commit(b), 'flushed!')
 
   await b.close()
 })
@@ -463,7 +463,7 @@ test('flush with bg activity persists non conflicting values', async function (t
   await promise
 
   t.is(clone.length, 3)
-  t.ok(await clone.commit(b.state), 'flushed!')
+  t.ok(await clone.commit(b), 'flushed!')
 
   t.alike(await clone.get(0, { wait: false }), b4a.from('a'))
   t.alike(await clone.get(1, { wait: false }), b4a.from('b'))
@@ -496,7 +496,7 @@ test('flush with conflicting bg activity', async function (t) {
   await b.append('c')
   await b.append('c')
 
-  await t.exception(clone.commit(b.state)) // cannot flush a batch with conflicts
+  await t.exception(clone.commit(b)) // cannot flush a batch with conflicts
 
   await b.close()
 })
@@ -519,11 +519,11 @@ test('checkout batch', async function (t) {
   t.alike(batch.hash(), hash)
 
   await b.append(['c', 'z'])
-  await t.exception(core.commit(b.state), 'failed')
+  await t.exception(core.commit(b), 'failed')
 
   await b.truncate(3, b.fork)
   await b.append('d')
-  await t.execution(core.commit(b.state), 'flushed')
+  await t.execution(core.commit(b), 'flushed')
 
   await b.close()
 })
@@ -546,7 +546,7 @@ test('encryption and batches', async function (t) {
   t.is(batch.byteLength, 3)
   t.alike(await batch.get(2), b4a.from('c'))
 
-  await core.commit(batch.state)
+  await core.commit(batch)
 
   t.is(core.byteLength, 3)
   t.is(core.length, 3)
@@ -579,7 +579,7 @@ test('encryption and bigger batches', async function (t) {
   t.alike(await batch.get(3), b4a.from('d'))
   t.alike(await batch.get(4), b4a.from('e'))
 
-  await core.commit(batch.state)
+  await core.commit(batch)
 
   t.is(core.byteLength, 5)
   t.is(core.length, 5)
@@ -747,7 +747,7 @@ test('clear', async function (t) {
 
   await new Promise(resolve => clone.on('append', resolve))
 
-  await clone.commit(b.state)
+  await clone.commit(b)
   await b.close()
 
   t.ok(!!(await clone.get(0)), 'got block 0 proof')
@@ -758,7 +758,7 @@ test('clear', async function (t) {
   const b1 = clone.session({ name: 'b1' })
   await b1.ready()
   await b1.append('foo')
-  await t.exception(clone.commit(b1.state))
+  await t.exception(clone.commit(b1))
   await b1.close()
 
   t.is(clone.length, 1, 'clone length is still 1')

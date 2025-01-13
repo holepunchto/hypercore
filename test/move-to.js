@@ -14,7 +14,7 @@ test('move - basic', async function (t) {
   await sess.append('2')
   await sess.append('3')
 
-  await core.core.commit(sess.state)
+  await core.core.commit(sess)
 
   t.is(core.length, 3)
   t.is(sess.length, 3)
@@ -41,7 +41,7 @@ test('move - basic', async function (t) {
   await sess.state.moveTo(core2.core)
   await sess.append('4')
 
-  await core2.core.commit(sess.state)
+  await core2.core.commit(sess)
 
   t.alike(await sess.get(0), b4a.from('1'))
   t.alike(await sess.get(1), b4a.from('2'))

@@ -456,9 +456,11 @@ class Hypercore extends EventEmitter {
     this.emit('close', true)
   }
 
-  async commit (state, opts) {
+  async commit (session, opts) {
     await this.ready()
-    return this.state.commit(state, { keyPair: this.keyPair, ...opts })
+    await session.ready()
+
+    return this.state.commit(session.state, { keyPair: this.keyPair, ...opts })
   }
 
   replicate (isInitiator, opts = {}) {
