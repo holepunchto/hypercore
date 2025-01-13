@@ -7,12 +7,11 @@ async function runTests () {
 
   test.pause()
 
-  await import('./basic.js')
+  await import('./basic.js') // todo: implement storageInfo API
   await import('./batch.js')
   await import('./bitfield.js')
-  await import('./cache.js')
-  await import('./clear.js')
-  await import('./compat.js')
+  await import('./clear.js') // todo: replace Info.bytesUsed API
+  // await import('./compat.js') // todo: how to test compat?
   await import('./conflicts.js')
   await import('./core.js')
   await import('./encodings.js')
@@ -20,19 +19,19 @@ async function runTests () {
   await import('./extension.js')
   await import('./manifest.js')
   await import('./merkle-tree.js')
+  await import('./move-to.js')
   await import('./mutex.js')
-  await import('./oplog.js')
   await import('./preload.js')
-  await import('./purge.js')
+  // await import('./purge.js') // todo: implement purge
   await import('./remote-bitfield.js')
   await import('./remote-length.js')
   await import('./replicate.js')
   await import('./sessions.js')
   await import('./snapshots.js')
-  await import('./storage.js')
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')
+  await import('./atomic.js')
 
   test.resume()
 }

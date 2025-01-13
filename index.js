@@ -1,46 +1,42 @@
 const { EventEmitter } = require('events')
-const RAF = require('random-access-file')
 const isOptions = require('is-options')
-const hypercoreCrypto = require('hypercore-crypto')
+const crypto = require('hypercore-crypto')
+const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
 const b4a = require('b4a')
-const Xache = require('xache')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const Protomux = require('protomux')
-const z32 = require('z32')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 
-const Replicator = require('./lib/replicator')
 const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
-const Batch = require('./lib/batch')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const {
   ASSERTION,
   BAD_ARGUMENT,
   SESSION_CLOSED,
+  SESSION_MOVED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE,
   DECODING_ERROR
 } = require('hypercore-errors')
 
-const promises = Symbol.for('hypercore.promises')
 const inspect = Symbol.for('nodejs.util.inspect.custom')
 
 // Hypercore actually does not have any notion of max/min block sizes
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
-module.exports = class Hypercore extends EventEmitter {
+class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
 
-    if (isOptions(storage)) {
+    if (isOptions(storage) && !storage.db) {
       opts = storage
       storage = null
       key = opts.key || null
@@ -54,34 +50,30 @@ module.exports = class Hypercore extends EventEmitter {
 
     if (!storage) storage = opts.storage
 
-    this[promises] = true
-
-    this.storage = null
-    this.crypto = opts.crypto || hypercoreCrypto
     this.core = null
-    this.replicator = null
+    this.state = null
     this.encryption = null
     this.extensions = new Map()
-    this.cache = createCache(opts.cache)
 
     this.valueEncoding = null
     this.encodeBatch = null
     this.activeRequests = []
+    this.sessions = null
+    this.ongc = null
 
-    this.id = null
-    this.key = key || null
     this.keyPair = opts.keyPair || null
     this.readable = true
     this.writable = false
+    this.exclusive = false
     this.opened = false
     this.closed = false
+    this.weak = !!opts.weak
     this.snapshotted = !!opts.snapshot
-    this.sparse = opts.sparse !== false
-    this.sessions = opts._sessions || [this]
-    this.autoClose = !!opts.autoClose
+    this.draft = !!opts.draft
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
+    this.preload = null
     this.closing = null
     this.opening = null
 
@@ -91,8 +83,14 @@ module.exports = class Hypercore extends EventEmitter {
     this._findingPeers = 0
     this._active = opts.active !== false
 
-    this.opening = this._openSession(key, storage, opts)
+    this._sessionIndex = -1
+    this._stateIndex = -1 // maintained by session state
+    this._monitorIndex = -1 // maintained by replication state
+
+    this.opening = this._open(storage, key, opts)
     this.opening.catch(safetyCatch)
+
+    this.on('newListener', maybeAddMonitor)
   }
 
   [inspect] (depth, opts) {
@@ -129,7 +127,6 @@ module.exports = class Hypercore extends EventEmitter {
       indent + '  opened: ' + opts.stylize(this.opened, 'boolean') + '\n' +
       indent + '  closed: ' + opts.stylize(this.closed, 'boolean') + '\n' +
       indent + '  snapshotted: ' + opts.stylize(this.snapshotted, 'boolean') + '\n' +
-      indent + '  sparse: ' + opts.stylize(this.sparse, 'boolean') + '\n' +
       indent + '  writable: ' + opts.stylize(this.writable, 'boolean') + '\n' +
       indent + '  length: ' + opts.stylize(this.length, 'number') + '\n' +
       indent + '  fork: ' + opts.stylize(this.fork, 'number') + '\n' +
@@ -147,11 +144,15 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static discoveryKey (key) {
-    return hypercoreCrypto.discoveryKey(key)
+    return crypto.discoveryKey(key)
   }
 
   static getProtocolMuxer (stream) {
     return stream.noiseStream.userData
+  }
+
+  static createCore (storage, opts) {
+    return new Core(Hypercore.defaultStorage(storage), { autoClose: false, ...opts })
   }
 
   static createProtocolStream (isInitiator, opts = {}) {
@@ -188,29 +189,10 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   static defaultStorage (storage, opts = {}) {
-    if (typeof storage !== 'string') {
-      if (!isRandomAccessClass(storage)) return storage
-      const Cls = storage // just to satisfy standard...
-      return name => new Cls(name)
-    }
+    if (CoreStorage.isCoreStorage(storage)) return storage
 
     const directory = storage
-    const toLock = opts.unlocked ? null : (opts.lock || 'oplog')
-    const pool = opts.pool || (opts.poolSize ? RAF.createPool(opts.poolSize) : null)
-    const rmdir = !!opts.rmdir
-    const writable = opts.writable !== false
-
-    return createFile
-
-    function createFile (name) {
-      const lock = toLock === null ? false : isFile(name, toLock)
-      const sparse = isFile(name, 'data') || isFile(name, 'bitfield') || isFile(name, 'tree')
-      return new RAF(name, { directory, lock, sparse, pool: lock ? null : pool, rmdir, writable })
-    }
-
-    function isFile (name, n) {
-      return name === n || name.endsWith('/' + n)
-    }
+    return new CoreStorage(directory, opts)
   }
 
   snapshot (opts) {
@@ -224,49 +206,33 @@ module.exports = class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
 
-    const sparse = opts.sparse === false ? false : this.sparse
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === false ? false : !this._readonly
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
+    const weak = opts.weak === undefined ? this.weak : opts.weak
     const Clz = opts.class || Hypercore
-    const s = new Clz(this.storage, this.key, {
+    const s = new Clz(null, this.key, {
       ...opts,
-      sparse,
       wait,
       onwait,
       timeout,
       writable,
-      _opening: this.opening,
-      _sessions: this.sessions
+      weak,
+      parent: this
     })
 
-    s._passCapabilities(this)
-
-    // Configure the cache unless explicitly disabled.
-    if (opts.cache !== false) {
-      s.cache = opts.cache === true || !opts.cache ? this.cache : opts.cache
-    }
-
-    if (this.opened) ensureEncryption(s, opts)
-    this._addSession(s)
-
     return s
-  }
-
-  _addSession (s) {
-    this.sessions.push(s)
-    if (this.core) this.core.active++
   }
 
   async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
     this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
+    if (!this.core.encryption) this.core.encryption = this.encryption
   }
 
   setKeyPair (keyPair) {
     this.keyPair = keyPair
-    this.writable = this._isWritable()
   }
 
   setActive (bool) {
@@ -274,73 +240,86 @@ module.exports = class Hypercore extends EventEmitter {
     if (active === this._active || this.closing) return
     this._active = active
     if (!this.opened) return
-    this.replicator.updateActivity(this._active ? 1 : -1)
+    this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
-  _passCapabilities (o) {
-    if (!this.keyPair) this.keyPair = o.keyPair
-    this.crypto = o.crypto
-    this.id = o.id
-    this.key = o.key
-    this.core = o.core
-    this.replicator = o.replicator
-    this.encryption = o.encryption
+  _setupSession (parent) {
+    if (!this.keyPair) this.keyPair = parent.keyPair
     this.writable = this._isWritable()
-    this.autoClose = o.autoClose
+
+    const s = parent.state
+
+    if (s) {
+      const shouldSnapshot = this.snapshotted && !s.isSnapshot()
+      this.state = shouldSnapshot ? s.snapshot() : s.ref()
+    }
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
-  async _openFromExisting (from, opts) {
-    if (!from.opened) await from.opening
+  async _open (storage, key, opts) {
+    const preload = opts.preload || (opts.parent && opts.parent.preload)
 
-    // includes ourself as well, so the loop below also updates us
-    const sessions = this.sessions
-
-    for (const s of sessions) {
-      s.sessions = from.sessions
-      s._passCapabilities(from)
-      s._addSession(s)
+    if (preload) {
+      this.sessions = [] // in case someone looks at it like with peers
+      this.preload = preload
+      opts = { ...opts, ...(await this.preload) }
+      this.preload = null
     }
 
-    this.storage = from.storage
-    this.replicator.findingPeers += this._findingPeers
+    const parent = opts.parent || null
+    const core = opts.core || (parent && parent.core)
+    const sessions = opts.sessions || (parent && parent.sessions)
+    const ongc = opts.ongc || (parent && parent.ongc)
 
-    ensureEncryption(this, opts)
+    if (core) this.core = core
+    if (ongc) this.ongc = ongc
+    if (sessions) this.sessions = sessions
 
-    // we need to manually fwd the encryption cap as the above removes it potentially
-    if (this.encryption && !from.encryption) {
-      for (const s of sessions) s.encryption = this.encryption
+    if (this.sessions === null) this.sessions = []
+    this._sessionIndex = this.sessions.push(this) - 1
+
+    if (this.core === null) initOnce(this, storage, key, opts)
+    if (this._monitorIndex === -2) this.core.addMonitor(this)
+
+    try {
+      await this._openSession(opts)
+    } catch (err) {
+      if (this.closing) return
+      if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
+
+      if (this.exclusive) this.core.unlockExclusive()
+
+      this.core.removeMonitor(this)
+      this._removeSession()
+
+      if (this.state !== null) this.state.removeSession(this)
+
+      this.emit('close', this.core.hasSession() === false)
+      throw err
     }
+
+    this.emit('ready')
   }
 
-  async _openSession (key, storage, opts) {
-    const isFirst = !opts._opening
+  _removeSession () {
+    if (this._sessionIndex === -1) return
+    const head = this.sessions.pop()
+    if (head !== this) this.sessions[(head._sessionIndex = this._sessionIndex)] = head
+    this._sessionIndex = -1
+    if (this.ongc !== null) this.ongc(this)
+  }
 
-    if (!isFirst) {
-      await opts._opening
-    }
-    if (opts.preload) opts = { ...opts, ...(await this._retryPreload(opts.preload)) }
-    if (this.cache === null && opts.cache) this.cache = createCache(opts.cache)
+  async _openSession (opts) {
+    if (this.core.opened === false) await this.core.ready()
 
-    if (isFirst) {
-      await this._openCapabilities(key, storage, opts)
+    if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-      // check we are the actual root and not a opts.from session
-      if (!opts.from) {
-        // Only the root session should pass capabilities to other sessions.
-        for (let i = 0; i < this.sessions.length; i++) {
-          const s = this.sessions[i]
-          if (s !== this) s._passCapabilities(this)
-        }
-      }
-    } else {
-      ensureEncryption(this, opts)
+    if (!this.core.encryption && opts.encryptionKey) {
+      this.core.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
     }
 
-    if (opts.manifest && !this.core.header.manifest) {
-      await this.core.setManifest(opts.manifest)
-    }
+    if (this.core.encryption) this.encryption = this.core.encryption
 
     this.writable = this._isWritable()
 
@@ -351,96 +330,68 @@ module.exports = class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
-    // Start continous replication if not in sparse mode.
-    if (!this.sparse) this.download({ start: 0, end: -1 })
-
-    // This is a hidden option that's only used by Corestore.
-    // It's required so that corestore can load a name from userData before 'ready' is emitted.
-    if (opts._preready) await opts._preready(this)
-
-    this.replicator.updateActivity(this._active ? 1 : 0)
-
-    this.opened = true
-    this.emit('ready')
-  }
-
-  async _retryPreload (preload) {
-    while (true) { // TODO: better long term fix is allowing lib/core.js creation from the outside...
-      const result = await preload()
-      const from = result && result.from
-      if (from) {
-        if (!from.opened) await from.ready()
-        if (from.closing) continue
-      }
-      return result
+    if (opts.parent) {
+      if (opts.parent._stateIndex === -1) await opts.parent.ready()
+      this._setupSession(opts.parent)
     }
-  }
 
-  async _openCapabilities (key, storage, opts) {
-    if (opts.from) return this._openFromExisting(opts.from, opts)
+    if (opts.exclusive) {
+      this.exclusive = true
+      await this.core.lockExclusive()
+    }
 
-    const unlocked = !!opts.unlocked
-    this.storage = Hypercore.defaultStorage(opts.storage || storage, { unlocked, writable: !unlocked })
+    const parent = opts.parent || this.core
 
-    this.core = await Core.open(this.storage, {
-      compat: opts.compat,
-      force: opts.force,
-      sessions: this.sessions,
-      createIfMissing: opts.createIfMissing,
-      readonly: unlocked,
-      overwrite: opts.overwrite,
-      key,
-      keyPair: opts.keyPair,
-      crypto: this.crypto,
-      legacy: opts.legacy,
-      manifest: opts.manifest,
-      globalCache: opts.globalCache || null, // This is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
-      onupdate: this._oncoreupdate.bind(this),
-      onconflict: this._oncoreconflict.bind(this)
-    })
+    if (opts.atom) {
+      this.state = await parent.state.createSession(null, -1, false, opts.atom)
+    } else if (opts.name) {
+      // todo: need to make named sessions safe before ready
+      // atm we always copy the state in passCapabilities
+      const checkout = opts.checkout === undefined ? -1 : opts.checkout
+      const state = this.state
+
+      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)
+      if (state) state.unref() // ref'ed above in setup session
+
+      if (checkout !== -1 && checkout < this.state.length) {
+        await this.state.truncate(checkout, this.fork)
+      }
+    } else if (this.state === null) {
+      this.state = this.core.state.ref()
+    }
+
+    if (this.snapshotted && this.core) this._updateSnapshot()
+
+    this.state.addSession(this)
+    // TODO: we need to rework the core reference flow, as the state and session do not always agree now due to moveTo
+    this.core = this.state.core // in case it was wrong...
 
     if (opts.userData) {
+      const tx = this.state.storage.write()
       for (const [key, value] of Object.entries(opts.userData)) {
-        await this.core.userData(key, value)
+        tx.putUserData(key, value)
       }
+      await tx.flush()
     }
 
-    this.key = this.core.header.key
-    this.keyPair = this.core.header.keyPair
-    this.id = z32.encode(this.key)
-
-    this.replicator = new Replicator(this.core, this.key, {
-      eagerUpgrade: true,
-      notDownloadingLinger: opts.notDownloadingLinger,
-      allowFork: opts.allowFork !== false,
-      inflightRange: opts.inflightRange,
-      onpeerupdate: this._onpeerupdate.bind(this),
-      onupload: this._onupload.bind(this),
-      oninvalid: this._oninvalid.bind(this)
-    })
-
-    this.replicator.findingPeers += this._findingPeers
-
-    if (!this.encryption && opts.encryptionKey) {
-      this.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
+    if (opts.manifest && !this.core.header.manifest) {
+      await this.core.setManifest(opts.manifest)
     }
+
+    this.core.replicator.updateActivity(this._active ? 1 : 0)
+
+    this.opened = true
+  }
+
+  get replicator () {
+    return this.core === null ? null : this.core.replicator
   }
 
   _getSnapshot () {
-    if (this.sparse) {
-      return {
-        length: this.core.tree.length,
-        byteLength: this.core.tree.byteLength,
-        fork: this.core.tree.fork,
-        compatLength: this.core.tree.length
-      }
-    }
-
     return {
-      length: this.core.header.hints.contiguousLength,
-      byteLength: 0,
-      fork: this.core.tree.fork,
-      compatLength: this.core.header.hints.contiguousLength
+      length: this.state.length,
+      byteLength: this.state.byteLength,
+      fork: this.state.fork
     }
   }
 
@@ -453,26 +404,27 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   _isWritable () {
+    if (this.draft) return true
     return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
   }
 
-  close (err) {
+  close ({ error } = {}) {
     if (this.closing) return this.closing
-    this.closing = this._close(err || null)
+
+    this.closing = this._close(error || null)
     return this.closing
   }
 
-  async _close (err) {
+  async _close (error) {
     if (this.opened === false) await this.opening
+    if (this.closed === true) return
 
-    const i = this.sessions.indexOf(this)
-    if (i === -1) return
+    this.core.removeMonitor(this)
+    this.state.removeSession(this)
+    this._removeSession()
 
-    this.sessions.splice(i, 1)
-    this.core.active--
     this.readable = false
     this.writable = false
-    this.closed = true
     this.opened = false
 
     const gc = []
@@ -481,29 +433,34 @@ module.exports = class Hypercore extends EventEmitter {
     }
     for (const ext of gc) ext.destroy()
 
-    if (this.replicator !== null) {
-      this.replicator.findingPeers -= this._findingPeers
-      this.replicator.clearRequests(this.activeRequests, err)
-      this.replicator.updateActivity(this._active ? -1 : 0)
-    }
+    this.core.replicator.findingPeers -= this._findingPeers
+    this.core.replicator.clearRequests(this.activeRequests, error)
+    this.core.replicator.updateActivity(this._active ? -1 : 0)
 
     this._findingPeers = 0
 
-    if (this.sessions.length || this.core.active > 0) {
-      // if this is the last session and we are auto closing, trigger that first to enforce error handling
-      if (this.sessions.length === 1 && this.core.active === 1 && this.autoClose) await this.sessions[0].close(err)
+    this.state.unref()
+
+    if (this.exclusive) this.core.unlockExclusive()
+
+    if (this.core.hasSession()) {
       // emit "fake" close as this is a session
+      this.closed = true
       this.emit('close', false)
       return
     }
 
-    if (this.replicator !== null) {
-      await this.replicator.destroy()
-    }
+    if (this.core.autoClose) await this.core.close()
 
-    await this.core.close()
-
+    this.closed = true
     this.emit('close', true)
+  }
+
+  async commit (session, opts) {
+    await this.ready()
+    await session.ready()
+
+    return this.state.commit(session.state, { keyPair: this.keyPair, ...opts })
   }
 
   replicate (isInitiator, opts = {}) {
@@ -517,68 +474,67 @@ module.exports = class Hypercore extends EventEmitter {
     const protocolStream = Hypercore.createProtocolStream(isInitiator, opts)
     const noiseStream = protocolStream.noiseStream
     const protocol = noiseStream.userData
-    const useSession = !!opts.session
 
-    this._attachToMuxer(protocol, useSession)
+    this._attachToMuxer(protocol)
 
     return protocolStream
   }
 
   _isAttached (stream) {
-    return stream.userData && this.replicator && this.replicator.attached(stream.userData)
+    return stream.userData && this.core && this.core.replicator && this.core.replicator.attached(stream.userData)
   }
 
-  _attachToMuxer (mux, useSession) {
+  _attachToMuxer (mux) {
     if (this.opened) {
-      this._attachToMuxerOpened(mux, useSession)
+      this.core.replicator.attachTo(mux)
     } else {
-      this.opening.then(this._attachToMuxerOpened.bind(this, mux, useSession), mux.destroy.bind(mux))
+      this.opening.then(() => this.core.replicator.attachTo(mux), mux.destroy.bind(mux))
     }
 
     return mux
   }
 
-  _attachToMuxerOpened (mux, useSession) {
-    // If the user wants to, we can make this replication run in a session
-    // that way the core wont close "under them" during replication
-    this.replicator.attachTo(mux, useSession)
+  get id () {
+    return this.core === null ? null : this.core.id
+  }
+
+  get key () {
+    return this.core === null ? null : this.core.key
   }
 
   get discoveryKey () {
-    return this.replicator === null ? null : this.replicator.discoveryKey
+    return this.core === null ? null : this.core.discoveryKey
   }
 
   get manifest () {
-    return this.core === null ? null : this.core.header.manifest
+    return this.core === null ? null : this.core.manifest
   }
 
   get length () {
     if (this._snapshot) return this._snapshot.length
-    if (this.core === null) return 0
-    if (!this.sparse) return this.contiguousLength
-    return this.core.tree.length
+    return this.opened === false ? 0 : this.state.length
   }
 
   get signedLength () {
-    return this.length
-  }
+    if (this.opened === false) return 0
+    if (this.state === this.core.state) return this.core.state.length
+    const flushed = this.state.flushedLength()
 
-  get indexedLength () {
-    return this.length
+    return flushed === -1 ? this.state.length : flushed
   }
 
   /**
    * Deprecated. Use `const { byteLength } = await core.info()`.
    */
   get byteLength () {
+    if (this.opened === false) return 0
     if (this._snapshot) return this._snapshot.byteLength
-    if (this.core === null) return 0
-    if (!this.sparse) return this.contiguousByteLength
-    return this.core.tree.byteLength - (this.core.tree.length * this.padding)
+    return this.state.byteLength - (this.state.length * this.padding)
   }
 
   get contiguousLength () {
-    return this.core === null ? 0 : Math.min(this.core.tree.length, this.core.header.hints.contiguousLength)
+    if (this.opened === false) return 0
+    return Math.min(this.core.state.length, this.core.header.hints.contiguousLength)
   }
 
   get contiguousByteLength () {
@@ -586,11 +542,12 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get fork () {
-    return this.core === null ? 0 : this.core.tree.fork
+    if (this.opened === false) return 0
+    return this.state.fork
   }
 
   get peers () {
-    return this.replicator === null ? [] : this.replicator.peers
+    return this.opened === false ? [] : this.core.replicator.peers
   }
 
   get encryptionKey () {
@@ -602,155 +559,69 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   get globalCache () {
-    return this.core && this.core.globalCache
+    return this.opened === false ? null : this.core.globalCache
   }
 
   ready () {
     return this.opening
   }
 
-  _onupload (index, value, from) {
-    const byteLength = value.byteLength - this.padding
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('upload', index, byteLength, from)
-    }
-  }
-
-  _oninvalid (err, req, res, from) {
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit('verification-error', err, req, res, from)
-    }
-  }
-
-  async _oncoreconflict (proof, from) {
-    await this.replicator.onconflict(from)
-
-    for (const s of this.sessions) s.emit('conflict', proof.upgrade.length, proof.fork, proof)
-
-    const err = new Error('Two conflicting signatures exist for length ' + proof.upgrade.length)
-    await this._closeAllSessions(err)
-  }
-
-  async _closeAllSessions (err) {
-    // this.sessions modifies itself when a session closes
-    // This way we ensure we indeed iterate over all sessions
-    const sessions = [...this.sessions]
-
-    const all = []
-    for (const s of sessions) all.push(s.close(err))
-    await Promise.allSettled(all)
-  }
-
-  _oncoreupdate (status, bitfield, value, from) {
-    if (status !== 0) {
-      const truncatedNonSparse = (status & 0b1000) !== 0
-      const appendedNonSparse = (status & 0b0100) !== 0
-      const truncated = (status & 0b0010) !== 0
-      const appended = (status & 0b0001) !== 0
-
-      if (truncated) {
-        this.replicator.ontruncate(bitfield.start, bitfield.length)
-      }
-
-      if ((status & 0b10011) !== 0) {
-        this.replicator.onupgrade()
-      }
-
-      if (status & 0b10000) {
-        for (let i = 0; i < this.sessions.length; i++) {
-          const s = this.sessions[i]
-
-          if (s.encryption && s.encryption.compat !== this.core.compat) {
-            s.encryption = new BlockEncryption(s.encryption.key, this.key, { compat: this.core.compat, isBlockKey: s.encryption.isBlockKey })
-          }
-        }
-
-        for (let i = 0; i < this.sessions.length; i++) {
-          this.sessions[i].emit('manifest')
-        }
-      }
-
-      for (let i = 0; i < this.sessions.length; i++) {
-        const s = this.sessions[i]
-
-        if (truncated) {
-          if (s.cache) s.cache.clear()
-
-          // If snapshotted, make sure to update our compat so we can fail gets
-          if (s._snapshot && bitfield.start < s._snapshot.compatLength) s._snapshot.compatLength = bitfield.start
-        }
-
-        if (s.sparse ? truncated : truncatedNonSparse) {
-          s.emit('truncate', bitfield.start, this.core.tree.fork)
-        }
-
-        // For sparse sessions, immediately emit appends. If non-sparse, emit if contig length has updated
-        if (s.sparse ? appended : appendedNonSparse) {
-          s.emit('append')
-        }
-      }
-
-      const contig = this.core.header.hints.contiguousLength
-
-      // When the contig length catches up, broadcast the non-sparse length to peers
-      if (appendedNonSparse && contig === this.core.tree.length) {
-        for (const peer of this.peers) {
-          if (peer.broadcastedNonSparse) continue
-
-          peer.broadcastRange(0, contig)
-          peer.broadcastedNonSparse = true
-        }
-      }
-    }
-
-    if (bitfield) {
-      this.replicator.onhave(bitfield.start, bitfield.length, bitfield.drop)
-    }
-
-    if (value) {
-      const byteLength = value.byteLength - this.padding
-
-      for (let i = 0; i < this.sessions.length; i++) {
-        this.sessions[i].emit('download', bitfield.start, byteLength, from)
-      }
-    }
-  }
-
-  _onpeerupdate (added, peer) {
-    const name = added ? 'peer-add' : 'peer-remove'
-
-    for (let i = 0; i < this.sessions.length; i++) {
-      this.sessions[i].emit(name, peer)
-
-      if (added) {
-        for (const ext of this.sessions[i].extensions.values()) {
-          peer.extensions.set(ext.name, ext)
-        }
-      }
-    }
-  }
-
-  async setUserData (key, value, { flush = false } = {}) {
+  async setUserData (key, value) {
     if (this.opened === false) await this.opening
-    return this.core.userData(key, value, flush)
+    await this.state.setUserData(key, value)
   }
 
   async getUserData (key) {
     if (this.opened === false) await this.opening
-    for (const { key: savedKey, value } of this.core.header.userData) {
-      if (key === savedKey) return value
+    const batch = this.state.storage.read()
+    const p = batch.getUserData(key)
+    batch.tryFlush()
+    return p
+  }
+
+  transferSession (core) {
+    // todo: validate we can move
+
+    if (this.weak === false) {
+      this.core.activeSessions--
+      core.activeSessions++
     }
-    return null
+
+    if (this._monitorIndex >= 0) {
+      this.core.removeMonitor(this)
+      core.addMonitor(this)
+    }
+
+    const old = this.core
+
+    this.core = core
+
+    old.replicator.clearRequests(this.activeRequests, SESSION_MOVED())
+
+    this.emit('migrate', this.key)
   }
 
   createTreeBatch () {
-    return this.core.tree.batch()
+    return this.state.createTreeBatch()
+  }
+
+  async restoreBatch (length, additionalBlocks = []) {
+    if (this.opened === false) await this.opening
+    const batch = this.state.createTreeBatch()
+
+    if (length > batch.length + additionalBlocks.length) {
+      throw BAD_ARGUMENT('Insufficient additional blocks were passed')
+    }
+
+    let i = 0
+    while (batch.length < length) batch.append(additionalBlocks[i++])
+
+    return length < batch.length ? batch.restore(length) : batch
   }
 
   findingPeers () {
     this._findingPeers++
-    if (this.replicator !== null && !this.closing) this.replicator.findingPeers++
+    if (this.core !== null && !this.closing) this.core.replicator.findingPeers++
 
     let once = true
 
@@ -758,8 +629,8 @@ module.exports = class Hypercore extends EventEmitter {
       if (this.closing || !once) return
       once = false
       this._findingPeers--
-      if (this.replicator !== null && --this.replicator.findingPeers === 0) {
-        this.replicator.updateAll()
+      if (this.core !== null && --this.core.replicator.findingPeers === 0) {
+        this.core.replicator.updateAll()
       }
     }
   }
@@ -773,42 +644,40 @@ module.exports = class Hypercore extends EventEmitter {
   async update (opts) {
     if (this.opened === false) await this.opening
     if (this.closing !== null) return false
+    if (this.snapshotted) return false
 
-    if (this.writable && (!opts || opts.force !== true)) {
-      if (!this.snapshotted) return false
-      return this._updateSnapshot()
-    }
+    if (this.writable && (!opts || opts.force !== true)) return false
 
-    const remoteWait = this._shouldWait(opts, this.replicator.findingPeers > 0)
+    const remoteWait = this._shouldWait(opts, this.core.replicator.findingPeers > 0)
 
     let upgraded = false
 
-    if (await this.replicator.applyPendingReorg()) {
+    if (await this.core.replicator.applyPendingReorg()) {
       upgraded = true
     }
 
     if (!upgraded && remoteWait) {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-      const req = this.replicator.addUpgrade(activeRequests)
+      const req = this.core.replicator.addUpgrade(activeRequests)
 
-      upgraded = await req.promise
+      try {
+        upgraded = await req.promise
+      } catch (err) {
+        if (isSessionMoved(err)) return this.update(opts)
+        throw err
+      }
     }
 
     if (!upgraded) return false
-    if (this.snapshotted) return this._updateSnapshot()
     return true
-  }
-
-  batch ({ checkout = -1, autoClose = true, session = true, restore = false, clear = false } = {}) {
-    return new Batch(session ? this.session() : this, checkout, autoClose, restore, clear)
   }
 
   async seek (bytes, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.core.tree
-    const s = tree.seek(bytes, this.padding)
+    const tree = (opts && opts.tree) || this.state.core.tree
+    const s = tree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -818,22 +687,47 @@ module.exports = class Hypercore extends EventEmitter {
     if (!this._shouldWait(opts, this.wait)) return null
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-    const req = this.replicator.addSeek(activeRequests, s)
+    const req = this.core.replicator.addSeek(activeRequests, s)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
     if (timeout) req.context.setTimeout(req, timeout)
 
-    return req.promise
+    try {
+      return await req.promise
+    } catch (err) {
+      if (isSessionMoved(err)) return this.seek(bytes, opts)
+      throw err
+    }
   }
 
   async has (start, end = start + 1) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid')
 
-    if (end === start + 1) return this.core.bitfield.get(start)
+    if (this.state.isDefault()) {
+      if (end === start + 1) return this.core.bitfield.get(start)
 
-    const i = this.core.bitfield.firstUnset(start)
-    return i === -1 || i >= end
+      const i = this.core.bitfield.firstUnset(start)
+      return i === -1 || i >= end
+    }
+
+    if (end === start + 1) {
+      const rx = this.state.storage.read()
+      const block = rx.getBlock(start)
+      rx.tryFlush()
+
+      return (await block) !== null
+    }
+
+    let count = 0
+
+    const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
+    for await (const block of stream) {
+      if (block === null) return false
+      count++
+    }
+
+    return count === (end - start)
   }
 
   async get (index, opts) {
@@ -841,12 +735,10 @@ module.exports = class Hypercore extends EventEmitter {
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid')
 
     if (this.closing !== null) throw SESSION_CLOSED()
-    if (this._snapshot !== null && index >= this._snapshot.compatLength) throw SNAPSHOT_NOT_AVAILABLE()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
-    let req = this.cache && this.cache.get(index)
-    if (!req) req = this._get(index, opts)
+    const req = this._get(index, opts)
 
     let block = await req
     if (!block) return null
@@ -857,6 +749,7 @@ module.exports = class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
+      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
       this.encryption.decrypt(index, block)
     }
 
@@ -879,7 +772,7 @@ module.exports = class Hypercore extends EventEmitter {
     if (start >= end) return cleared
     if (start >= this.length) return cleared
 
-    await this.core.clear(start, end, cleared)
+    await this.state.clear(start, end, cleared)
 
     return cleared
   }
@@ -890,46 +783,55 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   async _get (index, opts) {
-    let block
+    if (this.core.isFlushing) await this.core.flushed()
 
+    const block = await readBlock(this.state.storage.read(), index)
+
+    if (block !== null) return block
+
+    if (this.closing !== null) throw SESSION_CLOSED()
+
+    // snapshot should check if core has block
+    if (this._snapshot !== null) {
+      checkSnapshot(this, index)
+      const coreBlock = await readBlock(this.core.state.storage.read(), index)
+
+      checkSnapshot(this, index)
+      if (coreBlock !== null) return coreBlock
+    }
+
+    // lets check the bitfield to see if we got it during the above async calls
+    // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      const tree = (opts && opts.tree) || this.core.tree
-      block = this.core.blocks.get(index, tree)
-
-      if (this.cache) this.cache.set(index, block)
-    } else {
-      if (!this._shouldWait(opts, this.wait)) return null
-
-      if (opts && opts.onwait) opts.onwait(index, this)
-      if (this.onwait) this.onwait(index, this)
-
-      const activeRequests = (opts && opts.activeRequests) || this.activeRequests
-
-      const req = this.replicator.addBlock(activeRequests, index)
-      req.snapshot = index < this.length
-
-      const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
-      if (timeout) req.context.setTimeout(req, timeout)
-
-      block = this._cacheOnResolve(index, req.promise, this.core.tree.fork)
+      const coreBlock = await readBlock(this.state.storage.read(), index)
+      // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
+      if (coreBlock !== null) return coreBlock
     }
 
-    return block
-  }
+    if (!this._shouldWait(opts, this.wait)) return null
 
-  async _cacheOnResolve (index, req, fork) {
-    const resolved = await req
+    if (opts && opts.onwait) opts.onwait(index, this)
+    if (this.onwait) this.onwait(index, this)
 
-    // Unslab only when it takes up less then half the slab
-    const block = resolved !== null && 2 * resolved.byteLength < resolved.buffer.byteLength
-      ? unslab(resolved)
-      : resolved
+    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-    if (this.cache && fork === this.core.tree.fork) {
-      this.cache.set(index, Promise.resolve(block))
+    const req = this.core.replicator.addBlock(activeRequests, index)
+    req.snapshot = index < this.length
+
+    const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
+    if (timeout) req.context.setTimeout(req, timeout)
+
+    let replicatedBlock = null
+
+    try {
+      replicatedBlock = await req.promise
+    } catch (err) {
+      if (isSessionMoved(err)) return this._get(index, opts)
+      throw err
     }
 
-    return block
+    if (this._snapshot !== null) checkSnapshot(this, index)
+    return maybeUnslab(replicatedBlock)
   }
 
   _shouldWait (opts, defaultValue) {
@@ -953,19 +855,7 @@ module.exports = class Hypercore extends EventEmitter {
   }
 
   download (range) {
-    const req = this._download(range)
-
-    // do not crash in the background...
-    req.catch(safetyCatch)
-
-    return new Download(req)
-  }
-
-  async _download (range) {
-    if (this.opened === false) await this.opening
-
-    const activeRequests = (range && range.activeRequests) || this.activeRequests
-    return this.replicator.addRange(activeRequests, range)
+    return new Download(this, range)
   }
 
   // TODO: get rid of this / deprecate it?
@@ -982,27 +872,31 @@ module.exports = class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
 
     const {
-      fork = this.core.tree.fork + 1,
+      fork = this.state.fork + 1,
       keyPair = this.keyPair,
       signature = null
     } = typeof opts === 'number' ? { fork: opts } : opts
 
+    const isDefault = this.state === this.core.state
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (writable === false && (newLength > 0 || fork !== this.core.tree.fork)) throw SESSION_NOT_WRITABLE()
+    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork)) throw SESSION_NOT_WRITABLE()
 
-    await this.core.truncate(newLength, fork, { keyPair, signature })
+    await this.state.truncate(newLength, fork, { keyPair, signature })
 
     // TODO: Should propagate from an event triggered by the oplog
-    this.replicator.updateAll()
+    if (this.state === this.core.state) this.core.replicator.updateAll()
   }
 
   async append (blocks, opts = {}) {
     if (this.opened === false) await this.opening
 
-    const { keyPair = this.keyPair, signature = null } = opts
-    const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
+    const isDefault = this.state === this.core.state
+    const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
-    if (writable === false) throw SESSION_NOT_WRITABLE()
+    const { keyPair = defaultKeyPair, signature = null } = opts
+    const writable = !!this.draft || !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
+
+    if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
@@ -1021,17 +915,17 @@ module.exports = class Hypercore extends EventEmitter {
       }
     }
 
-    return this.core.append(buffers, { keyPair, signature, preappend })
+    return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {
     if (length === undefined) {
       await this.ready()
-      length = this.core.tree.length
+      length = this.state.length
     }
 
-    const roots = await this.core.tree.getRoots(length)
-    return this.crypto.tree(roots)
+    const roots = await this.state.tree.getRoots(length)
+    return crypto.tree(roots)
   }
 
   registerExtension (name, handlers = {}) {
@@ -1071,6 +965,10 @@ module.exports = class Hypercore extends EventEmitter {
     }
 
     this.extensions.set(name, ext)
+
+    if (this.core === null) this._monitorIndex = -2
+    else this.core.addMonitor(this)
+
     for (const peer of this.peers) {
       peer.extensions.set(name, ext)
     }
@@ -1109,14 +1007,18 @@ module.exports = class Hypercore extends EventEmitter {
     }
     return block
   }
+
+  _updateEncryption () {
+    const e = this.encryption
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    if (e === this.core.encryption) this.core.encryption = this.encryption
+  }
 }
+
+module.exports = Hypercore
 
 function isStream (s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
-}
-
-function isRandomAccessClass (fn) {
-  return !!(typeof fn === 'function' && fn.prototype && typeof fn.prototype.open === 'function')
 }
 
 function toHex (buf) {
@@ -1124,26 +1026,68 @@ function toHex (buf) {
 }
 
 function preappend (blocks) {
-  const offset = this.core.tree.length
-  const fork = this.core.tree.fork
+  const offset = this.state.length
+  const fork = this.state.fork
+
+  if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
   for (let i = 0; i < blocks.length; i++) {
     this.encryption.encrypt(offset + i, blocks[i], fork)
   }
 }
 
-function ensureEncryption (core, opts) {
-  if (!opts.encryptionKey) return
-  // Only override the block encryption if it's either not already set or if
-  // the caller provided a different key.
-  if (core.encryption && b4a.equals(core.encryption.key, opts.encryptionKey) && core.encryption.compat === core.core.compat) return
-  core.encryption = new BlockEncryption(opts.encryptionKey, core.key, { compat: core.core ? core.core.compat : true, isBlockKey: opts.isBlockKey })
-}
-
-function createCache (cache) {
-  return cache === true ? new Xache({ maxSize: 65536, maxAge: 0 }) : (cache || null)
-}
-
 function isValidIndex (index) {
   return index === 0 || index > 0
+}
+
+function maybeUnslab (block) {
+  // Unslab only when it takes up less then half the slab
+  return block !== null && 2 * block.byteLength < block.buffer.byteLength ? unslab(block) : block
+}
+
+function checkSnapshot (snapshot, index) {
+  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE()
+}
+
+function readBlock (rx, index) {
+  const promise = rx.getBlock(index)
+  rx.tryFlush()
+  return promise
+}
+
+function initOnce (session, storage, key, opts) {
+  if (storage === null) storage = opts.storage || null
+  if (key === null) key = opts.key || null
+
+  session.core = new Core(Hypercore.defaultStorage(storage), {
+    eagerUpgrade: true,
+    notDownloadingLinger: opts.notDownloadingLinger,
+    allowFork: opts.allowFork !== false,
+    inflightRange: opts.inflightRange,
+    compat: opts.compat === true,
+    force: opts.force,
+    createIfMissing: opts.createIfMissing,
+    discoveryKey: opts.discoveryKey,
+    overwrite: opts.overwrite,
+    key,
+    keyPair: opts.keyPair,
+    legacy: opts.legacy,
+    manifest: opts.manifest,
+    globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
+  })
+}
+
+function maybeAddMonitor (name) {
+  if (name === 'append' || name === 'truncate') return
+  if (this._monitorIndex >= 0 || this.closing) return
+
+  if (this.core === null) {
+    this._monitorIndex = -2
+  } else {
+    this.core.addMonitor(this)
+  }
+}
+
+function isSessionMoved (err) {
+  return err.code === 'SESSION_MOVED'
 }

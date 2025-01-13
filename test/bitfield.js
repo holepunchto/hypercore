@@ -1,9 +1,13 @@
 const test = require('brittle')
-const RAM = require('random-access-memory')
+const b4a = require('b4a')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-storage')
 const Bitfield = require('../lib/bitfield')
+const BitInterlude = require('../lib/bit-interlude')
 
 test('bitfield - set and get', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const storage = await createStorage(t)
+  const b = await Bitfield.open(storage, 0)
 
   t.absent(b.get(42))
   b.set(42, true)
@@ -12,16 +16,13 @@ test('bitfield - set and get', async function (t) {
   // bigger offsets
   t.absent(b.get(42000000))
   b.set(42000000, true)
-  t.ok(b.get(42000000))
-
+  t.ok(b.get(42000000, true))
   b.set(42000000, false)
-  t.absent(b.get(42000000))
-
-  await b.flush()
+  t.absent(b.get(42000000, true))
 })
 
 test('bitfield - random set and gets', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t), 0)
   const set = new Set()
 
   for (let i = 0; i < 200; i++) {
@@ -33,7 +34,7 @@ test('bitfield - random set and gets', async function (t) {
   for (let i = 0; i < 500; i++) {
     const idx = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
     const expected = set.has(idx)
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== expected) {
       t.fail('expected ' + expected + ' but got ' + val + ' at ' + idx)
       return
@@ -41,7 +42,7 @@ test('bitfield - random set and gets', async function (t) {
   }
 
   for (const idx of set) {
-    const val = b.get(idx)
+    const val = b.get(idx, true)
     if (val !== true) {
       t.fail('expected true but got ' + val + ' at ' + idx)
       return
@@ -52,18 +53,23 @@ test('bitfield - random set and gets', async function (t) {
 })
 
 test('bitfield - reload', async function (t) {
-  const s = new RAM()
+  const dir = await createTempDir(t)
 
   {
-    const b = await Bitfield.open(s)
-    b.set(142, true)
-    b.set(40000, true)
-    b.set(1424242424, true)
-    await b.flush()
+    const storage = await createStorage(t, dir)
+    const bitfield = await Bitfield.open(storage, 0)
+    const b = new BitInterlude()
+    b.setRange(142, 143, true)
+    b.setRange(40000, 40001, true)
+    b.setRange(1424242424, 1424242425, true)
+    await flush(storage, b, bitfield)
+
+    // fully close db
+    await storage.db.close({ force: true })
   }
 
   {
-    const b = await Bitfield.open(s)
+    const b = await Bitfield.open(await createStorage(t, dir), 1424242425)
     t.ok(b.get(142))
     t.ok(b.get(40000))
     t.ok(b.get(1424242424))
@@ -74,7 +80,7 @@ test('bitfield - want', async function (t) {
   // This test will likely break when bitfields are optimised to not actually
   // store pages of all set or unset bits.
 
-  const b = new Bitfield(new RAM(), new Uint32Array(1024 * 512 / 4 /* 512 KiB */))
+  const b = new Bitfield(b4a.alloc(1024 * 512) /* 512 KiB */)
 
   t.alike([...b.want(0, 0)], [])
 
@@ -112,17 +118,18 @@ test('bitfield - want', async function (t) {
 })
 
 test('bitfield - sparse array overflow', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   // Previously bugged due to missing bounds check in sparse array
   b.set(7995511118690925, true)
 })
 
 test('bitfield - count', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
-  for (const [start, length] of [[0, 2], [5, 1], [7, 2], [13, 1], [16, 3], [20, 5]]) {
-    b.setRange(start, length, true)
+  for (const [start, end] of [[0, 2], [5, 6], [7, 9], [13, 14], [16, 19], [20, 25]]) {
+    b.setRange(start, end, true)
   }
 
   t.is(b.count(3, 18, true), 8)
@@ -130,7 +137,7 @@ test('bitfield - count', async function (t) {
 })
 
 test('bitfield - find first, all zeroes', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   t.is(b.findFirst(false, 0), 0)
   t.is(b.findFirst(true, 0), -1)
@@ -153,7 +160,8 @@ test('bitfield - find first, all zeroes', async function (t) {
 })
 
 test('bitfield - find first, all ones', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -180,7 +188,7 @@ test('bitfield - find first, all ones', async function (t) {
 })
 
 test('bitfield - find last, all zeroes', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const b = await Bitfield.open(await createStorage(t), 0)
 
   t.is(b.findLast(false, 0), 0)
   t.is(b.findLast(true, 0), -1)
@@ -203,7 +211,8 @@ test('bitfield - find last, all zeroes', async function (t) {
 })
 
 test('bitfield - find last, all ones', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
   b.setRange(0, 2 ** 24, true)
 
@@ -230,7 +239,8 @@ test('bitfield - find last, all ones', async function (t) {
 })
 
 test('bitfield - find last, ones around page boundary', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
   b.set(32767, true)
   b.set(32768, true)
@@ -240,20 +250,42 @@ test('bitfield - find last, ones around page boundary', async function (t) {
 })
 
 test('bitfield - set range on page boundary', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
-  b.setRange(2032, 26, true)
+  b.setRange(2032, 2058, true)
 
   t.is(b.findFirst(true, 2048), 2048)
 })
 
 test('set last bits in segment and findFirst', async function (t) {
-  const b = await Bitfield.open(new RAM())
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
 
   b.set(2097150, true)
+
   t.is(b.findFirst(false, 2097150), 2097151)
 
   b.set(2097151, true)
+
   t.is(b.findFirst(false, 2097150), 2097152)
   t.is(b.findFirst(false, 2097151), 2097152)
 })
+
+async function createStorage (t, dir) {
+  if (!dir) dir = await createTempDir(t)
+
+  const db = new CoreStorage(dir)
+
+  t.teardown(() => db.close())
+
+  const dkey = b4a.alloc(32)
+
+  return (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
+}
+
+async function flush (s, b, bitfield) {
+  const tx = s.write()
+  b.flush(tx, bitfield)
+  await tx.flush()
+}

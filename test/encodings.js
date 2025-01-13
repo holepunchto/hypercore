@@ -3,7 +3,7 @@ const b4a = require('b4a')
 const { create } = require('./helpers')
 
 test('encodings - supports built ins', async function (t) {
-  const a = await create(null, { valueEncoding: 'json' })
+  const a = await create(t, null, { valueEncoding: 'json' })
 
   await a.append({ hello: 'world' })
   t.alike(await a.get(0), { hello: 'world' })
@@ -11,7 +11,7 @@ test('encodings - supports built ins', async function (t) {
 })
 
 test('encodings - supports custom encoding', async function (t) {
-  const a = await create(null, { valueEncoding: { encode () { return b4a.from('foo') }, decode () { return 'bar' } } })
+  const a = await create(t, null, { valueEncoding: { encode () { return b4a.from('foo') }, decode () { return 'bar' } } })
 
   await a.append({ hello: 'world' })
   t.is(await a.get(0), 'bar')
@@ -19,7 +19,7 @@ test('encodings - supports custom encoding', async function (t) {
 })
 
 test('encodings - supports custom batch encoding', async function (t) {
-  const a = await create(null, {
+  const a = await create(t, null, {
     encodeBatch: batch => {
       return [b4a.from(batch.join('-'))]
     },

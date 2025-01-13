@@ -1,12 +1,128 @@
 const test = require('brittle')
-const RAM = require('random-access-memory')
 const b4a = require('b4a')
+const createTempDir = require('test-tmp')
 
 const Hypercore = require('../')
-const { create, eventFlush } = require('./helpers')
+const { create, createStorage, eventFlush } = require('./helpers')
 
 test('basic', async function (t) {
-  const core = await create()
+  const core = await create(t)
+  let appends = 0
+
+  t.is(core.length, 0)
+  t.is(core.writable, true)
+  t.is(core.readable, true)
+
+  core.on('append', function () {
+    appends++
+  })
+
+  await core.append('hello')
+  t.is(core.length, 1)
+  await core.append('world')
+  t.is(core.length, 2)
+
+  const info = await core.info()
+
+  t.is(core.length, 2)
+  t.is(info.byteLength, 10)
+  t.is(appends, 2)
+})
+
+test('core id', async function (t) {
+  const key = b4a.alloc(32).fill('a')
+
+  const db = await createStorage(t)
+  const core = new Hypercore(db, key)
+
+  await core.ready()
+  t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
+  await core.close()
+})
+
+test('session id', async function (t) {
+  const key = b4a.alloc(32).fill('a')
+
+  const db = await createStorage(t)
+  const core = new Hypercore(db, key)
+
+  const session = core.session()
+
+  await session.ready()
+  t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
+
+  await core.close()
+  await session.close()
+})
+
+test('session', async function (t) {
+  const core = await create(t)
+
+  const session = core.session()
+
+  await session.append('test')
+  t.alike(await core.get(0), b4a.from('test'))
+  t.alike(await session.get(0), b4a.from('test'))
+
+  await session.close()
+})
+
+test('close', async function (t) {
+  const core = await create(t)
+  await core.append('hello world')
+
+  await core.close()
+
+  try {
+    await core.get(0)
+    t.fail('core should be closed')
+  } catch {
+    t.pass('get threw correctly when core was closed')
+  }
+})
+
+test('close multiple', async function (t) {
+  const core = await create(t)
+  await core.append('hello world')
+
+  const ev = t.test('events')
+
+  ev.plan(4)
+
+  let i = 0
+
+  core.on('close', () => ev.is(i++, 0, 'on close'))
+  core.close().then(() => ev.is(i++, 1, 'first close'))
+  core.close().then(() => ev.is(i++, 2, 'second close'))
+  core.close().then(() => ev.is(i++, 3, 'third close'))
+
+  await ev
+})
+
+test('storage options', async function (t) {
+  const db = await createStorage(t)
+  const core = new Hypercore({ storage: db })
+  await core.append('hello')
+  t.alike(await core.get(0), b4a.from('hello'))
+
+  await core.close()
+})
+
+test('createIfMissing', async function (t) {
+  const db = await createStorage(t)
+  const core = new Hypercore(db, { createIfMissing: false })
+
+  await t.exception(core.ready())
+  await db.close()
+})
+
+test('reopen writable core', async function (t) {
+  const dir = await createTempDir(t)
+
+  const core = new Hypercore(dir)
+  await core.ready()
+
   let appends = 0
 
   t.is(core.length, 0)
@@ -25,123 +141,63 @@ test('basic', async function (t) {
   t.is(core.length, 2)
   t.is(info.byteLength, 10)
   t.is(appends, 2)
-})
-
-test('core id', async function (t) {
-  const key = b4a.alloc(32).fill('a')
-
-  const core = new Hypercore(RAM, key)
-  t.is(core.id, null)
-
-  await core.ready()
-  t.is(core.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
-})
-
-test('session id', async function (t) {
-  const key = b4a.alloc(32).fill('a')
-  const core = new Hypercore(RAM, key)
-
-  const session = core.session()
-  t.is(session.id, null)
-
-  await session.ready()
-  t.is(session.id, 'cfosnambcfosnambcfosnambcfosnambcfosnambcfosnambcfoo')
-})
-
-test('session', async function (t) {
-  const core = await create()
-
-  const session = core.session()
-
-  await session.append('test')
-  t.alike(await core.get(0), b4a.from('test'))
-  t.alike(await session.get(0), b4a.from('test'))
-})
-
-test('close', async function (t) {
-  const core = await create()
-  await core.append('hello world')
 
   await core.close()
 
-  try {
-    await core.get(0)
-    t.fail('core should be closed')
-  } catch {
-    t.pass('get threw correctly when core was closed')
-  }
-})
+  const core2 = new Hypercore(dir)
+  await core2.ready()
 
-test('close multiple', async function (t) {
-  const core = await create()
-  await core.append('hello world')
+  t.is(core2.length, 2)
+  t.is(core2.writable, true)
+  t.is(core2.readable, true)
 
-  const ev = t.test('events')
+  core2.on('append', function () {
+    appends++
+  })
 
-  ev.plan(4)
+  await core2.append('goodbye')
+  await core2.append('test')
 
-  let i = 0
+  t.is(core2.length, 4)
+  t.is(appends, 4)
 
-  core.on('close', () => ev.is(i++, 0, 'on close'))
-  core.close().then(() => ev.is(i++, 1, 'first close'))
-  core.close().then(() => ev.is(i++, 2, 'second close'))
-  core.close().then(() => ev.is(i++, 3, 'third close'))
-
-  await ev
-})
-
-test('storage options', async function (t) {
-  const core = new Hypercore({ storage: RAM })
-  await core.append('hello')
-  t.alike(await core.get(0), b4a.from('hello'))
-})
-
-test(
-  'allow publicKeys with different byteLength that 32, if opts.crypto were passed',
-  function (t) {
-    const key = b4a.alloc(33).fill('a')
-
-    const core = new Hypercore(RAM, key, { crypto: { discoveryKey: () => key } })
-
-    t.is(core.key, key)
-    t.pass('creating a core with more than 32 byteLength key did not throw')
-  }
-)
-
-test('createIfMissing', async function (t) {
-  const core = new Hypercore(RAM, { createIfMissing: false })
-
-  await t.exception(core.ready())
+  await core2.close()
 })
 
 test('reopen and overwrite', async function (t) {
-  const st = {}
-  const core = new Hypercore(open)
+  const dir = await createTempDir()
+  let storage = null
+
+  const core = new Hypercore(await open())
 
   await core.ready()
+  await core.close()
   const key = core.key
 
-  const reopen = new Hypercore(open)
+  const reopen = new Hypercore(await open())
 
   await reopen.ready()
   t.alike(reopen.key, key, 'reopened the core')
+  await reopen.close()
 
-  const overwritten = new Hypercore(open, { overwrite: true })
+  const overwritten = new Hypercore(await open(), { overwrite: true })
 
   await overwritten.ready()
   t.unlike(overwritten.key, key, 'overwrote the core')
 
-  function open (name) {
-    if (st[name]) return st[name]
-    st[name] = new RAM()
-    return st[name]
+  await overwritten.close()
+
+  async function open () {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    return storage
   }
 })
 
 test('truncate event has truncated-length and fork', async function (t) {
   t.plan(2)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
 
   core.on('truncate', function (length, fork) {
     t.is(length, 2)
@@ -150,29 +206,32 @@ test('truncate event has truncated-length and fork', async function (t) {
 
   await core.append(['a', 'b', 'c'])
   await core.truncate(2)
+  await core.close()
 })
 
 test('treeHash gets the tree hash at a given core length', async function (t) {
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
   await core.ready()
 
-  const { core: { tree } } = core
+  const { core: { state } } = core
 
-  const hashes = [tree.hash()]
+  const hashes = [state.hash()]
 
   for (let i = 1; i < 10; i++) {
     await core.append([`${i}`])
-    hashes.push(tree.hash())
+    hashes.push(state.hash())
   }
 
   for (let i = 0; i < 10; i++) {
     t.alike(await core.treeHash(i), hashes[i])
   }
+
+  await core.close()
 })
 
 test('treeHash with default length', async function (t) {
-  const core = new Hypercore(RAM)
-  const core2 = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
+  const core2 = new Hypercore(await createStorage(t))
   await core.ready()
   await core2.ready()
 
@@ -181,10 +240,13 @@ test('treeHash with default length', async function (t) {
   await core.append('a')
 
   t.unlike(await core.treeHash(), await core2.treeHash())
+
+  await core.close()
+  await core2.close()
 })
 
 test('snapshot locks the state', async function (t) {
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
   await core.ready()
 
   const a = core.snapshot()
@@ -200,12 +262,16 @@ test('snapshot locks the state', async function (t) {
 
   t.is(a.length, 0)
   t.is(b.length, 1)
+
+  await core.close()
+  await a.close()
+  await b.close()
 })
 
 test('downloading local range', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
 
   await core.append('a')
 
@@ -216,12 +282,14 @@ test('downloading local range', async function (t) {
   await range.destroy()
 
   t.pass('did not throw')
+
+  await core.close()
 })
 
 test('read ahead', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM, { valueEncoding: 'utf-8' })
+  const core = new Hypercore(await createStorage(t), { valueEncoding: 'utf-8' })
 
   await core.append('a')
 
@@ -232,12 +300,14 @@ test('read ahead', async function (t) {
   await core.append('b')
 
   t.alike(await blk, 'b')
+
+  await core.close()
 })
 
 test('defaults for wait', async function (t) {
   t.plan(5)
 
-  const core = new Hypercore(RAM, b4a.alloc(32), { valueEncoding: 'utf-8' })
+  const core = new Hypercore(await createStorage(t), b4a.alloc(32), { valueEncoding: 'utf-8' })
 
   const a = core.get(1)
 
@@ -262,11 +332,12 @@ test('defaults for wait', async function (t) {
   t.is(await s2.get(1), null)
 
   await s.close()
+  await s2.close()
   await core.close()
 })
 
 test('has', async function (t) {
-  const core = await create()
+  const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   for (let i = 0; i < core.length; i++) {
@@ -283,10 +354,12 @@ test('has', async function (t) {
       t.ok(await core.has(i), `has ${i}`)
     }
   }
+
+  await core.close()
 })
 
 test('has range', async function (t) {
-  const core = await create()
+  const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   t.ok(await core.has(0, 5), 'has 0 to 4')
@@ -297,50 +370,73 @@ test('has range', async function (t) {
   t.absent(await core.has(0, 5), 'does not have 0 to 4')
   t.ok(await core.has(0, 2), 'has 0 to 1')
   t.ok(await core.has(3, 5), 'has 3 to 4')
+
+  await core.close()
 })
 
-test('storage info', async function (t) {
-  const core = await create()
+test.skip('storage info', async function (t) {
+  const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   const info = await core.info({ storage: true })
 
   t.snapshot(info.storage)
+
+  await core.close()
 })
 
 test('storage info, off by default', async function (t) {
-  const core = await create()
+  const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   const info = await core.info()
 
   t.is(info.storage, null)
+
+  await core.close()
 })
 
 test('indexedLength mirrors core length (linearised core compat)', async function (t) {
-  const core = await create()
+  const core = await create(t)
   t.is(core.length, 0)
-  t.is(core.indexedLength, core.length)
+  t.is(core.signedLength, core.length)
 
   await core.append(['a', 'b'])
   t.is(core.length, 2)
-  t.is(core.indexedLength, core.length)
+  t.is(core.signedLength, core.length)
+
+  await core.close()
 })
 
 test('key is set sync', async function (t) {
   const key = b4a.from('a'.repeat(64), 'hex')
 
-  t.alike((new Hypercore(RAM, key)).key, key)
-  t.is((new Hypercore(RAM)).key, null)
+  const dir1 = await createStorage(t)
+  const dir2 = await createStorage(t)
+  const dir3 = await createStorage(t)
+  const dir4 = await createStorage(t)
 
-  t.alike((new Hypercore(RAM, { key })).key, key)
-  t.is((new Hypercore(RAM, { })).key, null)
+  const core1 = new Hypercore(dir1, key)
+  const core2 = new Hypercore(dir2)
+  const core3 = new Hypercore(dir3, { key })
+  const core4 = new Hypercore(dir4, { })
+
+  // flush all db ops before teardown
+  t.teardown(() => core1.close())
+  t.teardown(() => core2.close())
+  t.teardown(() => core3.close())
+  t.teardown(() => core4.close())
+
+  t.alike(core1.key, key)
+  t.is(core2.key, null)
+  t.alike(core3.key, key)
+  t.is(core4.key, null)
 })
 
 test('disable writable option', async function (t) {
   t.plan(2)
 
-  const core = new Hypercore(RAM, { writable: false })
+  const core = new Hypercore(await createStorage(t), { writable: false })
   await core.ready()
 
   t.is(core.writable, false)
@@ -351,12 +447,14 @@ test('disable writable option', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await core.close()
 })
 
 test('disable session writable option', async function (t) {
   t.plan(3)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
   await core.ready()
 
   const session = core.session({ writable: false })
@@ -372,12 +470,15 @@ test('disable session writable option', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await session.close()
+  await core.close()
 })
 
 test('session of a session with the writable option disabled', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
   const s1 = core.session({ writable: false })
   const s2 = s1.session()
 
@@ -387,15 +488,19 @@ test('session of a session with the writable option disabled', async function (t
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await s1.close()
+  await s2.close()
+  await core.close()
 })
 
 test('writable session on a readable only core', async function (t) {
   t.plan(2)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
   await core.ready()
 
-  const a = new Hypercore(RAM, core.key)
+  const a = new Hypercore(await createStorage(t), core.key)
   const s = a.session({ writable: true })
   await s.ready()
   t.is(s.writable, false)
@@ -406,12 +511,16 @@ test('writable session on a readable only core', async function (t) {
   } catch (err) {
     t.pass(err.code, 'SESSION_NOT_WRITABLE')
   }
+
+  await s.close()
+  await a.close()
+  await core.close()
 })
 
 test('append above the max suggested block size', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
 
   try {
     await core.append(Buffer.alloc(Hypercore.MAX_SUGGESTED_BLOCK_SIZE))
@@ -424,12 +533,14 @@ test('append above the max suggested block size', async function (t) {
   } catch {
     t.pass('should throw')
   }
+
+  await core.close()
 })
 
 test('get undefined block is not allowed', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM)
+  const core = new Hypercore(await createStorage(t))
 
   try {
     await core.get(undefined)
@@ -437,12 +548,14 @@ test('get undefined block is not allowed', async function (t) {
   } catch (err) {
     t.pass(err.code, 'ERR_ASSERTION')
   }
+
+  await core.close()
 })
 
 test('valid manifest passed to a session is stored', async function (t) {
   t.plan(1)
 
-  const core = new Hypercore(RAM, {
+  const core = new Hypercore(await createStorage(t), {
     manifest: {
       prologue: {
         hash: b4a.alloc(32),
@@ -454,11 +567,30 @@ test('valid manifest passed to a session is stored', async function (t) {
 
   await core.ready()
 
-  const a = new Hypercore(RAM, core.key)
-
-  const b = new Hypercore(null, core.key, { manifest: core.manifest, from: a })
+  const a = new Hypercore(await createStorage(t), core.key)
+  const b = new Hypercore(null, core.key, { manifest: core.manifest, core: a.core })
 
   await b.ready()
 
   t.alike(b.manifest, core.manifest)
+
+  await a.close()
+  await b.close()
+  await core.close()
+})
+
+test('exclusive sessions', async function (t) {
+  const core = new Hypercore(await createStorage(t))
+
+  const a = core.session({ exclusive: true })
+  await a.ready()
+
+  setTimeout(() => a.close(), 200)
+
+  const b = core.session({ exclusive: true })
+  await b.ready()
+  t.ok(a.closed)
+  await b.close()
+
+  await core.close()
 })

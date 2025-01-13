@@ -1,6 +1,26 @@
 const test = require('brittle')
 const Mutex = require('../lib/mutex')
 
+test('mutex - basic', async function (t) {
+  const mutex = new Mutex()
+
+  let count = 0
+
+  const locks = []
+
+  for (let i = 0; i < 5; i++) locks.push(counter(i))
+
+  await Promise.all(locks)
+
+  t.is(count, 5)
+
+  async function counter (i) {
+    await mutex.lock()
+    t.is(count++, i)
+    setImmediate(() => mutex.unlock())
+  }
+})
+
 test('mutex - lock after destroy', async function (t) {
   const mutex = new Mutex()
   mutex.destroy()
