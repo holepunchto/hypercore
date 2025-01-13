@@ -14,7 +14,7 @@ test('move - basic', async function (t) {
   await sess.append('2')
   await sess.append('3')
 
-  await core.core.commit(sess.state)
+  await core.commit(sess)
 
   t.is(core.length, 3)
   t.is(sess.length, 3)
@@ -24,7 +24,7 @@ test('move - basic', async function (t) {
   const manifest = {
     prologue: {
       length: core.length,
-      hash: core.state.tree.hash()
+      hash: core.state.hash()
     },
     signers: [{
       publicKey: keyPair.publicKey
@@ -38,10 +38,10 @@ test('move - basic', async function (t) {
 
   sess.once('migrate', key => { t.alike(key, core2.key) })
 
-  await sess.state.moveTo(core2.core)
+  await sess.state.moveTo(core2.core, core2.length)
   await sess.append('4')
 
-  await core2.core.commit(sess.state)
+  await core2.commit(sess)
 
   t.alike(await sess.get(0), b4a.from('1'))
   t.alike(await sess.get(1), b4a.from('2'))
@@ -80,7 +80,7 @@ test('move - snapshots', async function (t) {
   const manifest = {
     prologue: {
       length: core.length,
-      hash: core.state.tree.hash()
+      hash: core.state.hash()
     },
     signers: [{
       publicKey: keyPair.publicKey
@@ -92,7 +92,7 @@ test('move - snapshots', async function (t) {
 
   t.is(core2.length, 2)
 
-  await snap.state.moveTo(core2.core)
+  await snap.state.moveTo(core2.core, core2.length)
 
   t.is(snap.length, 3)
 

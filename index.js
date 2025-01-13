@@ -251,7 +251,7 @@ class Hypercore extends EventEmitter {
 
     if (s) {
       const shouldSnapshot = this.snapshotted && !s.isSnapshot()
-      this.state = this.draft ? s.memoryOverlay() : shouldSnapshot ? s.snapshot() : s.ref()
+      this.state = shouldSnapshot ? s.snapshot() : s.ref()
     }
 
     if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
@@ -340,14 +340,17 @@ class Hypercore extends EventEmitter {
       await this.core.lockExclusive()
     }
 
-    if (opts.name) {
+    const parent = opts.parent || this.core
+
+    if (opts.atom) {
+      this.state = await parent.state.createSession(null, -1, false, opts.atom)
+    } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
       const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
-      const parent = opts.parent || this.core
 
-      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, this.draft)
+      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)
       if (state) state.unref() // ref'ed above in setup session
 
       if (checkout !== -1 && checkout < this.state.length) {
@@ -364,11 +367,11 @@ class Hypercore extends EventEmitter {
     this.core = this.state.core // in case it was wrong...
 
     if (opts.userData) {
-      const batch = this.state.storage.createWriteBatch()
+      const tx = this.state.storage.write()
       for (const [key, value] of Object.entries(opts.userData)) {
-        batch.setUserData(key, value)
+        tx.putUserData(key, value)
       }
-      await batch.flush()
+      await tx.flush()
     }
 
     if (opts.manifest && !this.core.header.manifest) {
@@ -451,6 +454,13 @@ class Hypercore extends EventEmitter {
 
     this.closed = true
     this.emit('close', true)
+  }
+
+  async commit (session, opts) {
+    await this.ready()
+    await session.ready()
+
+    return this.state.commit(session.state, { keyPair: this.keyPair, ...opts })
   }
 
   replicate (isInitiator, opts = {}) {
@@ -556,14 +566,14 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  async setUserData (key, value, { atom = null } = {}) {
+  async setUserData (key, value) {
     if (this.opened === false) await this.opening
-    await this.state.setUserData(key, value, atom)
+    await this.state.setUserData(key, value)
   }
 
   async getUserData (key) {
     if (this.opened === false) await this.opening
-    const batch = this.state.storage.createReadBatch()
+    const batch = this.state.storage.read()
     const p = batch.getUserData(key)
     batch.tryFlush()
     return p
@@ -593,6 +603,20 @@ class Hypercore extends EventEmitter {
 
   createTreeBatch () {
     return this.state.createTreeBatch()
+  }
+
+  async restoreBatch (length, additionalBlocks = []) {
+    if (this.opened === false) await this.opening
+    const batch = this.state.createTreeBatch()
+
+    if (length > batch.length + additionalBlocks.length) {
+      throw BAD_ARGUMENT('Insufficient additional blocks were passed')
+    }
+
+    let i = 0
+    while (batch.length < length) batch.append(additionalBlocks[i++])
+
+    return length < batch.length ? batch.restore(length) : batch
   }
 
   findingPeers () {
@@ -688,9 +712,9 @@ class Hypercore extends EventEmitter {
     }
 
     if (end === start + 1) {
-      const reader = this.state.storage.createReadBatch()
-      const block = reader.getBlock(start)
-      reader.tryFlush()
+      const rx = this.state.storage.read()
+      const block = rx.getBlock(start)
+      rx.tryFlush()
 
       return (await block) !== null
     }
@@ -761,7 +785,7 @@ class Hypercore extends EventEmitter {
   async _get (index, opts) {
     if (this.core.isFlushing) await this.core.flushed()
 
-    const block = await readBlock(this.state.storage.createReadBatch(), index)
+    const block = await readBlock(this.state.storage.read(), index)
 
     if (block !== null) return block
 
@@ -770,7 +794,7 @@ class Hypercore extends EventEmitter {
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this, index)
-      const coreBlock = await readBlock(this.core.state.storage.createReadBatch(), index)
+      const coreBlock = await readBlock(this.core.state.storage.read(), index)
 
       checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
@@ -779,7 +803,7 @@ class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      const coreBlock = await readBlock(this.state.storage.createReadBatch(), index)
+      const coreBlock = await readBlock(this.state.storage.read(), index)
       // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
       if (coreBlock !== null) return coreBlock
     }
@@ -808,12 +832,6 @@ class Hypercore extends EventEmitter {
 
     if (this._snapshot !== null) checkSnapshot(this, index)
     return maybeUnslab(replicatedBlock)
-  }
-
-  async restoreBatch (length, blocks) {
-    if (this.opened === false) await this.opening
-    const batch = this.state.createTreeBatch()
-    return batch.restore(length)
   }
 
   _shouldWait (opts, defaultValue) {
@@ -875,7 +893,7 @@ class Hypercore extends EventEmitter {
     const isDefault = this.state === this.core.state
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
-    const { keyPair = defaultKeyPair, signature = null, atom = null } = opts
+    const { keyPair = defaultKeyPair, signature = null } = opts
     const writable = !!this.draft || !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
 
     if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
@@ -897,7 +915,7 @@ class Hypercore extends EventEmitter {
       }
     }
 
-    return this.state.append(buffers, { keyPair, signature, preappend, atom })
+    return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
   async treeHash (length) {
@@ -1031,9 +1049,9 @@ function checkSnapshot (snapshot, index) {
   if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE()
 }
 
-function readBlock (reader, index) {
-  const promise = reader.getBlock(index)
-  reader.tryFlush()
+function readBlock (rx, index) {
+  const promise = rx.getBlock(index)
+  rx.tryFlush()
   return promise
 }
 

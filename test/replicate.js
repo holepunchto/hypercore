@@ -1484,7 +1484,7 @@ test('range download, repeated', async function (t) {
   }
 })
 
-test.skip('replication updates on core copy', async function (t) {
+test('replication updates on core copy', async function (t) {
   const a = await create(t)
 
   const n = 100
@@ -1499,7 +1499,7 @@ test.skip('replication updates on core copy', async function (t) {
 
   const promise = c.get(50)
 
-  await b.core.copyPrologue(a.core)
+  await b.core.copyPrologue(a.state)
 
   await t.execution(promise)
 })
