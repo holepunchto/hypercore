@@ -19,6 +19,7 @@ async function runTests () {
   await import('./extension.js')
   await import('./manifest.js')
   await import('./merkle-tree.js')
+  await import('./move-to.js')
   await import('./mutex.js')
   await import('./preload.js')
   // await import('./purge.js') // todo: implement purge
