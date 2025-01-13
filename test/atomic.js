@@ -59,6 +59,46 @@ test('atomic - append', async function (t) {
   await core.close()
 })
 
+test('atomic - multiple flushes', async function (t) {
+  const core = await create(t)
+
+  await core.append('hello')
+  await core.append('world')
+
+  const atom = core.state.storage.createAtom()
+
+  const atomic = core.session({ atom })
+
+  await atomic.append('edits!')
+
+  t.alike(atomic.byteLength, 16)
+  t.alike(atomic.length, 3)
+
+  t.alike(core.byteLength, 10)
+  t.alike(core.length, 2)
+
+  await atom.flush()
+
+  t.alike(core.byteLength, 16)
+  t.alike(core.length, 3)
+
+  await atomic.append('more')
+
+  t.alike(atomic.byteLength, 20)
+  t.alike(atomic.length, 4)
+
+  t.alike(core.byteLength, 16)
+  t.alike(core.length, 3)
+
+  await atom.flush()
+
+  t.alike(core.byteLength, 20)
+  t.alike(core.length, 4)
+
+  await atomic.close()
+  await core.close()
+})
+
 test('atomic - across cores', async function (t) {
   const core = await create(t)
   const core2 = await create(t)
