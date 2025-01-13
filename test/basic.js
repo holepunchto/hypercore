@@ -109,21 +109,6 @@ test('storage options', async function (t) {
   await core.close()
 })
 
-test.skip(
-  'allow publicKeys with different byteLength that 32, if opts.crypto were passed',
-  async function (t) {
-    const key = b4a.alloc(33).fill('a')
-
-    const db = await createStorage(t)
-    const core = new Hypercore(db, key, { crypto: { discoveryKey: () => key } })
-
-    t.is(core.key, key)
-    t.pass('creating a core with more than 32 byteLength key did not throw')
-
-    await core.close()
-  }
-)
-
 test('createIfMissing', async function (t) {
   const db = await createStorage(t)
   const core = new Hypercore(db, { createIfMissing: false })

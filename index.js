@@ -458,7 +458,7 @@ class Hypercore extends EventEmitter {
 
   async commit (state, opts) {
     await this.ready()
-    return this.state.commit(state, opts)
+    return this.state.commit(state, { keyPair: this.keyPair, ...opts })
   }
 
   replicate (isInitiator, opts = {}) {
@@ -601,6 +601,20 @@ class Hypercore extends EventEmitter {
 
   createTreeBatch () {
     return this.state.createTreeBatch()
+  }
+
+  async restoreBatch (length, additionalBlocks = []) {
+    if (this.opened === false) await this.opening
+    const batch = this.state.createTreeBatch()
+
+    if (length > batch.length + additionalBlocks.length) {
+      throw BAD_ARGUMENT('Insufficient additional blocks were passed')
+    }
+
+    let i = 0
+    while (batch.length < length) batch.append(additionalBlocks[i++])
+
+    return length < batch.length ? batch.restore(length) : batch
   }
 
   findingPeers () {
@@ -816,12 +830,6 @@ class Hypercore extends EventEmitter {
 
     if (this._snapshot !== null) checkSnapshot(this, index)
     return maybeUnslab(replicatedBlock)
-  }
-
-  async restoreBatch (length, blocks) {
-    if (this.opened === false) await this.opening
-    const batch = this.state.createTreeBatch()
-    return batch.restore(length)
   }
 
   _shouldWait (opts, defaultValue) {
