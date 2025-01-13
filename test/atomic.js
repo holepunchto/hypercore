@@ -55,6 +55,7 @@ test('atomic - append', async function (t) {
   t.alike(core.byteLength, 16)
   t.alike(core.length, 3)
 
+  await atomic.close()
   await core.close()
 })
 
@@ -101,6 +102,12 @@ test('atomic - across cores', async function (t) {
   t.is(core2.core.bitfield.get(0), true)
 
   t.is(appends, 1)
+
+  await a1.close()
+  await a2.close()
+
+  await core.close()
+  await core2.close()
 })
 
 test('atomic - overwrite', async function (t) {
@@ -145,6 +152,12 @@ test('atomic - overwrite', async function (t) {
 
   await draft.close()
   await draft2.close()
+
+  await a1.close()
+  await a2.close()
+
+  await core.close()
+  await core2.close()
 })
 
 test('atomic - user data', async function (t) {
@@ -165,6 +178,9 @@ test('atomic - user data', async function (t) {
   await atom.flush()
 
   t.alike(await core.getUserData('hello'), b4a.from('done'))
+
+  await atomic.close()
+  await core.close()
 })
 
 test('atomic - append and user data', async function (t) {
@@ -192,6 +208,9 @@ test('atomic - append and user data', async function (t) {
 
   t.is(core.length, 1)
   t.alike(await core.getUserData('hello'), b4a.from('done'))
+
+  await atomic.close()
+  await core.close()
 })
 
 test('atomic - overwrite and user data', async function (t) {
