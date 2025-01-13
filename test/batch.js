@@ -450,7 +450,9 @@ test('flush with bg activity persists non conflicting values', async function (t
   const b = clone.session({ name: 'batch' })
 
   // bg
-  const promise = new Promise(resolve => clone.on('append', resolve))
+  const promise = new Promise(resolve => {
+    clone.on('append', () => { if (clone.length === 3) resolve() })
+  })
 
   await core.append('b')
   await core.append('c')
