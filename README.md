@@ -35,31 +35,9 @@ Make a new Hypercore instance.
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
-Alternatively you can pass a function instead that is called with every filename Hypercore needs to function and return your own [abstract-random-access](https://github.com/random-access-storage/abstract-random-access) instance that is used to store the data.
+Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/hypercore-storage) or use a [Corestore](https://github.com/holepunchto/corestore) if you want to make many Hypercores efficiently.
 
-``` js
-const RAM = require('random-access-memory')
-const core = new Hypercore((filename) => {
-  // filename will be one of: data, bitfield, tree, signatures, key, secret_key
-  // the data file will contain all your data concatenated.
-
-  // just store all files in ram by returning a random-access-memory instance
-  return new RAM()
-})
-```
-
-Per default Hypercore uses [random-access-file](https://github.com/random-access-storage/random-access-file). This is also useful if you want to store specific files in other directories.
-
-Hypercore will produce the following files:
-
-* `oplog` - The internal truncating journal/oplog that tracks mutations, the public key and other metadata.
-* `tree` - The Merkle Tree file.
-* `bitfield` - The bitfield of which data blocks this core has.
-* `data` - The raw data of each block.
-
-Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
-
-`key` can be set to a Hypercore public key. If you do not set this the public key will be loaded from storage. If no key exists a new key pair will be generated.
+`key` can be set to a Hypercore key which is a hash of Hypercore's internal auth manifest, describing how to validate the Hypercore. If you do not set this, it will be loaded from storage. If nothing is previously stored, a new auth manifest will be generated giving you local write access to it.
 
 `options` include:
 
@@ -79,7 +57,7 @@ Note that `tree`, `data`, and `bitfield` are normally heavily sparse files.
 }
 ```
 
-You can also set valueEncoding to any [abstract-encoding](https://github.com/mafintosh/abstract-encoding) or [compact-encoding](https://github.com/compact-encoding) instance.
+You can also set valueEncoding to any [compact-encoding](https://github.com/compact-encoding) instance.
 
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
@@ -255,10 +233,6 @@ Truncate the core to a smaller length.
 Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
 Note that the fork id should be monotonely incrementing.
 
-#### `await core.purge()`
-
-Purge the hypercore from your storage, completely removing all data.
-
 #### `const hash = await core.treeHash([length])`
 
 Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
@@ -305,7 +279,7 @@ To cancel downloading a range simply destroy the range instance.
 range.destroy()
 ```
 
-#### `const session = await core.session([options])`
+#### `const session = core.session([options])`
 
 Creates a new Hypercore instance that shares the same underlying core.
 
@@ -314,6 +288,10 @@ You must close any session you make.
 Options are inherited from the parent instance, unless they are re-set.
 
 `options` are the same as in the constructor.
+
+#### `const snapshot = core.snapshot([options])`
+
+Same as above, but backed by a storage snapshot so will not truncate nor append.
 
 #### `const info = await core.info([options])`
 
