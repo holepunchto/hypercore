@@ -15,9 +15,9 @@ test('mutex - basic', async function (t) {
   t.is(count, 5)
 
   async function counter (i) {
-    const lock = await mutex.lock()
+    await mutex.lock()
     t.is(count++, i)
-    setImmediate(() => lock.release())
+    setImmediate(() => mutex.unlock())
   }
 })
 
