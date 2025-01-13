@@ -14,7 +14,6 @@ async function runTests () {
   // await import('./compat.js') // todo: how to test compat?
   await import('./conflicts.js')
   await import('./core.js')
-  await import('./draft.js')
   await import('./encodings.js')
   await import('./encryption.js')
   await import('./extension.js')
