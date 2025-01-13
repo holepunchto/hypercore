@@ -20,15 +20,13 @@ async function runTests () {
   await import('./manifest.js')
   await import('./merkle-tree.js')
   await import('./mutex.js')
-  // await import('./oplog.js')
   await import('./preload.js')
   // await import('./purge.js') // todo: implement purge
   await import('./remote-bitfield.js')
   await import('./remote-length.js')
-  await import('./replicate.js') // todo: append event timing
+  await import('./replicate.js')
   await import('./sessions.js')
   await import('./snapshots.js')
-  // await import('./storage.js')
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')

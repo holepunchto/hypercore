@@ -361,7 +361,7 @@ test.skip('draft truncate then append', async function (t) {
 
   await atomic.truncate(1)
   await atomic.append('other')
-  await aomtic.append('data')
+  await atomic.append('data')
 
   t.alike(core.byteLength, 10)
   t.alike(core.length, 2)
