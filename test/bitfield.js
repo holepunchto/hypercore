@@ -285,7 +285,7 @@ async function createStorage (t, dir) {
 }
 
 async function flush (s, b, bitfield) {
-  const w = s.write()
-  b.flush(w, bitfield)
-  await w.flush()
+  const tx = s.write()
+  b.flush(tx, bitfield)
+  await tx.flush()
 }

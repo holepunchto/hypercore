@@ -136,9 +136,9 @@ test('core - user data', async function (t) {
   t.is(await countEntries(coreReopen.createUserDataStream({ gte: 'hello' })), 0)
 
   function putUserData (storage, key, value) {
-    const b = storage.write()
-    b.putUserData(key, value)
-    return b.flush()
+    const tx = storage.write()
+    tx.putUserData(key, value)
+    return tx.flush()
   }
 
   async function countEntries (stream) {

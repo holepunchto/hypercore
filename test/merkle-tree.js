@@ -14,9 +14,9 @@ test('nodes', async function (t) {
     b.append(b4a.from([i]))
   }
 
-  const wb = storage.write()
-  await b.commit(wb)
-  await wb.flush()
+  const tx = storage.write()
+  await b.commit(tx)
+  await tx.flush()
 
   t.is(await tree.nodes(0), 0)
 
@@ -512,9 +512,9 @@ test('basic tree seeks', async function (t) {
 test('clear full tree', async function (t) {
   const a = await create(t, 5)
 
-  const w = a.storage.write()
-  a.tree.clear(w)
-  await w.flush()
+  const tx = a.storage.write()
+  a.tree.clear(tx)
+  await tx.flush()
 
   for (let i = 0; i < 5; i++) {
     t.is(await a.tree.get(i), null)
@@ -853,9 +853,9 @@ function createSession (storage) {
 }
 
 async function flushBatch (session, batch) {
-  const writer = session.storage.write()
-  batch.commit(writer)
-  await writer.flush()
+  const tx = session.storage.write()
+  batch.commit(tx)
+  await tx.flush()
 
   session.fork = batch.fork
   session.length = batch.length

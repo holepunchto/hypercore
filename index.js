@@ -367,11 +367,11 @@ class Hypercore extends EventEmitter {
     this.core = this.state.core // in case it was wrong...
 
     if (opts.userData) {
-      const batch = this.state.storage.write()
+      const tx = this.state.storage.write()
       for (const [key, value] of Object.entries(opts.userData)) {
-        batch.putUserData(key, value)
+        tx.putUserData(key, value)
       }
-      await batch.flush()
+      await tx.flush()
     }
 
     if (opts.manifest && !this.core.header.manifest) {
@@ -710,9 +710,9 @@ class Hypercore extends EventEmitter {
     }
 
     if (end === start + 1) {
-      const reader = this.state.storage.read()
-      const block = reader.getBlock(start)
-      reader.tryFlush()
+      const rx = this.state.storage.read()
+      const block = rx.getBlock(start)
+      rx.tryFlush()
 
       return (await block) !== null
     }
@@ -1047,9 +1047,9 @@ function checkSnapshot (snapshot, index) {
   if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE()
 }
 
-function readBlock (reader, index) {
-  const promise = reader.getBlock(index)
-  reader.tryFlush()
+function readBlock (rx, index) {
+  const promise = rx.getBlock(index)
+  rx.tryFlush()
   return promise
 }
 
