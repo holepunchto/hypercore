@@ -10,7 +10,7 @@ test('atomic - session', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
 
@@ -38,7 +38,7 @@ test('atomic - append', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
 
@@ -72,7 +72,7 @@ test('atomic - across cores', async function (t) {
     appends++
   })
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
@@ -124,7 +124,7 @@ test('atomic - overwrite', async function (t) {
   await draft2.append('to the')
   await draft2.append('beginning')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
@@ -154,7 +154,7 @@ test('atomic - user data', async function (t) {
 
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
   await atomic.setUserData('hello', 'done')
@@ -175,7 +175,7 @@ test('atomic - append and user data', async function (t) {
   t.is(core.length, 0)
   t.alike(await core.getUserData('hello'), b4a.from('world'))
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
 
@@ -222,7 +222,7 @@ test('atomic - overwrite and user data', async function (t) {
   await draft2.append('to the')
   await draft2.append('beginning')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const a1 = core.session({ atom })
   const a2 = core2.session({ atom })
@@ -290,7 +290,7 @@ test('atomic - move to', async function (t) {
   t.ok(session.core === core.core)
   t.is(truncates, 0)
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = session.session({ atom })
   await atomic.ready()
@@ -323,7 +323,7 @@ test('atomic - truncate', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
 
@@ -355,7 +355,7 @@ test.skip('draft truncate then append', async function (t) {
   await core.append('hello')
   await core.append('world')
 
-  const atom = core.state.storage.atom()
+  const atom = core.state.storage.createAtom()
 
   const atomic = core.session({ atom })
 
