@@ -284,8 +284,8 @@ test('multisig - append', async function (t) {
   const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
   const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
 
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch, 1, len, sigBatch.length, sig2)
+  const proof = await partialSignature(batch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(batch, 1, len, sigBatch.length, sig2)
 
   multisig = assemble([proof, proof2])
 
@@ -349,8 +349,8 @@ test('multisig - batch failed', async function (t) {
   const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
   const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
 
-  const proof = await partialSignature(sigBatch, 0, len, sigBatch.length, sig)
-  const proof2 = await partialSignature(sigBatch, 1, len, sigBatch.length, sig2)
+  const proof = await partialSignature(batch, 0, len, sigBatch.length, sig)
+  const proof2 = await partialSignature(batch, 1, len, sigBatch.length, sig2)
 
   multisig = assemble([proof, proof2])
 
