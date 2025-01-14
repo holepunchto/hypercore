@@ -341,13 +341,13 @@ class Hypercore extends EventEmitter {
     }
 
     const parent = opts.parent || this.core
+    const checkout = opts.checkout === undefined ? -1 : opts.checkout
 
     if (opts.atom) {
-      this.state = await parent.state.createSession(null, -1, false, opts.atom)
+      this.state = await parent.state.createSession(null, checkout, false, opts.atom)
     } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
 
       this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)

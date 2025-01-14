@@ -32,6 +32,50 @@ test('atomic - session', async function (t) {
   await core.close()
 })
 
+test('atomic - checkout session', async function (t) {
+  const core = await create(t)
+
+  await core.append('hello')
+  await core.append('world')
+
+  let truncates = 0
+  let appends = 0
+
+  core.on('append', () => appends++)
+  core.on('truncate', () => truncates++)
+
+  const atom = core.state.storage.createAtom()
+
+  const atomic = core.session({ atom, checkout: 1 })
+  await atomic.ready()
+
+  await atomic.append('edits!')
+
+  t.alike(await atomic.get(0), b4a.from('hello'))
+  t.alike(await atomic.get(1), b4a.from('edits!'))
+  t.alike(await atomic.seek(11), [2, 0])
+  t.alike(atomic.byteLength, 11)
+  t.alike(atomic.length, 2)
+
+  // nothing changed as it was atomic session
+  t.alike(core.byteLength, 10)
+  t.alike(core.length, 2)
+
+  t.is(appends, 0)
+  t.is(truncates, 0)
+
+  await atom.flush()
+
+  t.alike(core.byteLength, 11)
+  t.alike(core.length, 2)
+
+  t.is(appends, 1)
+  t.is(truncates, 1)
+
+  await atomic.close()
+  await core.close()
+})
+
 test('atomic - append', async function (t) {
   const core = await create(t)
 
