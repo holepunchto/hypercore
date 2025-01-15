@@ -131,12 +131,14 @@ test('snapshots are consistent', async function (t) {
 
   t.is(await snapshot.get(1), 'block #1.0')
 
+  const promise = new Promise(resolve => clone.once('truncate', resolve))
+
   await core.truncate(1)
   await core.append('block #1.1')
   await core.append('block #2.1')
 
   // wait for clone to update
-  await new Promise(resolve => clone.once('truncate', resolve))
+  await promise
 
   t.is(clone.fork, 1, 'clone updated')
 
