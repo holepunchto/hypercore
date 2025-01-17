@@ -56,7 +56,7 @@ test('append to core during batch', async function (t) {
   const b = core.session({ name: 'batch' })
   await core.append('d')
   await b.append('e')
-  await t.exception(core.commit(b))
+  t.is(await core.commit(b), null)
 
   t.is(core.length, 4)
 
@@ -119,6 +119,7 @@ test('truncate core during batch', async function (t) {
   const b = core.session({ name: 'batch' })
   await b.append('a')
   await core.truncate(2)
+
   await t.exception(core.commit(b))
   t.is(core.length, 2)
 
@@ -133,7 +134,7 @@ test('batch truncate committed', async function (t) {
   await b.append(['de', 'fg'])
   await t.execution(b.truncate(2))
 
-  await t.exception(core.commit(b))
+  t.is(await core.commit(b), null)
 
   await b.close()
 })
@@ -207,7 +208,7 @@ test('simultaneous batches', async function (t) {
 
   t.ok(await core.commit(b))
   t.ok(await core.commit(c))
-  await t.exception(core.commit(d))
+  t.is(await core.commit(d), null)
 
   await b.close()
   await c.close()
@@ -429,7 +430,7 @@ test('flush with bg activity', async function (t) {
 
   await b.append('b')
 
-  await t.exception(core.commit(b)) // core is ahead, not flushing
+  t.is(await core.commit(b), null) // core is ahead, not flushing
 
   await b.append('c')
 
@@ -496,7 +497,7 @@ test('flush with conflicting bg activity', async function (t) {
   await b.append('c')
   await b.append('c')
 
-  await t.exception(clone.commit(b)) // cannot flush a batch with conflicts
+  t.is(await clone.commit(b), null) // cannot flush a batch with conflicts
 
   await b.close()
 })
@@ -519,7 +520,7 @@ test('checkout batch', async function (t) {
   t.alike(batch.hash(), hash)
 
   await b.append(['c', 'z'])
-  await t.exception(core.commit(b), 'failed')
+  t.is(await core.commit(b), null, 'failed')
 
   await b.truncate(3, b.fork)
   await b.append('d')
