@@ -69,7 +69,6 @@ class Hypercore extends EventEmitter {
     this.closed = false
     this.weak = !!opts.weak
     this.snapshotted = !!opts.snapshot
-    this.draft = !!opts.draft
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
@@ -896,7 +895,7 @@ class Hypercore extends EventEmitter {
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
     const { keyPair = defaultKeyPair, signature = null } = opts
-    const writable = !!this.draft || !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
+    const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
 
     if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
 
