@@ -207,7 +207,7 @@ class Hypercore extends EventEmitter {
     }
 
     const wait = opts.wait === false ? false : this.wait
-    const writable = opts.writable === false ? false : !this._readonly
+    const writable = opts.writable === undefined ? !this._readonly : opts.writable === true
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
@@ -245,7 +245,6 @@ class Hypercore extends EventEmitter {
 
   _setupSession (parent) {
     if (!this.keyPair) this.keyPair = parent.keyPair
-    this.writable = this._isWritable()
 
     const s = parent.state
 
@@ -341,13 +340,13 @@ class Hypercore extends EventEmitter {
     }
 
     const parent = opts.parent || this.core
+    const checkout = opts.checkout === undefined ? -1 : opts.checkout
 
     if (opts.atom) {
-      this.state = await parent.state.createSession(null, -1, false, opts.atom)
+      this.state = await parent.state.createSession(null, checkout, false, opts.atom)
     } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      const checkout = opts.checkout === undefined ? -1 : opts.checkout
       const state = this.state
 
       this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)
@@ -359,6 +358,8 @@ class Hypercore extends EventEmitter {
     } else if (this.state === null) {
       this.state = this.core.state.ref()
     }
+
+    this.writable = this._isWritable()
 
     if (this.snapshotted && this.core) this._updateSnapshot()
 
@@ -404,8 +405,9 @@ class Hypercore extends EventEmitter {
   }
 
   _isWritable () {
-    if (this.draft) return true
-    return !this._readonly && !!(this.keyPair && this.keyPair.secretKey)
+    if (this._readonly) return false
+    if (this.state && !this.state.isDefault()) return true
+    return !!(this.keyPair && this.keyPair.secretKey)
   }
 
   close ({ error } = {}) {
