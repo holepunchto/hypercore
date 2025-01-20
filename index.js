@@ -313,8 +313,9 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption && opts.encryptionKey) {
-      this.core.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
+    if (!this.core.encryption) {
+      const e = getEncryptionOption(opts)
+      if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
     }
 
     if (this.core.encryption) this.encryption = this.core.encryption
@@ -1011,7 +1012,7 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: e.block })
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 }
@@ -1028,7 +1029,7 @@ function toHex (buf) {
 
 function preappend (blocks) {
   const offset = this.state.length
-  const fork = this.state.fork
+  const fork = this.state.encryptionFork
 
   if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
@@ -1091,4 +1092,11 @@ function maybeAddMonitor (name) {
 
 function isSessionMoved (err) {
   return err.code === 'SESSION_MOVED'
+}
+
+function getEncryptionOption (opts) {
+  // old style, supported for now but will go away
+  if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
+  if (!opts.encryption) return null
+  return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
 }
