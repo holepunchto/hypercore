@@ -1096,7 +1096,7 @@ function isSessionMoved (err) {
 
 function getEncryptionOption (opts) {
   // old style, supported for now but will go away
-  if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.block }
+  if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
   if (!opts.encryption) return null
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
 }
