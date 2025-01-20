@@ -1830,6 +1830,35 @@ test('messages exchanged when 2 non-sparse cores connect', async function (t) {
   if (DEBUG) console.log('messages overview', msgs)
 })
 
+test('messages exchanged when 2 empty cores connect', async function (t) {
+  const original = await create(t)
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+  const empty1 = await create(t, original.key)
+  const empty2 = await create(t, original.key)
+
+  t.is(empty1.length, 0, 'sanity check')
+  t.is(empty2.length, 0, 'sanity check')
+
+  replicate(empty1, empty2, t)
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(empty2.replicator.peers.length, 1, 'sanity check')
+
+  const msgs = empty2.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 1, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 1, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 0, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 0, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 0, 'wire range tx')
+  t.is(msgs.wireRange.rx, 0, 'wire range rx')
+
+  if (DEBUG) console.log('messages overview', msgs)
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
