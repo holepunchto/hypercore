@@ -313,8 +313,8 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption && opts.encryptionKey) {
-      this.core.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
+    if (!this.core.encryption && opts.encryption) {
+      this.core.encryption = new BlockEncryption(opts.encryption.key, this.key, { compat: this.core.compat, ...opts.encryption })
     }
 
     if (this.core.encryption) this.encryption = this.core.encryption
