@@ -1012,7 +1012,7 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: e.block })
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 }
@@ -1096,7 +1096,7 @@ function isSessionMoved (err) {
 
 function getEncryptionOption (opts) {
   // old style, supported for now but will go away
-  if (opts.encryptionKey) return { key: opts.encryptionKey, isBlockKey: !!opts.isBlockKey }
+  if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.block }
   if (!opts.encryption) return null
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
 }
