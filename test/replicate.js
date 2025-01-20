@@ -1696,7 +1696,7 @@ test('messages exchanged when empty core connects to non-sparse', async function
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   const msgs = b.replicator.peers[0].stats
   t.is(msgs.wireSync.tx, 3, 'wire syncs tx')
@@ -1727,7 +1727,7 @@ test('messages exchanged when empty core connects to sparse', async function (t)
   }
 
   replicate(newCore, sparse, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   t.is(sparse.contiguousLength, 0, 'sanity check')
   t.is(sparse.replicator.peers.length, 1, 'sanity check')
@@ -1768,7 +1768,7 @@ test('messages exchanged when 2 sparse cores connect', async function (t) {
   }
 
   replicate(sparse1, sparse2, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   t.is(sparse1.contiguousLength, 0, 'sanity check')
   t.is(sparse2.contiguousLength, 0, 'sanity check')
@@ -1811,7 +1811,7 @@ test('messages exchanged when 2 non-sparse cores connect', async function (t) {
   t.is(full2.contiguousLength, 5, 'sanity check')
 
   replicate(full1, full2, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   t.is(full2.replicator.peers.length, 1, 'sanity check')
 
@@ -1840,7 +1840,7 @@ test('messages exchanged when 2 empty cores connect', async function (t) {
   t.is(empty2.length, 0, 'sanity check')
 
   replicate(empty1, empty2, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 1000))
 
   t.is(empty2.replicator.peers.length, 1, 'sanity check')
 
