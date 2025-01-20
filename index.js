@@ -1028,7 +1028,7 @@ function toHex (buf) {
 
 function preappend (blocks) {
   const offset = this.state.length
-  const fork = this.state.fork
+  const fork = this.state.encryptionFork
 
   if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
