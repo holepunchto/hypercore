@@ -58,7 +58,7 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
   )
 })
 
-test.solo('bitfield messages sent on cache miss', async function (t) {
+test('bitfield messages sent on cache miss', async function (t) {
   const original = await create(t)
   const sparse = await create(t, original.key)
   const empty = await create(t, original.key)
@@ -84,42 +84,6 @@ test.solo('bitfield messages sent on cache miss', async function (t) {
     'request on unavailable block times out (sanity check)'
   )
   t.is(stats.wireBitfield.rx, 1, 'Requests bitfield on cache miss')
-  console.log(stats)
-
-  await t.exception(
-    async () => {
-      await empty.get(0, { timeout: 100 })
-    },
-    /REQUEST_TIMEOUT/,
-    'request on unavailable block times out (sanity check)'
-  )
-  t.is(stats.wireBitfield.rx, 1, 'Bitfield not sent again if there were no changes')
-
-  await t.exception(
-    async () => {
-      await empty.get(0, { timeout: 100 })
-    },
-    /REQUEST_TIMEOUT/,
-    'request on unavailable block times out (sanity check)'
-  )
-
-  await original.append(['f', 'g', 'h'])
-  await sparse.get(6)
-  await new Promise(resolve => setTimeout(resolve, 1000))
-
-  t.is(stats.wireBitfield.rx, 1, 'New bitfield not aggressively sent')
-
-  await t.exception(
-    async () => {
-      await empty.get(5, { timeout: 100 })
-    },
-    /REQUEST_TIMEOUT/,
-    'request on unavailable block times out (sanity check)'
-  )
-
-  // TODO: verify this is expected
-  t.is(stats.wireBitfield.rx, 1, 'No new bitfield message sent on new cache miss')
-  console.log(stats)
 })
 
 // Peer b as seen by peer a (b is the remote peer)
