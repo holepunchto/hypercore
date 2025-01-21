@@ -58,6 +58,34 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
   )
 })
 
+test('bitfield messages sent on cache miss', async function (t) {
+  const original = await create(t)
+  const sparse = await create(t, original.key)
+  const empty = await create(t, original.key)
+
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+
+  replicate(original, sparse, t)
+  await original.get(2)
+  await original.get(3)
+
+  replicate(sparse, empty, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(empty.replicator.peers.length, 1, 'Sanity check')
+  const stats = empty.replicator.peers[0].stats
+  t.is(stats.wireBitfield.rx, 0, 'initially no bitfields sent (sanity check')
+
+  await t.exception(
+    async () => {
+      await empty.get(1, { timeout: 100 })
+    },
+    /REQUEST_TIMEOUT/,
+    'request on unavailable block times out (sanity check)'
+  )
+  t.is(stats.wireBitfield.rx, 1, 'Requests bitfield on cache miss')
+})
+
 // Peer b as seen by peer a (b is the remote peer)
 function getPeer (a, b) {
   for (const aPeer of a.core.replicator.peers) {
