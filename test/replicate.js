@@ -1691,6 +1691,9 @@ test('uses hotswaps to avoid long download tail', async t => {
 })
 
 test('messages exchanged when empty core connects to non-sparse', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
   const a = await create(t)
   await a.append(['a', 'b', 'c', 'd', 'e'])
   const b = await create(t, a.key)
@@ -1714,6 +1717,10 @@ test('messages exchanged when empty core connects to non-sparse', async function
 })
 
 test('messages exchanged when empty core connects to sparse', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
   const original = await create(t)
   await original.append(['a', 'b', 'c', 'd', 'e'])
   const sparse = await create(t, original.key)
@@ -1748,6 +1755,10 @@ test('messages exchanged when empty core connects to sparse', async function (t)
 })
 
 test('messages exchanged when 2 sparse cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
   const original = await create(t)
   await original.append(['a', 'b', 'c', 'd', 'e'])
   const sparse1 = await create(t, original.key)
@@ -1790,6 +1801,10 @@ test('messages exchanged when 2 sparse cores connect', async function (t) {
 })
 
 test('messages exchanged when 2 non-sparse cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
   const original = await create(t)
   await original.append(['a', 'b', 'c', 'd', 'e'])
   const full1 = await create(t, original.key)
@@ -1831,6 +1846,10 @@ test('messages exchanged when 2 non-sparse cores connect', async function (t) {
 })
 
 test('messages exchanged when 2 empty cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
   const original = await create(t)
   await original.append(['a', 'b', 'c', 'd', 'e'])
   const empty1 = await create(t, original.key)
