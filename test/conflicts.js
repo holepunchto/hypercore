@@ -2,6 +2,10 @@ const test = require('brittle')
 const { create, replicate, unreplicate } = require('./helpers')
 
 test('one forks', async function (t) {
+  // NOTE: this test occasionally (~1/100) flakes
+  // because one of the 'conflict' events never emits
+  // due to a lifecycle issue (when closing all sessions
+  // on a core in reaction to the conflict)
   t.plan(3)
 
   const a = await create(t)
@@ -14,11 +18,12 @@ test('one forks', async function (t) {
 
   const streams = replicate(a, b, t)
 
-  c.on('conflict', function (length) {
+  // Note: 'conflict' can be emitted more than once (no guarantees on that)
+  c.once('conflict', function (length) {
     t.is(length, 5, 'conflict at 5 seen by c')
   })
 
-  b.on('conflict', function (length) {
+  b.once('conflict', function (length) {
     t.is(length, 5, 'conflict at 5 seen by b')
   })
 
