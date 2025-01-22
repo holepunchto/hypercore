@@ -19,16 +19,12 @@ test('one forks', async function (t) {
   const streams = replicate(a, b, t)
 
   // Note: 'conflict' can be emitted more than once (no guarantees on that)
-  let cSeen = false
-  c.on('conflict', function (length) {
-    if (!cSeen) t.is(length, 5, 'conflict at 5 seen by c')
-    cSeen = true
+  c.once('conflict', function (length) {
+    t.is(length, 5, 'conflict at 5 seen by c')
   })
 
-  let bSeen = false
-  b.on('conflict', function (length) {
-    if (!bSeen) t.is(length, 5, 'conflict at 5 seen by b')
-    bSeen = true
+  b.once('conflict', function (length) {
+    t.is(length, 5, 'conflict at 5 seen by b')
   })
 
   await b.get(2)
