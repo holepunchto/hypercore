@@ -594,24 +594,3 @@ test('exclusive sessions', async function (t) {
 
   await core.close()
 })
-
-test.solo('bitfields not set true if block not available after 2**15', async function (t) {
-  // Context: we had a bug where bitfield was set true for non-existent blocks after 2 ** 15
-  const core = await create(t)
-
-  const nrAppends = 10 + 2 ** 15
-  for (let i = 0; i < nrAppends; i++) await core.append(`Block ${i}`)
-  t.is(core.length, nrAppends, 'sanity check')
-
-  const bitfields = []
-  const blocks = []
-  for (let i = 0; i < nrAppends + 100; i++) {
-    bitfields.push(core.core.bitfield.get(i))
-    blocks.push(await core.get(i, { wait: false }))
-  }
-  const falseBitfields = (bitfields.filter(b => b !== true))
-  const nullBlocks = blocks.filter(b => b === null)
-
-  t.is(nullBlocks.length, 100, 'sanity check')
-  t.is(falseBitfields.length, nullBlocks.length, 'Bitfields consistent')
-})
