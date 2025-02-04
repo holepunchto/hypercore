@@ -272,32 +272,23 @@ test('set last bits in segment and findFirst', async function (t) {
   t.is(b.findFirst(false, 2097151), 2097152)
 })
 
-test.solo('bitfield - bitfields false by default', async function (t) {
+test('bitfield - setRange over multiple pages', async function (t) {
   const storage = await createStorage(t)
   const b = await Bitfield.open(storage, 0)
 
-  let nrTrue = 0
-  for (let i = 0; i < 2 ** 20; i++) {
-    if (b.get(i) === true) nrTrue++
-  }
+  b.setRange(32768, 32769, true)
 
-  t.is(nrTrue, 0)
-})
+  t.is(b.get(0), false)
+  t.is(b.get(32768), true)
+  t.is(b.get(32769), false)
 
-test.solo('bitfield - bitfields false by default if pushed after 2 ** 15', async function (t) {
-  const storage = await createStorage(t)
-  const b = await Bitfield.open(storage, 0)
+  b.setRange(0, 32768 * 2, false)
+  b.setRange(32768, 32768 * 2 + 1, true)
 
-  for (let i = 0; i < 10 + 2 ** 15; i++) {
-    b.set(i, true)
-  }
-
-  let nrFalse = 0
-  for (let i = 0; i < 100 + 2 ** 15; i++) {
-    if (b.get(i) === false) nrFalse++
-  }
-
-  t.is(nrFalse, 90)
+  t.is(b.get(0), false)
+  t.is(b.get(32768), true)
+  t.is(b.get(32768 * 2), true)
+  t.is(b.get(32768 * 2 + 1), false)
 })
 
 async function createStorage (t, dir) {
