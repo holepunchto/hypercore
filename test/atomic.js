@@ -398,7 +398,7 @@ test('atomic - move to', async function (t) {
   const atomic = session.session({ atom })
   await atomic.ready()
 
-  await atomic.state.moveTo(core2.core, 1)
+  await atomic.state.moveTo(core2, 1)
 
   t.is(atomic.length, 1)
   t.is(session.length, 2)
