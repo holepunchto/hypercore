@@ -522,9 +522,7 @@ class Hypercore extends EventEmitter {
   get signedLength () {
     if (this.opened === false) return 0
     if (this.state === this.core.state) return this.core.state.length
-    const flushed = this.state.flushedLength()
-
-    return flushed === -1 ? this.state.length : flushed
+    return this.state.flushedLength()
   }
 
   /**
