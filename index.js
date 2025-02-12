@@ -318,7 +318,10 @@ class Hypercore extends EventEmitter {
       if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
     }
 
+    const parent = opts.parent || null
+
     if (this.core.encryption) this.encryption = this.core.encryption
+    else if (parent && parent.encryption) this.encryption = this.core.encryption = parent.encryption
 
     this.writable = this._isWritable()
 
@@ -329,9 +332,9 @@ class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
-    if (opts.parent) {
-      if (opts.parent._stateIndex === -1) await opts.parent.ready()
-      this._setupSession(opts.parent)
+    if (parent) {
+      if (parent._stateIndex === -1) await parent.ready()
+      this._setupSession(parent)
     }
 
     if (opts.exclusive) {
@@ -339,17 +342,17 @@ class Hypercore extends EventEmitter {
       await this.core.lockExclusive()
     }
 
-    const parent = opts.parent || this.core
+    const parentState = parent ? parent.state : this.core.state
     const checkout = opts.checkout === undefined ? -1 : opts.checkout
     const state = this.state
 
     if (opts.atom) {
-      this.state = await parent.state.createSession(null, false, opts.atom)
+      this.state = await parentState.createSession(null, false, opts.atom)
       if (state) state.unref()
     } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      this.state = await parent.state.createSession(opts.name, !!opts.overwrite, null)
+      this.state = await parentState.createSession(opts.name, !!opts.overwrite, null)
       if (state) state.unref() // ref'ed above in setup session
     }
 
