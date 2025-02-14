@@ -57,6 +57,27 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
+test('sessions - truncate a checkout session', async function (t) {
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage)
+
+  for (let i = 0; i < 10; i++) await core.append(b4a.from([i]))
+
+  const atom = storage.createAtom()
+
+  const session = core.session({ checkout: 7, atom })
+  await session.ready()
+
+  t.is(session.length, 7)
+
+  await session.truncate(5, session.fork)
+
+  t.is(session.length, 5)
+
+  await session.close()
+  await core.close()
+})
+
 test.skip('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 
