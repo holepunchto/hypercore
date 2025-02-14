@@ -73,6 +73,9 @@ test('sessions - truncate a checkout session', async function (t) {
   await session.truncate(5, session.fork)
 
   t.is(session.length, 5)
+
+  await session.close()
+  await core.close()
 })
 
 test.skip('session on a from instance does not inject itself to other sessions', async function (t) {
