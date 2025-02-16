@@ -146,6 +146,10 @@ class Hypercore extends EventEmitter {
     return crypto.discoveryKey(key)
   }
 
+  static blockEncryptionKey (key, encryptionKey) {
+    return BlockEncryption.blockEncryptionKey(key, encryptionKey)
+  }
+
   static getProtocolMuxer (stream) {
     return stream.noiseStream.userData
   }
