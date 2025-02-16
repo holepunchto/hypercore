@@ -230,6 +230,7 @@ class Hypercore extends EventEmitter {
 
   async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
+    if (this.core.unencrypted) return
     this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
@@ -317,7 +318,7 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption) {
+    if (!this.core.encryption && !this.core.unencrypted) {
       const e = getEncryptionOption(opts)
       if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
     }
@@ -759,7 +760,8 @@ class Hypercore extends EventEmitter {
       block = b4a.from(block)
 
       if (this.encryption.compat !== this.core.compat) this._updateEncryption()
-      this.encryption.decrypt(index, block)
+      if (this.core.unencrypted) this.encryption = null
+      else this.encryption.decrypt(index, block)
     }
 
     return this._decode(encoding, block)
@@ -909,7 +911,7 @@ class Hypercore extends EventEmitter {
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
-    const preappend = this.encryption && this._preappend
+    const preappend = this.core.unencrypted ? null : (this.encryption && this._preappend)
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
