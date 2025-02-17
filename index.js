@@ -905,7 +905,7 @@ class Hypercore extends EventEmitter {
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
     const { keyPair = defaultKeyPair, signature = null } = opts
-    const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
+    const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey) || opts.writable === true
 
     if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
 
