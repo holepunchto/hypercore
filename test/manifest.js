@@ -1341,7 +1341,8 @@ test('manifest encoding', t => {
       signature: 'ed25519',
       namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
-    }]
+    }],
+    unencrypted: false
   }
 
   t.alike(reencode(manifest), manifest)
