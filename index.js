@@ -288,7 +288,6 @@ class Hypercore extends EventEmitter {
     try {
       await this._openSession(opts)
     } catch (err) {
-      if (this.closing) return
       if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
 
       if (this.exclusive) this.core.unlockExclusive()
@@ -298,6 +297,7 @@ class Hypercore extends EventEmitter {
 
       if (this.state !== null) this.state.removeSession(this)
 
+      this.closed = true
       this.emit('close', this.core.hasSession() === false)
       throw err
     }
@@ -428,7 +428,14 @@ class Hypercore extends EventEmitter {
   }
 
   async _close (error) {
-    if (this.opened === false) await this.opening
+    if (this.opened === false) {
+      try {
+        await this.opening
+      } catch (err) {
+        if (!this.closed) throw err
+      }
+    }
+
     if (this.closed === true) return
 
     this.core.removeMonitor(this)
