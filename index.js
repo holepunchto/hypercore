@@ -342,7 +342,7 @@ class Hypercore extends EventEmitter {
       this._setupSession(parent)
     }
 
-    if (opts.exclusive) {
+    if (opts.exclusive && opts.writable !== false) {
       this.exclusive = true
       await this.core.lockExclusive()
     }
