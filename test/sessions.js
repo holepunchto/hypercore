@@ -74,6 +74,8 @@ test('sessions - truncate a checkout session', async function (t) {
 
   t.is(session.length, 5)
 
+  await session.append(b4a.from('hello'))
+
   await session.close()
   await core.close()
 })
