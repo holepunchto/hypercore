@@ -396,7 +396,7 @@ test('storage info, off by default', async function (t) {
   await core.close()
 })
 
-test('indexedLength mirrors core length (linearised core compat)', async function (t) {
+test('signedLength mirrors core length (linearised core compat)', async function (t) {
   const core = await create(t)
   t.is(core.length, 0)
   t.is(core.signedLength, core.length)
