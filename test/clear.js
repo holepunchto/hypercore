@@ -1,7 +1,11 @@
+const path = require('path')
 const test = require('brittle')
 const tmp = require('test-tmp')
 const b4a = require('b4a')
+const createTempDir = require('test-tmp')
+const CoreStorage = require('hypercore-storage')
 const { create, createStorage, replicate, eventFlush } = require('./helpers')
+const { readdir, stat } = require('fs/promises')
 
 const Hypercore = require('../')
 
@@ -127,3 +131,57 @@ test('clear - no side effect from clearing unknown nodes', async function (t) {
 
   t.pass('did not crash')
 })
+
+test.solo('clear - large cores', async function (t) {
+  t.timeout(100000)
+  const dir = await createTempDir(t)
+  console.log(dir)
+
+  const db = new CoreStorage(dir)
+  const a = new Hypercore(db)
+  await a.ready()
+  t.teardown(() => a.close(), { order: 1 })
+
+  const blocks = []
+  for (let i = 0; i < 300_000; i++) blocks.push(`Block-${i}`)
+  await a.append(blocks)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(a.contiguousLength, 300_000, 'sanity checck')
+  const preClearDirSize = await getDirSize(dir)
+
+  await a.clear(100, 1000)
+  await a.clear(2 ** 16 - 10, 2 ** 16 + 10) // 2 ** 16 is when the bitfield first changes pages, so interesting are to test
+  await a.clear(290000, 299998)
+
+  t.is((await a.get(99)).toString(), 'Block-99')
+  t.is(await a.get(100, { wait: false }), null)
+  t.is(await a.get(999, { wait: false }), null)
+  t.is((await a.get(1000)).toString(), 'Block-1000')
+
+  t.is((await a.get(2 ** 16 - 11)).toString(), 'Block-65525')
+  t.is(await a.get(2 ** 16 - 10, { wait: false }), null)
+  t.is(await a.get(2 ** 16 + 9, { wait: false }), null)
+  t.is((await a.get(2 ** 16 + 10)).toString(), 'Block-65546')
+
+  t.is((await a.get(290000 - 1)).toString(), 'Block-289999')
+  t.is(await a.get(290000, { wait: false }), null)
+  t.is(await a.get(299997, { wait: false }), null)
+  t.is((await a.get(299998)).toString(), 'Block-299998')
+
+  const partiallyClearedDirSize = await getDirSize(dir)
+  t.is(partiallyClearedDirSize < preClearDirSize, true, 'Storage reduced in size post clearing')
+
+  console.log('a length', a.lenght)
+  await a.clear(0, a.length)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  const fullyClearedDirSize = await getDirSize(dir)
+  console.log({ preClearDirSize, partiallyClearedDirSize, fullyClearedDirSize })
+})
+
+async function getDirSize (directory) {
+  const files = await readdir(directory)
+  const stats = files.map(file => stat(path.join(directory, file)))
+  const res = (await Promise.all(stats)).reduce((accumulator, { size }) => accumulator + size, 0)
+  return res
+}
