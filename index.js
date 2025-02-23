@@ -247,19 +247,6 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
-  _setupSession (parent) {
-    if (!this.keyPair) this.keyPair = parent.keyPair
-
-    const s = parent.state
-
-    if (s) {
-      const shouldSnapshot = this.snapshotted && !s.isSnapshot()
-      this.state = shouldSnapshot ? s.snapshot() : s.ref()
-    }
-
-    if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
-  }
-
   async _open (storage, key, opts) {
     const preload = opts.preload || (opts.parent && opts.parent.preload)
 
@@ -339,7 +326,18 @@ class Hypercore extends EventEmitter {
 
     if (parent) {
       if (parent._stateIndex === -1) await parent.ready()
-      this._setupSession(parent)
+      if (!this.keyPair) this.keyPair = parent.keyPair
+
+      const ps = parent.state
+
+      if (ps) {
+        const shouldSnapshot = this.snapshotted && !ps.isSnapshot()
+        this.state = shouldSnapshot ? await ps.snapshot() : ps.ref()
+      }
+
+      if (this.snapshotted && this.core && !this._snapshot) {
+        this._updateSnapshot()
+      }
     }
 
     if (opts.exclusive && opts.writable !== false) {

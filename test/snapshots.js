@@ -97,8 +97,9 @@ test('snapshots wait for ready', async function (t) {
   t.is(s3.length, 4, 'waited for ready')
 
   const s4 = coreCopy.snapshot()
+  await s4.ready()
 
-  t.is(s4.length, 4, 'sync but opened')
+  t.is(s4.length, 4)
 
   await s3.update()
   await s4.update()
@@ -126,6 +127,7 @@ test('snapshots are consistent', async function (t) {
   await clone.update({ wait: true })
 
   const snapshot = clone.snapshot({ valueEncoding: 'utf-8' })
+  await snapshot.ready()
 
   t.is(snapshot.length, 3)
 
