@@ -144,6 +144,10 @@ test('clear - large cores', async function (t) {
   await a.append(blocks)
 
   t.is(a.contiguousLength, 300_000, 'sanity checck')
+  {
+    const storageBlocks = await consumeStream(a.state.storage.createBlockStream())
+    t.is(storageBlocks.length, 300_000, 'storage-level sanity check')
+  }
 
   await a.clear(100, 1000)
   await a.clear(2 ** 16 - 10, 2 ** 16 + 10) // 2 ** 16 is when the bitfield first changes pages, so interesting are to test
@@ -153,14 +157,32 @@ test('clear - large cores', async function (t) {
   t.is(await a.get(100, { wait: false }), null)
   t.is(await a.get(999, { wait: false }), null)
   t.is((await a.get(1000)).toString(), 'Block-1000')
+  {
+    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 99, lte: 1000 }))
+    t.alike(storageBlocks.map(b => b.index), [99, 1000], 'correct state in hypercore storage')
+  }
 
   t.is((await a.get(2 ** 16 - 11)).toString(), 'Block-65525')
   t.is(await a.get(2 ** 16 - 10, { wait: false }), null)
   t.is(await a.get(2 ** 16 + 9, { wait: false }), null)
   t.is((await a.get(2 ** 16 + 10)).toString(), 'Block-65546')
+  {
+    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 2 ** 16 - 11, lte: 2 ** 16 + 10 }))
+    t.alike(storageBlocks.map(b => b.index), [65525, 65546], 'correct state in hypercore storage')
+  }
 
   t.is((await a.get(290000 - 1)).toString(), 'Block-289999')
   t.is(await a.get(290000, { wait: false }), null)
   t.is(await a.get(299997, { wait: false }), null)
   t.is((await a.get(299998)).toString(), 'Block-299998')
+  {
+    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 289999, lte: 299998 }))
+    t.alike(storageBlocks.map(b => b.index), [289999, 299998], 'correct state in hypercore storage')
+  }
 })
+
+async function consumeStream (rx) {
+  const res = []
+  for await (const b of rx) res.push(b)
+  return res
+}
