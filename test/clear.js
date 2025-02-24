@@ -133,7 +133,6 @@ test('clear - no side effect from clearing unknown nodes', async function (t) {
 test('clear - large cores', async function (t) {
   t.timeout(100000)
   const dir = await createTempDir(t)
-  console.log(dir)
 
   const db = new CoreStorage(dir)
   const a = new Hypercore(db)
@@ -143,7 +142,6 @@ test('clear - large cores', async function (t) {
   const blocks = []
   for (let i = 0; i < 300_000; i++) blocks.push(`Block-${i}`)
   await a.append(blocks)
-  await new Promise(resolve => setTimeout(resolve, 1000))
 
   t.is(a.contiguousLength, 300_000, 'sanity checck')
 
