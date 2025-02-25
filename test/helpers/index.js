@@ -12,7 +12,7 @@ exports.create = async function (t, ...args) {
   const core = new Hypercore(db, ...args)
   await core.ready()
 
-  t.teardown(() => core.close().catch(e => console.error(e)), { order: 1 })
+  t.teardown(() => core.close(), { order: 1 })
 
   return core
 }
