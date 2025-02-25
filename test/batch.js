@@ -858,6 +858,45 @@ test('batch does not append but reopens', async function (t) {
   await batch.close()
 })
 
+test('batch commit under replication', async function (t) {
+  const core = new Hypercore(await t.tmp())
+  await core.ready()
+
+  const clone = new Hypercore(await t.tmp(), core.key)
+
+  const batch = clone.session({ name: 'batch' })
+  await batch.ready()
+
+  for (let i = 0; i < 10; i++) await core.append('tick')
+
+  const signature = core.core.header.tree.signature
+  for (let i = 0; i < 10; i++) await core.append('tick')
+
+  replicate(core, clone, t)
+
+  {
+    const blk = await clone.get(19)
+    t.ok(blk)
+    t.is(clone.length, 20)
+  }
+
+  // batch produces same tree
+  for (let i = 0; i < 20; i++) await batch.append('tick')
+
+  // but chooses to commit part of it due to limited signature availability
+  await clone.commit(batch, { length: 10, signature })
+
+  {
+    const blk = await clone.get(19, { wait: false })
+    t.ok(blk, 'existing committed state unaffected')
+    t.is(clone.length, 20)
+  }
+
+  await clone.close()
+  await core.close()
+  await batch.close()
+})
+
 test('batch catchup to same length', async function (t) {
   const core = await create(t)
 
