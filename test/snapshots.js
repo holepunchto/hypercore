@@ -33,7 +33,7 @@ test('snapshot does not change when original gets modified', async function (t) 
   t.is(snap.signedLength, 2, 'signed length now lower since it truncated below snap')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
 
-  await core.append('new Block3')
+  await core.append('new Block2')
   t.is(snap.length, 3, 'correct length')
   t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
