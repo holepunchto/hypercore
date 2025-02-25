@@ -1688,6 +1688,51 @@ test('uses hotswaps to avoid long download tail', async t => {
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
 })
 
+test('get block in middle page', async function (t) {
+  const a = await create(t)
+
+  // see lib/bitfield.js
+  const BITS_PER_PAGE = 32768
+
+  const append = []
+  for (let i = 0; i < 3 * BITS_PER_PAGE - 1; i++) {
+    append.push(i.toString())
+  }
+
+  await a.append(append)
+
+  const createB = await createStored(t)
+  const b = await createB(a.key)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(a.length - 1)
+
+  t.ok(await b.has(0))
+  t.absent(await b.has(1))
+  t.absent(await b.has(BITS_PER_PAGE + 1))
+  t.absent(await b.has(2 * BITS_PER_PAGE + 1))
+  t.ok(await b.has(a.length - 1))
+
+  await b.get(BITS_PER_PAGE + 500)
+  await b.close()
+
+  const b1 = await createB()
+
+  for (let i = 0; i < 499; i++) {
+    if (await b1.has(BITS_PER_PAGE + i)) {
+      t.fail('page should be unpopulated')
+      break
+    }
+  }
+
+  t.ok(await b1.has(BITS_PER_PAGE + 500))
+
+  await a.close()
+  await b1.close()
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
