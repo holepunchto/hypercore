@@ -4,7 +4,7 @@ const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
-test('snapshot does not change when original gets modified', async function (t) {
+test.solo('snapshot does not change when original gets modified', async function (t) {
   const core = await create(t)
 
   await core.append('block0')
@@ -37,6 +37,23 @@ test('snapshot does not change when original gets modified', async function (t) 
   t.is(snap.length, 3, 'correct length')
   t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  /*
+  {
+    const res = []
+    for await (const b of snap.createReadStream()) {
+      res.push(b4a.toString(b))
+    }
+    t.alike(res, ['block0', 'block1', 'block2'])
+  }
+  {
+    const res = []
+    for await (const b of snap.createReadStream()) {
+      res.push(b4a.toString(b))
+    }
+    t.alike(res, ['block0', 'block1', 'block2'])
+  }
+  */
 })
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
