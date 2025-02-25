@@ -4,7 +4,7 @@ const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
-test.solo('snapshot does not change when original gets modified', async function (t) {
+test('snapshot does not change when original gets modified', async function (t) {
   const core = await create(t)
 
   await core.append('block0')
@@ -23,11 +23,19 @@ test.solo('snapshot does not change when original gets modified', async function
   t.is(snap.signedLength, 3, 'correct signed length')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
 
-  await core.truncate()
-  // await core.truncate()
-
+  await core.truncate(3)
   t.is(snap.length, 3, 'correct length')
-  t.is(snap.signedLength, 3, 'correct signed length') // TODO: should this be true?
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.truncate(2)
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 2, 'signed length now lower since it truncated below snap')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.append('Block3')
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
 })
 
