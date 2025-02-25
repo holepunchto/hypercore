@@ -896,3 +896,71 @@ test('batch commit under replication', async function (t) {
   await core.close()
   await batch.close()
 })
+
+test('batch catchup to same length', async function (t) {
+  const core = await create(t)
+
+  const b = core.session({ name: 'batch' })
+  await b.append('b')
+
+  await core.append('a')
+
+  const hash = await b.treeHash()
+
+  t.is(b.length, 1)
+  t.is(core.length, 1)
+  t.unlike(hash, await core.treeHash())
+
+  await b.state.catchup(1)
+
+  t.is(b.length, 1)
+  t.is(core.length, 1)
+  t.alike(await b.get(0), b4a.from('a'))
+  t.alike(await b.treeHash(), await core.treeHash())
+
+  // check deps
+  const deps = b.state.storage.dependencies
+  t.is(deps.length, 1)
+  t.is(deps[0].dataPointer, core.state.storage.core.dataPointer)
+  t.is(deps[0].length, core.length)
+
+  await b.close()
+})
+
+test('batch catchup to same length and hash', async function (t) {
+  const core = await create(t)
+  const clone = await create(t, { key: core.key })
+
+  const b = clone.session({ name: 'batch' })
+
+  await b.append('a')
+  await b.append('b')
+  await b.append('c')
+
+  await core.append('a')
+  await core.append('b')
+  await core.append('c')
+
+  replicate(core, clone, t)
+
+  await new Promise(resolve => clone.on('append', resolve))
+
+  t.is(clone.length, core.length)
+  t.is(b.length, core.length)
+  t.ok(await b.has(0))
+  t.alike(await b.treeHash(), await core.treeHash())
+
+  await b.state.catchup(3)
+
+  t.is(b.length, core.length)
+  t.absent(await b.has(0))
+  t.alike(await b.treeHash(), await core.treeHash())
+
+  // check deps
+  const deps = b.state.storage.dependencies
+  t.is(deps.length, 1)
+  t.is(deps[0].dataPointer, core.state.storage.core.dataPointer)
+  t.is(deps[0].length, core.length)
+
+  await b.close()
+})
