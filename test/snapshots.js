@@ -38,6 +38,7 @@ test.solo('snapshot does not change when original gets modified', async function
   t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
 
+  await snap.close()
   /*
   {
     const res = []
