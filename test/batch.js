@@ -879,6 +879,12 @@ test('batch catchup to same length', async function (t) {
   t.alike(await b.get(0), b4a.from('a'))
   t.alike(await b.treeHash(), await core.treeHash())
 
+  // check deps
+  const deps = b.state.storage.dependencies
+  t.is(deps.length, 1)
+  t.is(deps[0].dataPointer, core.state.storage.core.dataPointer)
+  t.is(deps[0].length, core.length)
+
   await b.close()
 })
 
@@ -910,6 +916,12 @@ test('batch catchup to same length and hash', async function (t) {
   t.is(b.length, core.length)
   t.absent(await b.has(0))
   t.alike(await b.treeHash(), await core.treeHash())
+
+  // check deps
+  const deps = b.state.storage.dependencies
+  t.is(deps.length, 1)
+  t.is(deps[0].dataPointer, core.state.storage.core.dataPointer)
+  t.is(deps[0].length, core.length)
 
   await b.close()
 })
