@@ -896,7 +896,7 @@ test('batch catchup to same length and hash', async function (t) {
   await core.append('b')
   await core.append('c')
 
-  const done = replicate(core, clone, t)
+  replicate(core, clone, t)
 
   await new Promise(resolve => clone.on('append', resolve))
 
