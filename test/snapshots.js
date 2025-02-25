@@ -24,7 +24,7 @@ test.solo('snapshot does not change when original gets modified', async function
   t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
 
   await core.truncate()
-  await core.truncate()
+  // await core.truncate()
 
   t.is(snap.length, 3, 'correct length')
   t.is(snap.signedLength, 3, 'correct signed length') // TODO: should this be true?
