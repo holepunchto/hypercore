@@ -1,7 +1,35 @@
 const test = require('brittle')
 const createTempDir = require('test-tmp')
+const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
+
+test.solo('snapshot does not change when original gets modified', async function (t) {
+  const core = await create(t)
+
+  await core.append('block0')
+  await core.append('block1')
+  await core.append('block2')
+
+  const snap = core.snapshot()
+  await snap.ready()
+
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.append('Block3')
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.truncate()
+  await core.truncate()
+
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length') // TODO: should this be true?
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+})
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
