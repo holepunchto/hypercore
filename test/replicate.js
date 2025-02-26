@@ -1446,7 +1446,9 @@ for (let i = 0; i < 10000; i++) {
     }
 
     replicate(b, c, t)
-    c.get(4) // unresolvable but should not crash anything
+    const p = c.get(5)
+    p.catch(noop) // Throws a REQUEST_CANCELLED error during teardown
+
     await eventFlush()
     t.ok(!!(await c.get(2)), 'got block #2')
     t.ok(!!(await c.get(3)), 'got block #3')
