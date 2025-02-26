@@ -1419,37 +1419,39 @@ test('manifests gossip eagerly sync', async function (t) {
   })
 })
 
-test('remote has larger tree', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-  const c = await create(t, a.key)
+for (let i = 0; i < 1000; i++) {
+  test.solo('remote has larger tree', async function (t) {
+    const a = await create(t)
+    const b = await create(t, a.key)
+    const c = await create(t, a.key)
 
-  await a.append(['a', 'b', 'c', 'd', 'e'])
+    await a.append(['a', 'b', 'c', 'd', 'e'])
 
-  {
-    const [s1, s2] = replicate(a, b, t, { teardown: false })
-    await b.get(2)
-    await b.get(3)
-    await b.get(4)
-    s1.destroy()
-    s2.destroy()
-  }
+    {
+      const [s1, s2] = replicate(a, b, t, { teardown: false })
+      await b.get(2)
+      await b.get(3)
+      await b.get(4)
+      s1.destroy()
+      s2.destroy()
+    }
 
-  await a.append('f')
+    await a.append('f')
 
-  {
-    const [s1, s2] = replicate(a, c, t, { teardown: false })
+    {
+      const [s1, s2] = replicate(a, c, t, { teardown: false })
+      await eventFlush()
+      s1.destroy()
+      s2.destroy()
+    }
+
+    replicate(b, c, t)
+    c.get(4) // unresolvable but should not crash anything
     await eventFlush()
-    s1.destroy()
-    s2.destroy()
-  }
-
-  replicate(b, c, t)
-  c.get(4) // unresolvable but should not crash anything
-  await eventFlush()
-  t.ok(!!(await c.get(2)), 'got block #2')
-  t.ok(!!(await c.get(3)), 'got block #3')
-})
+    t.ok(!!(await c.get(2)), 'got block #2')
+    t.ok(!!(await c.get(3)), 'got block #3')
+  })
+}
 
 test('range download, single block missing', async function (t) {
   const a = await create(t)

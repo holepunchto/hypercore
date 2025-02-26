@@ -13,6 +13,7 @@ exports.create = async function (t, ...args) {
   await core.ready()
 
   t.teardown(() => core.close(), { order: 1 })
+  // t.teardown(() => core.close().catch(safetyCatch), { order: 1 })
 
   return core
 }
