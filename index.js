@@ -208,7 +208,7 @@ class Hypercore extends EventEmitter {
       // in practice, open an issue and we'll try to make a solution for it.
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
-    if (opts.checkout !== undefined && opts.name === undefined && opts.atom === undefined) {
+    if (opts.checkout !== undefined && !opts.name && !opts.atom) {
       throw new Error('Checkouts are only supported on atoms or named sessions')
     }
 
