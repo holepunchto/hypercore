@@ -1445,7 +1445,9 @@ test('remote has larger tree', async function (t) {
   }
 
   replicate(b, c, t)
-  c.get(4) // unresolvable but should not crash anything
+  const p = c.get(5) // Unreachable block (b does not have it, and we do not replicate to a)
+  p.catch(noop) // Throws a REQUEST_CANCELLED error during teardown
+
   await eventFlush()
   t.ok(!!(await c.get(2)), 'got block #2')
   t.ok(!!(await c.get(3)), 'got block #3')
