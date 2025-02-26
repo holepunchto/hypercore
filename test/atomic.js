@@ -46,7 +46,7 @@ test('atomic - checkout session', async function (t) {
 
   const atom = core.state.storage.createAtom()
 
-  const atomic = core.session({ atom, checkout: 1, name: 'atomic-session' })
+  const atomic = core.session({ atom, checkout: 1 })
   await atomic.ready()
 
   await atomic.append('edits!')
