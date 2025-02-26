@@ -102,3 +102,18 @@ test.skip('session on a from instance does not inject itself to other sessions',
   await c.close()
   await d.close()
 })
+
+test('sessions - cannot set checkout if name not set', async function (t) {
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage)
+  await core.append('Block0')
+
+  t.exception(
+    () => core.session({ checkout: 0 }),
+    /Checkouts are only supported on atoms or named sessions/
+  )
+
+  t.execution(() => core.session({ checkout: 0, name: 'named' }), 'sanity check on happy path')
+
+  await core.close()
+})
