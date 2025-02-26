@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - rocksdb
+      - no-cancel-on-close
     tags: # To trigger the canary
       - '*'
   pull_request:
