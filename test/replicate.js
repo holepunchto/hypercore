@@ -1419,7 +1419,7 @@ test('manifests gossip eagerly sync', async function (t) {
   })
 })
 
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 10000; i++) {
   test.solo('remote has larger tree', async function (t) {
     const a = await create(t)
     const b = await create(t, a.key)
