@@ -4,7 +4,7 @@ const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
-test.solo('snapshot does not change when original gets modified', async function (t) {
+test('snapshot does not change when original gets modified', async function (t) {
   const core = await create(t)
 
   await core.append('block0')
