@@ -1,7 +1,53 @@
 const test = require('brittle')
 const createTempDir = require('test-tmp')
+const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
+
+test('snapshot does not change when original gets modified', async function (t) {
+  const core = await create(t)
+
+  await core.append('block0')
+  await core.append('block1')
+  await core.append('block2')
+
+  const snap = core.snapshot()
+  await snap.ready()
+
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.append('Block3')
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.truncate(3)
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 3, 'correct signed length')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.truncate(2)
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 2, 'signed length now lower since it truncated below snap')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'block exists')
+
+  await core.append('new Block2')
+  t.is(snap.length, 3, 'correct length')
+  t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
+  t.is(b4a.toString(await snap.get(2)), 'block2', 'Old block still (snapshot did not change)')
+
+  {
+    const res = []
+    for await (const b of snap.createReadStream()) {
+      res.push(b4a.toString(b))
+    }
+    t.alike(res, ['block0', 'block1', 'block2'])
+  }
+
+  await snap.close()
+})
 
 test('implicit snapshot - gets are snapshotted at call time', async function (t) {
   t.plan(8)
