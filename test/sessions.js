@@ -65,7 +65,7 @@ test('sessions - truncate a checkout session', async function (t) {
 
   const atom = storage.createAtom()
 
-  const session = core.session({ checkout: 7, atom })
+  const session = core.session({ checkout: 7, atom, name: 'a-session' })
   await session.ready()
 
   t.is(session.length, 7)
