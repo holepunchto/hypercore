@@ -636,6 +636,29 @@ test('clear has correct storage state in memory and persisted', async function (
   }
 })
 
+test('contiguousLength persisted to disk after core ready', async function (t) {
+  const tmpDir = await t.tmp()
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.is(core.contiguousLength, 0)
+    t.is(core.core.header.hints.contiguousLength, 0)
+    t.is(await getContiguousLengthInStorage(core), 0)
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.is(core.contiguousLength, 0)
+    t.is(core.core.header.hints.contiguousLength, 0)
+    t.is(await getContiguousLengthInStorage(core), 0)
+    await core.close()
+  }
+})
+
 test('contiguousLength gets updated after an append (also on disk)', async function (t) {
   const tmpDir = await t.tmp()
   {
@@ -705,5 +728,5 @@ function getBitfields (hypercore, start = 0, end = null) {
 async function getContiguousLengthInStorage (hypercore) {
   const storageRx = hypercore.core.storage.read()
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
-  return res?.contiguousLength || null
+  return res ? res.contiguousLength : null
 }
