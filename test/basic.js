@@ -604,6 +604,9 @@ test('truncate has correct storage state in memory and persisted', async functio
     await core.append(['a', 'b', 'c', 'd', 'e'])
     await core.truncate(2)
     t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    t.is(core.contiguousLength, 2)
+    t.is(core.core.header.hints.contiguousLength, 2)
+    t.is(await getContiguousLengthInStorage(core), 2)
     await core.close()
   }
 
@@ -612,6 +615,9 @@ test('truncate has correct storage state in memory and persisted', async functio
     const core = new Hypercore(storage)
     await core.ready()
     t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    t.is(core.contiguousLength, 2)
+    t.is(core.core.header.hints.contiguousLength, 2)
+    t.is(await getContiguousLengthInStorage(core), 2)
     await core.close()
   }
 })
@@ -624,6 +630,9 @@ test('clear has correct storage state in memory and persisted', async function (
     await core.append(['a', 'b', 'c', 'd', 'e'])
     await core.clear(2)
     t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    t.is(core.contiguousLength, 2)
+    t.is(core.core.header.hints.contiguousLength, 2)
+    t.is(await getContiguousLengthInStorage(core), 2)
     await core.close()
   }
 
@@ -632,6 +641,9 @@ test('clear has correct storage state in memory and persisted', async function (
     const core = new Hypercore(storage)
     await core.ready()
     t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    t.is(core.contiguousLength, 2)
+    t.is(core.core.header.hints.contiguousLength, 2)
+    t.is(await getContiguousLengthInStorage(core), 2)
     await core.close()
   }
 })
@@ -645,4 +657,10 @@ function getBitfields (hypercore, start = 0, end = null) {
   }
 
   return res
+}
+
+async function getContiguousLengthInStorage (hypercore) {
+  const storageRx = hypercore.core.storage.read()
+  const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
+  return res?.contiguousLength || null
 }
