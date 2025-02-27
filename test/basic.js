@@ -612,6 +612,7 @@ test('truncate has correct storage state in memory and persisted', async functio
     const core = new Hypercore(storage)
     await core.ready()
     t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    await core.close()
   }
 })
 
@@ -631,6 +632,7 @@ test('clear has correct storage state in memory and persisted', async function (
     const core = new Hypercore(storage)
     await core.ready()
     t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    await core.close()
   }
 })
 
