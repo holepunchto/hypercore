@@ -867,9 +867,9 @@ test('multisig - normal operating mode', async function (t) {
   const signer1 = signer(a, b)
   const signer2 = signer(b, d)
 
-  const core = await create(t, { manifest, sign: signer1.sign })
+  const core = await create(t, { manifest })
 
-  const core2 = await create(t, { manifest, sign: signer2.sign })
+  const core2 = await create(t, { manifest })
   await core.ready()
 
   let ai = 0
