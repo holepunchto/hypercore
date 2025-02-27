@@ -38,7 +38,7 @@ test('move - basic', async function (t) {
 
   sess.once('migrate', key => { t.alike(key, core2.key) })
 
-  await sess.state.moveTo(core2.core, core2.length)
+  await sess.state.moveTo(core2, core2.length)
   await sess.append('4')
 
   await core2.commit(sess)
@@ -92,7 +92,7 @@ test('move - snapshots', async function (t) {
 
   t.is(core2.length, 2)
 
-  await snap.state.moveTo(core2.core, core2.length)
+  await snap.state.moveTo(core2, core2.length)
 
   t.is(snap.length, 3)
 

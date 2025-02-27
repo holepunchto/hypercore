@@ -401,7 +401,6 @@ test('core - copyPrologue many', async function (t) {
 async function create (t, opts = {}) {
   const dir = opts.dir || await createTempDir(t)
 
-  const dkey = b4a.alloc(32, 1)
   let db = null
 
   t.teardown(teardown, { order: 1 })
@@ -410,8 +409,6 @@ async function create (t, opts = {}) {
     if (db) await db.close()
 
     db = new CoreStorage(dir)
-
-    if (!opts.discoveryKey) opts.discoveryKey = dkey
 
     const core = new Core(db, opts)
     await core.ready()

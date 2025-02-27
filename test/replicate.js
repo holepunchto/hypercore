@@ -1447,7 +1447,9 @@ test('remote has larger tree', async function (t) {
   }
 
   replicate(b, c, t)
-  c.get(4) // unresolvable but should not crash anything
+  const p = c.get(5) // Unreachable block (b does not have it, and we do not replicate to a)
+  p.catch(noop) // Throws a REQUEST_CANCELLED error during teardown
+
   await eventFlush()
   t.ok(!!(await c.get(2)), 'got block #2')
   t.ok(!!(await c.get(3)), 'got block #3')
@@ -1876,6 +1878,51 @@ test('messages exchanged when 2 empty cores connect', async function (t) {
   t.is(msgs.wireRange.rx, 0, 'wire range rx')
 
   if (DEBUG) console.log('messages overview', msgs)
+})
+
+test('get block in middle page', async function (t) {
+  const a = await create(t)
+
+  // see lib/bitfield.js
+  const BITS_PER_PAGE = 32768
+
+  const append = []
+  for (let i = 0; i < 3 * BITS_PER_PAGE - 1; i++) {
+    append.push(i.toString())
+  }
+
+  await a.append(append)
+
+  const createB = await createStored(t)
+  const b = await createB(a.key)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(a.length - 1)
+
+  t.ok(await b.has(0))
+  t.absent(await b.has(1))
+  t.absent(await b.has(BITS_PER_PAGE + 1))
+  t.absent(await b.has(2 * BITS_PER_PAGE + 1))
+  t.ok(await b.has(a.length - 1))
+
+  await b.get(BITS_PER_PAGE + 500)
+  await b.close()
+
+  const b1 = await createB()
+
+  for (let i = 0; i < 499; i++) {
+    if (await b1.has(BITS_PER_PAGE + i)) {
+      t.fail('page should be unpopulated')
+      break
+    }
+  }
+
+  t.ok(await b1.has(BITS_PER_PAGE + 500))
+
+  await a.close()
+  await b1.close()
 })
 
 async function waitForRequestBlock (core) {

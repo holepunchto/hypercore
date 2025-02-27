@@ -146,6 +146,10 @@ class Hypercore extends EventEmitter {
     return crypto.discoveryKey(key)
   }
 
+  static blockEncryptionKey (key, encryptionKey) {
+    return BlockEncryption.blockEncryptionKey(key, encryptionKey)
+  }
+
   static getProtocolMuxer (stream) {
     return stream.noiseStream.userData
   }
@@ -204,6 +208,9 @@ class Hypercore extends EventEmitter {
       // in practice, open an issue and we'll try to make a solution for it.
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
+    if (opts.checkout !== undefined && !opts.name && !opts.atom) {
+      throw new Error('Checkouts are only supported on atoms or named sessions')
+    }
 
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === undefined ? !this._readonly : opts.writable === true
@@ -226,6 +233,7 @@ class Hypercore extends EventEmitter {
 
   async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
+    if (this.core.unencrypted) return
     this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
@@ -240,19 +248,6 @@ class Hypercore extends EventEmitter {
     this._active = active
     if (!this.opened) return
     this.core.replicator.updateActivity(this._active ? 1 : -1)
-  }
-
-  _setupSession (parent) {
-    if (!this.keyPair) this.keyPair = parent.keyPair
-
-    const s = parent.state
-
-    if (s) {
-      const shouldSnapshot = this.snapshotted && !s.isSnapshot()
-      this.state = shouldSnapshot ? s.snapshot() : s.ref()
-    }
-
-    if (this.snapshotted && this.core && !this._snapshot) this._updateSnapshot()
   }
 
   async _open (storage, key, opts) {
@@ -283,7 +278,6 @@ class Hypercore extends EventEmitter {
     try {
       await this._openSession(opts)
     } catch (err) {
-      if (this.closing) return
       if (this.core.autoClose && this.core.hasSession() === false) await this.core.close()
 
       if (this.exclusive) this.core.unlockExclusive()
@@ -293,6 +287,7 @@ class Hypercore extends EventEmitter {
 
       if (this.state !== null) this.state.removeSession(this)
 
+      this.closed = true
       this.emit('close', this.core.hasSession() === false)
       throw err
     }
@@ -313,11 +308,15 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption && opts.encryptionKey) {
-      this.core.encryption = new BlockEncryption(opts.encryptionKey, this.key, { compat: this.core.compat, isBlockKey: opts.isBlockKey })
+    if (!this.core.encryption && !this.core.unencrypted) {
+      const e = getEncryptionOption(opts)
+      if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
     }
 
+    const parent = opts.parent || null
+
     if (this.core.encryption) this.encryption = this.core.encryption
+    else if (parent && parent.encryption) this.encryption = this.core.encryption = parent.encryption
 
     this.writable = this._isWritable()
 
@@ -328,33 +327,46 @@ class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
-    if (opts.parent) {
-      if (opts.parent._stateIndex === -1) await opts.parent.ready()
-      this._setupSession(opts.parent)
+    if (parent) {
+      if (parent._stateIndex === -1) await parent.ready()
+      if (!this.keyPair) this.keyPair = parent.keyPair
+
+      const ps = parent.state
+
+      if (ps) {
+        const shouldSnapshot = this.snapshotted && !ps.isSnapshot()
+        this.state = shouldSnapshot ? await ps.snapshot() : ps.ref()
+      }
+
+      if (this.snapshotted && this.core && !this._snapshot) {
+        this._updateSnapshot()
+      }
     }
 
-    if (opts.exclusive) {
+    if (opts.exclusive && opts.writable !== false) {
       this.exclusive = true
       await this.core.lockExclusive()
     }
 
-    const parent = opts.parent || this.core
+    const parentState = parent ? parent.state : this.core.state
     const checkout = opts.checkout === undefined ? -1 : opts.checkout
+    const state = this.state
 
     if (opts.atom) {
-      this.state = await parent.state.createSession(null, checkout, false, opts.atom)
+      this.state = await parentState.createSession(null, false, opts.atom)
+      if (state) state.unref()
     } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      const state = this.state
-
-      this.state = await parent.state.createSession(opts.name, checkout, !!opts.overwrite, null)
+      this.state = await parentState.createSession(opts.name, !!opts.overwrite, null)
       if (state) state.unref() // ref'ed above in setup session
+    }
 
-      if (checkout !== -1 && checkout < this.state.length) {
-        await this.state.truncate(checkout, this.fork)
-      }
-    } else if (this.state === null) {
+    if (this.state && checkout !== -1 && checkout < this.state.length) {
+      await this.state.truncate(checkout, this.fork)
+    }
+
+    if (this.state === null) {
       this.state = this.core.state.ref()
     }
 
@@ -417,7 +429,14 @@ class Hypercore extends EventEmitter {
   }
 
   async _close (error) {
-    if (this.opened === false) await this.opening
+    if (this.opened === false) {
+      try {
+        await this.opening
+      } catch (err) {
+        if (!this.closed) throw err
+      }
+    }
+
     if (this.closed === true) return
 
     this.core.removeMonitor(this)
@@ -517,11 +536,7 @@ class Hypercore extends EventEmitter {
   }
 
   get signedLength () {
-    if (this.opened === false) return 0
-    if (this.state === this.core.state) return this.core.state.length
-    const flushed = this.state.flushedLength()
-
-    return flushed === -1 ? this.state.length : flushed
+    return this.opened === false ? 0 : this.state.signedLength()
   }
 
   /**
@@ -751,7 +766,8 @@ class Hypercore extends EventEmitter {
       block = b4a.from(block)
 
       if (this.encryption.compat !== this.core.compat) this._updateEncryption()
-      this.encryption.decrypt(index, block)
+      if (this.core.unencrypted) this.encryption = null
+      else this.encryption.decrypt(index, block)
     }
 
     return this._decode(encoding, block)
@@ -895,13 +911,13 @@ class Hypercore extends EventEmitter {
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
     const { keyPair = defaultKeyPair, signature = null } = opts
-    const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey)
+    const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey) || opts.writable === true
 
     if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE()
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
-    const preappend = this.encryption && this._preappend
+    const preappend = this.core.unencrypted ? null : (this.encryption && this._preappend)
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
@@ -1011,7 +1027,7 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, isBlockKey: e.isBlockKey })
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: e.block })
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 }
@@ -1028,7 +1044,7 @@ function toHex (buf) {
 
 function preappend (blocks) {
   const offset = this.state.length
-  const fork = this.state.fork
+  const fork = this.state.encryptionFork
 
   if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
@@ -1091,4 +1107,11 @@ function maybeAddMonitor (name) {
 
 function isSessionMoved (err) {
   return err.code === 'SESSION_MOVED'
+}
+
+function getEncryptionOption (opts) {
+  // old style, supported for now but will go away
+  if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
+  if (!opts.encryption) return null
+  return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
 }

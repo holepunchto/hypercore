@@ -57,6 +57,29 @@ test('sessions - custom valueEncoding on session', async function (t) {
   await core1.close()
 })
 
+test('sessions - truncate a checkout session', async function (t) {
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage)
+
+  for (let i = 0; i < 10; i++) await core.append(b4a.from([i]))
+
+  const atom = storage.createAtom()
+
+  const session = core.session({ checkout: 7, atom })
+  await session.ready()
+
+  t.is(session.length, 7)
+
+  await session.truncate(5, session.fork)
+
+  t.is(session.length, 5)
+
+  await session.append(b4a.from('hello'))
+
+  await session.close()
+  await core.close()
+})
+
 test.skip('session on a from instance does not inject itself to other sessions', async function (t) {
   const a = await create(t, { })
 
@@ -78,4 +101,19 @@ test.skip('session on a from instance does not inject itself to other sessions',
   await b.close()
   await c.close()
   await d.close()
+})
+
+test('sessions - cannot set checkout if name not set', async function (t) {
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage)
+  await core.append('Block0')
+
+  t.exception(
+    () => core.session({ checkout: 0 }),
+    /Checkouts are only supported on atoms or named sessions/
+  )
+
+  t.execution(() => core.session({ checkout: 0, name: 'named' }), 'sanity check on happy path')
+
+  await core.close()
 })
