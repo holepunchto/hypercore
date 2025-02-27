@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
+const HypercoreStorage = require('hypercore-storage')
 
 const Hypercore = require('../')
 const { create, createStorage, eventFlush } = require('./helpers')
@@ -594,3 +595,52 @@ test('exclusive sessions', async function (t) {
 
   await core.close()
 })
+
+test('truncate has correct storage state in memory and persisted', async function (t) {
+  const tmpDir = await t.tmp()
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.append(['a', 'b', 'c', 'd', 'e'])
+    await core.truncate(2)
+    t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+  }
+})
+
+test('clear has correct storage state in memory and persisted', async function (t) {
+  const tmpDir = await t.tmp()
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.append(['a', 'b', 'c', 'd', 'e'])
+    await core.clear(2)
+    t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+  }
+})
+
+function getBitfields (hypercore, start = 0, end = null) {
+  if (!end) end = hypercore.length
+
+  const res = []
+  for (let i = start; i < end; i++) {
+    res.push(hypercore.core.bitfield.get(i))
+  }
+
+  return res
+}
