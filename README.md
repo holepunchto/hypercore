@@ -50,7 +50,6 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
-  sparse: true, // enable sparse mode, counting unavailable blocks towards core.length and core.byteLength
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
@@ -394,7 +393,7 @@ Buffer containing the optional block encryption key of this core. Will be `null`
 
 #### `core.length`
 
-How many blocks of data are available on this core? If `sparse: false`, this will equal `core.contiguousLength`.
+How many blocks of data are available on this core.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 

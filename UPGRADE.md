@@ -2,6 +2,10 @@
 
 Notes for downstream developers who are upgrading their modules to new, breaking versions of Hypercore.
 
+## 11.0.0
+
+- `sparse` is no longer an option. All hypercores are sparse.
+
 ## 10.0.0
 
 - All number encodings are now LE

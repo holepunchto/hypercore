@@ -901,7 +901,7 @@ test('one inflight request to a peer per block', async function (t) {
 
 test.skip('non-sparse replication', async function (t) {
   const a = await create(t)
-  const b = await create(t, a.key, { sparse: false })
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1033,7 +1033,7 @@ test('download range resolves immediately if no peers', async function (t) {
 
 test('download available blocks on non-sparse update', async function (t) {
   const a = await create(t)
-  const b = await create(t, a.key, { sparse: false })
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
