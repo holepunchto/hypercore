@@ -80,7 +80,7 @@ class Hypercore extends EventEmitter {
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._findingPeers = 0
-    this._active = opts.active !== false
+    this._active = opts.weak ? !!opts.active : opts.active !== false
 
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
