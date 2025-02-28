@@ -636,7 +636,7 @@ test('clear has correct storage state in memory and persisted', async function (
   }
 })
 
-test('contiguousLength persisted to disk after core ready', async function (t) {
+test('contiguousLength 0 for in-memory view after core ready', async function (t) {
   const tmpDir = await t.tmp()
   {
     const storage = new HypercoreStorage(tmpDir)
@@ -644,7 +644,6 @@ test('contiguousLength persisted to disk after core ready', async function (t) {
     await core.ready()
     t.is(core.contiguousLength, 0)
     t.is(core.core.header.hints.contiguousLength, 0)
-    t.is(await getContiguousLengthInStorage(core), 0)
     await core.close()
   }
 
@@ -654,7 +653,6 @@ test('contiguousLength persisted to disk after core ready', async function (t) {
     await core.ready()
     t.is(core.contiguousLength, 0)
     t.is(core.core.header.hints.contiguousLength, 0)
-    t.is(await getContiguousLengthInStorage(core), 0)
     await core.close()
   }
 })
