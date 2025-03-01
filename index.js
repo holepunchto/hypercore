@@ -783,8 +783,6 @@ class Hypercore extends EventEmitter {
   }
 
   async _get (index, opts) {
-    if (this.core.isFlushing) await this.core.flushed()
-
     const block = await readBlock(this.state.storage.read(), index)
 
     if (block !== null) return block
