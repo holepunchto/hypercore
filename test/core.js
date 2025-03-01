@@ -191,7 +191,7 @@ test('core - verify', async function (t) {
   t.alike(tree1.signature, tree2.signature)
 
   {
-    const nodes = await MerkleTree.missingNodes(clone.storage, 2, clone.state.length)
+    const nodes = await MerkleTree.missingNodes(clone.state, 2, clone.state.length)
     const p = await getProof(core, { block: { index: 1, nodes, value: true } })
     await clone.verify(p)
   }
@@ -249,8 +249,8 @@ test('core - clone', async function (t) {
 
   for (let i = 0; i <= core.state.length * 2; i++) {
     t.alike(
-      await MerkleTree.get(copy.state.storage, i, false),
-      await MerkleTree.get(core.state.storage, i, false)
+      await MerkleTree.get(copy.state, i, false),
+      await MerkleTree.get(core.state, i, false)
     )
   }
 
@@ -284,7 +284,7 @@ test('core - clone verify', async function (t) {
   t.is(clone.header.tree.length, 2)
 
   {
-    const nodes = await MerkleTree.missingNodes(clone.state.storage, 2, clone.state.length)
+    const nodes = await MerkleTree.missingNodes(clone.state, 2, clone.state.length)
     const p = await getProof(copy, { block: { index: 1, nodes, value: true } })
     p.block.value = await getBlock(copy, 1)
     await clone.verify(p)

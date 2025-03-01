@@ -17,7 +17,7 @@ test('missing nodes', async function (t) {
   await b.commit(tx)
   await tx.flush()
 
-  t.is(await MerkleTree.missingNodes(session.storage, 0), 0)
+  t.is(await MerkleTree.missingNodes(session, 0), 0)
 
   await t.exception(b.byteOffset(18))
 })
@@ -276,11 +276,11 @@ test('verify proof #1', async function (t) {
   batch.tryFlush()
   const p = await proof.settle()
 
-  const b = await MerkleTree.verify(clone.storage, p, clone.session)
+  const b = await MerkleTree.verify(clone.session, p)
   await flushBatch(clone.session, b)
 
   t.is(await b.byteOffset(6), await MerkleTree.byteOffset(session, 6))
-  t.alike(await MerkleTree.get(clone.storage, 6), await MerkleTree.get(storage, 6))
+  t.alike(await MerkleTree.get(clone.session, 6), await MerkleTree.get(session, 6))
 })
 
 test('verify proof #2', async function (t) {
@@ -296,7 +296,7 @@ test('verify proof #2', async function (t) {
   batch.tryFlush()
   const p = await proof.settle()
 
-  const b = await MerkleTree.verify(clone.storage, p, clone.session)
+  const b = await MerkleTree.verify(clone.session, p)
   await flushBatch(clone.session, b)
 
   t.is(clone.session.length, session.length)
@@ -317,7 +317,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     batch.tryFlush()
     const proof = await p.settle()
 
-    const b = await MerkleTree.verify(clone.storage, proof, clone.session)
+    const b = await MerkleTree.verify(clone.session, proof)
 
     await flushBatch(clone.session, b)
   }
@@ -336,7 +336,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
     batch.tryFlush()
     const proof = await p.settle()
 
-    const b = await MerkleTree.verify(clone.storage, proof, clone.session)
+    const b = await MerkleTree.verify(clone.session, proof)
     await flushBatch(clone.session, b)
   }
 
@@ -484,7 +484,7 @@ test('basic tree seeks', async function (t) {
 
   async function linearSeek (session, bytes) {
     for (let i = 0; i < session.length * 2; i += 2) {
-      const node = await MerkleTree.get(session.storage, i)
+      const node = await MerkleTree.get(session, i)
       if (node.size > bytes) return [i / 2, bytes]
       bytes -= node.size
     }
@@ -500,14 +500,14 @@ test('clear full tree', async function (t) {
   await tx.flush()
 
   for (let i = 0; i < 5; i++) {
-    t.is(await MerkleTree.get(a.storage, i), null)
+    t.is(await MerkleTree.get(a.session, i), null)
   }
 })
 
 test('get older roots', async function (t) {
   const a = await create(t, 5)
 
-  const roots = await MerkleTree.getRoots(a.storage, 5)
+  const roots = await MerkleTree.getRoots(a.session, 5)
   t.alike(roots, a.session.roots, 'same roots')
 
   {
@@ -519,14 +519,14 @@ test('get older roots', async function (t) {
     await flushBatch(a.session, b)
   }
 
-  const oldRoots = await MerkleTree.getRoots(a.storage, 5)
+  const oldRoots = await MerkleTree.getRoots(a.session, 5)
   t.alike(oldRoots, roots, 'same old roots')
 
   const expected = []
   const len = a.session.length
 
   for (let i = 0; i < 40; i++) {
-    expected.push(await MerkleTree.getRoots(a.storage, len + i))
+    expected.push(await MerkleTree.getRoots(a.session, len + i))
     {
       const b = new MerkleTreeBatch(a.session)
       b.append(b4a.from('tick'))
@@ -538,7 +538,7 @@ test('get older roots', async function (t) {
   const actual = []
 
   for (let i = 0; i < 40; i++) {
-    actual.push(await MerkleTree.getRoots(a.storage, len + i))
+    actual.push(await MerkleTree.getRoots(a.session, len + i))
   }
 
   t.alike(actual, expected, 'check a bunch of different roots')
@@ -550,12 +550,12 @@ test('check if a length is upgradeable', async function (t) {
 
   // Full clone, has it all
 
-  t.is(await MerkleTree.upgradeable(storage, 0), true)
-  t.is(await MerkleTree.upgradeable(storage, 1), true)
-  t.is(await MerkleTree.upgradeable(storage, 2), true)
-  t.is(await MerkleTree.upgradeable(storage, 3), true)
-  t.is(await MerkleTree.upgradeable(storage, 4), true)
-  t.is(await MerkleTree.upgradeable(storage, 5), true)
+  t.is(await MerkleTree.upgradeable(session, 0), true)
+  t.is(await MerkleTree.upgradeable(session, 1), true)
+  t.is(await MerkleTree.upgradeable(session, 2), true)
+  t.is(await MerkleTree.upgradeable(session, 3), true)
+  t.is(await MerkleTree.upgradeable(session, 4), true)
+  t.is(await MerkleTree.upgradeable(session, 5), true)
 
   const batch = storage.read()
   const proof = await MerkleTree.proof(session, batch, {
@@ -565,7 +565,7 @@ test('check if a length is upgradeable', async function (t) {
   batch.tryFlush()
   const p = await proof.settle()
 
-  const b = await MerkleTree.verify(clone.storage, p, clone.session)
+  const b = await MerkleTree.verify(clone.session, p, clone.session)
   await flushBatch(clone.session, b)
 
   /*
@@ -584,12 +584,12 @@ test('check if a length is upgradeable', async function (t) {
     So length = 0, length = 4 (node 3) and length = 5 (node 8 + 3) should be upgradeable
   */
 
-  t.is(await MerkleTree.upgradeable(clone.storage, 0), true)
-  t.is(await MerkleTree.upgradeable(clone.storage, 1), false)
-  t.is(await MerkleTree.upgradeable(clone.storage, 2), false)
-  t.is(await MerkleTree.upgradeable(clone.storage, 3), false)
-  t.is(await MerkleTree.upgradeable(clone.storage, 4), true)
-  t.is(await MerkleTree.upgradeable(clone.storage, 5), true)
+  t.is(await MerkleTree.upgradeable(clone.session, 0), true)
+  t.is(await MerkleTree.upgradeable(clone.session, 1), false)
+  t.is(await MerkleTree.upgradeable(clone.session, 2), false)
+  t.is(await MerkleTree.upgradeable(clone.session, 3), false)
+  t.is(await MerkleTree.upgradeable(clone.session, 4), true)
+  t.is(await MerkleTree.upgradeable(clone.session, 5), true)
 })
 
 test('clone a batch', async t => {
@@ -707,7 +707,7 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
 
   await flushBatch(session, b)
 
-  const node = await MerkleTree.get(session.storage, 0)
+  const node = await MerkleTree.get(session, 0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
 })
 
@@ -733,7 +733,7 @@ test('reopen a tree', async t => {
   await a.storage.db.close({ force: true })
 
   const a1 = await create(t, 0, dir, b.length)
-  const roots = await MerkleTree.getRoots(a1.storage, b.length)
+  const roots = await MerkleTree.getRoots(a1.session, b.length)
 
   t.alike(MerkleTree.span(roots) / 2, 32)
   t.alike(MerkleTree.size(roots), byteLength)
@@ -757,8 +757,8 @@ async function audit (core) {
     if ((node.index & 1) === 0) return true
 
     const [l, r] = flat.children(node.index)
-    const nl = await MerkleTree.get(core.storage, l, false)
-    const nr = await MerkleTree.get(core.storage, r, false)
+    const nl = await MerkleTree.get(core.session, l, false)
+    const nr = await MerkleTree.get(core.session, r, false)
 
     if (!nl && !nr) return true
 
@@ -774,7 +774,7 @@ async function reorg (local, remote) {
 
   batch.tryFlush()
   const localBatch = new ReorgBatch(local.session)
-  const r = await MerkleTree.reorg(local.storage, await proof.settle(), localBatch)
+  const r = await MerkleTree.reorg(local.session, await proof.settle(), localBatch)
 
   while (!r.finished) {
     const index = 2 * (r.want.end - 1)
