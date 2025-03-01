@@ -2,6 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
+const { MerkleTree } = require('../lib/merkle-tree')
 const Core = require('../lib/core')
 
 test('core - append', async function (t) {
@@ -190,7 +191,7 @@ test('core - verify', async function (t) {
   t.alike(tree1.signature, tree2.signature)
 
   {
-    const nodes = await clone.tree.missingNodes(2, clone.state.length)
+    const nodes = await MerkleTree.missingNodes(clone.storage, 2, clone.state.length)
     const p = await getProof(core, { block: { index: 1, nodes, value: true } })
     await clone.verify(p)
   }
@@ -248,8 +249,8 @@ test('core - clone', async function (t) {
 
   for (let i = 0; i <= core.state.length * 2; i++) {
     t.alike(
-      await copy.tree.get(i, false),
-      await core.tree.get(i, false)
+      await MerkleTree.get(copy.state.storage, i, false),
+      await MerkleTree.get(core.state.storage, i, false)
     )
   }
 
@@ -283,7 +284,7 @@ test('core - clone verify', async function (t) {
   t.is(clone.header.tree.length, 2)
 
   {
-    const nodes = await clone.tree.missingNodes(2, clone.state.length)
+    const nodes = await MerkleTree.missingNodes(clone.state.storage, 2, clone.state.length)
     const p = await getProof(copy, { block: { index: 1, nodes, value: true } })
     p.block.value = await getBlock(copy, 1)
     await clone.verify(p)
@@ -434,7 +435,7 @@ async function getBlock (core, i) {
 
 async function getProof (core, req) {
   const batch = core.storage.read()
-  const p = await core.tree.proof(batch, core.state.createTreeBatch(), req)
+  const p = await MerkleTree.proof(batch, core.state.createTreeBatch(), req)
   const block = req.block ? core.blocks.get(batch, req.block.index) : null
   batch.tryFlush()
   const proof = await p.settle()

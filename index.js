@@ -16,6 +16,7 @@ const Info = require('./lib/info')
 const Download = require('./lib/download')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
+const { MerkleTree } = require('./lib/merkle-tree')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -692,8 +693,7 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.state.core.tree
-    const s = tree.seek(this.state, bytes, this.padding)
+    const s = MerkleTree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -941,7 +941,7 @@ class Hypercore extends EventEmitter {
       length = this.state.length
     }
 
-    const roots = await this.state.tree.getRoots(length)
+    const roots = await MerkleTree.getRoots(this.state.storage, length)
     return crypto.tree(roots)
   }
 

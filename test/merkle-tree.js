@@ -1,6 +1,5 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
 const crypto = require('hypercore-crypto')
 const { ReorgBatch, MerkleTreeBatch, MerkleTree } = require('../lib/merkle-tree')
@@ -727,8 +726,6 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
 
   const node = await MerkleTree.get(session.storage, 0)
   t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
-
-  await tree.close()
 })
 
 test('reopen a tree', async t => {

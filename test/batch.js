@@ -3,6 +3,7 @@ const createTempDir = require('test-tmp')
 const b4a = require('b4a')
 
 const Hypercore = require('../')
+const { MerkleTree } = require('../lib/merkle-tree')
 const { create, createStorage, replicate } = require('./helpers')
 
 const NS = b4a.alloc(32)
@@ -322,7 +323,7 @@ test('batched tree batch proofs are equivalent', async function (t) {
   const reader1 = core.state.storage.read()
   const treeBatch = core.createTreeBatch()
   const proofIntermediate = await treeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
-  const treeProofIntermediate = await core.core.tree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
+  const treeProofIntermediate = await MerkleTree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
 
   reader1.tryFlush()
 
