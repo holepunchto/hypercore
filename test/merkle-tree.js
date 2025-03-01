@@ -26,8 +26,7 @@ test('proof only block', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     block: { index: 4, nodes: 2 }
   })
 
@@ -46,8 +45,7 @@ test('proof with upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
@@ -69,8 +67,7 @@ test('proof with upgrade + additional', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     block: { index: 4, nodes: 0 },
     upgrade: { start: 0, length: 8 }
   })
@@ -92,8 +89,7 @@ test('proof with upgrade from existing state', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 9 }
   })
@@ -115,8 +111,7 @@ test('proof with upgrade from existing state + additional', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     block: { index: 1, nodes: 0 },
     upgrade: { start: 1, length: 5 }
   })
@@ -138,8 +133,7 @@ test('proof block and seek, no upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 8, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
@@ -158,8 +152,7 @@ test('proof block and seek #2, no upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 10, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
@@ -178,8 +171,7 @@ test('proof block and seek #3, no upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 }
   })
@@ -198,8 +190,7 @@ test('proof seek with padding, no upgrade', async function (t) {
   const { session, storage } = await create(t, 16)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 7, padding: 1 },
     block: { index: 0, nodes: 4 }
   })
@@ -216,8 +207,7 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
   const { session, storage } = await create(t, 16)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 26, padding: 0 },
     block: { index: 0, nodes: 4 }
   })
@@ -234,8 +224,7 @@ test('proof block and seek, with upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 13, padding: 0 },
     block: { index: 4, nodes: 2 },
     upgrade: { start: 8, length: 2 }
@@ -258,8 +247,7 @@ test('proof seek with upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
   const b = storage.read()
-  const batch = new MerkleTreeBatch(session)
-  const p = await MerkleTree.proof(b, batch, {
+  const p = await MerkleTree.proof(session, b, {
     seek: { bytes: 13, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
@@ -280,8 +268,7 @@ test('verify proof #1', async function (t) {
   const clone = await create(t)
 
   const batch = storage.read()
-  const treeBatch = new MerkleTreeBatch(session)
-  const proof = await MerkleTree.proof(batch, treeBatch, {
+  const proof = await MerkleTree.proof(session, batch, {
     hash: { index: 6, nodes: 0 },
     upgrade: { start: 0, length: 10 }
   })
@@ -292,7 +279,7 @@ test('verify proof #1', async function (t) {
   const b = await MerkleTree.verify(clone.storage, p, clone.session)
   await flushBatch(clone.session, b)
 
-  t.is(await b.byteOffset(6), await treeBatch.byteOffset(6))
+  t.is(await b.byteOffset(6), await MerkleTree.byteOffset(session, 6))
   t.alike(await MerkleTree.get(clone.storage, 6), await MerkleTree.get(storage, 6))
 })
 
@@ -301,8 +288,7 @@ test('verify proof #2', async function (t) {
   const clone = await create(t)
 
   const batch = storage.read()
-  const treeBatch = new MerkleTreeBatch(session)
-  const proof = await MerkleTree.proof(batch, treeBatch, {
+  const proof = await MerkleTree.proof(session, batch, {
     seek: { bytes: 10, padding: 0 },
     upgrade: { start: 0, length: 10 }
   })
@@ -315,7 +301,7 @@ test('verify proof #2', async function (t) {
 
   t.is(clone.session.length, session.length)
   t.is(clone.session.byteLength, session.byteLength)
-  t.alike(await b.byteRange(10), await treeBatch.byteRange(10))
+  t.alike(await b.byteRange(10), await MerkleTree.byteRange(session, 10))
 })
 
 test('upgrade edgecase when no roots need upgrade', async function (t) {
@@ -324,8 +310,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
 
   {
     const batch = storage.read()
-    const treeBatch = new MerkleTreeBatch(session)
-    const p = await MerkleTree.proof(batch, treeBatch, {
+    const p = await MerkleTree.proof(session, batch, {
       upgrade: { start: 0, length: 4 }
     })
 
@@ -344,8 +329,7 @@ test('upgrade edgecase when no roots need upgrade', async function (t) {
 
   {
     const batch = storage.read()
-    const treeBatch = new MerkleTreeBatch(session)
-    const p = await MerkleTree.proof(batch, treeBatch, {
+    const p = await MerkleTree.proof(session, batch, {
       upgrade: { start: 4, length: 1 }
     })
 
@@ -574,8 +558,7 @@ test('check if a length is upgradeable', async function (t) {
   t.is(await MerkleTree.upgradeable(storage, 5), true)
 
   const batch = storage.read()
-  const treeBatch = new MerkleTreeBatch(session)
-  const proof = await MerkleTree.proof(batch, treeBatch, {
+  const proof = await MerkleTree.proof(session, batch, {
     upgrade: { start: 0, length: 5 }
   })
 
@@ -787,8 +770,7 @@ async function reorg (local, remote) {
   const upgrade = { start: 0, length: remote.session.length }
 
   const batch = remote.storage.read()
-  const treeBatch = new MerkleTreeBatch(remote.session)
-  const proof = await MerkleTree.proof(batch, treeBatch, { upgrade })
+  const proof = await MerkleTree.proof(remote.session, batch, { upgrade })
 
   batch.tryFlush()
   const localBatch = new ReorgBatch(local.session)
@@ -799,8 +781,7 @@ async function reorg (local, remote) {
     const nodes = r.want.nodes
 
     const batch = remote.storage.read()
-    const treeBatch = new MerkleTreeBatch(remote.session)
-    const proof = await MerkleTree.proof(batch, treeBatch, { hash: { index, nodes } })
+    const proof = await MerkleTree.proof(remote.session, batch, { hash: { index, nodes } })
 
     batch.tryFlush()
 

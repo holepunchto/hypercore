@@ -435,7 +435,7 @@ async function getBlock (core, i) {
 
 async function getProof (core, req) {
   const batch = core.storage.read()
-  const p = await MerkleTree.proof(batch, core.state.createTreeBatch(), req)
+  const p = await MerkleTree.proof(core.state, batch, req)
   const block = req.block ? core.blocks.get(batch, req.block.index) : null
   batch.tryFlush()
   const proof = await p.settle()
