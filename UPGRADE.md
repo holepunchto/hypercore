@@ -5,6 +5,7 @@ Notes for downstream developers who are upgrading their modules to new, breaking
 ## 11.0.0
 
 - `sparse` is no longer an option. All hypercores are sparse.
+- `core.indexedLength` is now `core.signedLength`
 
 ## 10.0.0
 
