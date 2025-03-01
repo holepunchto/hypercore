@@ -5,8 +5,6 @@ const b4a = require('b4a')
 const Hypercore = require('../')
 const { create, createStorage, replicate } = require('./helpers')
 
-const NS = b4a.alloc(32)
-
 test('batch append', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
@@ -262,154 +260,6 @@ test('partial flush', async function (t) {
   await b.close()
 })
 
-test('can make a tree batch', async function (t) {
-  const core = await create(t)
-
-  const b = core.session({ name: 'batch' })
-
-  await b.append('a')
-
-  const batchTreeBatch = b.createTreeBatch()
-  const batchHash = batchTreeBatch.hash()
-
-  await core.commit(b)
-
-  const treeBatch = core.createTreeBatch()
-  const hash = treeBatch.hash()
-
-  t.alike(hash, batchHash)
-
-  await b.close()
-})
-
-test('batched tree batch contains new nodes', async function (t) {
-  const core = await create(t)
-
-  const b = core.session({ name: 'batch' })
-
-  await b.append('a')
-
-  const batchTreeBatch = b.createTreeBatch()
-  const batchNode = await batchTreeBatch.get(0)
-
-  await core.commit(b)
-
-  const treeBatch = core.createTreeBatch()
-  const node = await treeBatch.get(0)
-
-  t.alike(node, batchNode)
-
-  await b.close()
-})
-
-test('batched tree batch proofs are equivalent', async function (t) {
-  const core = await create(t)
-
-  const b = core.session({ name: 'batch' })
-
-  await b.append(['a', 'b', 'c'])
-
-  const reader = b.state.storage.read()
-  const batchTreeBatch = b.createTreeBatch()
-  const batchProofIntermediate = await batchTreeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
-
-  reader.tryFlush()
-
-  const batchProof = await batchProofIntermediate.settle()
-
-  await core.commit(b)
-
-  const reader1 = core.state.storage.read()
-  const treeBatch = core.createTreeBatch()
-  const proofIntermediate = await treeBatch.proof(reader, { upgrade: { start: 0, length: 2 } })
-  const treeProofIntermediate = await core.core.tree.proof(reader1, core.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
-
-  reader1.tryFlush()
-
-  const proof = await proofIntermediate.settle()
-  const treeProof = await treeProofIntermediate.settle()
-
-  t.alike(proof, treeProof)
-
-  treeProof.upgrade.signature = null
-
-  t.alike(treeProof, batchProof)
-
-  await b.close()
-})
-
-test('create tree batches', async function (t) {
-  const core = await create(t)
-
-  const b = core.session({ name: 'batch' })
-
-  await b.append('a')
-  await b.append('b')
-  await b.append('c')
-
-  const blocks = [
-    b4a.from('d'),
-    b4a.from('e'),
-    b4a.from('f'),
-    b4a.from('g')
-  ]
-
-  const t1 = await b.restoreBatch(1)
-  const t2 = await b.restoreBatch(2)
-  const t3 = await b.restoreBatch(3)
-  const t4 = await b.restoreBatch(4, blocks)
-  const t5 = await b.restoreBatch(5, blocks)
-
-  t.is(t1.length, 1)
-  t.is(t2.length, 2)
-  t.is(t3.length, 3)
-  t.is(t4.length, 4)
-  t.is(t5.length, 5)
-
-  t2.append(b4a.from('c'))
-
-  t.alike(t3.signable(NS), t2.signable(NS))
-
-  const t4s = t4.signable(NS)
-
-  await b.append('d')
-  t.alike(b.createTreeBatch().signable(NS), t4s)
-
-  await b.append('e')
-  t.alike(b.createTreeBatch().signable(NS), t5.signable(NS))
-
-  // remove appended values
-  blocks.shift()
-  blocks.shift()
-
-  await t.exception(b.restoreBatch(6))
-  await t.exception(b.restoreBatch(8, blocks))
-
-  await core.commit(b)
-
-  t.is(core.length, 5)
-
-  const b2 = core.session({ name: 'batch2' })
-  await b2.ready()
-
-  t.alike(t4.signable(NS), t4s)
-
-  const t6 = await b2.restoreBatch(6, blocks)
-  const t7 = await b2.restoreBatch(7, blocks)
-
-  t.is(t6.length, 6)
-  t.is(t7.length, 7)
-
-  await b2.append('f')
-  t.alike(b2.createTreeBatch().signable(NS), t6.signable(NS))
-
-  await b2.append('g')
-  t.alike(b2.createTreeBatch().signable(NS), t7.signable(NS))
-
-  await b.close()
-  await b2.close()
-})
-
 test('flush with bg activity', async function (t) {
   const core = await create(t)
   const clone = await create(t, { keyPair: core.core.header.keyPair })
@@ -506,7 +356,7 @@ test('checkout batch', async function (t) {
   const core = await create(t)
 
   await core.append(['a', 'b'])
-  const hash = core.createTreeBatch().hash()
+  const hash = await core.treeHash()
   await core.append(['c', 'd'])
 
   const b = core.session({ name: 'batch', checkout: 2 })
@@ -516,8 +366,8 @@ test('checkout batch', async function (t) {
   t.is(b.length, 2)
   t.is(b.byteLength, 2)
 
-  const batch = b.createTreeBatch()
-  t.alike(batch.hash(), hash)
+  const batchHash = await b.treeHash()
+  t.alike(batchHash, hash)
 
   await b.append(['c', 'z'])
   t.is(await core.commit(b), null, 'failed')
@@ -542,7 +392,7 @@ test('encryption and batches', async function (t) {
 
   // const pre = batch.createTreeBatch(3, [b4a.from('c')])
   await batch.append('c')
-  const post = batch.createTreeBatch(3)
+  const post = await batch.treeHash(3)
 
   t.is(batch.byteLength, 3)
   t.alike(await batch.get(2), b4a.from('c'))
@@ -554,10 +404,10 @@ test('encryption and batches', async function (t) {
 
   t.alike(await core.get(2), b4a.from('c'))
 
-  const final = core.createTreeBatch()
+  const final = await core.treeHash()
 
   // t.alike(pre.hash(), final.hash())
-  t.alike(post.hash(), final.hash())
+  t.alike(post, final)
 
   await batch.close()
 })
@@ -573,7 +423,7 @@ test('encryption and bigger batches', async function (t) {
 
   // const pre = batch.createTreeBatch(5, [b4a.from('c'), b4a.from('d'), b4a.from('e')])
   await batch.append(['c', 'd', 'e'])
-  const post = batch.createTreeBatch(5)
+  const post = await batch.treeHash(5)
 
   t.is(batch.byteLength, 5)
   t.alike(await batch.get(2), b4a.from('c'))
@@ -589,107 +439,11 @@ test('encryption and bigger batches', async function (t) {
   t.alike(await core.get(3), b4a.from('d'))
   t.alike(await core.get(4), b4a.from('e'))
 
-  const final = core.createTreeBatch()
-
   // t.alike(pre.hash(), final.hash())
-  t.alike(post.hash(), final.hash())
+  t.alike(post, await core.treeHash())
 
   await batch.close()
 })
-
-// test('persistent batch', async function (t) {
-//   const core = await create(t)
-
-//   await core.append(['a', 'b', 'c'])
-
-//   let batch = core.session({ name: 'batch' })
-
-//   await batch.ready()
-//   await batch.append(['d', 'e', 'f'])
-//   await batch.flush({ pending: true })
-
-//   batch = core.batch({ restore: true, autoClose: false })
-
-//   await batch.ready()
-
-//   t.is(batch.length, 6)
-//   t.is(batch.byteLength, 6)
-//   t.is(batch.signedLength, 3)
-//   t.alike(await batch.seek(4), [4, 0])
-
-//   const clone = await create(t, core.key)
-
-//   replicate(core, clone, t)
-
-//   clone.download()
-
-//   await t.test('download', async function (sub) {
-//     const downloaded = []
-//     clone.on('download', function (index) {
-//       downloaded.push(index)
-//     })
-//     await eventFlush()
-//     sub.alike(downloaded.sort(), [0, 1, 2], 'got non pending blocks')
-//   })
-
-//   await batch.flush({ length: 5 })
-
-//   t.is(core.length, 5)
-
-//   await t.test('download', async function (sub) {
-//     const downloaded = []
-//     clone.on('download', function (index) {
-//       downloaded.push(index)
-//     })
-//     await eventFlush()
-//     sub.alike(downloaded.sort(), [3, 4], 'got non pending blocks')
-//   })
-
-//   await batch.flush({ length: 6 })
-
-//   t.is(core.length, 6)
-
-//   await t.test('download', async function (sub) {
-//     const downloaded = []
-//     clone.on('download', function (index) {
-//       downloaded.push(index)
-//     })
-//     await eventFlush()
-//     sub.alike(downloaded.sort(), [5], 'got non pending blocks')
-//   })
-
-//   await batch.append('g')
-
-//   t.is(batch.length, 7)
-
-//   await batch.flush({ pending: true })
-
-//   t.is(core.length, 6)
-
-//   await batch.append('h')
-
-//   t.is(batch.length, 8)
-
-//   await batch.flush({ pending: true })
-
-//   t.is(batch.length, 8)
-
-//   t.is(core.length, 6)
-
-//   await batch.flush()
-
-//   t.is(batch.length, 8)
-//   t.is(core.length, 8)
-
-//   await t.test('download', async function (sub) {
-//     const downloaded = []
-//     clone.on('download', function (index) {
-//       downloaded.push(index)
-//     })
-//     await eventFlush()
-//     sub.alike(downloaded.sort(), [6, 7], 'got non pending blocks')
-//   })
-// })
 
 test('persistent batch', async function (t) {
   const dir = await createTempDir()
@@ -770,46 +524,6 @@ test('clear', async function (t) {
   t.is(b2.length, 1, 'reset the batch')
 
   await b2.close()
-})
-
-test('copy from with encrypted batch', async function (t) {
-  const encryptionKey = b4a.alloc(32, 2)
-
-  const core = await create(t, { encryptionKey })
-
-  const blocks = 290
-
-  const b = core.session({ name: 'batch' })
-
-  for (let i = 0; i < blocks; i++) {
-    await b.append('block' + i)
-  }
-
-  t.is(core.length, 0)
-  t.is(b.length, blocks)
-
-  const manifest = {
-    prologue: {
-      length: b.length,
-      hash: b.createTreeBatch().hash()
-    },
-    encryptionKey
-  }
-
-  const clone = await create(t, {
-    manifest,
-    encryptionKey
-  })
-
-  const tree = clone.core.state.createTreeBatch()
-
-  for (let i = 0; i < blocks; i++) {
-    await tree.append(await b.get(i, { raw: true }))
-  }
-
-  t.alike(tree.hash(), manifest.prologue.hash)
-
-  await b.close()
 })
 
 test('batch append with huge batch', async function (t) {

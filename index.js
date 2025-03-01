@@ -14,8 +14,10 @@ const Core = require('./lib/core')
 const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const caps = require('./lib/caps')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
+const { MerkleTree } = require('./lib/merkle-tree')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -617,24 +619,6 @@ class Hypercore extends EventEmitter {
     this.emit('migrate', this.key)
   }
 
-  createTreeBatch () {
-    return this.state.createTreeBatch()
-  }
-
-  async restoreBatch (length, additionalBlocks = []) {
-    if (this.opened === false) await this.opening
-    const batch = this.state.createTreeBatch()
-
-    if (length > batch.length + additionalBlocks.length) {
-      throw BAD_ARGUMENT('Insufficient additional blocks were passed')
-    }
-
-    let i = 0
-    while (batch.length < length) batch.append(additionalBlocks[i++])
-
-    return length < batch.length ? batch.restore(length) : batch
-  }
-
   findingPeers () {
     this._findingPeers++
     if (this.core !== null && !this.closing) this.core.replicator.findingPeers++
@@ -692,8 +676,7 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.state.core.tree
-    const s = tree.seek(this.state, bytes, this.padding)
+    const s = MerkleTree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -800,8 +783,6 @@ class Hypercore extends EventEmitter {
   }
 
   async _get (index, opts) {
-    if (this.core.isFlushing) await this.core.flushed()
-
     const block = await readBlock(this.state.storage.read(), index)
 
     if (block !== null) return block
@@ -935,14 +916,28 @@ class Hypercore extends EventEmitter {
     return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
-  async treeHash (length) {
-    if (length === undefined) {
-      await this.ready()
-      length = this.state.length
-    }
+  async signable (length = -1, fork = -1) {
+    if (this.opened === false) await this.opening
+    if (length === -1) length = this.length
+    if (fork === -1) fork = this.fork
 
-    const roots = await this.state.tree.getRoots(length)
+    return caps.treeSignable(this.key, await this.treeHash(length), length, fork)
+  }
+
+  async treeHash (length = -1) {
+    if (this.opened === false) await this.opening
+    if (length === -1) length = this.length
+
+    const roots = await MerkleTree.getRoots(this.state, length)
     return crypto.tree(roots)
+  }
+
+  async proof (opts) {
+    if (this.opened === false) await this.opening
+    const rx = this.state.storage.read()
+    const promise = MerkleTree.proof(this.state, rx)
+    rx.tryFlush()
+    return promise
   }
 
   registerExtension (name, handlers = {}) {
