@@ -496,7 +496,7 @@ test('clear full tree', async function (t) {
   const a = await create(t, 5)
 
   const tx = a.storage.write()
-  MerkleTree.clear(tx)
+  tx.deleteTreeNodeRange(0, -1)
   await tx.flush()
 
   for (let i = 0; i < 5; i++) {

@@ -428,7 +428,7 @@ async function create (t, opts = {}) {
 
 async function getBlock (core, i) {
   const r = core.storage.read()
-  const p = core.blocks.get(r, i)
+  const p = r.getBlock(i)
   r.tryFlush()
   return p
 }
@@ -436,7 +436,7 @@ async function getBlock (core, i) {
 async function getProof (core, req) {
   const batch = core.storage.read()
   const p = await MerkleTree.proof(core.state, batch, req)
-  const block = req.block ? core.blocks.get(batch, req.block.index) : null
+  const block = req.block ? batch.getBlock(req.block.index) : null
   batch.tryFlush()
   const proof = await p.settle()
   if (block) proof.block.value = await block
