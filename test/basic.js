@@ -648,6 +648,31 @@ test('clear has correct storage state in memory and persisted', async function (
   }
 })
 
+test('append alignemnt to bitfield boundary', async function (t) {
+  const tmpDir = await t.tmp()
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+
+    const b = []
+    for (let i = 0; i < 32768; i++) {
+      b.push('#')
+    }
+
+    await core.append(b)
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    await core.close()
+  }
+})
+
 function getBitfields (hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
