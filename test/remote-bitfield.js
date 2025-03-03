@@ -19,6 +19,14 @@ test('remote bitfield - set range on page boundary', function (t) {
   t.is(b.findFirst(true, 2048), 2048)
 })
 
+test('remote bitfield - set range to false', function (t) {
+  const b = new RemoteBitfield()
+
+  b.setRange(0, 5000, false)
+
+  t.is(b.findFirst(true, 0), -1)
+})
+
 test('set last bits in segment and findFirst', function (t) {
   const b = new RemoteBitfield()
 
