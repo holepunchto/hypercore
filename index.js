@@ -1029,7 +1029,7 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: e.block })
+    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: b4a.equals(e.blockKey, e.key) })
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 }
