@@ -364,8 +364,10 @@ class Hypercore extends EventEmitter {
       if (state) state.unref() // ref'ed above in setup session
     }
 
-    if (this.state && checkout !== -1 && checkout < this.state.length) {
-      await this.state.truncate(checkout, this.fork)
+    if (this.state && checkout !== -1) {
+      if (!opts.name && !opts.atom) throw ASSERTION('Checkouts must be named or atomized')
+      if (checkout > this.state.length) throw ASSERTION('Invalid checkout ' + checkout + ' for ' + opts.name + ', length is ' + this.state.length)
+      if (checkout < this.state.length) await this.state.truncate(checkout, this.fork)
     }
 
     if (this.state === null) {
