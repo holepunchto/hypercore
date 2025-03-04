@@ -648,8 +648,12 @@ test('clear has correct storage state in memory and persisted', async function (
   }
 })
 
-test('append alignemnt to bitfield boundary', async function (t) {
+test('append alignment to bitfield boundary', async function (t) {
   const tmpDir = await t.tmp()
+
+  const expectedBitfields = new Array(32768)
+  expectedBitfields.fill(true)
+  expectedBitfields.push(false)
 
   {
     const storage = new HypercoreStorage(tmpDir)
@@ -662,6 +666,11 @@ test('append alignemnt to bitfield boundary', async function (t) {
     }
 
     await core.append(b)
+
+    t.alike(getBitfields(core, 0, 32769), expectedBitfields)
+    t.is(core.contiguousLength, 32768)
+    t.is(core.core.header.hints.contiguousLength, 32768)
+
     await core.close()
   }
 
@@ -669,6 +678,11 @@ test('append alignemnt to bitfield boundary', async function (t) {
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
+
+    t.alike(getBitfields(core, 0, 32769), expectedBitfields)
+    t.is(core.contiguousLength, 32768)
+    t.is(core.core.header.hints.contiguousLength, 32768)
+
     await core.close()
   }
 })
