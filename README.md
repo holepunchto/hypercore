@@ -57,7 +57,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   onwait: () => {}, // hook that is called if gets are waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   writable: true, // disable appends and truncates
-  inflightRange: null // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
+  inflightRange: null, // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
