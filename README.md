@@ -303,12 +303,7 @@ Options are inherited from the parent instance, unless they are re-set.
 }
 ```
 
-Atoms allow making atomic changes across multiple hypercores. Atoms can be created using
-a `core`'s `storage` (eg. `const atom = core.state.storage.createAtom()`). Changes made with
-an atom based session is not persisted until the atom is flushed via
-`await atom.flush()`, but can be read at any time. When atoms flush, all
-changes made outside of the atom will be clobbered as the core blocks will now
-match the atom's blocks. For example:
+Atoms allow making atomic changes across multiple hypercores. Atoms can be created using a `core`'s `storage` (eg. `const atom = core.state.storage.createAtom()`). Changes made with an atom based session is not persisted until the atom is flushed via `await atom.flush()`, but can be read at any time. When atoms flush, all changes made outside of the atom will be clobbered as the core blocks will now match the atom's blocks. For example:
 
 ```js
 const core = new Hypercore('./atom-example')
