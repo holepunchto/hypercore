@@ -4,7 +4,7 @@ Notes for downstream developers who are upgrading their modules to new, breaking
 
 ## 11.0.0
 
-- `sparse` is no longer an option. All hypercores are sparse.
+- `sparse` is no longer an option when creating a `Hypercore` instance. All hypercores are sparse.
 - `encryptionKey` will deprecated in favor of the `encryption` option when creating a `Hypercore` instance.
 - Storage is now auto migrated to [`hypercore-storage`](https://github.com/holepunchto/hypercore-storage) if a path `storage` argument was used.  
   If you are getting a `TypeError: db.columnFamily is not a function` error, you
