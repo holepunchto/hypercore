@@ -291,7 +291,48 @@ You must close any session you make.
 
 Options are inherited from the parent instance, unless they are re-set.
 
-`options` are the same as in the constructor.
+`options` are the same as in the constructor with the follow additions:
+
+```
+{
+  weak: false // Creates the session as a "weak ref" which closes when all non-weak sessions are closed
+  exclusive: false, // Create a session with exclusive access to the core. Creating an exclusive session on a core with other exclusive sessions, will wait for the session with access to close before the next exclusive session is `ready`
+  checkout: undefined, // A index to checkout the core at. Checkout sessions must be an atom or a named session
+  atom: undefined, // A storage atom for making atomic batch changes across hypercores
+  name: null, // Name the session creating a persisted branch of the core. Still beta so may break in the future
+}
+```
+
+Atoms allow making atomic changes across hypercores. Atoms can be created using
+a `core`'s `storage` (eg. `const atom = core.state.storage.createAtom()`). Changes made with
+an atom based session is not persisted until the atom is flushed via
+`await atom.flush()`, but can be read at any time. When atoms flush, all
+changes made outside of the atom will be clobbered as the core blocks will now
+match the atom's blocks. For example:
+
+#### `const { byteLength, length } = core.commit(session, opts = {})`
+
+Attempt to apply blocks from the session to the `core`. `core` must be a default
+core, aka a non-named session.
+
+Returns `null` if committing failed.
+
+```js
+const core = new Hypercore('./atom-example')
+await core.ready()
+
+await core.append('block 1')
+
+const atom = core.state.storage.createAtom()
+const atomicSession = core.session({ atom })
+
+await core.append('block 2') // Add blocks not using the atom
+
+await atomicSession.append('atom block 2') // Add different block to atom
+await atom.flush()
+
+console.log((await core.get(core.length - 1)).toString()) // prints 'atom block 2' not 'block 2'
+```
 
 #### `const snapshot = core.snapshot([options])`
 
