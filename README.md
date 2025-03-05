@@ -40,7 +40,7 @@ Make a new Hypercore instance.
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
-Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/hypercore-storage) or use a [Corestore](https://github.com/holepunchto/corestore) if you want to make many Hypercores efficiently.
+Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/hypercore-storage) or use a [Corestore](https://github.com/holepunchto/corestore) if you want to make many Hypercores efficiently. Note that `random-access-storage` is no longer supported.
 
 `key` can be set to a Hypercore key which is a hash of Hypercore's internal auth manifest, describing how to validate the Hypercore. If you do not set this, it will be loaded from storage. If nothing is previously stored, a new auth manifest will be generated giving you local write access to it.
 
