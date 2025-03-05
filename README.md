@@ -53,7 +53,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
-  encryptionKey: k, // optionally pass an encryption key to enable block encryption
+  encryption: { key: buffer }, // the block encryption key
   onwait: () => {}, // hook that is called if gets are waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   writable: true, // disable appends and truncates
