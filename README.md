@@ -303,19 +303,12 @@ Options are inherited from the parent instance, unless they are re-set.
 }
 ```
 
-Atoms allow making atomic changes across hypercores. Atoms can be created using
+Atoms allow making atomic changes across multiple hypercores. Atoms can be created using
 a `core`'s `storage` (eg. `const atom = core.state.storage.createAtom()`). Changes made with
 an atom based session is not persisted until the atom is flushed via
 `await atom.flush()`, but can be read at any time. When atoms flush, all
 changes made outside of the atom will be clobbered as the core blocks will now
 match the atom's blocks. For example:
-
-#### `const { byteLength, length } = core.commit(session, opts = {})`
-
-Attempt to apply blocks from the session to the `core`. `core` must be a default
-core, aka a non-named session.
-
-Returns `null` if committing failed.
 
 ```js
 const core = new Hypercore('./atom-example')
@@ -333,6 +326,13 @@ await atom.flush()
 
 console.log((await core.get(core.length - 1)).toString()) // prints 'atom block 2' not 'block 2'
 ```
+
+#### `const { byteLength, length } = core.commit(session, opts = {})`
+
+Attempt to apply blocks from the session to the `core`. `core` must be a default
+core, aka a non-named session.
+
+Returns `null` if committing failed.
 
 #### `const snapshot = core.snapshot([options])`
 
