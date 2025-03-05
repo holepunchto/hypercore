@@ -438,8 +438,7 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `core.signedLength`
 
-How many blocks of data are available on this core that have been signed by a
-quorum. This is equal to `core.length` for Hypercores's with a single signer.
+How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores's with a single signer.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
