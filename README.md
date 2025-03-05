@@ -327,8 +327,7 @@ console.log((await core.get(core.length - 1)).toString()) // prints 'atom block 
 
 #### `const { byteLength, length } = core.commit(session, opts = {})`
 
-Attempt to apply blocks from the session to the `core`. `core` must be a default
-core, aka a non-named session.
+Attempt to apply blocks from the session to the `core`. `core` must be a default core, aka a non-named session.
 
 Returns `null` if committing failed.
 
