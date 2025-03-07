@@ -117,3 +117,44 @@ test('sessions - cannot set checkout if name not set', async function (t) {
 
   await core.close()
 })
+
+test('sessions - checkout breaks prologue', async function (t) {
+  const storage = await createStorage(t)
+  const storage2 = await createStorage(t)
+
+  const core = new Hypercore(storage)
+
+  for (let i = 0; i < 10; i++) await core.append(b4a.from([i]))
+
+  const prologued = new Hypercore(storage2, {
+    manifest: {
+      ...core.manifest,
+      prologue: {
+        hash: await core.treeHash(),
+        length: core.length
+      }
+    }
+  })
+
+  await prologued.ready()
+  await prologued.core.copyPrologue(core.state)
+
+  process.on('uncaughtException', noop)
+
+  let session
+  try {
+    session = prologued.session({ name: 'fail', checkout: 7 })
+    await session.ready()
+    t.fail()
+  } catch (err) {
+    t.pass()
+  }
+
+  await session.close()
+  await prologued.close()
+  await core.close()
+
+  process.off('uncaughtException', noop)
+})
+
+function noop () {}
