@@ -295,6 +295,9 @@ class Hypercore extends EventEmitter {
     }
 
     this.emit('ready')
+
+    // if we are a weak session the core might have closed...
+    if (this.core.closing) this.close().catch(safetyCatch)
   }
 
   _removeSession () {
