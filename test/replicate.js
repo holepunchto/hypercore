@@ -1654,7 +1654,7 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
-test.solo('uses hotswaps to avoid long download tail', async t => {
+test('uses hotswaps to avoid long download tail', async t => {
   const core = await create(t)
   const slowCore = await create(t, core.key)
 
