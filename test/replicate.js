@@ -1686,7 +1686,7 @@ test('uses hotswaps to avoid long download tail', async t => {
     p => b4a.equals(p.stream.remotePublicKey, slowKey))[0]
 
   t.ok(fastPeer.stats.hotswaps > 0, 'hotswaps happened for fast peer')
-  t.ok(fastPeer.stats.hotswaps > 0, 'No hotswaps happened for slow peer')
+  t.ok(slowPeer.stats.hotswaps === 0, 'No hotswaps happened for slow peer')
   t.ok(slowPeer.stats.wireCancel.tx > 0, 'slow peer cancelled requests')
   t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'sanity check: received more data from fast peer')
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
