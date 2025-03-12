@@ -65,6 +65,7 @@
   "devDependencies": {
     "brittle": "^3.0.0",
     "debugging-stream": "^3.1.0",
+    "hypercore-block-encryption": "github:holepunchto/hypercore-block-encryption",
     "hyperswarm": "^4.3.6",
     "rache": "^1.0.0",
     "range-parser": "^1.2.1",
