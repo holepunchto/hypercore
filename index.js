@@ -5,13 +5,13 @@ const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
+const BlockEncryption = require('hypercore-block-encryption')
 const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 
 const Core = require('./lib/core')
-const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
 const caps = require('./lib/caps')
@@ -236,7 +236,15 @@ class Hypercore extends EventEmitter {
   async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
-    this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
+
+    this.encryption = encryptionKey ? new BlockEncryption({
+      legacy: true,
+      compat: this.core.compat,
+      encryptionKey,
+      hypercoreKey: this.key,
+      ...opts
+    })
+
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
 
@@ -312,7 +320,18 @@ class Hypercore extends EventEmitter {
 
     if (!this.core.encryption && !this.core.unencrypted) {
       const e = getEncryptionOption(opts)
-      if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
+
+      if (isEncryptionProvider(e)) {
+        this.core.encryption = e
+      } else if (e) {
+        this.core.encryption = new BlockEncryption({
+          legacy: true,
+          compat: this.core.compat,
+          block: e.block,
+          encryptionKey: e.key,
+          hypercoreKey: this.key,
+        })
+      }
     }
 
     const parent = opts.parent || null
@@ -571,7 +590,7 @@ class Hypercore extends EventEmitter {
   }
 
   get encryptionKey () {
-    return this.encryption && this.encryption.key
+    return this.encryption && this.encryption.provider.key
   }
 
   get padding () {
@@ -752,7 +771,7 @@ class Hypercore extends EventEmitter {
 
       if (this.encryption.compat !== this.core.compat) this._updateEncryption()
       if (this.core.unencrypted) this.encryption = null
-      else this.encryption.decrypt(index, block)
+      else await this.encryption.decrypt(index, block)
     }
 
     return this._decode(encoding, block)
@@ -1031,7 +1050,16 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: b4a.equals(e.blockKey, e.key) })
+    if (!e.legacy) return
+
+    this.encryption = new BlockEncryption({
+      legacy: true,
+      encryptionKey: e.key,
+      hypercoreKey: this.key,
+      compat: this.core.compat,
+      block: e.provider.isBlock
+    })
+
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 }
@@ -1046,14 +1074,14 @@ function toHex (buf) {
   return buf && b4a.toString(buf, 'hex')
 }
 
-function preappend (blocks) {
+async function preappend (blocks) {
   const offset = this.state.length
   const fork = this.state.encryptionFork
 
   if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
   for (let i = 0; i < blocks.length; i++) {
-    this.encryption.encrypt(offset + i, blocks[i], fork)
+    await this.encryption.encrypt(offset + i, blocks[i], fork)
   }
 }
 
@@ -1118,4 +1146,8 @@ function getEncryptionOption (opts) {
   if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
   if (!opts.encryption) return null
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
+}
+
+function isEncryptionProvider (e) {
+  return !!(e && e.decrypt && e.encrypt && (typeof e.decrypt === 'function') && (typeof e.encrypt === 'function'))
 }

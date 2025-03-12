@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const BlockEncryption = require('hypercore-block-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
 
@@ -241,6 +242,32 @@ test('session keeps encryption', async function (t) {
 
   await b.close()
   await a.close()
+})
+
+test('block encryption module', async function (t) {
+  const encryption = new BlockEncryption({
+    id: 0,
+    async get (id) {
+      await Promise.resolve()
+      return b4a.alloc(32, id)
+    }
+  })
+
+  await encryption.ready()
+
+  const core = await create(t, null, { encryption })
+  await core.ready()
+
+  await core.append('0')
+
+  await encryption.load(1)
+
+  await core.append('1')
+  await core.append('2')
+
+  t.alike(await core.get(0), b4a.from('0'))
+  t.alike(await core.get(1), b4a.from('1'))
+  t.alike(await core.get(2), b4a.from('2'))
 })
 
 function getBlock (core, index) {
