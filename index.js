@@ -237,13 +237,15 @@ class Hypercore extends EventEmitter {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
 
-    this.encryption = encryptionKey ? new BlockEncryption({
-      legacy: true,
-      compat: this.core.compat,
-      encryptionKey,
-      hypercoreKey: this.key,
-      ...opts
-    })
+    this.encryption = !encryptionKey
+      ? null
+      : new BlockEncryption({
+        legacy: true,
+        compat: this.core.compat,
+        encryptionKey,
+        hypercoreKey: this.key,
+        ...opts
+      })
 
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
@@ -329,7 +331,7 @@ class Hypercore extends EventEmitter {
           compat: this.core.compat,
           block: e.block,
           encryptionKey: e.key,
-          hypercoreKey: this.key,
+          hypercoreKey: this.key
         })
       }
     }
