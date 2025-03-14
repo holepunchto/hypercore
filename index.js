@@ -290,7 +290,7 @@ class Hypercore extends EventEmitter {
       if (this.state !== null) this.state.removeSession(this)
 
       this.closed = true
-      this.emit('close', this.core.hasSession() === false)
+      this.emit('close')
       throw err
     }
 
@@ -476,14 +476,14 @@ class Hypercore extends EventEmitter {
     if (this.core.hasSession()) {
       // emit "fake" close as this is a session
       this.closed = true
-      this.emit('close', false)
+      this.emit('close')
       return
     }
 
     if (this.core.autoClose) await this.core.close()
 
     this.closed = true
-    this.emit('close', true)
+    this.emit('close')
   }
 
   async commit (session, opts) {
