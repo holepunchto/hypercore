@@ -56,7 +56,6 @@ class Hypercore extends EventEmitter {
     this.core = null
     this.state = null
     this.encryption = null
-    this.encryptionKey = null
     this.extensions = new Map()
 
     this.valueEncoding = null
@@ -235,12 +234,11 @@ class Hypercore extends EventEmitter {
     return s
   }
 
-  async setEncryptionKey (encryptionKey) {
+  async setEncryptionKey (encryptionKey, opts) {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
 
-    this.encryptionKey = null
-    this.encryption = this._getLegacyEncryption(encryptionKey, false)
+    this.encryption = this._getLegacyEncryption(encryptionKey, opts.block)
 
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
@@ -538,6 +536,10 @@ class Hypercore extends EventEmitter {
 
   get discoveryKey () {
     return this.core === null ? null : this.core.discoveryKey
+  }
+
+  get encryptionKey () {
+    return this.encryption ? this.encryption.encryptionKey : null
   }
 
   get manifest () {
@@ -1051,7 +1053,7 @@ class Hypercore extends EventEmitter {
       ? encryptionKey
       : getBlockEncryptionKey(this.key, encryptionKey, this.core.compat)
 
-    return HypercoreEncryption.createLegacyProvider(blockKey)
+    return HypercoreEncryption.createLegacyProvider(encryptionKey, blockKey)
   }
 }
 
