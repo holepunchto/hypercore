@@ -246,7 +246,7 @@ test('session keeps encryption', async function (t) {
 
 test('block encryption module', async function (t) {
   const encryption = new BlockEncryption({
-    id: 0,
+    id: 1,
     async get (id) {
       await Promise.resolve()
       return b4a.alloc(32, id)
@@ -260,7 +260,7 @@ test('block encryption module', async function (t) {
 
   await core.append('0')
 
-  await encryption.load(1)
+  await encryption.load(2)
 
   await core.append('1')
   await core.append('2')

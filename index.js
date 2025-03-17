@@ -3,9 +3,10 @@ const isOptions = require('is-options')
 const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
+const sodium = require('sodium-universal')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const BlockEncryption = require('hypercore-block-encryption')
+const HypercoreEncryption = require('hypercore-block-encryption')
 const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
@@ -55,6 +56,7 @@ class Hypercore extends EventEmitter {
     this.core = null
     this.state = null
     this.encryption = null
+    this.encryptionKey = null
     this.extensions = new Map()
 
     this.valueEncoding = null
@@ -149,7 +151,7 @@ class Hypercore extends EventEmitter {
   }
 
   static blockEncryptionKey (key, encryptionKey) {
-    return BlockEncryption.blockEncryptionKey(key, encryptionKey)
+    return HypercoreEncryption.blockEncryptionKey(key, encryptionKey)
   }
 
   static getProtocolMuxer (stream) {
@@ -233,19 +235,12 @@ class Hypercore extends EventEmitter {
     return s
   }
 
-  async setEncryptionKey (encryptionKey, opts) {
+  async setEncryptionKey (encryptionKey) {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
 
-    this.encryption = !encryptionKey
-      ? null
-      : new BlockEncryption({
-        legacy: true,
-        compat: this.core.compat,
-        encryptionKey,
-        hypercoreKey: this.key,
-        ...opts
-      })
+    this.encryptionKey = null
+    this.encryption = this._getLegacyEncryption(encryptionKey, false)
 
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
@@ -326,13 +321,7 @@ class Hypercore extends EventEmitter {
       if (isEncryptionProvider(e)) {
         this.core.encryption = e
       } else if (e) {
-        this.core.encryption = new BlockEncryption({
-          legacy: true,
-          compat: this.core.compat,
-          block: e.block,
-          encryptionKey: e.key,
-          hypercoreKey: this.key
-        })
+        this.core.encryption = this._getLegacyEncryption(e.key, e.block)
       }
     }
 
@@ -589,10 +578,6 @@ class Hypercore extends EventEmitter {
 
   get peers () {
     return this.opened === false ? [] : this.core.replicator.peers
-  }
-
-  get encryptionKey () {
-    return this.encryption && this.encryption.provider.key
   }
 
   get padding () {
@@ -1052,17 +1037,21 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    if (!e.legacy) return
+    if (isEncryptionProvider(e)) return
 
-    this.encryption = new BlockEncryption({
-      legacy: true,
-      encryptionKey: e.key,
-      hypercoreKey: this.key,
-      compat: this.core.compat,
-      block: e.provider.isBlock
-    })
+    this.encryption = this._getLegacyEncryption(e.key, e.block)
 
     if (e === this.core.encryption) this.core.encryption = this.encryption
+  }
+
+  _getLegacyEncryption (encryptionKey, block) {
+    if (!encryptionKey) return null
+
+    const blockKey = block
+      ? encryptionKey
+      : getBlockEncryptionKey(this.key, encryptionKey, this.core.compat)
+
+    return HypercoreEncryption.createLegacyProvider(blockKey)
   }
 }
 
@@ -1151,5 +1140,14 @@ function getEncryptionOption (opts) {
 }
 
 function isEncryptionProvider (e) {
-  return !!(e && e.decrypt && e.encrypt && (typeof e.decrypt === 'function') && (typeof e.encrypt === 'function'))
+  return !!(e && (e instanceof HypercoreEncryption || (e.encrypt && typeof e.encrypt === 'function')))
+}
+
+function getBlockEncryptionKey (hypercoreKey, encryptionKey, compat) {
+  const key = b4a.alloc(HypercoreEncryption.KEYBYTES)
+
+  if (compat) sodium.crypto_generichash_batch(key, [encryptionKey], hypercoreKey)
+  else sodium.crypto_generichash_batch(key, [caps.LEGACY_BLOCK_ENCRYPTION, hypercoreKey, encryptionKey])
+
+  return key
 }
