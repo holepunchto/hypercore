@@ -1051,7 +1051,7 @@ class Hypercore extends EventEmitter {
 
     const blockKey = block
       ? encryptionKey
-      : getBlockEncryptionKey(this.key, encryptionKey, this.core.compat)
+      : getLegacyBlockKey(this.key, encryptionKey, this.core.compat)
 
     return HypercoreEncryption.createLegacyProvider(encryptionKey, blockKey)
   }
@@ -1145,7 +1145,7 @@ function isEncryptionProvider (e) {
   return !!(e && (e instanceof HypercoreEncryption || (e.encrypt && typeof e.encrypt === 'function')))
 }
 
-function getBlockEncryptionKey (hypercoreKey, encryptionKey, compat) {
+function getLegacyBlockKey (hypercoreKey, encryptionKey, compat) {
   const key = b4a.alloc(HypercoreEncryption.KEYBYTES)
 
   if (compat) sodium.crypto_generichash_batch(key, [encryptionKey], hypercoreKey)
