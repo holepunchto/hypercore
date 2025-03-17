@@ -238,7 +238,7 @@ class Hypercore extends EventEmitter {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
 
-    this.encryption = this._getLegacyEncryption(encryptionKey, opts.block)
+    this.encryption = this._getLegacyEncryption(encryptionKey, !!(opts && opts.block))
 
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
