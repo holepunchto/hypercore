@@ -909,6 +909,7 @@ class Hypercore extends EventEmitter {
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const preappend = this.core.unencrypted ? null : (this.encryption && this._preappend)
+    if (preappend) await this.encryption.ready()
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
