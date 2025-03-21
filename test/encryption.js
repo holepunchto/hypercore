@@ -1,6 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const BlockEncryption = require('hypercore-block-encryption')
+const HypercoreEncryption = require('hypercore-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
 
@@ -245,17 +245,7 @@ test('session keeps encryption', async function (t) {
 test('block encryption module', async function (t) {
   const blindingKey = b4a.alloc(32, 0)
 
-  const encryption = new BlockEncryption(blindingKey, {
-    id: 1,
-    async get (id) {
-      await Promise.resolve()
-      return {
-        version: 1,
-        key: b4a.alloc(32, id),
-        padding: 16
-      }
-    }
-  })
+  const encryption = new HypercoreEncryption(blindingKey, getKey, { id: 1 })
 
   await encryption.ready()
 
@@ -272,6 +262,15 @@ test('block encryption module', async function (t) {
   t.alike(await core.get(0), b4a.from('0'))
   t.alike(await core.get(1), b4a.from('1'))
   t.alike(await core.get(2), b4a.from('2'))
+
+  async function getKey (id) {
+    await Promise.resolve()
+    return {
+      version: 1,
+      key: b4a.alloc(32, id),
+      padding: 16
+    }
+  }
 })
 
 function getBlock (core, index) {

@@ -49,6 +49,7 @@
     "fast-fifo": "^1.3.0",
     "flat-tree": "^1.9.0",
     "hypercore-crypto": "^3.2.1",
+    "hypercore-encryption": "^1.0.0",
     "hypercore-errors": "^1.2.0",
     "hypercore-id-encoding": "^1.2.0",
     "hypercore-storage": "^1.0.0",
@@ -65,7 +66,6 @@
   "devDependencies": {
     "brittle": "^3.0.0",
     "debugging-stream": "^3.1.0",
-    "hypercore-block-encryption": "github:holepunchto/hypercore-block-encryption",
     "hyperswarm": "^4.3.6",
     "rache": "^1.0.0",
     "range-parser": "^1.2.1",
