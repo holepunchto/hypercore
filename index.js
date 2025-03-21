@@ -235,19 +235,24 @@ class Hypercore extends EventEmitter {
   }
 
   setEncryptionKey (encryptionKey, opts) {
-    return this.setEncryption(encryptionKey, opts)
+    const encryption = this._getLegacyEncryption(encryptionKey, !!(opts && opts.block))
+    return this.setEncryption(encryption, opts)
   }
 
   async setEncryption (encryption, opts) {
     if (!this.opened) await this.opening
     if (this.core.unencrypted) return
 
-    if (isEncryptionProvider(encryption)) {
+    if (encryption === null) {
       this.encryption = encryption
-    } else {
-      this.encryption = this._getLegacyEncryption(encryption, !!(opts && opts.block))
+      return
     }
 
+    if (HypercoreEncryption.isHypercoreEncryption(encryption)) {
+      throw new Error('Expected hypercore encryption provider')
+    }
+
+    this.encryption = encryption
     if (!this.core.encryption) this.core.encryption = this.encryption
   }
 

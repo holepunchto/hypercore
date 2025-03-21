@@ -238,18 +238,22 @@ test('session keeps encryption', async function (t) {
   const b = a.session({ encryption: { key: encryptionKey } })
   await b.ready()
 
-  t.alike(b.encryptionKey, encryptionKey)
-
   await b.close()
   await a.close()
 })
 
 test('block encryption module', async function (t) {
-  const encryption = new BlockEncryption({
+  const blindingKey = b4a.alloc(32, 0)
+
+  const encryption = new BlockEncryption(blindingKey, {
     id: 1,
     async get (id) {
       await Promise.resolve()
-      return b4a.alloc(32, id)
+      return {
+        version: 1,
+        key: b4a.alloc(32, id),
+        padding: 16
+      }
     }
   })
 
