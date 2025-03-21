@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const HypercoreEncryption = require('hypercore-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
 
@@ -8,7 +9,7 @@ const encryptionKey = b4a.alloc(32, 'hello world')
 test('encrypted append and get', async function (t) {
   const a = await create(t, { encryption: { key: encryptionKey } })
 
-  t.alike(a.encryptionKey, encryptionKey)
+  t.ok(a.encryption)
 
   await a.append(['hello'])
 
@@ -151,8 +152,8 @@ test('encrypted session on unencrypted core', async function (t) {
 
   const s = a.session({ encryption: { key: encryptionKey }, debug: 'debug' })
 
-  t.alike(s.encryptionKey, encryptionKey)
-  t.unlike(s.encryptionKey, a.encryptionKey)
+  t.ok(s.encryption)
+  t.absent(a.encryption)
 
   await s.append(['hello'])
 
@@ -200,7 +201,7 @@ test('encrypted core from existing unencrypted core', async function (t) {
   const b = new Hypercore({ core: a.core, encryption: { key: encryptionKey } })
 
   t.alike(b.key, a.key)
-  t.alike(b.encryptionKey, encryptionKey)
+  t.alike(b.encryption, a.core.encryption)
 
   await b.append(['hello'])
 
@@ -221,9 +222,9 @@ test('from session sessions pass encryption', async function (t) {
   await b.ready()
   await c.ready()
 
-  t.absent(a.encryptionKey)
-  t.ok(b.encryptionKey)
-  t.ok(c.encryptionKey)
+  t.absent(a.encryption)
+  t.ok(b.encryption)
+  t.ok(c.encryption)
 
   await c.close()
   await b.close()
@@ -237,10 +238,39 @@ test('session keeps encryption', async function (t) {
   const b = a.session({ encryption: { key: encryptionKey } })
   await b.ready()
 
-  t.alike(b.encryptionKey, encryptionKey)
-
   await b.close()
   await a.close()
+})
+
+test('block encryption module', async function (t) {
+  const blindingKey = b4a.alloc(32, 0)
+
+  const encryption = new HypercoreEncryption(blindingKey, getKey, { id: 1 })
+
+  await encryption.ready()
+
+  const core = await create(t, null, { encryption })
+  await core.ready()
+
+  await core.append('0')
+
+  await encryption.load(2)
+
+  await core.append('1')
+  await core.append('2')
+
+  t.alike(await core.get(0), b4a.from('0'))
+  t.alike(await core.get(1), b4a.from('1'))
+  t.alike(await core.get(2), b4a.from('2'))
+
+  async function getKey (id) {
+    await Promise.resolve()
+    return {
+      version: 1,
+      key: b4a.alloc(32, id),
+      padding: 16
+    }
+  }
 })
 
 function getBlock (core, index) {
