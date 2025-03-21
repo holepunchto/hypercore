@@ -248,7 +248,7 @@ class Hypercore extends EventEmitter {
       return
     }
 
-    if (HypercoreEncryption.isHypercoreEncryption(encryption)) {
+    if (!HypercoreEncryption.isHypercoreEncryption(encryption)) {
       throw new Error('Expected hypercore encryption provider')
     }
 
