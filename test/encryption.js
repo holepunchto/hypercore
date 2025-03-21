@@ -9,7 +9,7 @@ const encryptionKey = b4a.alloc(32, 'hello world')
 test('encrypted append and get', async function (t) {
   const a = await create(t, { encryption: { key: encryptionKey } })
 
-  t.alike(a.encryptionKey, encryptionKey)
+  t.ok(a.encryption)
 
   await a.append(['hello'])
 
@@ -152,8 +152,8 @@ test('encrypted session on unencrypted core', async function (t) {
 
   const s = a.session({ encryption: { key: encryptionKey }, debug: 'debug' })
 
-  t.alike(s.encryptionKey, encryptionKey)
-  t.unlike(s.encryptionKey, a.encryptionKey)
+  t.ok(s.encryption)
+  t.absent(a.encryption)
 
   await s.append(['hello'])
 
@@ -201,7 +201,7 @@ test('encrypted core from existing unencrypted core', async function (t) {
   const b = new Hypercore({ core: a.core, encryption: { key: encryptionKey } })
 
   t.alike(b.key, a.key)
-  t.alike(b.encryptionKey, encryptionKey)
+  t.alike(b.encryption, a.core.encryption)
 
   await b.append(['hello'])
 
@@ -222,9 +222,9 @@ test('from session sessions pass encryption', async function (t) {
   await b.ready()
   await c.ready()
 
-  t.absent(a.encryptionKey)
-  t.ok(b.encryptionKey)
-  t.ok(c.encryptionKey)
+  t.absent(a.encryption)
+  t.ok(b.encryption)
+  t.ok(c.encryption)
 
   await c.close()
   await b.close()

@@ -425,10 +425,6 @@ In contrast to `core.key` this key does not allow you to verify the data but can
 
 Populated after `ready` has been emitted. Will be `null` before the event.
 
-#### `core.encryptionKey`
-
-Buffer containing the optional block encryption key of this core. Will be `null` unless block encryption is enabled.
-
 #### `core.length`
 
 How many blocks of data are available on this core.

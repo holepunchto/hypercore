@@ -546,10 +546,6 @@ class Hypercore extends EventEmitter {
     return this.core === null ? null : this.core.discoveryKey
   }
 
-  get encryptionKey () {
-    return this.encryption ? this.encryption.encryptionKey : null
-  }
-
   get manifest () {
     return this.core === null ? null : this.core.manifest
   }
