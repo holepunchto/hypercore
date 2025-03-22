@@ -1,3 +1,4 @@
+const process = require('process')
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const c = require('compact-encoding')
@@ -118,9 +119,26 @@ test('sessions - cannot set checkout if name not set', async function (t) {
   await core.close()
 })
 
-test('sessions - checkout breaks prologue', async function (t) {
+test.solo('sessions - checkout breaks prologue', async function (t) {
   const storage = await createStorage(t)
   const storage2 = await createStorage(t)
+
+  // Bare needs both handlers to have the test pass, whille
+  // Node only needs the uncaughtException handler
+  // To verify, run node test: npx brittle test/all.js
+  // Then comment out the process handler and uncomment the Bare handlers
+  // Now run `npm run test:bare` to verify the test passes
+  // Uncommenting any of the 2 handlers willl make it fail (unlike with Node)
+
+  /* Bare.on('uncaughtException', err => {
+    console.log('caught an uncaught bare exc', err)
+  })
+  Bare.on('unhandledRejection', reason => {
+    console.log('caught an unhandler bare rejection', reason)
+  }) */
+  process.on('uncaughtException', err => {
+    console.log('caught an uncaught node exc', err) // noop)
+  })
 
   const core = new Hypercore(storage)
 
@@ -139,22 +157,23 @@ test('sessions - checkout breaks prologue', async function (t) {
   await prologued.ready()
   await prologued.core.copyPrologue(core.state)
 
-  process.on('uncaughtException', noop)
-
   let session
   try {
     session = prologued.session({ name: 'fail', checkout: 7 })
     await session.ready()
     t.fail()
   } catch (err) {
+    // console.error(err)
     t.pass()
   }
+
+  console.log('closing all...')
 
   await session.close()
   await prologued.close()
   await core.close()
 
-  process.off('uncaughtException', noop)
+  // Bare.off('uncaughtException', noop)
 })
 
 function noop () {}
