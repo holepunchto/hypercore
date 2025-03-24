@@ -329,7 +329,7 @@ class Hypercore extends EventEmitter {
     if (!this.core.encryption && !this.core.unencrypted) {
       const e = getEncryptionOption(opts)
 
-      if (isEncryptionProvider(e)) {
+      if (HypercoreEncryption.isHypercoreEncryption(e)) {
         this.core.encryption = e
       } else if (e) {
         this.core.encryption = this._getLegacyEncryption(e.key, e.block)
@@ -1049,7 +1049,7 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    if (isEncryptionProvider(e)) return
+    if (HypercoreEncryption.isHypercoreEncryption(e)) return
 
     this.encryption = this._getLegacyEncryption(e.key, e.block)
 
@@ -1149,10 +1149,6 @@ function getEncryptionOption (opts) {
   if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
   if (!opts.encryption) return null
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
-}
-
-function isEncryptionProvider (e) {
-  return !!(e && (e instanceof HypercoreEncryption || (e.encrypt && typeof e.encrypt === 'function')))
 }
 
 function getLegacyBlockKey (hypercoreKey, encryptionKey, compat) {
