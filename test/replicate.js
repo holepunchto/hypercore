@@ -567,6 +567,7 @@ test('seek with timeout', async function (t) {
   t.plan(1)
 
   const a = await create(t)
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await a.seek(6, { timeout: 1 })
@@ -574,6 +575,8 @@ test('seek with timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  clearInterval(keepAlive)
 })
 
 test('seek with session options', async function (t) {
@@ -590,6 +593,7 @@ test('seek with session options', async function (t) {
   await s1.close()
 
   const s2 = a.session({ timeout: 1 })
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await s2.seek(100)
@@ -598,6 +602,7 @@ test('seek with session options', async function (t) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
 
+  clearInterval(keepAlive)
   await s2.close()
 })
 

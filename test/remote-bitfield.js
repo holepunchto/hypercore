@@ -84,6 +84,9 @@ test('bitfield messages sent on cache miss', async function (t) {
   const stats = empty.replicator.peers[0].stats
   t.is(stats.wireBitfield.rx, 0, 'initially no bitfields sent (sanity check')
 
+  // ensure "io"
+  const keepAlive = setInterval(() => {}, 10_000)
+
   await t.exception(
     async () => {
       await empty.get(1, { timeout: 100 })
@@ -92,6 +95,8 @@ test('bitfield messages sent on cache miss', async function (t) {
     'request on unavailable block times out (sanity check)'
   )
   t.is(stats.wireBitfield.rx, 1, 'Requests bitfield on cache miss')
+
+  clearInterval(keepAlive)
 })
 
 // Peer b as seen by peer a (b is the remote peer)

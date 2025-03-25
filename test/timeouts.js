@@ -57,6 +57,7 @@ test('get after timeout', async function (t) {
   t.plan(1)
 
   const core = await create(t)
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await core.get(0, { timeout: 1 })
@@ -64,12 +65,15 @@ test('get after timeout', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  clearInterval(keepAlive)
 })
 
 test('get after timeout with constructor', async function (t) {
   t.plan(1)
 
   const core = await create(t, { timeout: 1 })
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await core.get(0)
@@ -77,6 +81,8 @@ test('get after timeout with constructor', async function (t) {
   } catch (err) {
     t.is(err.code, 'REQUEST_TIMEOUT')
   }
+
+  clearInterval(keepAlive)
 })
 
 test('session get after timeout', async function (t) {
@@ -84,6 +90,7 @@ test('session get after timeout', async function (t) {
 
   const core = await create(t)
   const session = core.session({ timeout: 1 })
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await session.get(0)
@@ -93,6 +100,7 @@ test('session get after timeout', async function (t) {
   }
 
   await session.close()
+  clearInterval(keepAlive)
 })
 
 test('session get after inherited timeout', async function (t) {
@@ -100,6 +108,7 @@ test('session get after inherited timeout', async function (t) {
 
   const core = await create(t, { timeout: 1 })
   const session = core.session()
+  const keepAlive = setInterval(() => {}, 1000)
 
   try {
     await session.get(0)
@@ -109,6 +118,7 @@ test('session get after inherited timeout', async function (t) {
   }
 
   await session.close()
+  clearInterval(keepAlive)
 })
 
 test('core constructor timeout but disable on get', async function (t) {

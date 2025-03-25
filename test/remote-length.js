@@ -100,10 +100,15 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
     'Peer c can get the block peer b also has'
   )
 
+  // ensure "io"
+  const keepAlive = setInterval(() => {}, 10_000)
+
   await t.exception(
     async () => await c.get(nrBlocks - 2, getOpts),
     /REQUEST_TIMEOUT/,
     'Sanity check: peer c can not get blocks peer b does not have')
+
+  clearInterval(keepAlive)
 })
 
 test('truncates by the writer result in the updated contiguous length being announced', async function (t) {
