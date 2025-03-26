@@ -1069,7 +1069,7 @@ class Hypercore extends EventEmitter {
       ? encryptionKey
       : getLegacyBlockKey(this.key, encryptionKey, this.core.compat)
 
-    return HypercoreEncryption.createLegacyProvider(encryptionKey, blockKey)
+    return HypercoreEncryption.createLegacyProvider(blockKey)
   }
 }
 
