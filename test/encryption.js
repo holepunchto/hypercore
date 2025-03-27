@@ -1,11 +1,11 @@
-const fs = require('fs/promises')
-const path = require('path')
 const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
 const HypercoreEncryption = require('hypercore-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
+
+const fixturesRaw = require('./fixtures/encryption/v11.0.48.cjs')
 
 const encryptionKey = b4a.alloc(32, 'hello world')
 
@@ -284,10 +284,10 @@ test('encryption backwards compatibility', async function (t) {
   const blockKey = crypto.keyPair(b4a.alloc(32, 2))
 
   const fixtures = [
-    await getFixture('./fixtures/encryption/compat'),
-    await getFixture('./fixtures/encryption/default'),
-    await getFixture('./fixtures/encryption/default'),
-    await getFixture('./fixtures/encryption/block')
+    getFixture('compat'),
+    getFixture('default'),
+    getFixture('default'),
+    getFixture('block'),
   ]
 
   const compat = await create(t, null, { keyPair: compatKey, encryptionKey, compat: true })
@@ -355,8 +355,8 @@ function getBlock (core, index) {
   return b
 }
 
-async function getFixture (file) {
-  const raw = await fs.readFile(path.resolve(__dirname, file), 'utf8')
-  const blocks = raw.trim().split('\n').map(hex => b4a.from(hex, 'hex'))
-  return blocks
+function getFixture (name) {
+  const blocks = fixturesRaw[name]
+  console.log(blocks.map(b => b4a.from(b, 'base64')))
+  return blocks.map(b => b4a.from(b, 'base64'))
 }
