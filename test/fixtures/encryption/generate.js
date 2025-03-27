@@ -1,10 +1,12 @@
 // Generate encryption fixtures
 
 const fs = require('fs')
+const path = require('path')
 const crypto = require('hypercore-crypto')
 const tmpDir = require('test-tmp')
 
 const Hypercore = require('../../../')
+const { version } = require('../../../package.json')
 
 main()
 
@@ -39,7 +41,7 @@ async function main () {
   await def.append(largeBlock.toString('hex'))
   await block.append(largeBlock.toString('hex'))
 
-  const fixture = fs.createWriteStream('./encryption.cjs')
+  const fixture = fs.createWriteStream(path.join(__dirname, `v${version}`))
 
   fixture.write('/* eslint-disable */\n\n')
 
