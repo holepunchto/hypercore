@@ -50,7 +50,8 @@ async function main () {
 
   fixture.write('/* eslint-enable */\n')
 
-  await fixture.close()
+  fixture.end()
+  await new Promise(resolve => fixture.on('close', resolve))
 
   await compat.close()
   await def.close()
