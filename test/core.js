@@ -82,27 +82,30 @@ test('core - append and truncate', async function (t) {
   t.is(core.state.fork, 2)
 
   await core.state.truncate(2, 3)
-
   t.is(core.state.lastTruncation, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, -1)
+
   await core.state.truncate(2, 4)
-
   t.is(core.state.lastTruncation, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, -1)
+
   await core.state.truncate(2, 5)
-
   t.is(core.state.lastTruncation, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, -1)
+
   await core.state.truncate(2, 6)
-
   t.is(core.state.lastTruncation, 2)
 
   await core.state.append([b4a.from('a')])
-  await core.state.truncate(2, 7)
+  t.is(core.state.lastTruncation, -1)
 
+  await core.state.truncate(2, 7)
   t.is(core.state.lastTruncation, 2)
 
   // check that it was persisted
