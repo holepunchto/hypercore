@@ -18,7 +18,6 @@ async function main () {
   const blockKey = crypto.keyPair(Buffer.alloc(32, 2))
 
   const closing = []
-  const dir = await tmpDir({ teardown })
 
   const compat = new Hypercore(await tmpDir({ teardown }), { keyPair: compatKey, encryptionKey, compat: true })
   const def = new Hypercore(await tmpDir({ teardown }), { keyPair: defaultKey, encryptionKey, isBlockKey: false })

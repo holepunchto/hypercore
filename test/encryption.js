@@ -287,7 +287,7 @@ test('encryption backwards compatibility', async function (t) {
     getFixture('compat'),
     getFixture('default'),
     getFixture('default'),
-    getFixture('block'),
+    getFixture('block')
   ]
 
   const compat = await create(t, null, { keyPair: compatKey, encryptionKey, compat: true })
