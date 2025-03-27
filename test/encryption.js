@@ -357,6 +357,5 @@ function getBlock (core, index) {
 
 function getFixture (name) {
   const blocks = fixturesRaw[name]
-  console.log(blocks.map(b => b4a.from(b, 'base64')))
   return blocks.map(b => b4a.from(b, 'base64'))
 }
