@@ -1343,7 +1343,7 @@ test('manifest encoding', t => {
       namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
     }],
-    unencrypted: false
+    linked: []
   }
 
   t.alike(reencode(manifest), manifest)
@@ -1427,6 +1427,12 @@ test('manifest encoding', t => {
   manifest.allowPatch = false
   t.alike(reencode(manifest), manifest)
 
+  // with linked cores
+  manifest.version = 2
+  manifest.linked.push(b4a.alloc(32, 4))
+
+  t.alike(reencode(manifest), manifest)
+
   function reencode (m) {
     return c.decode(enc.manifest, c.encode(enc.manifest, m))
   }
@@ -1487,7 +1493,8 @@ function createMultiManifest (signers, prologue = null) {
       namespace: caps.DEFAULT_NAMESPACE,
       publicKey: s.manifest.signers[0].publicKey
     })),
-    prologue
+    prologue,
+    linked: []
   }
 }
 
