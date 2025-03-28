@@ -56,7 +56,12 @@ test('core - append and truncate', async function (t) {
     b4a.from('ooo')
   ])
 
+  t.is(core.state.lastTruncation, null)
+
   await core.state.truncate(3, 1)
+
+  t.is(core.state.lastTruncation.from, 4)
+  t.is(core.state.lastTruncation.to, 3)
 
   t.is(core.state.length, 3)
   t.is(core.state.byteLength, 12)
@@ -71,23 +76,44 @@ test('core - append and truncate', async function (t) {
 
   await core.state.truncate(3, 2)
 
+  t.is(core.state.lastTruncation.from, 7)
+  t.is(core.state.lastTruncation.to, 3)
+
   t.is(core.state.length, 3)
   t.is(core.state.byteLength, 12)
   t.is(core.state.fork, 2)
 
   await core.state.truncate(2, 3)
+  t.is(core.state.lastTruncation.from, 3)
+  t.is(core.state.lastTruncation.to, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, null)
+
   await core.state.truncate(2, 4)
+  t.is(core.state.lastTruncation.from, 3)
+  t.is(core.state.lastTruncation.to, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, null)
+
   await core.state.truncate(2, 5)
+  t.is(core.state.lastTruncation.from, 3)
+  t.is(core.state.lastTruncation.to, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, null)
+
   await core.state.truncate(2, 6)
+  t.is(core.state.lastTruncation.from, 3)
+  t.is(core.state.lastTruncation.to, 2)
 
   await core.state.append([b4a.from('a')])
+  t.is(core.state.lastTruncation, null)
+
   await core.state.truncate(2, 7)
+  t.is(core.state.lastTruncation.from, 3)
+  t.is(core.state.lastTruncation.to, 2)
 
   // check that it was persisted
   const coreReopen = await reopen()
@@ -95,6 +121,7 @@ test('core - append and truncate', async function (t) {
   t.is(coreReopen.state.length, 2)
   t.is(coreReopen.state.byteLength, 10)
   t.is(coreReopen.state.fork, 7)
+  t.is(coreReopen.state.lastTruncation, null)
   // t.is(coreReopen.header.hints.reorgs.length, 4)
 })
 
