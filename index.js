@@ -417,7 +417,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.manifest && !this.core.header.manifest) {
-      await this.core.setManifest(opts.manifest)
+      await this.core.setManifest(createManifest(opts.manifest))
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
