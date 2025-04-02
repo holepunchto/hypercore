@@ -248,7 +248,7 @@ test('session keeps encryption', async function (t) {
 test('block encryption module', async function (t) {
   const blindingKey = b4a.alloc(32, 0)
 
-  const encryption = new HypercoreEncryption(blindingKey, getKey, { id: 1 })
+  const encryption = new HypercoreEncryption(blindingKey, getKey, { preopen: Promise.resolve(1) })
 
   await encryption.ready()
 
