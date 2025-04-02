@@ -73,6 +73,7 @@
     "standard": "^17.0.0",
     "test-tmp": "^1.0.2",
     "tiny-byte-size": "^1.1.0",
-    "udx-native": "^1.6.1"
+    "udx-native": "^1.6.1",
+    "uncaughts": "^1.0.0"
   }
 }
