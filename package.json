@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "standard && node test/all.js",
+    "test:bare": "bare test/all.js",
     "test:generate": "brittle -r test/all.js test/*.js"
   },
   "repository": {
@@ -74,6 +75,6 @@
     "test-tmp": "^1.0.2",
     "tiny-byte-size": "^1.1.0",
     "udx-native": "^1.6.1",
-    "uncaughts": "^1.0.0"
+    "uncaughts": "^1.1.0"
   }
 }

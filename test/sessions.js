@@ -119,7 +119,7 @@ test('sessions - cannot set checkout if name not set', async function (t) {
   await core.close()
 })
 
-test.solo('sessions - checkout breaks prologue', async function (t) {
+test('sessions - checkout breaks prologue', async function (t) {
   const storage = await createStorage(t)
   const storage2 = await createStorage(t)
 
@@ -148,11 +148,8 @@ test.solo('sessions - checkout breaks prologue', async function (t) {
     await session.ready()
     t.fail()
   } catch (err) {
-    // console.error(err)
     t.pass()
   }
-
-  console.log('closing all...')
 
   await session.close()
   await prologued.close()
