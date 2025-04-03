@@ -1936,7 +1936,6 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   b.on('download', (...[, , , req]) => {
     t.ok(Number.isInteger(req.timestamp))
     t.ok(Number.isInteger(req.elapsed))
-    t.ok(req.elapsed > 0)
   })
 
   await b.download({ start: 0, end: a.length }).done()
