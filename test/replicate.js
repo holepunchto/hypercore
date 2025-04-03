@@ -1925,6 +1925,21 @@ test('get block in middle page', async function (t) {
   await b1.close()
 })
 
+test('download event includes "elapsed" time in metadata', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a'])
+
+  replicate(a, b, t)
+
+  b.on('download', (...[, , , metadata]) => {
+    t.ok(Number.isInteger(metadata.elapsed))
+  })
+
+  await b.download({ start: 0, end: a.length }).done()
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
