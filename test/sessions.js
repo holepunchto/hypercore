@@ -155,7 +155,7 @@ test('sessions - checkout breaks prologue', async function (t) {
   await prologued.close()
   await core.close()
 
-  uncaughts.on(noop)
+  uncaughts.off(noop)
 })
 
 function noop () {}
