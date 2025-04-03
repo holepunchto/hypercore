@@ -1,3 +1,4 @@
+const uncaughts = require('uncaughts')
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const c = require('compact-encoding')
@@ -122,6 +123,8 @@ test('sessions - checkout breaks prologue', async function (t) {
   const storage = await createStorage(t)
   const storage2 = await createStorage(t)
 
+  uncaughts.on(noop)
+
   const core = new Hypercore(storage)
 
   for (let i = 0; i < 10; i++) await core.append(b4a.from([i]))
@@ -139,8 +142,6 @@ test('sessions - checkout breaks prologue', async function (t) {
   await prologued.ready()
   await prologued.core.copyPrologue(core.state)
 
-  process.on('uncaughtException', noop)
-
   let session
   try {
     session = prologued.session({ name: 'fail', checkout: 7 })
@@ -154,7 +155,7 @@ test('sessions - checkout breaks prologue', async function (t) {
   await prologued.close()
   await core.close()
 
-  process.off('uncaughtException', noop)
+  uncaughts.off(noop)
 })
 
 function noop () {}
