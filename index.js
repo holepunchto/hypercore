@@ -923,7 +923,7 @@ class Hypercore extends EventEmitter {
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const preappend = this.encryption && this._preappend
-    if (preappend) await this.encryption.ready()
+    if (preappend) await this._ensureEncryption()
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
@@ -939,6 +939,11 @@ class Hypercore extends EventEmitter {
     }
 
     return this.state.append(buffers, { keyPair, signature, preappend })
+  }
+
+  _ensureEncryption () {
+    this._updateEncryption()
+    return this.encryption.load(-1)
   }
 
   async signable (length = -1, fork = -1) {
@@ -1054,9 +1059,11 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    if (HypercoreEncryption.isHypercoreEncryption(e)) return
+    if (!HypercoreEncryption.isHypercoreEncryption(e)) {
+      this.encryption = this._getLegacyEncryption(e.key, e.block)
+    }
 
-    this.encryption = this._getLegacyEncryption(e.key, e.block)
+    this.encryption.setContext(this.key)
 
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
@@ -1085,8 +1092,6 @@ function toHex (buf) {
 async function preappend (blocks) {
   const offset = this.state.length
   const fork = this.state.encryptionFork
-
-  if (this.encryption.compat !== this.core.compat) this._updateEncryption()
 
   for (let i = 0; i < blocks.length; i++) {
     await this.encryption.encrypt(offset + i, blocks[i], fork)

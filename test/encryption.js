@@ -248,9 +248,7 @@ test('session keeps encryption', async function (t) {
 test('block encryption module', async function (t) {
   const blindingKey = b4a.alloc(32, 0)
 
-  const encryption = new HypercoreEncryption(blindingKey, getKey, { preopen: Promise.resolve(1) })
-
-  await encryption.ready()
+  const encryption = new HypercoreEncryption(blindingKey, { getBlockKey })
 
   const core = await create(t, null, { encryption })
   await core.ready()
@@ -266,12 +264,16 @@ test('block encryption module', async function (t) {
   t.alike(await core.get(1), b4a.from('1'))
   t.alike(await core.get(2), b4a.from('2'))
 
-  async function getKey (id) {
+  async function getBlockKey (id, context) {
+    if (id === -1) id = 1
+
+    t.alike(context, core.key)
+
     await Promise.resolve()
     return {
+      id,
       version: 1,
-      key: b4a.alloc(32, id),
-      padding: 16
+      key: b4a.alloc(32, id)
     }
   }
 })
