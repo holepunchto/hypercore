@@ -799,10 +799,10 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      await this._updateEncryption()
-
       await this.encryption.decrypt(index, block, this.core)
     }
+
+    await this._updatePadding()
 
     return this._decode(encoding, block)
   }
@@ -1081,7 +1081,7 @@ class Hypercore extends EventEmitter {
 
   _ensureEncryption () {
     if (!this.encryption) return
-    this._updateEncryption()
+    this._updatePadding()
 
     if (this.encryption.version === -1) return this._loadEncryption()
   }
@@ -1090,8 +1090,7 @@ class Hypercore extends EventEmitter {
     return this.encryption.load(-1, this.core)
   }
 
-  _updateEncryption () {
-    if (!this.core.encryption && this.encryption) this.core.encryption = this.encryption
+  _updatePadding () {
     if (this.encryption && this.padding === 0 && this.key && this.manifest) {
       this.padding = this.encryption.paddingLength(this.core)
     }
