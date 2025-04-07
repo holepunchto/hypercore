@@ -772,7 +772,7 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
+      await this._ensureEncryption()
 
       await this.encryption.decrypt(index, block)
     }
