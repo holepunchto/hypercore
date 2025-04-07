@@ -267,7 +267,7 @@ test('block encryption module', async function (t) {
   async function getBlockKey (id, context) {
     if (id === -1) id = 1
 
-    t.alike(context, core.key)
+    t.alike(context, { key: core.key, manifest: core.manifest })
 
     await Promise.resolve()
     return {

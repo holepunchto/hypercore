@@ -235,7 +235,7 @@ class Hypercore extends EventEmitter {
   }
 
   setEncryptionKey (encryptionKey, opts) {
-    const encryption = this._getLegacyEncryption(encryptionKey, !!(opts && opts.block))
+    const encryption = this._getEncryptionProvider(encryptionKey, !!(opts && opts.block))
     return this.setEncryption(encryption, opts)
   }
 
@@ -334,7 +334,7 @@ class Hypercore extends EventEmitter {
       if (HypercoreEncryption.isHypercoreEncryption(e)) {
         this.core.encryption = e
       } else if (e) {
-        this.core.encryption = this._getLegacyEncryption(e.key, e.block)
+        this.core.encryption = this._getEncryptionProvider(e.key, e.block)
       }
     }
 
@@ -923,7 +923,7 @@ class Hypercore extends EventEmitter {
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
     const preappend = this.encryption && this._preappend
-    if (preappend) await this._ensureEncryption()
+    await this._ensureEncryption()
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
@@ -942,6 +942,7 @@ class Hypercore extends EventEmitter {
   }
 
   _ensureEncryption () {
+    if (!this.encryption) return
     this._updateEncryption()
     return this.encryption.load(-1)
   }
@@ -1060,22 +1061,38 @@ class Hypercore extends EventEmitter {
   _updateEncryption () {
     const e = this.encryption
     if (!HypercoreEncryption.isHypercoreEncryption(e)) {
-      this.encryption = this._getLegacyEncryption(e.key, e.block)
+      this.encryption = this._getEncryptionProvider(e.key, e.block)
     }
 
-    this.encryption.setContext(this.key)
+    this.encryption.setContext({ key: this.key, manifest: this.manifest })
 
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
 
-  _getLegacyEncryption (encryptionKey, block) {
+  _getEncryptionProvider (encryptionKey, block) {
     if (!encryptionKey) return null
 
     const blockKey = block
       ? encryptionKey
       : getLegacyBlockKey(this.key, encryptionKey, this.core.compat)
 
-    return HypercoreEncryption.createLegacyProvider(blockKey)
+    this._encryptionBlockKey = blockKey
+
+    return new HypercoreEncryption(crypto.hash(blockKey), {
+      getBlockKey: this._getBlockKey.bind(this),
+      context: {
+        key: this.key,
+        manifest: this.manfiest
+      }
+    })
+  }
+
+  _getBlockKey (id, context, encryption) {
+    return {
+      id: 0,
+      version: context.manifest.version <= 1 ? 0 : 1,
+      key: this._encryptionBlockKey
+    }
   }
 }
 
