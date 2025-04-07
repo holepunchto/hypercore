@@ -268,7 +268,7 @@ class Hypercore extends EventEmitter {
       return
     }
 
-    if (!HypercoreEncryption.isHypercoreEncryption(encryption)) {
+    if (!(encryption instanceof HypercoreEncryption)) {
       throw new Error('Expected hypercore encryption provider')
     }
 
@@ -351,7 +351,7 @@ class Hypercore extends EventEmitter {
 
     const e = getEncryptionOption(opts)
     if (!this.core.encryption && e) {
-      if (HypercoreEncryption.isHypercoreEncryption(e)) {
+      if (e instanceof HypercoreEncryption) {
         this.core.encryption = e
       } else {
         this.core.encryption = this._getEncryptionProvider(e.key, e.block)
@@ -1076,11 +1076,11 @@ class Hypercore extends EventEmitter {
 
   _updateEncryption () {
     const e = this.encryption
-    if (!HypercoreEncryption.isHypercoreEncryption(e)) {
+    if (!(e instanceof HypercoreEncryption)) {
       this.encryption = this._getEncryptionProvider(e.key, e.block)
     }
 
-    if (this.padding === 0 || !this.key || !this.manifest) {
+    if (this.padding === 0 && this.key && this.manifest) {
       this.padding = this.encryption.paddingLength(this.core)
     }
 
