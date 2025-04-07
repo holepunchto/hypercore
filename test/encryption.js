@@ -110,6 +110,24 @@ test('encrypted replication', async function (t) {
   })
 })
 
+test('encrypted seek via replication', async function (t) {
+  const a = await create(t, { encryption: { key: encryptionKey } })
+  const b = await create(t, a.key, { encryption: { key: encryptionKey } })
+
+  await a.append(['hello', 'world', '!'])
+
+  replicate(a, b, t)
+
+  t.alike(await b.seek(0), [0, 0])
+  t.alike(await b.seek(4), [0, 4])
+  t.alike(await b.seek(5), [1, 0])
+  t.alike(await b.seek(6), [1, 1])
+  t.alike(await b.seek(6), [1, 1])
+  t.alike(await b.seek(9), [1, 4])
+  t.alike(await b.seek(10), [2, 0])
+  t.alike(await b.seek(11), [3, 0])
+})
+
 test('encrypted session', async function (t) {
   const a = await create(t, { encryption: { key: encryptionKey } })
 
@@ -245,19 +263,18 @@ test('session keeps encryption', async function (t) {
   await a.close()
 })
 
-test('block encryption module', async function (t) {
+// block encryption module is only available after bmping manifest version
+test.skip('block encryption module', async function (t) {
   const blindingKey = b4a.alloc(32, 0)
 
-  const encryption = new HypercoreEncryption(blindingKey, getKey, { preopen: Promise.resolve(1) })
-
-  await encryption.ready()
+  const encryption = new HypercoreEncryption(blindingKey, { getBlockKey })
 
   const core = await create(t, null, { encryption })
   await core.ready()
 
   await core.append('0')
 
-  await encryption.load(2)
+  await encryption.load(2, core.core)
 
   await core.append('1')
   await core.append('2')
@@ -266,12 +283,16 @@ test('block encryption module', async function (t) {
   t.alike(await core.get(1), b4a.from('1'))
   t.alike(await core.get(2), b4a.from('2'))
 
-  async function getKey (id) {
+  async function getBlockKey (id, context) {
+    if (id === -1) id = 1
+
+    t.alike(context, { key: core.key, manifest: core.manifest })
+
     await Promise.resolve()
     return {
+      id,
       version: 1,
-      key: b4a.alloc(32, id),
-      padding: 16
+      key: b4a.alloc(32, id)
     }
   }
 })
