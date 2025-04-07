@@ -727,6 +727,18 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
+    if (!this.core.manifest) {
+      const req = this.replicator.addUpgrade(this.activeRequests)
+      try {
+        await req.promise
+      } catch (err) {
+        if (isSessionMoved(err)) return this.seek(bytes, opts)
+        throw err
+      }
+    }
+
+    this._updatePadding()
+
     const s = MerkleTree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
@@ -802,7 +814,7 @@ class Hypercore extends EventEmitter {
       await this.encryption.decrypt(index, block, this.core)
     }
 
-    await this._updatePadding()
+    this._updatePadding()
 
     return this._decode(encoding, block)
   }
