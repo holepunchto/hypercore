@@ -1080,7 +1080,7 @@ class Hypercore extends EventEmitter {
       this.encryption = this._getEncryptionProvider(e.key, e.block)
     }
 
-    if (this.padding === 0) {
+    if (this.padding === 0 || !this.key || !this.manifest) {
       this.padding = this.encryption.paddingLength(this.core)
     }
 
