@@ -86,7 +86,6 @@ class Hypercore extends EventEmitter {
 
     this.core = null
     this.state = null
-    this.padding = 0
     this.encryption = null
     this.extensions = new Map()
 
@@ -606,7 +605,6 @@ class Hypercore extends EventEmitter {
   get byteLength () {
     if (this.opened === false) return 0
     if (this._snapshot) return this._snapshot.byteLength
-    this._updatePadding()
     return this.state.byteLength - (this.state.length * this.padding)
   }
 
@@ -622,6 +620,14 @@ class Hypercore extends EventEmitter {
   get fork () {
     if (this.opened === false) return 0
     return this.state.fork
+  }
+
+  get padding () {
+    if (this.encryption && this.key && this.manifest) {
+      return this.encryption.padding(this.core)
+    }
+
+    return 0
   }
 
   get peers () {
@@ -740,8 +746,6 @@ class Hypercore extends EventEmitter {
       }
     }
 
-    this._updatePadding()
-
     const s = MerkleTree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
@@ -815,8 +819,6 @@ class Hypercore extends EventEmitter {
 
       await this.encryption.decrypt(index, block, this.core)
     }
-
-    this._updatePadding()
 
     return this._decode(encoding, block)
   }
@@ -1095,15 +1097,7 @@ class Hypercore extends EventEmitter {
 
   _ensureEncryption () {
     if (!this.encryption) return
-    this._updatePadding()
-
     if (this.encryption.version === -1) return this.encryption.load(-1, this.core)
-  }
-
-  _updatePadding () {
-    if (this.encryption && this.padding === 0 && this.key && this.manifest) {
-      this.padding = this.encryption.paddingLength(this.core)
-    }
   }
 
   _getEncryptionProvider (encryptionKey, block) {
