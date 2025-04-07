@@ -1095,11 +1095,7 @@ class Hypercore extends EventEmitter {
     if (!this.encryption) return
     this._updatePadding()
 
-    if (this.encryption.version === -1) return this._loadEncryption()
-  }
-
-  _loadEncryption () {
-    return this.encryption.load(-1, this.core)
+    if (this.encryption.version === -1) return this.encryption.load(-1, this.core)
   }
 
   _updatePadding () {
