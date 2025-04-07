@@ -606,6 +606,7 @@ class Hypercore extends EventEmitter {
   get byteLength () {
     if (this.opened === false) return 0
     if (this._snapshot) return this._snapshot.byteLength
+    this._updatePadding()
     return this.state.byteLength - (this.state.length * this.padding)
   }
 
