@@ -256,7 +256,7 @@ test.skip('block encryption module', async function (t) {
 
   await core.append('0')
 
-  await encryption.load(2, core.encryptionCtx)
+  await encryption.load(2, core.core)
 
   await core.append('1')
   await core.append('2')

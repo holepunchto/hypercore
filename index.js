@@ -35,6 +35,26 @@ const inspect = Symbol.for('nodejs.util.inspect.custom')
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
+class DefaultEncryption extends HypercoreEncryption {
+  constructor (blockKey, opts) {
+    const blindingKey = crypto.hash(blockKey)
+
+    super(blindingKey, opts)
+
+    this.blockKey = blockKey
+  }
+
+  _getBlockKey (id, context) {
+    if (!context.manifest) return null
+
+    return {
+      id: 0,
+      version: context.manifest.version <= 1 ? 0 : 1,
+      key: this.blockKey
+    }
+  }
+}
+
 class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
     super()
@@ -331,8 +351,6 @@ class Hypercore extends EventEmitter {
 
     const e = getEncryptionOption(opts)
     if (!this.core.encryption && e) {
-      this.core._ensureEncryptionContext()
-
       if (HypercoreEncryption.isHypercoreEncryption(e)) {
         this.core.encryption = e
       } else {
@@ -772,7 +790,7 @@ class Hypercore extends EventEmitter {
 
       await this._ensureEncryption()
 
-      await this.encryption.decrypt(index, block, this.core.encryptionContext)
+      await this.encryption.decrypt(index, block, this.core)
     }
 
     return this._decode(encoding, block)
@@ -939,12 +957,6 @@ class Hypercore extends EventEmitter {
     return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
-  _ensureEncryption () {
-    if (!this.encryption) return
-    this._updateEncryption()
-    return this.encryption.load(-1, this.core.encryptionContext)
-  }
-
   async signable (length = -1, fork = -1) {
     if (this.opened === false) await this.opening
     if (length === -1) length = this.length
@@ -1056,25 +1068,20 @@ class Hypercore extends EventEmitter {
     return block
   }
 
+  _ensureEncryption () {
+    if (!this.encryption) return
+    this._updateEncryption()
+    return this.encryption.load(-1, this.core)
+  }
+
   _updateEncryption () {
-    this.core._ensureEncryptionContext()
-
     const e = this.encryption
-    const ctx = this.core.encryptionContext
-
     if (!HypercoreEncryption.isHypercoreEncryption(e)) {
       this.encryption = this._getEncryptionProvider(e.key, e.block)
     }
 
-    if (!ctx.key) ctx.key = this.key
-    if (!ctx.manifest) ctx.manifest = this.manifest
-
     if (this.padding === 0) {
-      try {
-        this.padding = this.encryption.paddingLength(ctx)
-      } catch {
-        // will retry later
-      }
+      this.padding = this.encryption.paddingLength(this.core)
     }
 
     if (e === this.core.encryption) this.core.encryption = this.encryption
@@ -1087,11 +1094,8 @@ class Hypercore extends EventEmitter {
       ? encryptionKey
       : getLegacyBlockKey(this.key, encryptionKey, this.core.compat)
 
-    this.core.encryptionContext.blockKey = blockKey
-
-    return new HypercoreEncryption(crypto.hash(blockKey), { getBlockKey: getDefaultBlockKey })
+    return new DefaultEncryption(blockKey)
   }
-
 }
 
 module.exports = Hypercore
@@ -1109,7 +1113,7 @@ async function preappend (blocks) {
   const fork = this.state.encryptionFork
 
   for (let i = 0; i < blocks.length; i++) {
-    await this.encryption.encrypt(offset + i, blocks[i], fork, this.core.encryptionContext)
+    await this.encryption.encrypt(offset + i, blocks[i], fork, this.core)
   }
 }
 
