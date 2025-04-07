@@ -1189,13 +1189,3 @@ function getLegacyBlockKey (hypercoreKey, encryptionKey, compat) {
 
   return key
 }
-
-function getDefaultBlockKey (id, context) {
-  if (!context.manifest) return null
-
-  return {
-    id: 0,
-    version: context.manifest.version <= 1 ? 0 : 1,
-    key: context.blockKey
-  }
-}
