@@ -1071,7 +1071,7 @@ class Hypercore extends EventEmitter {
   _ensureEncryption () {
     if (!this.encryption) return
     this._updateEncryption()
-    if (this.encryption.version === -1) return this.encryption.load(-1, this.core)
+    if (this.encryption.version === -1) return this._loadEncryption()
   }
 
   _loadEncryption () {
