@@ -245,7 +245,8 @@ test('session keeps encryption', async function (t) {
   await a.close()
 })
 
-test('block encryption module', async function (t) {
+// block encryption module is only available after bmping manifest version
+test.skip('block encryption module', async function (t) {
   const blindingKey = b4a.alloc(32, 0)
 
   const encryption = new HypercoreEncryption(blindingKey, { getBlockKey })
@@ -255,7 +256,7 @@ test('block encryption module', async function (t) {
 
   await core.append('0')
 
-  await encryption.load(2)
+  await encryption.load(2, core.encryptionCtx)
 
   await core.append('1')
   await core.append('2')

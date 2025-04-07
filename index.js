@@ -55,6 +55,7 @@ class Hypercore extends EventEmitter {
 
     this.core = null
     this.state = null
+    this.padding = 0
     this.encryption = null
     this.extensions = new Map()
 
@@ -328,12 +329,13 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption) {
-      const e = getEncryptionOption(opts)
+    const e = getEncryptionOption(opts)
+    if (!this.core.encryption && e) {
+      this.core._ensureEncryptionContext()
 
       if (HypercoreEncryption.isHypercoreEncryption(e)) {
         this.core.encryption = e
-      } else if (e) {
+      } else {
         this.core.encryption = this._getEncryptionProvider(e.key, e.block)
       }
     }
@@ -596,10 +598,6 @@ class Hypercore extends EventEmitter {
     return this.opened === false ? [] : this.core.replicator.peers
   }
 
-  get padding () {
-    return this.encryption === null ? 0 : this.encryption.padding
-  }
-
   get globalCache () {
     return this.opened === false ? null : this.core.globalCache
   }
@@ -774,7 +772,7 @@ class Hypercore extends EventEmitter {
 
       await this._ensureEncryption()
 
-      await this.encryption.decrypt(index, block)
+      await this.encryption.decrypt(index, block, this.core.encryptionContext)
     }
 
     return this._decode(encoding, block)
@@ -944,7 +942,7 @@ class Hypercore extends EventEmitter {
   _ensureEncryption () {
     if (!this.encryption) return
     this._updateEncryption()
-    return this.encryption.load(-1)
+    return this.encryption.load(-1, this.core.encryptionContext)
   }
 
   async signable (length = -1, fork = -1) {
@@ -1059,12 +1057,25 @@ class Hypercore extends EventEmitter {
   }
 
   _updateEncryption () {
+    this.core._ensureEncryptionContext()
+
     const e = this.encryption
+    const ctx = this.core.encryptionContext
+
     if (!HypercoreEncryption.isHypercoreEncryption(e)) {
       this.encryption = this._getEncryptionProvider(e.key, e.block)
     }
 
-    this.encryption.setContext({ key: this.key, manifest: this.manifest })
+    if (!ctx.key) ctx.key = this.key
+    if (!ctx.manifest) ctx.manifest = this.manifest
+
+    if (this.padding === 0) {
+      try {
+        this.padding = this.encryption.paddingLength(ctx)
+      } catch {
+        // will retry later
+      }
+    }
 
     if (e === this.core.encryption) this.core.encryption = this.encryption
   }
@@ -1076,22 +1087,20 @@ class Hypercore extends EventEmitter {
       ? encryptionKey
       : getLegacyBlockKey(this.key, encryptionKey, this.core.compat)
 
-    this._encryptionBlockKey = blockKey
+    this.core.encryptionContext.blockKey = blockKey
 
     return new HypercoreEncryption(crypto.hash(blockKey), {
-      getBlockKey: this._getBlockKey.bind(this),
-      context: {
-        key: this.key,
-        manifest: this.manfiest
-      }
+      getBlockKey: this._getBlockKey.bind(this) // only set once per session
     })
   }
 
-  _getBlockKey (id, context, encryption) {
+  _getBlockKey (id, context) {
+    if (!context.manifest) return null
+
     return {
       id: 0,
-      version: context.manifest.version <= 1 ? 0 : 1,
-      key: this._encryptionBlockKey
+      version: this.manifest.version <= 1 ? 0 : 1,
+      key: context.blockKey
     }
   }
 }
@@ -1111,7 +1120,7 @@ async function preappend (blocks) {
   const fork = this.state.encryptionFork
 
   for (let i = 0; i < blocks.length; i++) {
-    await this.encryption.encrypt(offset + i, blocks[i], fork)
+    await this.encryption.encrypt(offset + i, blocks[i], fork, this.core.encryptionContext)
   }
 }
 
