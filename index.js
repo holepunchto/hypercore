@@ -727,8 +727,10 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
+    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+
     if (this.encryption && !this.core.manifest) {
-      const req = this.replicator.addUpgrade(this.activeRequests)
+      const req = this.replicator.addUpgrade(activeRequests)
       try {
         await req.promise
       } catch (err) {
@@ -748,7 +750,6 @@ class Hypercore extends EventEmitter {
 
     if (!this._shouldWait(opts, this.wait)) return null
 
-    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.core.replicator.addSeek(activeRequests, s)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
