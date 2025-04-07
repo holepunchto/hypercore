@@ -1089,20 +1089,9 @@ class Hypercore extends EventEmitter {
 
     this.core.encryptionContext.blockKey = blockKey
 
-    return new HypercoreEncryption(crypto.hash(blockKey), {
-      getBlockKey: this._getBlockKey.bind(this) // only set once per session
-    })
+    return new HypercoreEncryption(crypto.hash(blockKey), { getBlockKey: getDefaultBlockKey })
   }
 
-  _getBlockKey (id, context) {
-    if (!context.manifest) return null
-
-    return {
-      id: 0,
-      version: this.manifest.version <= 1 ? 0 : 1,
-      key: context.blockKey
-    }
-  }
 }
 
 module.exports = Hypercore
@@ -1195,4 +1184,14 @@ function getLegacyBlockKey (hypercoreKey, encryptionKey, compat) {
   else sodium.crypto_generichash_batch(key, [caps.LEGACY_BLOCK_ENCRYPTION, hypercoreKey, encryptionKey])
 
   return key
+}
+
+function getDefaultBlockKey (id, context) {
+  if (!context.manifest) return null
+
+  return {
+    id: 0,
+    version: context.manifest.version <= 1 ? 0 : 1,
+    key: context.blockKey
+  }
 }
