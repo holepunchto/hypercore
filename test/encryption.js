@@ -110,6 +110,24 @@ test('encrypted replication', async function (t) {
   })
 })
 
+test('encrypted seek via replication', async function (t) {
+  const a = await create(t, { encryption: { key: encryptionKey } })
+  const b = await create(t, a.key, { encryption: { key: encryptionKey } })
+
+  await a.append(['hello', 'world', '!'])
+
+  replicate(a, b, t)
+
+  t.alike(await b.seek(0), [0, 0])
+  t.alike(await b.seek(4), [0, 4])
+  t.alike(await b.seek(5), [1, 0])
+  t.alike(await b.seek(6), [1, 1])
+  t.alike(await b.seek(6), [1, 1])
+  t.alike(await b.seek(9), [1, 4])
+  t.alike(await b.seek(10), [2, 0])
+  t.alike(await b.seek(11), [3, 0])
+})
+
 test('encrypted session', async function (t) {
   const a = await create(t, { encryption: { key: encryptionKey } })
 

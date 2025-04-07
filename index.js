@@ -727,7 +727,7 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    if (!this.core.manifest) {
+    if (this.encryption && !this.core.manifest) {
       const req = this.replicator.addUpgrade(this.activeRequests)
       try {
         await req.promise
