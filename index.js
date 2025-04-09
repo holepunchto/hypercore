@@ -785,7 +785,7 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
+      await this.encryption.update(this.core)
 
       await this.encryption.decrypt(index, block, this.core)
     }
@@ -1064,12 +1064,6 @@ class Hypercore extends EventEmitter {
     return block
   }
 
-  _updateEncryption () {
-    const e = this.encryption
-    this.encryption = new DefaultEncryption(e.key, this.key, { compat: this.core.compat, block: b4a.equals(e.keys.block, e.key) })
-    if (e === this.core.encryption) this.core.encryption = this.encryption
-  }
-
   _getEncryptionProvider (encryptionKey, block) {
     if (!encryptionKey) return null
     return new DefaultEncryption(encryptionKey, this.key, { block, compat: this.core.compat })
@@ -1090,7 +1084,7 @@ async function preappend (blocks) {
   const offset = this.state.length
   const fork = this.state.encryptionFork
 
-  if (this.encryption.compat !== this.core.encryption) this._updateEncryption()
+  await this.encryption.update(this.core)
 
   for (let i = 0; i < blocks.length; i++) {
     await this.encryption.encrypt(offset + i, blocks[i], fork, this.core)
