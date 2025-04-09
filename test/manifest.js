@@ -1343,7 +1343,8 @@ test('manifest encoding', t => {
       namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
     }],
-    linked: null
+    linked: null,
+    legacyBlocks: 0
   }
 
   t.alike(reencode(manifest), manifest)
@@ -1430,6 +1431,7 @@ test('manifest encoding', t => {
   // with linked cores
   manifest.version = 2
   manifest.linked = [b4a.alloc(32, 4)]
+  manifest.legacyBlocks = 200
 
   t.alike(reencode(manifest), manifest)
 
