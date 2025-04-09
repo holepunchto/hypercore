@@ -1,7 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
-const HypercoreEncryption = require('hypercore-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
 
@@ -263,10 +262,9 @@ test('session keeps encryption', async function (t) {
   await a.close()
 })
 
+// block encryption module is only available after bmping manifest version
 test('block encryption module', async function (t) {
   class XOREncryption {
-    constructor () {}
-
     padding () {
       return 0
     }
@@ -288,7 +286,7 @@ test('block encryption module', async function (t) {
     }
   }
 
-  const core = await create(t, null, { encryption: new XOREncryption })
+  const core = await create(t, null, { encryption: new XOREncryption() })
   await core.ready()
 
   await core.append('0')

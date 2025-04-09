@@ -68,6 +68,8 @@ You can also set valueEncoding to any [compact-encoding](https://github.com/comp
 
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
+The user may provide a custom encryption module as `opts.encryption`, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
 #### `const { length, byteLength } = await core.append(block)`
 
 Append a block of data (or an array of blocks) to the core.
