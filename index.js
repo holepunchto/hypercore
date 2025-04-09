@@ -3,10 +3,8 @@ const isOptions = require('is-options')
 const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
 const c = require('compact-encoding')
-const sodium = require('sodium-universal')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const HypercoreEncryption = require('hypercore-encryption')
 const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
@@ -15,6 +13,7 @@ const unslab = require('unslab')
 const Core = require('./lib/core')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
@@ -34,37 +33,6 @@ const inspect = Symbol.for('nodejs.util.inspect.custom')
 // Hypercore actually does not have any notion of max/min block sizes
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
-
-class DefaultEncryption extends HypercoreEncryption {
-  constructor (encryptionKey, isBlock, opts) {
-    super(opts)
-
-    this.encryptionKey = encryptionKey
-    this.isBlock = !!isBlock
-
-    this.blockKey = null
-  }
-
-  _init (context) {
-    this.blockKey = getLegacyBlockKey(context.key, this.encryptionKey, context.compat, this.isBlock)
-  }
-
-  _getBlockKey (id, context) {
-    if (!this.blockKey) this._init(context)
-
-    return {
-      id: 0,
-      version: context.manifest.version <= 1 ? 0 : 1,
-      key: this.blockKey
-    }
-  }
-
-  _getBlindingKey (context) {
-    if (!this.blockKey) this._init(context)
-
-    return crypto.hash(this.blockKey)
-  }
-}
 
 class Hypercore extends EventEmitter {
   constructor (storage, key, opts) {
@@ -181,7 +149,7 @@ class Hypercore extends EventEmitter {
   }
 
   static blockEncryptionKey (key, encryptionKey) {
-    return HypercoreEncryption.blockEncryptionKey(key, encryptionKey)
+    return DefaultEncryption.blockEncryptionKey(key, encryptionKey)
   }
 
   static getProtocolMuxer (stream) {
@@ -278,8 +246,8 @@ class Hypercore extends EventEmitter {
       return
     }
 
-    if (!(encryption instanceof HypercoreEncryption)) {
-      throw new Error('Expected hypercore encryption provider')
+    if (!isEncryptionProvider(encryption)) {
+      throw new Error('Provider does not satisfy HypercoreEncryption interface')
     }
 
     this.encryption = encryption
@@ -361,7 +329,7 @@ class Hypercore extends EventEmitter {
 
     const e = getEncryptionOption(opts)
     if (!this.core.encryption && e) {
-      if (e instanceof HypercoreEncryption) {
+      if (isEncryptionProvider(e)) {
         this.core.encryption = e
       } else {
         this.core.encryption = this._getEncryptionProvider(e.key, e.block)
@@ -624,7 +592,7 @@ class Hypercore extends EventEmitter {
 
   get padding () {
     if (this.encryption && this.key && this.manifest) {
-      return this.encryption.padding(this.core)
+      return this.encryption.padding(this.core, this.length)
     }
 
     return 0
@@ -820,7 +788,7 @@ class Hypercore extends EventEmitter {
       await this.encryption.decrypt(index, block, this.core)
     }
 
-    return this._decode(encoding, block)
+    return this._decode(encoding, block, index)
   }
 
   async clear (start, end = start + 1, opts) {
@@ -1085,8 +1053,8 @@ class Hypercore extends EventEmitter {
     return state.buffer
   }
 
-  _decode (enc, block) {
-    if (this.padding) block = block.subarray(this.padding)
+  _decode (enc, block, index) {
+    if (this.encryption) block = block.subarray(this.encryption.padding(this.core, index))
     try {
       if (enc) return c.decode(enc, block)
     } catch {
@@ -1102,7 +1070,7 @@ class Hypercore extends EventEmitter {
 
   _getEncryptionProvider (encryptionKey, block) {
     if (!encryptionKey) return null
-    return new DefaultEncryption(encryptionKey, block)
+    return new DefaultEncryption(encryptionKey, this.key, { block, compat: this.core.compat })
   }
 }
 
@@ -1189,13 +1157,10 @@ function getEncryptionOption (opts) {
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
 }
 
-function getLegacyBlockKey (hypercoreKey, encryptionKey, compat, isBlock) {
-  if (isBlock) return encryptionKey
+function isEncryptionProvider (e) {
+  return e && isFunction(e.padding) && isFunction(e.encrypt) && isFunction(e.decrypt)
+}
 
-  const key = b4a.alloc(HypercoreEncryption.KEYBYTES)
-
-  if (compat) sodium.crypto_generichash_batch(key, [encryptionKey], hypercoreKey)
-  else sodium.crypto_generichash_batch(key, [caps.LEGACY_BLOCK_ENCRYPTION, hypercoreKey, encryptionKey])
-
-  return key
+function isFunction (fn) {
+  return !!fn && typeof fn === 'function'
 }
