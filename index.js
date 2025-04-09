@@ -35,8 +35,6 @@ const inspect = Symbol.for('nodejs.util.inspect.custom')
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
 class Hypercore extends EventEmitter {
-  static DefaultEncryption = DefaultEncryption
-
   constructor (storage, key, opts) {
     super()
 
@@ -140,6 +138,8 @@ class Hypercore extends EventEmitter {
   }
 
   static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
+
+  static DefaultEncryption = DefaultEncryption
 
   static key (manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) manifest = { version, signers: [{ publicKey: manifest, namespace }] }
