@@ -35,6 +35,8 @@ const inspect = Symbol.for('nodejs.util.inspect.custom')
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
 class Hypercore extends EventEmitter {
+  static DefaultEncryption = DefaultEncryption
+
   constructor (storage, key, opts) {
     super()
 
