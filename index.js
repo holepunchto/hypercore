@@ -785,8 +785,6 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      await this.encryption.update(this.core)
-
       await this.encryption.decrypt(index, block, this.core)
     }
 
@@ -1083,8 +1081,6 @@ function toHex (buf) {
 async function preappend (blocks) {
   const offset = this.state.length
   const fork = this.state.encryptionFork
-
-  await this.encryption.update(this.core)
 
   for (let i = 0; i < blocks.length; i++) {
     await this.encryption.encrypt(offset + i, blocks[i], fork, this.core)
