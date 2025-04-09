@@ -1343,7 +1343,8 @@ test('manifest encoding', t => {
       namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
     }],
-    linked: null
+    linked: null,
+    userData: null
   }
 
   t.alike(reencode(manifest), manifest)
@@ -1431,6 +1432,9 @@ test('manifest encoding', t => {
   manifest.version = 2
   manifest.linked = [b4a.alloc(32, 4)]
 
+  t.alike(reencode(manifest), manifest)
+
+  manifest.userData = b4a.from([200])
   t.alike(reencode(manifest), manifest)
 
   function reencode (m) {

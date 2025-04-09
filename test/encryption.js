@@ -1,7 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
-const HypercoreEncryption = require('hypercore-encryption')
 const Hypercore = require('..')
 const { create, createStorage, replicate } = require('./helpers')
 
@@ -264,37 +263,43 @@ test('session keeps encryption', async function (t) {
 })
 
 // block encryption module is only available after bmping manifest version
-test.skip('block encryption module', async function (t) {
-  const blindingKey = b4a.alloc(32, 0)
+test('block encryption module', async function (t) {
+  class XOREncryption {
+    padding () {
+      return 0
+    }
 
-  const encryption = new HypercoreEncryption(blindingKey, { getBlockKey })
+    async encrypt (index, block) {
+      await new Promise(setImmediate)
 
-  const core = await create(t, null, { encryption })
+      for (let i = 0; i < block.byteLength; i++) {
+        block[i] ^= ((index + 1) & 0xff) // +1 so no 0 xor in test
+      }
+    }
+
+    async decrypt (index, block) {
+      await new Promise(setImmediate)
+
+      for (let i = 0; i < block.byteLength; i++) {
+        block[i] ^= ((index + 1) & 0xff)
+      }
+    }
+  }
+
+  const core = await create(t, null, { encryption: new XOREncryption() })
   await core.ready()
 
   await core.append('0')
-
-  await encryption.load(2, core.core)
-
   await core.append('1')
   await core.append('2')
+
+  t.unlike(await core.get(0, { raw: true }), b4a.from('0'))
+  t.unlike(await core.get(1, { raw: true }), b4a.from('1'))
+  t.unlike(await core.get(2, { raw: true }), b4a.from('2'))
 
   t.alike(await core.get(0), b4a.from('0'))
   t.alike(await core.get(1), b4a.from('1'))
   t.alike(await core.get(2), b4a.from('2'))
-
-  async function getBlockKey (id, context) {
-    if (id === -1) id = 1
-
-    t.alike(context, { key: core.key, manifest: core.manifest })
-
-    await Promise.resolve()
-    return {
-      id,
-      version: 1,
-      key: b4a.alloc(32, id)
-    }
-  }
 })
 
 test('encryption backwards compatibility', async function (t) {
