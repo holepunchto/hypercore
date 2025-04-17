@@ -253,7 +253,6 @@ class Hypercore extends EventEmitter {
     }
 
     this.encryption = encryption
-    if (!this.core.encryption) this.core.encryption = this.encryption
   }
 
   setKeyPair (keyPair) {
@@ -332,16 +331,15 @@ class Hypercore extends EventEmitter {
     const e = getEncryptionOption(opts)
     if (!this.core.encryption && e) {
       if (isEncryptionProvider(e)) {
-        this.core.encryption = e
+        this.encryption = e
       } else {
-        this.core.encryption = this._getEncryptionProvider(e.key, e.block)
+        this.encryption = this._getEncryptionProvider(e.key, e.block)
       }
     }
 
     const parent = opts.parent || null
 
-    if (this.core.encryption) this.encryption = this.core.encryption
-    else if (parent && parent.encryption) this.encryption = this.core.encryption = parent.encryption
+    if (parent && parent.encryption) this.encryption = parent.encryption
 
     this.writable = this._isWritable()
 
