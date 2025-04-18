@@ -1049,8 +1049,7 @@ class Hypercore extends EventEmitter {
     if (this.encryption) block = block.subarray(this.encryption.padding(this.core, index))
     try {
       if (enc) return c.decode(enc, block)
-    } catch (e) {
-      console.log(e)
+    } catch {
       throw DECODING_ERROR()
     }
     return block
