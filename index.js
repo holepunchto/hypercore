@@ -253,7 +253,6 @@ class Hypercore extends EventEmitter {
     }
 
     this.encryption = encryption
-    if (!this.core.encryption) this.core.encryption = this.encryption
   }
 
   setKeyPair (keyPair) {
@@ -329,19 +328,10 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    const e = getEncryptionOption(opts)
-    if (!this.core.encryption && e) {
-      if (isEncryptionProvider(e)) {
-        this.core.encryption = e
-      } else {
-        this.core.encryption = this._getEncryptionProvider(e.key, e.block)
-      }
-    }
-
     const parent = opts.parent || null
+    if (parent && parent.encryption) this.encryption = parent.encryption
 
-    if (this.core.encryption) this.encryption = this.core.encryption
-    else if (parent && parent.encryption) this.encryption = this.core.encryption = parent.encryption
+    if (!this.encryption) this.encryption = this._getEncryptionProvider(opts)
 
     this.writable = this._isWritable()
 
@@ -1064,9 +1054,11 @@ class Hypercore extends EventEmitter {
     return block
   }
 
-  _getEncryptionProvider (encryptionKey, block) {
-    if (!encryptionKey) return null
-    return new DefaultEncryption(encryptionKey, this.key, { block, compat: this.core.compat })
+  _getEncryptionProvider (opts) {
+    const e = getEncryptionOption(opts)
+    if (isEncryptionProvider(e)) return e
+    if (!e || !e.key) return null
+    return new DefaultEncryption(e.key, this.key, { block: e.block, compat: this.core.compat })
   }
 }
 

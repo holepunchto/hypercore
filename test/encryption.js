@@ -221,7 +221,6 @@ test('encrypted core from existing unencrypted core', async function (t) {
   const b = new Hypercore({ core: a.core, encryption: { key: encryptionKey } })
 
   t.alike(b.key, a.key)
-  t.alike(b.encryption, a.core.encryption)
 
   await b.append(['hello'])
 
