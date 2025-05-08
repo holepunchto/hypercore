@@ -213,7 +213,7 @@ class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
     if (opts.checkout !== undefined && !opts.name && !opts.atom) {
-      throw new Error('Checkouts are only supported on atoms or named sessions')
+      throw ASSERTION('Checkouts are only supported on atoms or named sessions')
     }
 
     const wait = opts.wait === false ? false : this.wait
@@ -249,7 +249,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (!isEncryptionProvider(encryption)) {
-      throw new Error('Provider does not satisfy HypercoreEncryption interface')
+      throw ASSERTION('Provider does not satisfy HypercoreEncryption interface')
     }
 
     this.encryption = encryption
