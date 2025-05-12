@@ -2,6 +2,16 @@
 
 Notes for downstream developers who are upgrading their modules to new, breaking versions of Hypercore.
 
+## 11.0.0
+
+- `sparse` is no longer an option when creating a `Hypercore` instance. All hypercores are sparse.
+- `encryptionKey` will deprecated in favor of the `encryption` option when creating a `Hypercore` instance.
+- Storage is now auto migrated to [`hypercore-storage`](https://github.com/holepunchto/hypercore-storage) if a path `storage` argument was used.  
+  If you are getting a `TypeError: db.columnFamily is not a function` error, you
+  are likely trying to use a legacy `random-access-storage` instance such as
+  `random-access-memory` or `random-access-file`.
+- `core.indexedLength` is now `core.signedLength`
+
 ## 10.0.0
 
 - All number encodings are now LE

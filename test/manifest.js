@@ -7,6 +7,7 @@ const c = require('compact-encoding')
 const Hypercore = require('../')
 const Verifier = require('../lib/verifier')
 const { assemble, partialSignature, signableLength } = require('../lib/multisig')
+const { MerkleTree } = require('../lib/merkle-tree')
 const caps = require('../lib/caps')
 const enc = require('../lib/messages')
 
@@ -279,7 +280,7 @@ test('multisig - append', async function (t) {
 
   await batch.append(b4a.from('0'))
 
-  const sigBatch = batch.createTreeBatch()
+  const sigBatch = batch.state.createTreeBatch()
 
   const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
   const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
@@ -344,7 +345,7 @@ test('multisig - batch failed', async function (t) {
 
   await batch.append(b4a.from('0'))
 
-  const sigBatch = batch.createTreeBatch()
+  const sigBatch = batch.state.createTreeBatch()
 
   const sig = await core.core.verifier.sign(sigBatch, signers[0].keyPair)
   const sig2 = await core.core.verifier.sign(sigBatch, signers[1].keyPair)
@@ -867,9 +868,9 @@ test('multisig - normal operating mode', async function (t) {
   const signer1 = signer(a, b)
   const signer2 = signer(b, d)
 
-  const core = await create(t, { manifest, sign: signer1.sign })
+  const core = await create(t, { manifest })
 
-  const core2 = await create(t, { manifest, sign: signer2.sign })
+  const core2 = await create(t, { manifest })
   await core.ready()
 
   let ai = 0
@@ -1147,7 +1148,7 @@ test('multisig - prologue verify hash', async function (t) {
   t.is(core.length, 0)
 
   const batch = s0.core.storage.read()
-  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 2 } })
+  const p = await MerkleTree.proof(s0.state, batch, { upgrade: { start: 0, length: 2 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1205,7 +1206,7 @@ test('multisig - prologue morphs request', async function (t) {
   t.is(core.length, 0)
 
   const batch = s0.core.storage.read()
-  const p = await s0.core.tree.proof(batch, s0.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
+  const p = await MerkleTree.proof(s0.state, batch, { upgrade: { start: 0, length: 4 } })
   batch.tryFlush()
 
   const proof = await p.settle()
@@ -1247,7 +1248,7 @@ test('multisig - prologue morphs request', async function (t) {
   t.is(remote.length, 5)
 
   const rb = remote.core.storage.read()
-  const rp = await remote.core.tree.proof(rb, remote.state.createTreeBatch(), { upgrade: { start: 0, length: 4 } })
+  const rp = await MerkleTree.proof(remote.state, rb, { upgrade: { start: 0, length: 4 } })
   rb.tryFlush()
 
   await t.execution(rp.settle())
@@ -1342,7 +1343,8 @@ test('manifest encoding', t => {
       namespace: b4a.alloc(32, 1),
       publicKey: keyPair.publicKey
     }],
-    unencrypted: false
+    linked: null,
+    userData: null
   }
 
   t.alike(reencode(manifest), manifest)
@@ -1426,6 +1428,15 @@ test('manifest encoding', t => {
   manifest.allowPatch = false
   t.alike(reencode(manifest), manifest)
 
+  // with linked cores
+  manifest.version = 2
+  manifest.linked = [b4a.alloc(32, 4)]
+
+  t.alike(reencode(manifest), manifest)
+
+  manifest.userData = b4a.from([200])
+  t.alike(reencode(manifest), manifest)
+
   function reencode (m) {
     return c.decode(enc.manifest, c.encode(enc.manifest, m))
   }
@@ -1486,12 +1497,13 @@ function createMultiManifest (signers, prologue = null) {
       namespace: caps.DEFAULT_NAMESPACE,
       publicKey: s.manifest.signers[0].publicKey
     })),
-    prologue
+    prologue,
+    linked: []
   }
 }
 
 async function partialCoreSignature (core, s, len) {
-  const sig = await core.core.verifier.sign(s.createTreeBatch(), s.keyPair)
+  const sig = await core.core.verifier.sign(s.state.createTreeBatch(), s.keyPair)
   let index = 0
   for (; index < core.manifest.signers.length; index++) {
     if (b4a.equals(core.manifest.signers[index].publicKey, s.keyPair.publicKey)) break

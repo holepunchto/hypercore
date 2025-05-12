@@ -11,10 +11,14 @@ test.skip('one forks', async function (t) {
   const a = await create(t)
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
+  a.core.name = 'a'
+
   const b = await create(t, a.key)
+  b.core.name = 'b'
 
   const c = await create(t, { keyPair: a.core.header.keyPair })
   await c.append(['a', 'b', 'c', 'd', 'f', 'e'])
+  c.core.name = 'c'
 
   const streams = replicate(a, b, t)
 

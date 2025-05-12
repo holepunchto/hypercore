@@ -40,7 +40,7 @@ Make a new Hypercore instance.
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
-Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/hypercore-storage) or use a [Corestore](https://github.com/holepunchto/corestore) if you want to make many Hypercores efficiently.
+Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/hypercore-storage) or use a [Corestore](https://github.com/holepunchto/corestore) if you want to make many Hypercores efficiently. Note that `random-access-storage` is no longer supported.
 
 `key` can be set to a Hypercore key which is a hash of Hypercore's internal auth manifest, describing how to validate the Hypercore. If you do not set this, it will be loaded from storage. If nothing is previously stored, a new auth manifest will be generated giving you local write access to it.
 
@@ -50,21 +50,25 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
-  sparse: true, // enable sparse mode, counting unavailable blocks towards core.length and core.byteLength
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
-  encryptionKey: k, // optionally pass an encryption key to enable block encryption
+  encryption: { key: buffer }, // the block encryption key
   onwait: () => {}, // hook that is called if gets are waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
   writable: true, // disable appends and truncates
-  inflightRange: null // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
+  inflightRange: null, // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
+  ongc: (session) => { ... }, // A callback called when the session is garbage collected
+  notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
+  allowFork: true, // Enables updating core when it forks
 }
 ```
 
 You can also set valueEncoding to any [compact-encoding](https://github.com/compact-encoding) instance.
 
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
+
+The user may provide a custom encryption module as `opts.encryption`, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
 
 #### `const { length, byteLength } = await core.append(block)`
 
@@ -292,7 +296,42 @@ You must close any session you make.
 
 Options are inherited from the parent instance, unless they are re-set.
 
-`options` are the same as in the constructor.
+`options` are the same as in the constructor with the follow additions:
+
+```
+{
+  weak: false // Creates the session as a "weak ref" which closes when all non-weak sessions are closed
+  exclusive: false, // Create a session with exclusive access to the core. Creating an exclusive session on a core with other exclusive sessions, will wait for the session with access to close before the next exclusive session is `ready`
+  checkout: undefined, // A index to checkout the core at. Checkout sessions must be an atom or a named session
+  atom: undefined, // A storage atom for making atomic batch changes across hypercores
+  name: null, // Name the session creating a persisted branch of the core. Still beta so may break in the future
+}
+```
+
+Atoms allow making atomic changes across multiple hypercores. Atoms can be created using a `core`'s `storage` (eg. `const atom = core.state.storage.createAtom()`). Changes made with an atom based session is not persisted until the atom is flushed via `await atom.flush()`, but can be read at any time. When atoms flush, all changes made outside of the atom will be clobbered as the core blocks will now match the atom's blocks. For example:
+
+```js
+const core = new Hypercore('./atom-example')
+await core.ready()
+
+await core.append('block 1')
+
+const atom = core.state.storage.createAtom()
+const atomicSession = core.session({ atom })
+
+await core.append('block 2') // Add blocks not using the atom
+
+await atomicSession.append('atom block 2') // Add different block to atom
+await atom.flush()
+
+console.log((await core.get(core.length - 1)).toString()) // prints 'atom block 2' not 'block 2'
+```
+
+#### `const { byteLength, length } = core.commit(session, opts = {})`
+
+Attempt to apply blocks from the session to the `core`. `core` must be a default core, aka a non-named session.
+
+Returns `null` if committing failed.
 
 #### `const snapshot = core.snapshot([options])`
 
@@ -388,13 +427,15 @@ In contrast to `core.key` this key does not allow you to verify the data but can
 
 Populated after `ready` has been emitted. Will be `null` before the event.
 
-#### `core.encryptionKey`
-
-Buffer containing the optional block encryption key of this core. Will be `null` unless block encryption is enabled.
-
 #### `core.length`
 
-How many blocks of data are available on this core? If `sparse: false`, this will equal `core.contiguousLength`.
+How many blocks of data are available on this core.
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `core.signedLength`
+
+How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores's with a single signer.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 

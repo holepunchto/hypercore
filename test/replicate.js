@@ -5,6 +5,8 @@ const { create, createStored, replicate, unreplicate, eventFlush, replicateDebug
 const { makeStreamPair } = require('./helpers/networking.js')
 const Hypercore = require('../')
 
+const DEBUG = false
+
 test('basic replication', async function (t) {
   const a = await create(t)
 
@@ -899,7 +901,7 @@ test('one inflight request to a peer per block', async function (t) {
 
 test.skip('non-sparse replication', async function (t) {
   const a = await create(t)
-  const b = await create(t, a.key, { sparse: false })
+  const b = await create(t, a.key)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
 
@@ -1031,7 +1033,7 @@ test('download range resolves immediately if no peers', async function (t) {
 
 test('download available blocks on non-sparse update', async function (t) {
   const a = await create(t)
-  const b = await create(t, a.key, { sparse: false })
+  const b = await create(t, a.key)
 
   replicate(a, b, t)
 
@@ -1684,10 +1686,198 @@ test('uses hotswaps to avoid long download tail', async t => {
     p => b4a.equals(p.stream.remotePublicKey, slowKey))[0]
 
   t.ok(fastPeer.stats.hotswaps > 0, 'hotswaps happened for fast peer')
-  t.ok(fastPeer.stats.hotswaps > 0, 'No hotswaps happened for slow peer')
+  t.ok(slowPeer.stats.hotswaps === 0, 'No hotswaps happened for slow peer')
   t.ok(slowPeer.stats.wireCancel.tx > 0, 'slow peer cancelled requests')
   t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'sanity check: received more data from fast peer')
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
+})
+
+test('messages exchanged when empty core connects to non-sparse', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  const msgs = b.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 3, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 3, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 1, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 1, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 0, 'wire range tx')
+  t.is(msgs.wireRange.rx, 1, 'wire range rx')
+
+  if (DEBUG) console.log('messages overview', msgs)
+})
+
+test('messages exchanged when empty core connects to sparse', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
+  const original = await create(t)
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+  const sparse = await create(t, original.key)
+  const newCore = await create(t, original.key)
+
+  {
+    const [s1, s2] = replicate(original, sparse, t)
+    await sparse.get(1)
+    await sparse.get(3)
+    await unreplicate([s1, s2])
+  }
+
+  replicate(newCore, sparse, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(sparse.contiguousLength, 0, 'sanity check')
+  t.is(sparse.replicator.peers.length, 1, 'sanity check')
+
+  const msgs = newCore.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 3, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 3, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 1, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 1, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 0, 'wire range tx')
+  t.is(msgs.wireRange.rx, 0, 'wire range rx (none, since other side is sparse)')
+
+  if (DEBUG) console.log('messages overview', msgs)
+})
+
+test('messages exchanged when 2 sparse cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
+  const original = await create(t)
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+  const sparse1 = await create(t, original.key)
+  const sparse2 = await create(t, original.key)
+
+  {
+    const [s1, s2] = replicate(original, sparse1, t)
+    await sparse1.get(1)
+    await sparse1.get(3)
+    await unreplicate([s1, s2])
+  }
+
+  {
+    const [s1, s2] = replicate(original, sparse2, t)
+    await sparse2.get(2)
+    await sparse2.get(3)
+    await unreplicate([s1, s2])
+  }
+
+  replicate(sparse1, sparse2, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(sparse1.contiguousLength, 0, 'sanity check')
+  t.is(sparse2.contiguousLength, 0, 'sanity check')
+  t.is(sparse2.replicator.peers.length, 1, 'only connected to the sparse peer (sanity check)')
+
+  const msgs = sparse2.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 1, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 1, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 0, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 0, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 0, 'wire range tx')
+  t.is(msgs.wireRange.rx, 0, 'wire range rx (none, since other side is sparse)')
+
+  if (DEBUG) console.log('messages overview', msgs)
+})
+
+test('messages exchanged when 2 non-sparse cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
+  const original = await create(t)
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+  const full1 = await create(t, original.key)
+  const full2 = await create(t, original.key)
+
+  {
+    const [s1, s2] = replicate(original, full1, t)
+    await full1.download({ start: 0, end: 5 }).done()
+    await unreplicate([s1, s2])
+  }
+
+  {
+    const [s1, s2] = replicate(original, full2, t)
+    await full2.download({ start: 0, end: 5 }).done()
+    await unreplicate([s1, s2])
+  }
+
+  t.is(full1.contiguousLength, 5, 'sanity check')
+  t.is(full2.contiguousLength, 5, 'sanity check')
+
+  replicate(full1, full2, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(full2.replicator.peers.length, 1, 'sanity check')
+
+  const msgs = full2.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 1, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 1, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 0, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 0, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 1, 'wire range tx')
+  t.is(msgs.wireRange.rx, 1, 'wire range rx')
+
+  if (DEBUG) console.log('messages overview', msgs)
+})
+
+test('messages exchanged when 2 empty cores connect', async function (t) {
+  // DEVNOTE: if this test fails, it does not necessarily indicate a bug
+  // It might also mean that our replication logic became more efficient
+  // (it has strict tests on the nr of messages exchanged)
+
+  const original = await create(t)
+  await original.append(['a', 'b', 'c', 'd', 'e'])
+  const empty1 = await create(t, original.key)
+  const empty2 = await create(t, original.key)
+
+  t.is(empty1.length, 0, 'sanity check')
+  t.is(empty2.length, 0, 'sanity check')
+
+  replicate(empty1, empty2, t)
+  await new Promise(resolve => setTimeout(resolve, 1000))
+
+  t.is(empty2.replicator.peers.length, 1, 'sanity check')
+
+  const msgs = empty2.replicator.peers[0].stats
+  t.is(msgs.wireSync.tx, 1, 'wire syncs tx')
+  t.is(msgs.wireSync.rx, 1, 'wire syncs rx')
+  t.is(msgs.wireRequest.tx, 0, 'wire request tx')
+  t.is(msgs.wireRequest.rx, 0, 'wire request rx')
+  t.is(msgs.wireData.tx, 0, 'wire data tx')
+  t.is(msgs.wireData.rx, 0, 'wire data rx')
+  t.is(msgs.wireBitfield.tx, 0, 'wire bitfield tx')
+  t.is(msgs.wireBitfield.rx, 0, 'wire bitfield rx')
+  t.is(msgs.wireRange.tx, 0, 'wire range tx')
+  t.is(msgs.wireRange.rx, 0, 'wire range rx')
+
+  if (DEBUG) console.log('messages overview', msgs)
 })
 
 test('get block in middle page', async function (t) {
@@ -1733,6 +1923,22 @@ test('get block in middle page', async function (t) {
 
   await a.close()
   await b1.close()
+})
+
+test('download event includes "elapsed" time in metadata', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a'])
+
+  replicate(a, b, t)
+
+  b.on('download', (...[, , , req]) => {
+    t.ok(Number.isInteger(req.timestamp))
+    t.ok(Number.isInteger(req.elapsed))
+  })
+
+  await b.download({ start: 0, end: a.length }).done()
 })
 
 async function waitForRequestBlock (core) {

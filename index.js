@@ -11,11 +11,13 @@ const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 
 const Core = require('./lib/core')
-const BlockEncryption = require('./lib/block-encryption')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const DefaultEncryption = require('./lib/default-encryption')
+const caps = require('./lib/caps')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
+const { MerkleTree } = require('./lib/merkle-tree')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -80,7 +82,7 @@ class Hypercore extends EventEmitter {
     this._preappend = preappend.bind(this)
     this._snapshot = null
     this._findingPeers = 0
-    this._active = opts.active !== false
+    this._active = opts.weak ? !!opts.active : opts.active !== false
 
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
@@ -137,6 +139,8 @@ class Hypercore extends EventEmitter {
 
   static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
 
+  static DefaultEncryption = DefaultEncryption
+
   static key (manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) manifest = { version, signers: [{ publicKey: manifest, namespace }] }
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
@@ -147,7 +151,7 @@ class Hypercore extends EventEmitter {
   }
 
   static blockEncryptionKey (key, encryptionKey) {
-    return BlockEncryption.blockEncryptionKey(key, encryptionKey)
+    return DefaultEncryption.blockEncryptionKey(key, encryptionKey)
   }
 
   static getProtocolMuxer (stream) {
@@ -209,7 +213,7 @@ class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('Cannot make sessions on a closing core')
     }
     if (opts.checkout !== undefined && !opts.name && !opts.atom) {
-      throw new Error('Checkouts are only supported on atoms or named sessions')
+      throw ASSERTION('Checkouts are only supported on atoms or named sessions')
     }
 
     const wait = opts.wait === false ? false : this.wait
@@ -231,11 +235,24 @@ class Hypercore extends EventEmitter {
     return s
   }
 
-  async setEncryptionKey (encryptionKey, opts) {
+  setEncryptionKey (key, opts) {
+    const encryption = this._getEncryptionProvider({ key, block: !!(opts && opts.block) })
+    return this.setEncryption(encryption, opts)
+  }
+
+  async setEncryption (encryption, opts) {
     if (!this.opened) await this.opening
-    if (this.core.unencrypted) return
-    this.encryption = encryptionKey ? new BlockEncryption(encryptionKey, this.key, { compat: this.core.compat, ...opts }) : null
-    if (!this.core.encryption) this.core.encryption = this.encryption
+
+    if (encryption === null) {
+      this.encryption = encryption
+      return
+    }
+
+    if (!isEncryptionProvider(encryption)) {
+      throw ASSERTION('Provider does not satisfy HypercoreEncryption interface')
+    }
+
+    this.encryption = encryption
   }
 
   setKeyPair (keyPair) {
@@ -288,11 +305,14 @@ class Hypercore extends EventEmitter {
       if (this.state !== null) this.state.removeSession(this)
 
       this.closed = true
-      this.emit('close', this.core.hasSession() === false)
+      this.emit('close')
       throw err
     }
 
     this.emit('ready')
+
+    // if we are a weak session the core might have closed...
+    if (this.core.closing) this.close().catch(safetyCatch)
   }
 
   _removeSession () {
@@ -308,15 +328,11 @@ class Hypercore extends EventEmitter {
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
-    if (!this.core.encryption && !this.core.unencrypted) {
-      const e = getEncryptionOption(opts)
-      if (e) this.core.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, ...e })
-    }
-
     const parent = opts.parent || null
+    if (parent && parent.encryption) this.encryption = parent.encryption
 
-    if (this.core.encryption) this.encryption = this.core.encryption
-    else if (parent && parent.encryption) this.encryption = this.core.encryption = parent.encryption
+    const e = getEncryptionOption(opts)
+    if (!this.encryption) this.encryption = this._getEncryptionProvider(e)
 
     this.writable = this._isWritable()
 
@@ -362,8 +378,13 @@ class Hypercore extends EventEmitter {
       if (state) state.unref() // ref'ed above in setup session
     }
 
-    if (this.state && checkout !== -1 && checkout < this.state.length) {
-      await this.state.truncate(checkout, this.fork)
+    if (this.state && checkout !== -1) {
+      if (!opts.name && !opts.atom) throw ASSERTION('Checkouts must be named or atomized')
+      if (checkout > this.state.length) throw ASSERTION('Invalid checkout ' + checkout + ' for ' + opts.name + ', length is ' + this.state.length)
+      if (this.state.prologue && checkout < this.state.prologue.length) {
+        throw ASSERTION('Invalid checkout ' + checkout + ' for ' + opts.name + ', prologue length is ' + this.state.prologue.length)
+      }
+      if (checkout < this.state.length) await this.state.truncate(checkout, this.fork)
     }
 
     if (this.state === null) {
@@ -387,7 +408,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.manifest && !this.core.header.manifest) {
-      await this.core.setManifest(opts.manifest)
+      await this.core.setManifest(createManifest(opts.manifest))
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
@@ -466,14 +487,14 @@ class Hypercore extends EventEmitter {
     if (this.core.hasSession()) {
       // emit "fake" close as this is a session
       this.closed = true
-      this.emit('close', false)
+      this.emit('close')
       return
     }
 
     if (this.core.autoClose) await this.core.close()
 
     this.closed = true
-    this.emit('close', true)
+    this.emit('close')
   }
 
   async commit (session, opts) {
@@ -562,16 +583,16 @@ class Hypercore extends EventEmitter {
     return this.state.fork
   }
 
+  get padding () {
+    if (this.encryption && this.key && this.manifest) {
+      return this.encryption.padding(this.core, this.length)
+    }
+
+    return 0
+  }
+
   get peers () {
     return this.opened === false ? [] : this.core.replicator.peers
-  }
-
-  get encryptionKey () {
-    return this.encryption && this.encryption.key
-  }
-
-  get padding () {
-    return this.encryption === null ? 0 : this.encryption.padding
   }
 
   get globalCache () {
@@ -615,24 +636,6 @@ class Hypercore extends EventEmitter {
     old.replicator.clearRequests(this.activeRequests, SESSION_MOVED())
 
     this.emit('migrate', this.key)
-  }
-
-  createTreeBatch () {
-    return this.state.createTreeBatch()
-  }
-
-  async restoreBatch (length, additionalBlocks = []) {
-    if (this.opened === false) await this.opening
-    const batch = this.state.createTreeBatch()
-
-    if (length > batch.length + additionalBlocks.length) {
-      throw BAD_ARGUMENT('Insufficient additional blocks were passed')
-    }
-
-    let i = 0
-    while (batch.length < length) batch.append(additionalBlocks[i++])
-
-    return length < batch.length ? batch.restore(length) : batch
   }
 
   findingPeers () {
@@ -692,8 +695,19 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid')
 
-    const tree = (opts && opts.tree) || this.state.core.tree
-    const s = tree.seek(this.state, bytes, this.padding)
+    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+
+    if (this.encryption && !this.core.manifest) {
+      const req = this.replicator.addUpgrade(activeRequests)
+      try {
+        await req.promise
+      } catch (err) {
+        if (isSessionMoved(err)) return this.seek(bytes, opts)
+        throw err
+      }
+    }
+
+    const s = MerkleTree.seek(this.state, bytes, this.padding)
 
     const offset = await s.update()
     if (offset) return offset
@@ -702,7 +716,6 @@ class Hypercore extends EventEmitter {
 
     if (!this._shouldWait(opts, this.wait)) return null
 
-    const activeRequests = (opts && opts.activeRequests) || this.activeRequests
     const req = this.core.replicator.addSeek(activeRequests, s)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
@@ -765,12 +778,10 @@ class Hypercore extends EventEmitter {
       // Copy the block as it might be shared with other sessions.
       block = b4a.from(block)
 
-      if (this.encryption.compat !== this.core.compat) this._updateEncryption()
-      if (this.core.unencrypted) this.encryption = null
-      else this.encryption.decrypt(index, block)
+      await this.encryption.decrypt(index, block, this.core)
     }
 
-    return this._decode(encoding, block)
+    return this._decode(encoding, block, index)
   }
 
   async clear (start, end = start + 1, opts) {
@@ -800,8 +811,6 @@ class Hypercore extends EventEmitter {
   }
 
   async _get (index, opts) {
-    if (this.core.isFlushing) await this.core.flushed()
-
     const block = await readBlock(this.state.storage.read(), index)
 
     if (block !== null) return block
@@ -917,7 +926,7 @@ class Hypercore extends EventEmitter {
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
-    const preappend = this.core.unencrypted ? null : (this.encryption && this._preappend)
+    const preappend = this.encryption && this._preappend
 
     const buffers = this.encodeBatch !== null ? this.encodeBatch(blocks) : new Array(blocks.length)
 
@@ -935,14 +944,35 @@ class Hypercore extends EventEmitter {
     return this.state.append(buffers, { keyPair, signature, preappend })
   }
 
-  async treeHash (length) {
-    if (length === undefined) {
-      await this.ready()
-      length = this.state.length
-    }
+  async signable (length = -1, fork = -1) {
+    if (this.opened === false) await this.opening
+    if (length === -1) length = this.length
+    if (fork === -1) fork = this.fork
 
-    const roots = await this.state.tree.getRoots(length)
+    return caps.treeSignable(this.key, await this.treeHash(length), length, fork)
+  }
+
+  async treeHash (length = -1) {
+    if (this.opened === false) await this.opening
+    if (length === -1) length = this.length
+
+    const roots = await MerkleTree.getRoots(this.state, length)
     return crypto.tree(roots)
+  }
+
+  async proof (opts) {
+    if (this.opened === false) await this.opening
+    const rx = this.state.storage.read()
+    const promise = MerkleTree.proof(this.state, rx, opts)
+    rx.tryFlush()
+    return promise
+  }
+
+  async verifyFullyRemote (proof) {
+    if (this.opened === false) await this.opening
+    const batch = await MerkleTree.verifyFullyRemote(this.state, proof)
+    await this.core._verifyBatchUpgrade(batch, proof.manifest)
+    return batch
   }
 
   registerExtension (name, handlers = {}) {
@@ -1015,8 +1045,8 @@ class Hypercore extends EventEmitter {
     return state.buffer
   }
 
-  _decode (enc, block) {
-    if (this.padding) block = block.subarray(this.padding)
+  _decode (enc, block, index) {
+    if (this.encryption) block = block.subarray(this.encryption.padding(this.core, index))
     try {
       if (enc) return c.decode(enc, block)
     } catch {
@@ -1025,10 +1055,10 @@ class Hypercore extends EventEmitter {
     return block
   }
 
-  _updateEncryption () {
-    const e = this.encryption
-    this.encryption = new BlockEncryption(e.key, this.key, { compat: this.core.compat, block: e.block })
-    if (e === this.core.encryption) this.core.encryption = this.encryption
+  _getEncryptionProvider (e) {
+    if (isEncryptionProvider(e)) return e
+    if (!e || !e.key) return null
+    return new DefaultEncryption(e.key, this.key, { block: e.block, compat: this.core.compat })
   }
 }
 
@@ -1042,14 +1072,12 @@ function toHex (buf) {
   return buf && b4a.toString(buf, 'hex')
 }
 
-function preappend (blocks) {
+async function preappend (blocks) {
   const offset = this.state.length
   const fork = this.state.encryptionFork
 
-  if (this.encryption.compat !== this.core.compat) this._updateEncryption()
-
   for (let i = 0; i < blocks.length; i++) {
-    this.encryption.encrypt(offset + i, blocks[i], fork)
+    await this.encryption.encrypt(offset + i, blocks[i], fork, this.core)
   }
 }
 
@@ -1077,6 +1105,7 @@ function initOnce (session, storage, key, opts) {
   if (key === null) key = opts.key || null
 
   session.core = new Core(Hypercore.defaultStorage(storage), {
+    preopen: opts.preopen,
     eagerUpgrade: true,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
@@ -1114,4 +1143,12 @@ function getEncryptionOption (opts) {
   if (opts.encryptionKey) return { key: opts.encryptionKey, block: !!opts.isBlockKey }
   if (!opts.encryption) return null
   return b4a.isBuffer(opts.encryption) ? { key: opts.encryption } : opts.encryption
+}
+
+function isEncryptionProvider (e) {
+  return e && isFunction(e.padding) && isFunction(e.encrypt) && isFunction(e.decrypt)
+}
+
+function isFunction (fn) {
+  return !!fn && typeof fn === 'function'
 }
