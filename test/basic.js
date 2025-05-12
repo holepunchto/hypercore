@@ -682,19 +682,10 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     await core.close()
   }
 
-  test('append alignment to bitfield boundary', async function (t) {
-  const tmpDir = await t.tmp()
-
-  const expectedBitfields = new Array(32768)
-  expectedBitfields.fill(true)
-  expectedBitfields.push(false)
-
-    
   {
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-
     t.alike(getBitfields(core, 0, 5), [true, true, true, true, true])
     t.is(core.contiguousLength, 5)
     t.is(core.core.header.hints.contiguousLength, 5)
@@ -718,6 +709,33 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
 
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.is(core.contiguousLength, 4)
+    t.is(core.core.header.hints.contiguousLength, 4)
+    t.is(await getContiguousLengthInStorage(core), 4)
+    await core.close()
+  }
+})
+
+test('append alignment to bitfield boundary', async function (t) {
+  const tmpDir = await t.tmp()
+
+  const expectedBitfields = new Array(32768)
+  expectedBitfields.fill(true)
+  expectedBitfields.push(false)
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+
     const b = []
     for (let i = 0; i < 32768; i++) {
       b.push('#')
@@ -736,11 +754,6 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
-    t.is(core.contiguousLength, 4)
-    t.is(core.core.header.hints.contiguousLength, 4)
-    t.is(await getContiguousLengthInStorage(core), 4)
 
     t.alike(getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
