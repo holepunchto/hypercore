@@ -55,6 +55,34 @@ test('read stream with start / end', async function (t) {
   }
 })
 
+test('read stream with end and live (live should be ignored)', async function (t) {
+  const core = await create(t)
+
+  const initial = [
+    'alpha',
+    'beta',
+    'gamma'
+  ]
+
+  await core.append(initial)
+
+  const expected = [...initial]
+
+  const stream = core.createReadStream({ end: 3, live: true })
+  const collected = []
+
+  for await (const data of stream) {
+    collected.push(b4a.toString(data))
+  }
+
+  t.alike(collected, expected)
+
+  await core.append(['delta', 'epsilon'])
+
+  t.is(collected.includes('delta'), false)
+  t.is(collected.includes('epsilon'), false)
+})
+
 test('basic write+read stream', async function (t) {
   const core = await create(t)
 
