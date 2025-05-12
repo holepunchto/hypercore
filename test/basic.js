@@ -648,6 +648,82 @@ test('clear has correct storage state in memory and persisted', async function (
   }
 })
 
+test('contiguousLength 0 for in-memory view after core ready', async function (t) {
+  const tmpDir = await t.tmp()
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.is(core.contiguousLength, 0)
+    t.is(core.core.header.hints.contiguousLength, 0)
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.is(core.contiguousLength, 0)
+    t.is(core.core.header.hints.contiguousLength, 0)
+    await core.close()
+  }
+})
+
+test('contiguousLength gets updated after an append (also on disk)', async function (t) {
+  const tmpDir = await t.tmp()
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.append(['a', 'b', 'c', 'd', 'e'])
+    t.alike(getBitfields(core, 0, 5), [true, true, true, true, true])
+    t.is(core.contiguousLength, 5)
+    t.is(core.core.header.hints.contiguousLength, 5)
+    t.is(await getContiguousLengthInStorage(core), 5)
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.alike(getBitfields(core, 0, 5), [true, true, true, true, true])
+    t.is(core.contiguousLength, 5)
+    t.is(core.core.header.hints.contiguousLength, 5)
+    t.is(await getContiguousLengthInStorage(core), 5)
+
+    await core.append(['f', 'g'])
+    t.alike(getBitfields(core, 0, 8), [true, true, true, true, true, true, true, false])
+    t.is(core.contiguousLength, 7)
+    t.is(core.core.header.hints.contiguousLength, 7)
+    t.is(await getContiguousLengthInStorage(core), 7)
+
+    await core.clear(4)
+    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, false])
+    t.is(core.contiguousLength, 4)
+    t.is(core.core.header.hints.contiguousLength, 4)
+    t.is(await getContiguousLengthInStorage(core), 4)
+
+    await core.append(['h'])
+    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.is(core.contiguousLength, 4)
+    t.is(core.core.header.hints.contiguousLength, 4)
+    t.is(await getContiguousLengthInStorage(core), 4)
+
+    await core.close()
+  }
+
+  {
+    const storage = new HypercoreStorage(tmpDir)
+    const core = new Hypercore(storage)
+    await core.ready()
+    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.is(core.contiguousLength, 4)
+    t.is(core.core.header.hints.contiguousLength, 4)
+    t.is(await getContiguousLengthInStorage(core), 4)
+    await core.close()
+  }
+})
+
 test('append alignment to bitfield boundary', async function (t) {
   const tmpDir = await t.tmp()
 
@@ -701,5 +777,5 @@ function getBitfields (hypercore, start = 0, end = null) {
 async function getContiguousLengthInStorage (hypercore) {
   const storageRx = hypercore.core.storage.read()
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
-  return res?.contiguousLength || null
+  return res === null ? null : res.contiguousLength
 }
