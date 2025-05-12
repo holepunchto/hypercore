@@ -61,12 +61,18 @@ test('read stream with end and live (live should be ignored)', async function (t
   const initial = [
     'alpha',
     'beta',
-    'gamma'
+    'gamma',
+    'delta',
+    'epsilon'
   ]
 
   await core.append(initial)
 
-  const expected = [...initial]
+  const expected = [
+    'alpha',
+    'beta',
+    'gamma'
+  ]
 
   const stream = core.createReadStream({ end: 3, live: true })
   const collected = []
@@ -76,8 +82,6 @@ test('read stream with end and live (live should be ignored)', async function (t
   }
 
   t.alike(collected, expected)
-
-  await core.append(['delta', 'epsilon'])
 
   t.is(collected.includes('delta'), false)
   t.is(collected.includes('epsilon'), false)
