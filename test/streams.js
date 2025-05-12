@@ -82,9 +82,6 @@ test('read stream with end and live (live should be ignored)', async function (t
   }
 
   t.alike(collected, expected)
-
-  t.is(collected.includes('delta'), false)
-  t.is(collected.includes('epsilon'), false)
 })
 
 test('basic write+read stream', async function (t) {
