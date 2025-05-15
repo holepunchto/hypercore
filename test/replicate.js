@@ -1201,7 +1201,8 @@ test('large linear download', async function (t) {
   t.is(d, 1000)
 })
 
-test('replicate range that fills initial size of bitfield page', async function (t) {
+// Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
+test('replicate range that fills initial size of bitfield page', { timeout: 120000 }, async function (t) {
   const a = await create(t)
   await a.append(new Array(2 ** 15).fill('a'))
 
@@ -1218,7 +1219,8 @@ test('replicate range that fills initial size of bitfield page', async function 
   t.is(d, a.length)
 })
 
-test('replicate range that overflows initial size of bitfield page', async function (t) {
+// Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
+test('replicate range that overflows initial size of bitfield page', { timeout: 120000 }, async function (t) {
   const a = await create(t)
   await a.append(new Array(2 ** 15 + 1).fill('a'))
 
