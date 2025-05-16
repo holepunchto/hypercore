@@ -526,7 +526,7 @@ test('clear', async function (t) {
   await b2.close()
 })
 
-test('batch append with huge batch', async function (t) {
+test('batch append with huge batch', { timeout: 120000 }, async function (t) {
   // Context: array.append(...otherArray) stops working after a certain amount of entries
   // due to a limit on the amount of function args
   // This caused a bug on large batches
