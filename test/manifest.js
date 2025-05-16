@@ -947,7 +947,8 @@ test('multisig - normal operating mode', async function (t) {
   }
 })
 
-test('multisig - large patches', async function (t) {
+// Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
+test('multisig - large patches', { timeout: 120000 }, async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
