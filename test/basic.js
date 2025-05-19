@@ -7,6 +7,7 @@ const Hypercore = require('../')
 const { create, createStorage, eventFlush } = require('./helpers')
 
 test('basic', async function (t) {
+  await new Promise(resolve => setTimeout(resolve, 32000))
   const core = await create(t)
   let appends = 0
 
