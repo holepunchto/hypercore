@@ -1,4 +1,4 @@
-const { EventEmitter, once } = require('events')
+const { EventEmitter } = require('events')
 const isOptions = require('is-options')
 const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
@@ -9,6 +9,7 @@ const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
+const rrp = require('resolve-reject-promise')
 
 const Core = require('./lib/core')
 const Info = require('./lib/info')
@@ -689,7 +690,24 @@ class Hypercore extends EventEmitter {
       }
     }
 
-    while (this.length < minLength) await once(this, 'append')
+    if (this.length < minLength) {
+      const { promise, resolve, reject } = rrp()
+      const onclose = () => {
+        reject(SESSION_CLOSED('Hypercore closed while waiting for length update'))
+      }
+      const onappend = () => {
+        if (this.length >= minLength) resolve()
+      }
+      this.on('close', onclose)
+      this.on('append', onappend)
+      try {
+        await promise
+      } finally {
+        this.off('close', onclose)
+        this.off('append', onappend)
+      }
+      upgraded = true
+    }
 
     if (!upgraded) return false
     return true
