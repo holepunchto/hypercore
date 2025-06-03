@@ -374,6 +374,7 @@ test('update with zero length', async function (t) {
 })
 
 test('update with min length', async function (t) {
+  t.plan(2)
   const a = await create(t)
   const b = await create(t, a.key)
 
