@@ -1,4 +1,4 @@
-const { EventEmitter } = require('events')
+const { EventEmitter, once } = require('events')
 const isOptions = require('is-options')
 const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
@@ -668,6 +668,7 @@ class Hypercore extends EventEmitter {
 
     if (this.writable && (!opts || opts.force !== true)) return false
 
+    const minLength = opts?.length || 0
     const remoteWait = this._shouldWait(opts, this.core.replicator.findingPeers > 0)
 
     let upgraded = false
@@ -687,6 +688,8 @@ class Hypercore extends EventEmitter {
         throw err
       }
     }
+
+    while (this.length < minLength) await once(this, 'append')
 
     if (!upgraded) return false
     return true

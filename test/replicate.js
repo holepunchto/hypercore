@@ -373,6 +373,29 @@ test('update with zero length', async function (t) {
   t.is(b.length, 0)
 })
 
+test('update with min length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  let updateResolved = false
+  b.update({ length: 3 })
+    .then(() => {
+      updateResolved = true
+      t.is(b.length, 3, 'update resolved at length 3')
+    })
+    .catch((e) => {
+      console.error(e)
+      t.fail('unexpected error')
+    })
+
+  await a.append('block0')
+  await a.append('block1')
+  t.is(updateResolved, false, 'sanity check')
+  await a.append('block2')
+})
+
 test('basic multiplexing', async function (t) {
   const a1 = await create(t)
   const a2 = await create(t)
