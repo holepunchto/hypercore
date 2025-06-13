@@ -165,7 +165,7 @@ Make a read stream to read a range of data out at once.
 // read the full core
 const fullStream = core.createReadStream()
 
-// read from block 10-15
+// read from block 10-14
 const partialStream = core.createReadStream({ start: 10, end: 15 })
 
 // pipe the stream somewhere using the .pipe method on Node.js or consume it as
