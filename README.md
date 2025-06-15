@@ -129,7 +129,8 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 ``` js
 {
-  wait: false
+  wait: false,
+  length: 0 // minimum length (will hang until core.length is greater than or equal)
 }
 ```
 
