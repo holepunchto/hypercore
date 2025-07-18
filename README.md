@@ -61,6 +61,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
+  userData: { foo: 'bar' }, // An object to assign to the local User Uata storage
 }
 ```
 
@@ -69,6 +70,14 @@ You can also set valueEncoding to any [compact-encoding](https://github.com/comp
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 The user may provide a custom encryption module as `opts.encryption`, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+##### User Data
+
+User Data is a key-value store that is persisted locally and is not replicated with the Hypercore. This is useful as a quick store for data only used by the current peer. For example, `autobase` uses User Data to store information such as encryption keys and connections between a peer's local writer and the Autobase's bootstrap core.
+
+Keys are always strings and values can be strings or buffers.
+
+See [`core.setUserData(key, value)`](#await-coresetuserdatakey-value) and [`core.getUserData(key)`](#const-value--await-coresetuserdatakey) for updating User Data.
 
 #### `const { length, byteLength } = await core.append(block)`
 
@@ -454,6 +463,18 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 #### `core.padding`
 
 How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
+
+#### `await core.setUserData(key, value)`
+
+Set a key in the User Data key-value store.
+
+`key` is a string and `value` can be a string or buffer.
+
+#### `const value = await core.getUserData(key)`
+
+Return the value for a key in the User Data key-value store.
+
+`key` is a string.
 
 #### `const stream = core.replicate(isInitiatorOrReplicationStream)`
 
