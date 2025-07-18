@@ -77,7 +77,7 @@ User Data is a key-value store that is persisted locally and is not replicated w
 
 Keys are always strings and values can be strings or buffers.
 
-See [`core.setUserData(key, value)`](#await-coresetuserdatakey-value) and [`core.getUserData(key)`](#const-value--await-coresetuserdatakey) for updating User Data.
+See [`core.setUserData(key, value)`](#await-coresetuserdatakey-value) and [`core.getUserData(key)`](#const-value--await-coregetuserdatakey) for updating User Data.
 
 #### `const { length, byteLength } = await core.append(block)`
 
