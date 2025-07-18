@@ -61,6 +61,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
+  manifest: undefined // Set the manifest when creating the hypercore. See Manifest section for more info
 }
 ```
 
@@ -69,6 +70,33 @@ You can also set valueEncoding to any [compact-encoding](https://github.com/comp
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 The user may provide a custom encryption module as `opts.encryption`, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+##### Manifest
+
+The manifest is metadata about authenticating a hypercore including things like the signers (only one by default) and the prologue. Manifest has the following structure:
+
+```
+{
+  version: 1,                       // Version of the manifest format
+  hash: 'blake2b',                  // Only Blake2b is supported currently
+  allowPatch: false,                // Whether the hypercore can be "patched" to change the signers
+  quorum: (signers.length / 2) + 1, // How many signers needed to verify a block
+  signers,                          // Array of signers for the core
+  prologue: null,                   // The tree hash and length of the core
+  linked: null,                     // Only supported in versions >= 2
+  userData: null                    // Only supported in versions >= 2
+}
+```
+
+Signers are an array of object with the following structure:
+
+```
+{
+  signature: 'ed25519',               // The signature method
+  namespace: caps.DEFAULT_NAMESPACE,  // A cryptographic namespace for the signature
+  publicKey: Buffer                   // Signer's public key
+}
+```
 
 #### `const { length, byteLength } = await core.append(block)`
 
