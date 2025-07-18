@@ -539,3 +539,56 @@ Emitted when a block is uploaded to a peer.
 #### `core.on('download', index, byteLength, peer)`
 
 Emitted when a block is downloaded from a peer.
+
+#### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
+
+The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.
+
+#### `const key = Hypercore.key(manifest, options = {})`
+
+Returns the key for a given manifest.
+
+`options` include:
+
+```
+{
+  compat: false,  // Whether the manifest has a single singer whos public key is the key
+  version,        // Manifest version if the manifest argument is the public key of a single singer
+  namespace       // The signer namespace if the manifest argument is the public key of a single singer
+}
+```
+
+#### `const dKey = Hypercore.discoveryKey(key)`
+
+Returns the discovery key for the provided `key`.
+
+#### `const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)`
+
+Returns a block encryption key derived from the `key` and `encryptionKey`.
+
+#### `const mux = Hypercore.getProtocolMuxer(stream)`
+
+Returns a protomux instance from the provided `stream` Hypercore protocol stream.
+
+#### `const core = Hypercore.createCore(storage, opts)`
+
+Returns the internal core using the `storage` and `opts` without creating a full Hypercore instance.
+
+#### `const stream = Hypercore.createProtocolStream(isInitiator, opts = {})`
+
+Create an encrypted noise stream with a protomux instance attached used for Hypercore's replication protocol.
+
+`isInitiator` can be a framed stream, a protomux or a boolean for whether the stream should be the initiator in the noise handshake.
+
+`opts` can include:
+
+```
+{
+  keepAlive: true, // Whether to keep the stream alive
+  ondiscoverykey: () => {}, // A handler for when a discovery key is set over the stream for corestore management
+}
+```
+
+#### `const storage = Hypercore.defaultStorage(storage, opts = {})`
+
+Returns a default hypercore storage. The `storage` argument can be a path where to create the `hypercore-storage` instance or an existing `hypercore-storage` instance. If an existing instance, it is immediately returned.
