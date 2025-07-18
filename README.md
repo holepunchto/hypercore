@@ -61,6 +61,10 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
+  manifest: undefined, // Set the manifest when creating the hypercore. See Manifest section for more info
+  preload: undefined, // A promise that returns constructor options overrides before the core is opened
+  storage: undefined, // An alternative to passing storage as a dedicated argument
+  key: null, // An alternative to passing key as a dedicated argument
 }
 ```
 
@@ -69,6 +73,33 @@ You can also set valueEncoding to any [compact-encoding](https://github.com/comp
 valueEncodings will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom valueEncoding, it will not be applied prior to `encodeBatch`.
 
 The user may provide a custom encryption module as `opts.encryption`, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+##### Manifest
+
+The manifest is metadata about authenticating a hypercore including things like the signers (only one by default) and the prologue. Manifest has the following structure:
+
+```
+{
+  version: 1,                       // Version of the manifest format
+  hash: 'blake2b',                  // Only Blake2b is supported currently
+  allowPatch: false,                // Whether the hypercore can be "patched" to change the signers
+  quorum: (signers.length / 2) + 1, // How many signers needed to verify a block
+  signers,                          // Array of signers for the core
+  prologue: null,                   // The tree hash and length of the core
+  linked: null,                     // Only supported in versions >= 2
+  userData: null                    // Only supported in versions >= 2
+}
+```
+
+Signers are an array of object with the following structure:
+
+```
+{
+  signature: 'ed25519',               // The signature method
+  namespace: caps.DEFAULT_NAMESPACE,  // A cryptographic namespace for the signature
+  publicKey: Buffer                   // Signer's public key
+}
+```
 
 #### `const { length, byteLength } = await core.append(block)`
 
@@ -510,3 +541,56 @@ Emitted when a block is uploaded to a peer.
 #### `core.on('download', index, byteLength, peer)`
 
 Emitted when a block is downloaded from a peer.
+
+#### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
+
+The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.
+
+#### `const key = Hypercore.key(manifest, options = {})`
+
+Returns the key for a given manifest.
+
+`options` include:
+
+```
+{
+  compat: false,  // Whether the manifest has a single singer whos public key is the key
+  version,        // Manifest version if the manifest argument is the public key of a single singer
+  namespace       // The signer namespace if the manifest argument is the public key of a single singer
+}
+```
+
+#### `const dKey = Hypercore.discoveryKey(key)`
+
+Returns the discovery key for the provided `key`.
+
+#### `const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)`
+
+Returns a block encryption key derived from the `key` and `encryptionKey`.
+
+#### `const mux = Hypercore.getProtocolMuxer(stream)`
+
+Returns a protomux instance from the provided `stream` Hypercore protocol stream.
+
+#### `const core = Hypercore.createCore(storage, opts)`
+
+Returns the internal core using the `storage` and `opts` without creating a full Hypercore instance.
+
+#### `const stream = Hypercore.createProtocolStream(isInitiator, opts = {})`
+
+Create an encrypted noise stream with a protomux instance attached used for Hypercore's replication protocol.
+
+`isInitiator` can be a framed stream, a protomux or a boolean for whether the stream should be the initiator in the noise handshake.
+
+`opts` can include:
+
+```
+{
+  keepAlive: true, // Whether to keep the stream alive
+  ondiscoverykey: () => {}, // A handler for when a discovery key is set over the stream for corestore management
+}
+```
+
+#### `const storage = Hypercore.defaultStorage(storage, opts = {})`
+
+Returns a default hypercore storage. The `storage` argument can be a path where to create the `hypercore-storage` instance or an existing `hypercore-storage` instance. If an existing instance, it is immediately returned.
