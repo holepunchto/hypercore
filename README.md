@@ -239,7 +239,9 @@ for await (const data of fullStream) {
 {
   start: 0,
   end: core.length,
-  live: false,
+  wait: core.wait, // Whether to wait for updates from peers
+  timeout: core.timeout, // How long to wait for updates from peers
+  live: false, // Wait for next block keeping stream open / live
   snapshot: true // auto set end to core.length on open or update it on every read
 }
 ```
