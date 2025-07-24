@@ -111,7 +111,7 @@ Signers are an array of object with the following structure:
 }
 ```
 
-#### `const { length, byteLength } = await core.append(block)`
+#### `const { length, byteLength } = await core.append(block, options = {})`
 
 Append a block of data (or an array of blocks) to the core.
 Returns the new length and byte length of the core.
@@ -122,6 +122,17 @@ await core.append(Buffer.from('I am a block of data'))
 
 // pass an array to append multiple blocks as a batch
 await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
+```
+
+`options` include:
+
+```
+{
+  writable: false // Enabled ignores writable check. Does not override whether core is writable.
+  maxLength: undefined // The maximum resulting length of the core after appending
+  keyPair: core.keyPair // KeyPair used to sign the block(s)
+  signature: null // Set signature for block(s)
+}
 ```
 
 #### `const block = await core.get(index, [options])`
