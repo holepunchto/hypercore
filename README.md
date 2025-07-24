@@ -474,7 +474,7 @@ Emitted after the core has initially opened all its internal state.
 
 #### `core.writable`
 
-Can we append to this core?
+Can we append to or truncate this core?
 
 Populated after `ready` has been emitted. Will be `false` before the event.
 
