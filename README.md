@@ -404,6 +404,17 @@ Attempt to apply blocks from the session to the `core`. `core` must be a default
 
 Returns `null` if committing failed.
 
+`opts` includes:
+
+```
+{
+  length: session.length, // the core's length after committing the blocks
+  treeLength: core.length, // The expected length of the core's merkle tree prior to commit
+  keyPair: core.keyPair, // The keypair to use when committing
+  signature: undefined, // The signature for the blocks being committed
+}
+```
+
 #### `const snapshot = core.snapshot([options])`
 
 Same as above, but backed by a storage snapshot so will not truncate nor append.
