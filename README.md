@@ -333,7 +333,8 @@ A range can have the following properties:
   start: startIndex,
   end: nonInclusiveEndIndex,
   blocks: [index1, index2, ...],
-  linear: false // download range linearly and not randomly
+  linear: false, // download range linearly and not randomly
+  activeRequests: undefined // Advanced option. Pass requests for replicating blocks
 }
 ```
 
