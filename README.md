@@ -50,6 +50,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
+  force: false, // Advanced option. Will force overwrite even if the header's key & the passed key don't match
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
