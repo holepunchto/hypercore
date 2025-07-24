@@ -417,7 +417,7 @@ Returns `null` if committing failed.
 
 #### `const snapshot = core.snapshot([options])`
 
-Same as above, but backed by a storage snapshot so will not truncate nor append.
+Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
 
 #### `const info = await core.info([options])`
 
