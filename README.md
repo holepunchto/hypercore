@@ -451,9 +451,9 @@ Info {
 }
 ```
 
-#### `await core.close()`
+#### `await core.close([{ error }])`
 
-Fully close this core.
+Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.
 
 #### `core.on('close')`
 
