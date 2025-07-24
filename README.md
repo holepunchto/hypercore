@@ -161,7 +161,8 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 ``` js
 {
-  wait: false
+  wait: false,
+  force: false, // Force an update even if core is writable.
 }
 ```
 
