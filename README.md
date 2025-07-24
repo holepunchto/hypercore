@@ -270,9 +270,9 @@ partialStream.pipe(process.stdout)
 
 ``` js
 {
-  byteOffset: 0,
-  byteLength: core.byteLength - options.byteOffset,
-  prefetch: 32
+  byteOffset: 0, // Offset where to start from
+  byteLength: core.byteLength - options.byteOffset, // How many bytes to read
+  prefetch: 32 // How many bytes to download at a time
 }
 ```
 
