@@ -294,12 +294,23 @@ The core will also gossip to peers it is connected to, that is no longer has the
 }
 ```
 
-#### `await core.truncate(newLength, [forkId])`
+#### `await core.truncate(newLength, [options])`
 
 Truncate the core to a smaller length.
 
-Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
+Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option `fork`.
 Note that the fork id should be monotonely incrementing.
+
+`options` include:
+```js
+{
+  fork: core.fork + 1, // The new fork id after truncating
+  keyPair: core.keyPair, // Key pair used for signing the truncation
+  signature: null, // Set signature for truncation
+}
+```
+
+If `options` is a number, it will be used as the `fork` id.
 
 #### `const hash = await core.treeHash([length])`
 
