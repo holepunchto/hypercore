@@ -184,6 +184,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 ``` js
 {
   wait: false,
+  activeRequests: undefined, // Advanced option. Pass requests for replicating blocks
   force: false, // Force an update even if core is writable.
 }
 ```
