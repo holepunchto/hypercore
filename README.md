@@ -209,7 +209,8 @@ const third = await core.seek(5) // returns [2, 1]
 ``` js
 {
   wait: true, // wait for data to be downloaded
-  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+  timeout: 0, // wait at max some milliseconds (0 means no timeout)
+  activeRequests: undefined // Advanced option. Pass requests for replicating blocks
 }
 ```
 
