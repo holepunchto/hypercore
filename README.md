@@ -549,7 +549,7 @@ Return the value for a key in the User Data key-value store.
 
 `key` is a string.
 
-#### `const stream = core.replicate(isInitiatorOrReplicationStream)`
+#### `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})`
 
 Create a replication stream. You should pipe this to another Hypercore instance.
 
@@ -573,6 +573,8 @@ const server = net.createServer(function (socket) {
 const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
+
+`opts` are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts).
 
 #### `const done = core.findingPeers()`
 
