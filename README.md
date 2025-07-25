@@ -316,6 +316,29 @@ If `options` is a number, it will be used as the `fork` id.
 
 Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
 
+#### `const proof = await core.proof(opts)`
+
+Generate a proof (a `TreeProof` instance) for the request `opts`.
+
+`opts` include:
+
+```
+{
+  block: { index: 4, nodes: 2 }, // Block request
+  hash: { index: 6, nodes: 0 }, // Hash Request
+  seek: { bytes: 13, padding: 0 }, // Seek Request
+  upgrade: { start: 8, length: 2 } // Upgrade request
+}
+```
+
+Note that you cannot seek & provide a block / hash request when upgrading.
+
+#### `const batch = await core.verifyFullyRemote(proof)`
+
+Return merkle tree batch from proof. Will throw if proof cannot be verified.
+
+Note that you cannot seek & provide a block / hash request when upgrading.
+
 #### `const range = core.download([range])`
 
 Download a range of data.
