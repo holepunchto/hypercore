@@ -574,7 +574,7 @@ const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
 
-`opts` are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts).
+`opts` are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts--).
 
 #### `const done = core.findingPeers()`
 
