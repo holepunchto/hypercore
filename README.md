@@ -339,6 +339,10 @@ Return merkle tree batch from proof. Will throw if proof cannot be verified.
 
 Note that you cannot seek & provide a block / hash request when upgrading.
 
+#### `const buffer = await core.signable([length], [fork])`
+
+Return a buffer which encodes the core's `key`, tree hash (`core.treeHash()`), `length`, & `fork`. If the `length` & `fork` arguments are not provided, the current values for the core are used by default.
+
 #### `const range = core.download([range])`
 
 Download a range of data.
