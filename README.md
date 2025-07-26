@@ -580,6 +580,10 @@ Set the encryption key.
 
 Update the core's `keyPair`.
 
+#### `core.setActive(active)`
+
+Set the core to be active or not. A core is considered 'active' if it should linger to download blocks from peers.
+
 #### `await core.setUserData(key, value)`
 
 Set a key in the User Data key-value store.
