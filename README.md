@@ -576,6 +576,10 @@ Set the encryption key.
 }
 ```
 
+#### `core.setKeyPair(keyPair)`
+
+Update the core's `keyPair`.
+
 #### `await core.setUserData(key, value)`
 
 Set a key in the User Data key-value store.
