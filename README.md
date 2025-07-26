@@ -560,6 +560,22 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
 
+#### `await core.setEncryption(encryption)`
+
+Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+#### `await core.setEncryptionKey(key, [opts])`
+
+Set the encryption key.
+
+`opts` includes:
+
+```
+{
+  block: false, // Whether the key is for block encryption
+}
+```
+
 #### `await core.setUserData(key, value)`
 
 Set a key in the User Data key-value store.
