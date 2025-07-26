@@ -238,10 +238,10 @@ class Hypercore extends EventEmitter {
   async setEncryptionKey (key, opts) {
     if (!this.opened) await this.opening
     const encryption = this._getEncryptionProvider({ key, block: !!(opts && opts.block) })
-    return this.setEncryption(encryption, opts)
+    return this.setEncryption(encryption)
   }
 
-  async setEncryption (encryption, opts) {
+  async setEncryption (encryption) {
     if (!this.opened) await this.opening
 
     if (encryption === null) {
@@ -508,7 +508,7 @@ class Hypercore extends EventEmitter {
   replicate (isInitiator, opts = {}) {
     // Only limitation here is that ondiscoverykey doesn't work atm when passing a muxer directly,
     // because it doesn't really make a lot of sense.
-    if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator, opts)
+    if (Protomux.isProtomux(isInitiator)) return this._attachToMuxer(isInitiator)
 
     // if same stream is passed twice, ignore the 2nd one before we make sessions etc
     if (isStream(isInitiator) && this._isAttached(isInitiator)) return isInitiator
