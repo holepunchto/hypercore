@@ -53,9 +53,10 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireCancel.rx, 0, 'wireCancel init 0')
   t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
+  t.is(aStats.invalidData, 0, 'invalid data init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 9, 'Expected amount of stats')
+  t.is(initStatsLength, 10, 'Expected amount of stats')
 
   replicate(a, b, t)
 
