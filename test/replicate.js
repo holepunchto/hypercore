@@ -53,9 +53,10 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireCancel.rx, 0, 'wireCancel init 0')
   t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
+  t.is(aStats.invalidData, 0, 'invalid data init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 9, 'Expected amount of stats')
+  t.is(initStatsLength, 10, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -258,7 +259,7 @@ test('high latency reorg', async function (t) {
 })
 
 test('invalid signature fails', async function (t) {
-  t.plan(1)
+  t.plan(3)
 
   const a = await create(t, null)
   const b = await create(t, a.key)
@@ -274,6 +275,8 @@ test('invalid signature fails', async function (t) {
 
   b.on('verification-error', function (err) {
     t.is(err.code, 'INVALID_SIGNATURE')
+    t.is(b.replicator.stats.invalidData, 1)
+    t.is(b.peers[0].stats.invalidData, 1)
   })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
