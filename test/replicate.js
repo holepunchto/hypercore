@@ -258,7 +258,7 @@ test('high latency reorg', async function (t) {
 })
 
 test('invalid signature fails', async function (t) {
-  t.plan(1)
+  t.plan(3)
 
   const a = await create(t, null)
   const b = await create(t, a.key)
@@ -274,6 +274,8 @@ test('invalid signature fails', async function (t) {
 
   b.on('verification-error', function (err) {
     t.is(err.code, 'INVALID_SIGNATURE')
+    t.is(b.replicator.stats.invalidData, 1)
+    t.is(b.peers[0].stats.invalidData, 1)
   })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
