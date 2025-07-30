@@ -71,6 +71,7 @@ class Hypercore extends EventEmitter {
     this.closed = false
     this.weak = !!opts.weak
     this.snapshotted = !!opts.snapshot
+    this.onseq = opts.onseq || null
     this.onwait = opts.onwait || null
     this.wait = opts.wait !== false
     this.timeout = opts.timeout || 0
@@ -219,6 +220,7 @@ class Hypercore extends EventEmitter {
     const wait = opts.wait === false ? false : this.wait
     const writable = opts.writable === undefined ? !this._readonly : opts.writable === true
     const onwait = opts.onwait === undefined ? this.onwait : opts.onwait
+    const onseq = opts.onseq === undefined ? this.onseq : opts.onseq
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
     const Clz = opts.class || Hypercore
@@ -226,6 +228,7 @@ class Hypercore extends EventEmitter {
       ...opts,
       wait,
       onwait,
+      onseq,
       timeout,
       writable,
       weak,
@@ -767,6 +770,8 @@ class Hypercore extends EventEmitter {
     if (this.closing !== null) throw SESSION_CLOSED()
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
+
+    if (this.onseq !== null) this.onseq(index, this)
 
     const req = this._get(index, opts)
 
