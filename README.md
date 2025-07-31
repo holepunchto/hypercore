@@ -60,6 +60,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   writable: true, // disable appends and truncates
   inflightRange: null, // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
+  onseq: (index, core) => { ... }, // A callback called when core.get(index) is called.
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
   userData: { foo: 'bar' }, // An object to assign to the local User Uata storage
