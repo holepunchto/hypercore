@@ -873,8 +873,8 @@ class Hypercore extends EventEmitter {
     return new ReadStream(this, opts)
   }
 
-  createWriteStream (opts) {
-    return new WriteStream(this, opts)
+  createWriteStream () {
+    return new WriteStream(this)
   }
 
   createByteStream (opts) {
