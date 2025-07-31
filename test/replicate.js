@@ -133,7 +133,7 @@ test('basic downloading is set immediately after ready', async function (t) {
 })
 
 test('basic session on inactive core is inactive', async function (t) {
-  t.plan(4)
+  t.plan(5)
 
   const createA = await createStored(t)
   const a = await createA()
@@ -156,6 +156,12 @@ test('basic session on inactive core is inactive', async function (t) {
     c.on('ready', function () {
       t.absent(b.core.replicator.downloading)
       t.absent(c.core.replicator.downloading)
+
+      const d = c.session({ active: true })
+
+      d.on('ready', function () {
+        t.ok(d.core.replicator.downloading)
+      })
     })
   })
 
