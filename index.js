@@ -417,6 +417,8 @@ class Hypercore extends EventEmitter {
       await this.core.setManifest(createManifest(opts.manifest))
     }
 
+    if (this.state !== this.core.state) this._active = false
+
     this.core.replicator.updateActivity(this._active ? 1 : 0)
 
     this.opened = true

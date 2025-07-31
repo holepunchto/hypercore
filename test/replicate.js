@@ -170,6 +170,41 @@ test('basic session on inactive core is inactive', async function (t) {
   })
 })
 
+test('basic named session is always inactive', async function (t) {
+  t.plan(4)
+
+  const createA = await createStored(t)
+  const a = await createA()
+
+  a.on('ready', function () {
+    t.ok(a.core.replicator.downloading)
+  })
+
+  const createB = await createStored(t)
+  const b = await createB({
+    notDownloadingLinger: 0 // replicator activity updates immediately
+  })
+
+  b.on('ready', function () {
+    t.ok(b.core.replicator.downloading)
+
+    const c = b.session({ name: 'named' })
+    t.teardown(() => c.close())
+
+    c.on('ready', async function () {
+      b.setActive(false)
+
+      t.absent(b.core.replicator.downloading)
+      t.absent(c.core.replicator.downloading)
+    })
+  })
+
+  t.teardown(async () => {
+    await a.close()
+    await b.close()
+  })
+})
+
 test('basic replication from fork', async function (t) {
   const a = await create(t)
 
