@@ -565,6 +565,10 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
 
+#### `core.peers`
+
+Array of current peers the core is replicating with.
+
 #### `await core.setEncryption(encryption)`
 
 Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
