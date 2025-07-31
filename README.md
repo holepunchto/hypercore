@@ -277,6 +277,23 @@ partialStream.pipe(process.stdout)
 }
 ```
 
+#### `const stream = core.createWriteStream()`
+
+Make a write stream to append chunks as blocks.
+
+``` js
+const ws = core.createWriteStream()
+
+for (const data of ['hello', 'world']) ws.write(data)
+ws.end()
+
+// Wait for stream to finish
+await new Promise(resolve => ws.on('finish', resolve))
+
+console.log(await core.get(core.length - 2)) // 'hello'
+console.log(await core.get(core.length - 1)) // 'world'
+```
+
 #### `const cleared = await core.clear(start, [end], [options])`
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.
