@@ -223,6 +223,7 @@ class Hypercore extends EventEmitter {
     const onseq = opts.onseq === undefined ? this.onseq : opts.onseq
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
+    const active = opts.active === undefined ? this._active : opts.active
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
@@ -232,6 +233,7 @@ class Hypercore extends EventEmitter {
       timeout,
       writable,
       weak,
+      active,
       parent: this
     })
 
