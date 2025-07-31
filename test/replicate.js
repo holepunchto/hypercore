@@ -149,8 +149,6 @@ test('basic session on inactive core is inactive', async function (t) {
     t.absent(b.core.replicator.downloading)
 
     const c = b.session()
-    c.debug = true
-
     t.teardown(() => c.close())
 
     c.on('ready', function () {
@@ -158,6 +156,7 @@ test('basic session on inactive core is inactive', async function (t) {
       t.absent(c.core.replicator.downloading)
 
       const d = c.session({ active: true })
+      t.teardown(() => d.close())
 
       d.on('ready', function () {
         t.ok(d.core.replicator.downloading)
