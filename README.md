@@ -404,6 +404,31 @@ To cancel downloading a range simply destroy the range instance.
 range.destroy()
 ```
 
+#### `const ext = core.registerExtension(name, handlers = {})`
+
+Register a custom protocol extension. This is a legacy implementation and is no longer recommended. Creating a [`Protomux`](https://github.com/holepunchto/protomux) protocol is recommended instead.
+
+`handlers` include:
+
+```
+{
+  encoding: 'json' | 'utf-8' | 'binary', // Compact encoding to use for messages. Defaults to buffer
+  onmessage: (message, peer) => { ... } // Callback for when a message for the extension is receive
+}
+```
+
+##### ext.send(message, peer)
+
+Sends the `message` to a specific `peer`.
+
+##### ext.broadcast(message)
+
+Sends the `message` to all peers.
+
+##### ext.destroy()
+
+Unregister and remove extension from the hypercore.
+
 #### `const session = core.session([options])`
 
 Creates a new Hypercore instance that shares the same underlying core.
