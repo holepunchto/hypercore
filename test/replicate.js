@@ -132,6 +132,39 @@ test('basic downloading is set immediately after ready', async function (t) {
   })
 })
 
+test('basic session on inactive core is inactive', async function (t) {
+  t.plan(4)
+
+  const createA = await createStored(t)
+  const a = await createA()
+
+  a.on('ready', function () {
+    t.ok(a.core.replicator.downloading)
+  })
+
+  const createB = await createStored(t)
+  const b = await createB({ active: false })
+
+  b.on('ready', function () {
+    t.absent(b.core.replicator.downloading)
+
+    const c = b.session()
+    c.debug = true
+
+    t.teardown(() => c.close())
+
+    c.on('ready', function () {
+      t.absent(b.core.replicator.downloading)
+      t.absent(c.core.replicator.downloading)
+    })
+  })
+
+  t.teardown(async () => {
+    await a.close()
+    await b.close()
+  })
+})
+
 test('basic replication from fork', async function (t) {
   const a = await create(t)
 
