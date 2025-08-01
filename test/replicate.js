@@ -205,6 +205,39 @@ test('basic named session is always inactive', async function (t) {
   })
 })
 
+test('basic toggle active with existing connection', async function (t) {
+  t.plan(4)
+
+  const a = await create(t)
+  await a.ready()
+
+  const b = await create(t, a.key, { active: false })
+
+  await b.ready()
+
+  t.absent(b.core.replicator.downloading)
+
+  replicate(a, b, t)
+
+  await a.append('a1')
+
+  setTimeout(() => {
+    t.is(b.length, 0)
+
+    b.setActive(true)
+    t.ok(b.core.replicator.downloading)
+
+    b.on('append', () => {
+      t.is(b.length, 1)
+    })
+  }, 1000)
+
+  t.teardown(async () => {
+    await a.close()
+    await b.close()
+  })
+})
+
 test('basic replication from fork', async function (t) {
   const a = await create(t)
 
