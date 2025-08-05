@@ -54,9 +54,10 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
   t.is(aStats.invalidData, 0, 'invalid data init 0')
+  t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 10, 'Expected amount of stats')
+  t.is(initStatsLength, 11, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -108,6 +109,45 @@ test('basic replication stats', async function (t) {
   await a.close()
   await b.close()
   await c.close()
+})
+
+test('invalidRequest stat', async function (t) {
+  // Note: warnings about replication stream errors are expected
+  // for this test, since we force them
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.get(0) // to get them replicating
+
+  const peerForB = b.replicator.peers[0]
+  const peerForA = a.replicator.peers[0]
+
+  const invalidReq = {
+    rt: 0,
+    id: 1,
+    fork: 0,
+    block: { index: 0, nodes: 2 },
+    hash: null,
+    seek: { bytes: 1, padding: 1 }, // invalid to both seek and block when upgrading
+    upgrade: { start: 0, length: 2 },
+    manifest: false,
+    priority: 1,
+    timestamp: 1754412092523,
+    elapsed: 0
+  }
+  peerForB.wireRequest.send(invalidReq)
+
+  // let request go through
+  await new Promise(resolve => setTimeout(resolve, 250))
+
+  t.is(a.core.replicator.stats.invalidRequests, 1)
+  t.is(peerForA.stats.invalidRequests, 1)
+
+  await a.close()
+  await b.close()
 })
 
 test('basic downloading is set immediately after ready', async function (t) {
