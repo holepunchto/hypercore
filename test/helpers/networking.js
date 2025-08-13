@@ -1,6 +1,7 @@
 const UDX = require('udx-native')
 const safetyCatch = require('safety-catch')
 const NoiseStream = require('@hyperswarm/secret-stream')
+const rrp = require('resolve-reject-promise')
 
 module.exports = {
   makeStreamPair
@@ -11,19 +12,30 @@ function makeStreamPair (t, opts = {}) {
   const a = u.createSocket()
   const b = u.createSocket()
 
-  t.teardown(() => a.close())
-  t.teardown(() => b.close())
+  // need to close after their streams
+  t.teardown(() => a.close(), { order: 3 })
+  t.teardown(() => b.close(), { order: 4 })
 
   a.bind(0, '127.0.0.1')
   b.bind(0, '127.0.0.1')
 
   const p = proxy({ from: a, to: b }, async function () {
     const delay = opts.latency[0] + Math.round(Math.random() * (opts.latency[1] - opts.latency[0]))
-    if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
+    if (delay) {
+      const { promise, resolve } = rrp()
+      const timeout = setTimeout(resolve, delay)
+      t.teardown(() => { // If the test ends before our delay triggered
+        clearTimeout(timeout)
+        resolve()
+      })
+      await promise
+    }
     return false
   })
 
-  t.teardown(() => p.close())
+  // Needs to be torn down early, otherwise proxy calls can trigger while
+  // already tearing down, meaning their timeouts won't be cleared
+  t.teardown(() => p.close(), { order: 0 })
 
   const s1 = u.createStream(1)
   const s2 = u.createStream(2)
