@@ -1097,7 +1097,7 @@ function maybeUnslab (block) {
 }
 
 function checkSnapshot (snapshot, index) {
-  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE(undefined, this.discoveryKey)
+  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE(undefined, snapshot.discoveryKey)
 }
 
 function readBlock (rx, index) {
