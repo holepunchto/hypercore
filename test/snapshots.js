@@ -243,11 +243,15 @@ test('error when using inconsistent snapshot', async function (t) {
   await core.append('block #1.0')
   await core.append('block #2.0')
 
+  const snapshot = core.snapshot()
   try {
-    await core.snapshot().get(1000)
+    await snapshot.get(1000)
     t.fail('should throw')
   } catch (e) {
     t.is(e.code, 'SNAPSHOT_NOT_AVAILABLE')
     t.is(e.message.includes(IdEnc.normalize(core.discoveryKey)), true, 'error message includes the discovery key')
   }
+
+  await snapshot.close()
+  await core.close()
 })
