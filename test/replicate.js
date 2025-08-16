@@ -57,7 +57,7 @@ test('basic replication stats', async function (t) {
   t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 11, 'Expected amount of stats')
+  t.is(initStatsLength, 12, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -126,6 +126,7 @@ test('invalidRequest stat', async function (t) {
   const peerForA = a.replicator.peers[0]
 
   const invalidReq = {
+    peer: peerForB,
     rt: 0,
     id: 1,
     fork: 0,
@@ -138,13 +139,62 @@ test('invalidRequest stat', async function (t) {
     timestamp: 1754412092523,
     elapsed: 0
   }
+
+  b.replicator._inflight.add(invalidReq)
   peerForB.wireRequest.send(invalidReq)
 
   // let request go through
-  await new Promise(resolve => setTimeout(resolve, 250))
+  await new Promise(resolve => setTimeout(resolve, 500))
 
   t.is(a.core.replicator.stats.invalidRequests, 1)
   t.is(peerForA.stats.invalidRequests, 1)
+  t.is(peerForB.stats.backoffs, 1)
+
+  await a.close()
+  await b.close()
+})
+
+test('invalidRequests backoff (slow)', async function (t) {
+  // Note: warnings about replication stream errors are expected
+  // for this test, since we force them
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.get(0) // to get them replicating
+
+  const peerForB = b.replicator.peers[0]
+  const peerForA = a.replicator.peers[0]
+
+  for (let i = 0; i < 50; i++) {
+    const invalidReq = {
+      peer: peerForB,
+      rt: 0,
+      id: 1 + i,
+      fork: 0,
+      block: { index: 0, nodes: 2 },
+      hash: null,
+      seek: { bytes: 1, padding: 1 }, // invalid to both seek and block when upgrading
+      upgrade: { start: 0, length: 2 },
+      manifest: false,
+      priority: 1,
+      timestamp: 1754412092523,
+      elapsed: 0
+    }
+
+    b.replicator._inflight.add(invalidReq)
+    peerForB.wireRequest.send(invalidReq)
+  }
+
+  // let request go through
+  await new Promise(resolve => setTimeout(resolve, 7000))
+
+  t.is(a.core.replicator.stats.invalidRequests, 50)
+  t.is(peerForA.stats.invalidRequests, 50)
+  t.is(peerForB.stats.backoffs, 50)
+  t.is(peerForB.paused, true)
 
   await a.close()
   await b.close()
