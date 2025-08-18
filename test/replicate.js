@@ -2036,6 +2036,27 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   await b.download({ start: 0, end: a.length }).done()
 })
 
+test.solo('remote contiguous length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  console.log('-------------------')
+  await b.get(0)
+
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  t.is(a.remoteContiguousLength, 1)
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
