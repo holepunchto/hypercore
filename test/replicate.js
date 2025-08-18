@@ -2374,6 +2374,27 @@ test('hotswap works for a download with many slow peers', async function (t) {
   t.pass(`Hotswap triggered (download took ${Date.now() - start}ms)`)
 })
 
+test.solo('remote contiguous length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  console.log('-------------------')
+  await b.get(0)
+
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  t.is(a.remoteContiguousLength, 1)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
