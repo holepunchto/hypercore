@@ -70,6 +70,7 @@
     "hyperswarm": "^4.3.6",
     "rache": "^1.0.0",
     "range-parser": "^1.2.1",
+    "resolve-reject-promise": "^1.1.0",
     "speedometer": "^1.1.0",
     "standard": "^17.0.0",
     "test-tmp": "^1.0.2",
