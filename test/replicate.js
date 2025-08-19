@@ -2036,6 +2036,32 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   await b.download({ start: 0, end: a.length }).done()
 })
 
+test('resolved-request event includes elapsed time of the request', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c', 'd'])
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  // range request
+  b.on('resolved-request', (req) => {
+    t.is(req.constructor.name, 'RangeRequest')
+    t.ok(Number.isInteger(req.timestamp))
+    t.ok(Number.isInteger(req.elapsed))
+  })
+  await b.download({ start: 0, end: a.length }).done()
+
+  // block request
+  c.on('resolved-request', (req) => {
+    t.is(req.constructor.name, 'BlockRequest')
+    t.ok(Number.isInteger(req.timestamp))
+    t.ok(Number.isInteger(req.elapsed))
+  })
+  await c.get(0)
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
