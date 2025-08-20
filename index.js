@@ -1112,7 +1112,7 @@ function initOnce (session, storage, key, opts) {
 
   session.core = new Core(Hypercore.defaultStorage(storage), {
     preopen: opts.preopen,
-    eagerUpgrade: true,
+    eagerUpgrade: opts.eagerUpgrade !== false,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
     inflightRange: opts.inflightRange,
