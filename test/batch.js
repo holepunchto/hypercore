@@ -446,7 +446,7 @@ test('encryption and bigger batches', async function (t) {
 })
 
 test('persistent batch', async function (t) {
-  const dir = await createTempDir()
+  const dir = await createTempDir(t)
   let storage = null
 
   const core = new Hypercore(await open())

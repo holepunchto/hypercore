@@ -166,7 +166,7 @@ test('reopen writable core', async function (t) {
 })
 
 test('reopen and overwrite', async function (t) {
-  const dir = await createTempDir()
+  const dir = await createTempDir(t)
   let storage = null
 
   const core = new Hypercore(await open())

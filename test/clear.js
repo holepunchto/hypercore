@@ -131,7 +131,7 @@ test('clear - no side effect from clearing unknown nodes', async function (t) {
 
 test('clear - large cores', async function (t) {
   t.timeout(100000)
-  const dir = await t.tmp()
+  const dir = await t.tmp(t)
 
   const db = new CoreStorage(dir)
   const a = new Hypercore(db)
