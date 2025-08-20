@@ -1,6 +1,5 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const createTempDir = require('test-tmp')
 const HypercoreStorage = require('hypercore-storage')
 
 const Hypercore = require('../')
@@ -119,7 +118,7 @@ test('createIfMissing', async function (t) {
 })
 
 test('reopen writable core', async function (t) {
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
 
   const core = new Hypercore(dir)
   await core.ready()
@@ -166,7 +165,7 @@ test('reopen writable core', async function (t) {
 })
 
 test('reopen and overwrite', async function (t) {
-  const dir = await createTempDir()
+  const dir = await t.tmp()
   let storage = null
 
   const core = new Hypercore(await open())

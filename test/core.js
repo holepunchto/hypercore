@@ -1,6 +1,5 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
 const { MerkleTree } = require('../lib/merkle-tree')
 const Core = require('../lib/core')
@@ -427,7 +426,7 @@ test('core - copyPrologue many', async function (t) {
 })
 
 async function create (t, opts = {}) {
-  const dir = opts.dir || await createTempDir(t)
+  const dir = opts.dir || await t.tmp()
 
   let db = null
 

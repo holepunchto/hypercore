@@ -1,7 +1,6 @@
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
-const tmpDir = require('test-tmp')
 const c = require('compact-encoding')
 
 const Hypercore = require('../')
@@ -710,7 +709,7 @@ test('multisig - multiple appends', async function (t) {
 })
 
 test('multisig - persist to disk', async function (t) {
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const storage = await createStorage(t, dir)
 
   const signers = []
