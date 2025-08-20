@@ -1,5 +1,4 @@
 const test = require('brittle')
-const createTempDir = require('test-tmp')
 const b4a = require('b4a')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
@@ -103,7 +102,7 @@ test('implicit snapshot - gets are snapshotted at call time', async function (t)
 test('snapshots wait for ready', async function (t) {
   t.plan(8)
 
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
   const db = await createStorage(t, dir)
 
   const core = new Hypercore(db)

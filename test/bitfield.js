@@ -1,6 +1,5 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
 const Bitfield = require('../lib/bitfield')
 const BitInterlude = require('../lib/bit-interlude')
@@ -53,7 +52,7 @@ test('bitfield - random set and gets', async function (t) {
 })
 
 test('bitfield - reload', async function (t) {
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
 
   {
     const storage = await createStorage(t, dir)
@@ -292,7 +291,7 @@ test('bitfield - setRange over multiple pages', async function (t) {
 })
 
 async function createStorage (t, dir) {
-  if (!dir) dir = await createTempDir(t)
+  if (!dir) dir = await t.tmp()
 
   const db = new CoreStorage(dir)
 
