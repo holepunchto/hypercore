@@ -456,6 +456,43 @@ test('invalid capability fails', async function (t) {
   })
 })
 
+test('only replicates when remote can connect the proofs', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { eagerUpgrade: false })
+  const c = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  await a.append('0')
+  await b.get(0)
+
+  await a.append('1')
+  await a.append('2')
+  await a.append('3')
+  await a.append('4')
+  await a.append('5')
+  await a.append('6')
+  await a.append('7')
+
+  const s = replicate(a, c, t)
+  replicate(b, c, t)
+
+  await c.get(7)
+
+  await unreplicate(s)
+
+  t.is(b.length, 1)
+  t.is(c.length, 8)
+  t.is(a.length, 8)
+
+  setTimeout(async () => {
+    await b.update({ wait: true })
+  }, 750)
+
+  await c.get(0)
+  t.ok(b.length === 8)
+})
+
 test('update with zero length', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
