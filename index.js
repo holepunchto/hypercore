@@ -716,7 +716,7 @@ class Hypercore extends EventEmitter {
     const offset = await s.update()
     if (offset) return offset
 
-    if (this.closing !== null) throw SESSION_CLOSED(undefined, this.discoveryKey)
+    if (this.closing !== null) throw SESSION_CLOSED('cannot seek on a closed session', this.discoveryKey)
 
     if (!this._shouldWait(opts, this.wait)) return null
 
