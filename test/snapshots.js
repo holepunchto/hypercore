@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const IdEnc = require('hypercore-id-encoding')
 const Hypercore = require('../')
 const { replicate, unreplicate, create, createStorage } = require('./helpers')
 
@@ -232,4 +233,24 @@ test('snapshot over named batch persists after truncate', async function (t) {
 
   await core.close()
   await snapshot.close()
+})
+
+test('error when using inconsistent snapshot', async function (t) {
+  const core = await create(t)
+
+  await core.append('block #0.0')
+  await core.append('block #1.0')
+  await core.append('block #2.0')
+
+  const snapshot = core.snapshot()
+  try {
+    await snapshot.get(1000)
+    t.fail('should throw')
+  } catch (e) {
+    t.is(e.code, 'SNAPSHOT_NOT_AVAILABLE')
+    t.is(e.message.includes(IdEnc.normalize(core.discoveryKey)), true, 'error message includes the discovery key')
+  }
+
+  await snapshot.close()
+  await core.close()
 })
