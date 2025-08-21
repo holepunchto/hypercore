@@ -637,7 +637,7 @@ class Hypercore extends EventEmitter {
 
     this.core = core
 
-    old.replicator.clearRequests(this.activeRequests, SESSION_MOVED(undefined, this.discoveryKey))
+    old.replicator.clearRequests(this.activeRequests, SESSION_MOVED())
 
     this.emit('migrate', this.key)
   }
@@ -767,7 +767,7 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
 
-    if (this.closing !== null) throw SESSION_CLOSED(undefined, this.discoveryKey)
+    if (this.closing !== null) throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
 
     const encoding = (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
@@ -792,7 +792,7 @@ class Hypercore extends EventEmitter {
 
   async clear (start, end = start + 1, opts) {
     if (this.opened === false) await this.opening
-    if (this.closing !== null) throw SESSION_CLOSED(undefined, this.discoveryKey)
+    if (this.closing !== null) throw SESSION_CLOSED('cannot clear on a closed session', this.discoveryKey)
 
     if (typeof end === 'object') {
       opts = end
@@ -821,7 +821,7 @@ class Hypercore extends EventEmitter {
 
     if (block !== null) return block
 
-    if (this.closing !== null) throw SESSION_CLOSED(undefined, this.discoveryKey)
+    if (this.closing !== null) throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
 
     // snapshot should check if core has block
     if (this._snapshot !== null) {
@@ -911,7 +911,7 @@ class Hypercore extends EventEmitter {
 
     const isDefault = this.state === this.core.state
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork)) throw SESSION_NOT_WRITABLE(undefined, this.discoveryKey)
+    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork)) throw SESSION_NOT_WRITABLE('cannot append to a non-writable core', this.discoveryKey)
 
     await this.state.truncate(newLength, fork, { keyPair, signature })
 
@@ -928,7 +928,7 @@ class Hypercore extends EventEmitter {
     const { keyPair = defaultKeyPair, signature = null, maxLength } = opts
     const writable = !isDefault || !!signature || !!(keyPair && keyPair.secretKey) || opts.writable === true
 
-    if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE(undefined, this.discoveryKey)
+    if (this._readonly || writable === false) throw SESSION_NOT_WRITABLE('cannot append to a readonly core', this.discoveryKey)
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
@@ -1055,8 +1055,8 @@ class Hypercore extends EventEmitter {
     if (this.encryption) block = block.subarray(this.encryption.padding(this.core, index))
     try {
       if (enc) return c.decode(enc, block)
-    } catch {
-      throw DECODING_ERROR(undefined, this.discoveryKey)
+    } catch (err) {
+      throw DECODING_ERROR(err.message, this.discoveryKey)
     }
     return block
   }
@@ -1097,7 +1097,7 @@ function maybeUnslab (block) {
 }
 
 function checkSnapshot (snapshot, index) {
-  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE(undefined, snapshot.discoveryKey)
+  if (index >= snapshot.state.snapshotCompatLength) throw SNAPSHOT_NOT_AVAILABLE(`snapshot at index ${index} not available (max compat length ${snapshot.state.snapshotCompatLength})`, snapshot.discoveryKey)
 }
 
 function readBlock (rx, index) {
