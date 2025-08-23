@@ -1171,6 +1171,33 @@ test('download blocks available from when only a partial set is available', asyn
   t.ok(!(await c.has(4)))
 })
 
+test('big download range', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+  const d = await create(t, a.key)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+  replicate(c, d, t)
+  replicate(b, d, t)
+
+  const cnt = 10_000
+  for (let i = 0; i < cnt; i++) await a.append('tick')
+
+  const r1 = b.download({ start: 0, end: cnt })
+  const r2 = c.download({ start: 0, end: cnt })
+  const r3 = d.download({ start: 0, end: cnt })
+
+  await r1.done()
+  await r2.done()
+  await r3.done()
+
+  t.ok(b.contiguousLength, cnt)
+  t.ok(c.contiguousLength, cnt)
+  t.ok(d.contiguousLength, cnt)
+})
+
 test('download range resolves immediately if no peers', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
