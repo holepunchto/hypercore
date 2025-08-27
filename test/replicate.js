@@ -2122,6 +2122,48 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   await b.download({ start: 0, end: a.length }).done()
 })
 
+test('range is broadcast when a core is fully available', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c'])
+  const reader = await create(t, writer.key)
+
+  replicate(writer, reader, t)
+  await reader.get(0)
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'transmitted range when connection opened')
+  t.is(reader.replicator.stats.wireRange.tx, 0, 'reader did not transmit range yet')
+
+  await reader.get(1)
+  await reader.get(2)
+  t.is(reader.contiguousLength, 3, 'fully downloaded core (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'reader transmitted range when fully downloaded')
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'writer sent no new messages')
+
+  await writer.append(['d', 'e'])
+  t.is(writer.replicator.stats.wireRange.tx, 2, 'transmitted range when its lenght increased and it is still fully contig')
+
+  await reader.get(3)
+  t.is(reader.contiguousLength, 4, 'not fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'no new broadcast range since not fully downloaded')
+
+  await reader.get(4)
+  t.is(reader.contiguousLength, 5, 'fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 2, 'new broadcast range since it is again fully downloaded')
+
+  await writer.clear(1, 2)
+  t.is(writer.contiguousLength, 1, 'writer no longer contig')
+  await writer.append(['f', 'g'])
+  // Give time for messages to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(reader.replicator.peers[0]._remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
+
+  await reader.get(5)
+  await reader.get(6)
+  // Give time for broadcastRange message to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(writer.replicator.peers[0]._remoteContiguousLength, 7, 'writer detected reader is fully contig')
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
