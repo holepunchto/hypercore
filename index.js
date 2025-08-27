@@ -453,6 +453,11 @@ class Hypercore extends EventEmitter {
     return this.closing
   }
 
+  clearRequests (activeRequests, error) {
+    if (!activeRequests.length) return
+    if (this.core) this.core.replicator.clearRequests(activeRequests, error)
+  }
+
   async _close (error) {
     if (this.opened === false) {
       try {
