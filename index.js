@@ -795,6 +795,15 @@ class Hypercore extends EventEmitter {
     return this._decode(encoding, block, index)
   }
 
+  // TODO: use a single rocks batch when possible etc
+  async getBatch (indexes, opts) {
+    const promises = []
+    for (const index of indexes) {
+      promises.push(this.get(index, opts))
+    }
+    return Promise.all(promises)
+  }
+
   async clear (start, end = start + 1, opts) {
     if (this.opened === false) await this.opening
     if (this.closing !== null) throw SESSION_CLOSED('cannot clear on a closed session', this.discoveryKey)
