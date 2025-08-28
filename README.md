@@ -63,7 +63,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   onseq: (index, core) => { ... }, // A callback called when core.get(index) is called.
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
-  userData: { foo: 'bar' }, // An object to assign to the local User Uata storage
+  userData: { foo: 'bar' }, // An object to assign to the local User Data storage
   manifest: undefined, // Advanced option. Set the manifest when creating the hypercore. See Manifest section for more info
   preload: undefined, // Advanced option. A promise that returns constructor options overrides before the core is opened
   storage: undefined, // An alternative to passing storage as a dedicated argument
