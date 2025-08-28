@@ -102,7 +102,7 @@ The manifest is metadata about authenticating a hypercore including things like 
 }
 ```
 
-Signers are an array of object with the following structure:
+Signers are an array of objects with the following structure:
 
 ```
 {
