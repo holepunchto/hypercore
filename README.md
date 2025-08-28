@@ -353,7 +353,7 @@ Note that you cannot seek & provide a block / hash request when upgrading.
 
 #### `const batch = await core.verifyFullyRemote(proof)`
 
-Return merkle tree batch from proof. Will throw if proof cannot be verified.
+Return the merkle tree batch from the proof. Will throw if the proof cannot be verified.
 
 Note that you cannot seek & provide a block / hash request when upgrading.
 
