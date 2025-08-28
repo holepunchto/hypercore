@@ -97,10 +97,12 @@ The manifest is metadata about authenticating a hypercore including things like 
   quorum: (signers.length / 2) + 1, // How many signers needed to verify a block
   signers,                          // Array of signers for the core
   prologue: null,                   // The tree hash and length of the core
-  linked: null,                     // Only supported in versions >= 2
+  linked: null,                     // Array of associated core keys. Only supported in versions >= 2
   userData: null                    // Only supported in versions >= 2
 }
 ```
+
+The `linked` property in the manifest is used to reference other hypercores that are associated with the current core. For example in `autobase` the encryption view is loaded from the `linked` property in the system view core. Note, as with everything in the manifest, changing the `linked` property changes the core's `key`.
 
 Signers are an array of objects with the following structure:
 
