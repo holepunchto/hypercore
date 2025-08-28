@@ -717,7 +717,7 @@ Returns the key for a given manifest.
 
 ```
 {
-  compat: false,  // Whether the manifest has a single singer whos public key is the key
+  compat: false,  // Whether the manifest has a single singer whose public key is the key
   version,        // Manifest version if the manifest argument is the public key of a single singer
   namespace       // The signer namespace if the manifest argument is the public key of a single singer
 }
