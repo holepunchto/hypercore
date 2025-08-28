@@ -342,10 +342,10 @@ Generate a proof (a `TreeProof` instance) for the request `opts`.
 
 ```
 {
-  block: { index: 4, nodes: 2 }, // Block request
-  hash: { index: 6, nodes: 0 }, // Hash Request
-  seek: { bytes: 13, padding: 0 }, // Seek Request
-  upgrade: { start: 8, length: 2 } // Upgrade request
+  block: { index, nodes }, // Block request
+  hash: { index, nodes }, // Hash Request
+  seek: { bytes, padding }, // Seek Request
+  upgrade: { start, length } // Upgrade request
 }
 ```
 
