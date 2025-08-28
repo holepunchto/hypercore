@@ -98,7 +98,7 @@ The manifest is metadata about authenticating a hypercore including things like 
   signers,                          // Array of signers for the core
   prologue: null,                   // The tree hash and length of the core
   linked: null,                     // Array of associated core keys. Only supported in versions >= 2
-  userData: null                    // Only supported in versions >= 2
+  userData: null                    // Arbitrary buffer for User Data integral to the core. Only supported in versions >= 2
 }
 ```
 
