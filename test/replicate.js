@@ -2122,6 +2122,100 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   await b.download({ start: 0, end: a.length }).done()
 })
 
+test('range is broadcast when a core is fully available', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c'])
+  const reader = await create(t, writer.key)
+
+  replicate(writer, reader, t)
+  await reader.get(0)
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'transmitted range when connection opened')
+  t.is(reader.replicator.stats.wireRange.tx, 0, 'reader did not transmit range yet')
+
+  await reader.get(1)
+  await reader.get(2)
+  t.is(reader.contiguousLength, 3, 'fully downloaded core (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'reader transmitted range when fully downloaded')
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'writer sent no new messages')
+
+  await writer.append(['d', 'e'])
+  t.is(writer.replicator.stats.wireRange.tx, 2, 'transmitted range when its lenght increased and it is still fully contig')
+
+  await reader.get(3)
+  t.is(reader.contiguousLength, 4, 'not fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'no new broadcast range since not fully downloaded')
+
+  await reader.get(4)
+  t.is(reader.contiguousLength, 5, 'fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 2, 'new broadcast range since it is again fully downloaded')
+
+  await writer.clear(1, 2)
+  t.is(writer.contiguousLength, 1, 'writer no longer contig')
+  await writer.append(['f', 'g'])
+  // Give time for messages to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(reader.replicator.peers[0].remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
+
+  await reader.get(5)
+  await reader.get(6)
+  // Give time for broadcastRange message to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(writer.replicator.peers[0].remoteContiguousLength, 7, 'writer detected reader is fully contig')
+})
+
+test('range is broadcast when a core is fully available (multiple peers)', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c'])
+  const reader1 = await create(t, writer.key)
+  const reader2 = await create(t, writer.key)
+
+  replicate(writer, reader1, t)
+  await reader1.get(0)
+  const writerToReader1 = writer.replicator.peers[0]
+  const reader1ToWriter = reader1.replicator.peers[0]
+
+  replicate(writer, reader2, t)
+  await reader2.get(0)
+  const writerToReader2 = writer.replicator.peers[1]
+  const reader2ToWriter = reader1.replicator.peers[0]
+
+  replicate(reader1, reader2, t)
+  // Give time for replication to add the peers
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  const reader1ToReader2 = reader1.replicator.peers[1]
+  const reader2ToReader1 = reader2.replicator.peers[1]
+  t.is(reader1ToReader2 !== undefined, true, 'sanity check')
+  t.is(reader2ToReader1 !== undefined, true, 'sanity check')
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(writerToReader1.remoteContiguousLength, 0, 'reader1 skipped range update to writer (not contig yet)')
+  t.is(writerToReader2.remoteContiguousLength, 0, 'reader2 skipped range update to writer (not contig yet)')
+  t.is(reader1ToWriter.remoteContiguousLength, 3, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 3, 'writer updated for reader2')
+
+  await reader1.get(1)
+  await reader1.get(2)
+  await reader2.get(1)
+  await reader2.get(2)
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(reader1.contiguousLength, 3, 'sanity check')
+  t.is(reader2.contiguousLength, 3, 'sanity check')
+  t.is(writerToReader1.remoteContiguousLength, 3, 'reader1 sent range update to writer (became contig)')
+  t.is(writerToReader2.remoteContiguousLength, 3, 'reader2 sent range update to writer (became contig)')
+  t.is(reader1ToReader2.remoteContiguousLength, 3, 'reader2 broadcast to reader1 too')
+  t.is(reader2ToReader1.remoteContiguousLength, 3, 'reader1 broadcast to reader2 too')
+
+  await writer.append(['d', 'e'])
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(reader1ToWriter.remoteContiguousLength, 5, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 5, 'writer updated for reader2')
+})
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
