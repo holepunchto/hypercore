@@ -2155,13 +2155,13 @@ test('range is broadcast when a core is fully available', async function (t) {
   await writer.append(['f', 'g'])
   // Give time for messages to be received
   await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(reader.replicator.peers[0]._remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
+  t.is(reader.replicator.peers[0].remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
 
   await reader.get(5)
   await reader.get(6)
   // Give time for broadcastRange message to be received
   await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(writer.replicator.peers[0]._remoteContiguousLength, 7, 'writer detected reader is fully contig')
+  t.is(writer.replicator.peers[0].remoteContiguousLength, 7, 'writer detected reader is fully contig')
 })
 
 test('range is broadcast when a core is fully available (multiple peers)', async function (t) {
@@ -2192,10 +2192,10 @@ test('range is broadcast when a core is fully available (multiple peers)', async
 
   await new Promise(resolve => setTimeout(resolve, 100))
 
-  t.is(writerToReader1._remoteContiguousLength, 0, 'reader1 skipped range update to writer (not contig yet)')
-  t.is(writerToReader2._remoteContiguousLength, 0, 'reader2 skipped range update to writer (not contig yet)')
-  t.is(reader1ToWriter._remoteContiguousLength, 3, 'writer updated for reader1')
-  t.is(reader2ToWriter._remoteContiguousLength, 3, 'writer updated for reader2')
+  t.is(writerToReader1.remoteContiguousLength, 0, 'reader1 skipped range update to writer (not contig yet)')
+  t.is(writerToReader2.remoteContiguousLength, 0, 'reader2 skipped range update to writer (not contig yet)')
+  t.is(reader1ToWriter.remoteContiguousLength, 3, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 3, 'writer updated for reader2')
 
   await reader1.get(1)
   await reader1.get(2)
@@ -2205,15 +2205,15 @@ test('range is broadcast when a core is fully available (multiple peers)', async
 
   t.is(reader1.contiguousLength, 3, 'sanity check')
   t.is(reader2.contiguousLength, 3, 'sanity check')
-  t.is(writerToReader1._remoteContiguousLength, 3, 'reader1 sent range update to writer (became contig)')
-  t.is(writerToReader2._remoteContiguousLength, 3, 'reader2 sent range update to writer (became contig)')
-  t.is(reader1ToReader2._remoteContiguousLength, 3, 'reader2 broadcast to reader1 too')
-  t.is(reader2ToReader1._remoteContiguousLength, 3, 'reader1 broadcast to reader2 too')
+  t.is(writerToReader1.remoteContiguousLength, 3, 'reader1 sent range update to writer (became contig)')
+  t.is(writerToReader2.remoteContiguousLength, 3, 'reader2 sent range update to writer (became contig)')
+  t.is(reader1ToReader2.remoteContiguousLength, 3, 'reader2 broadcast to reader1 too')
+  t.is(reader2ToReader1.remoteContiguousLength, 3, 'reader1 broadcast to reader2 too')
 
   await writer.append(['d', 'e'])
   await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(reader1ToWriter._remoteContiguousLength, 5, 'writer updated for reader1')
-  t.is(reader2ToWriter._remoteContiguousLength, 5, 'writer updated for reader2')
+  t.is(reader1ToWriter.remoteContiguousLength, 5, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 5, 'writer updated for reader2')
 })
 
 async function waitForRequestBlock (core) {
