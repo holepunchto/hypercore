@@ -635,6 +635,8 @@ Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hyperc
 
 Set the core to be active or not. A core is considered 'active' if it should linger to download blocks from peers.
 
+When calling `core.setActive(true)` make sure to later call `core.setActive(false)` to mark it as inactive otherwise the core's activity tracking will be inaccurate and keep replication channels open.
+
 #### `await core.setUserData(key, value)`
 
 Set a key in the User Data key-value store.
