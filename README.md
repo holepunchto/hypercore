@@ -629,7 +629,7 @@ Set the encryption key.
 
 #### `core.setKeyPair(keyPair)`
 
-Update the core's `keyPair`.
+Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hypercore, e.g. verifying blocks, identifying the core, etc.
 
 #### `core.setActive(active)`
 

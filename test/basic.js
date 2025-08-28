@@ -2,6 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
 const HypercoreStorage = require('hypercore-storage')
+const crypto = require('hypercore-crypto')
 
 const Hypercore = require('../')
 const { create, createStorage, eventFlush } = require('./helpers')
@@ -761,6 +762,20 @@ test('append alignment to bitfield boundary', async function (t) {
 
     await core.close()
   }
+})
+
+test('setKeyPair', async function (t) {
+  const core = await create(t)
+
+  await core.append('hello')
+  t.is(core.length, 1)
+
+  const keyPair = crypto.keyPair()
+  t.unlike(core.keyPair, keyPair, 'generate new keyPair')
+  core.setKeyPair(keyPair)
+  t.alike(core.keyPair, keyPair, 'keyPair updated')
+
+  await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
 function getBitfields (hypercore, start = 0, end = null) {
