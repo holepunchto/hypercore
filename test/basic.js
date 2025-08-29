@@ -2,7 +2,6 @@ const test = require('brittle')
 const b4a = require('b4a')
 const createTempDir = require('test-tmp')
 const HypercoreStorage = require('hypercore-storage')
-const crypto = require('hypercore-crypto')
 
 const Hypercore = require('../')
 const { create, createStorage, eventFlush } = require('./helpers')
