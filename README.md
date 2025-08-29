@@ -50,6 +50,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
+  force: false, // Advanced option. Will force overwrite even if the header's key & the passed key don't match
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to binary
   encodeBatch: batch => { ... }, // optionally apply an encoding to complete batches
   keyPair: kp, // optionally pass the public key and secret key as a key pair
@@ -59,9 +60,14 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
   writable: true, // disable appends and truncates
   inflightRange: null, // Advanced option. Set to [minInflight, maxInflight] to change the min and max inflight blocks per peer when downloading.
   ongc: (session) => { ... }, // A callback called when the session is garbage collected
+  onseq: (index, core) => { ... }, // A callback called when core.get(index) is called.
   notDownloadingLinger: 20000, // How many milliseconds to wait after downloading finishes keeping the connection open. Defaults to a random number between 20-40s
   allowFork: true, // Enables updating core when it forks
-  userData: { foo: 'bar' }, // An object to assign to the local User Uata storage
+  userData: { foo: 'bar' }, // An object to assign to the local User Data storage
+  manifest: undefined, // Advanced option. Set the manifest when creating the hypercore. See Manifest section for more info
+  preload: undefined, // Advanced option. A promise that returns constructor options overrides before the core is opened
+  storage: undefined, // An alternative to passing storage as a dedicated argument
+  key: null, // An alternative to passing key as a dedicated argument
 }
 ```
 
@@ -79,7 +85,36 @@ Keys are always strings and values can be strings or buffers.
 
 See [`core.setUserData(key, value)`](#await-coresetuserdatakey-value) and [`core.getUserData(key)`](#const-value--await-coregetuserdatakey) for updating User Data.
 
-#### `const { length, byteLength } = await core.append(block)`
+##### Manifest
+
+The manifest is metadata about authenticating a hypercore including things like the signers (only one by default) and the prologue. Manifest has the following structure:
+
+```
+{
+  version: 1,                       // Version of the manifest format
+  hash: 'blake2b',                  // Only Blake2b is supported currently
+  allowPatch: false,                // Whether the hypercore can be "patched" to change the signers
+  quorum: (signers.length / 2) + 1, // How many signers needed to verify a block
+  signers,                          // Array of signers for the core
+  prologue: null,                   // The tree hash and length of the core
+  linked: null,                     // Array of associated core keys. Only supported in versions >= 2
+  userData: null                    // Arbitrary buffer for User Data integral to the core. Only supported in versions >= 2
+}
+```
+
+The `linked` property in the manifest is used to reference other hypercores that are associated with the current core. For example in `autobase` the encryption view is loaded from the `linked` property in the system view core. Note, as with everything in the manifest, changing the `linked` property changes the core's `key`.
+
+Signers are an array of objects with the following structure:
+
+```
+{
+  signature: 'ed25519',               // The signature method
+  namespace: caps.DEFAULT_NAMESPACE,  // A cryptographic namespace for the signature
+  publicKey: Buffer                   // Signer's public key
+}
+```
+
+#### `const { length, byteLength } = await core.append(block, options = {})`
 
 Append a block of data (or an array of blocks) to the core.
 Returns the new length and byte length of the core.
@@ -90,6 +125,17 @@ await core.append(Buffer.from('I am a block of data'))
 
 // pass an array to append multiple blocks as a batch
 await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
+```
+
+`options` include:
+
+```
+{
+  writable: false // Enabled ignores writable check. Does not override whether core is writable.
+  maxLength: undefined // The maximum resulting length of the core after appending
+  keyPair: core.keyPair // KeyPair used to sign the block(s)
+  signature: null // Set signature for block(s)
+}
 ```
 
 #### `const block = await core.get(index, [options])`
@@ -115,8 +161,10 @@ const blockLocal = await core.get(44, { wait: false })
   wait: true, // wait for block to be downloaded
   onwait: () => {}, // hook that is called if the get is waiting for download
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
+  activeRequests: undefined, // Advanced option. Pass BlockRequest for replicating the block
   valueEncoding: 'json' | 'utf-8' | 'binary', // defaults to the core's valueEncoding
-  decrypt: true // automatically decrypts the block if encrypted
+  decrypt: true, // automatically decrypts the block if encrypted
+  raw: false, // Return block without decoding
 }
 ```
 
@@ -138,7 +186,9 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 ``` js
 {
-  wait: false
+  wait: false,
+  activeRequests: undefined, // Advanced option. Pass requests for replicating blocks
+  force: false, // Force an update even if core is writable.
 }
 ```
 
@@ -162,7 +212,8 @@ const third = await core.seek(5) // returns [2, 1]
 ``` js
 {
   wait: true, // wait for data to be downloaded
-  timeout: 0 // wait at max some milliseconds (0 means no timeout)
+  timeout: 0, // wait at max some milliseconds (0 means no timeout)
+  activeRequests: undefined // Advanced option. Pass requests for replicating blocks
 }
 ```
 
@@ -191,7 +242,9 @@ for await (const data of fullStream) {
 {
   start: 0,
   end: core.length,
-  live: false,
+  wait: core.wait, // Whether to wait for updates from peers
+  timeout: core.timeout, // How long to wait for updates from peers
+  live: false, // Wait for next block keeping stream open / live
   snapshot: true // auto set end to core.length on open or update it on every read
 }
 ```
@@ -220,10 +273,29 @@ partialStream.pipe(process.stdout)
 
 ``` js
 {
-  byteOffset: 0,
-  byteLength: core.byteLength - options.byteOffset,
-  prefetch: 32
+  byteOffset: 0, // Offset where to start from
+  byteLength: core.byteLength - options.byteOffset, // How many bytes to read
+  prefetch: 32 // How many bytes to download at a time
 }
+```
+
+#### `const stream = core.createWriteStream()`
+
+Make a write stream to append chunks as blocks.
+
+``` js
+const ws = core.createWriteStream()
+
+// Listen for stream finishing
+const done = new Promise(resolve => ws.on('finish', resolve))
+
+for (const data of ['hello', 'world']) ws.write(data)
+ws.end()
+
+await done
+
+console.log(await core.get(core.length - 2)) // 'hello'
+console.log(await core.get(core.length - 1)) // 'world'
 ```
 
 #### `const cleared = await core.clear(start, [end], [options])`
@@ -244,16 +316,54 @@ The core will also gossip to peers it is connected to, that is no longer has the
 }
 ```
 
-#### `await core.truncate(newLength, [forkId])`
+#### `await core.truncate(newLength, [options])`
 
 Truncate the core to a smaller length.
 
-Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option.
+Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option `fork`.
 Note that the fork id should be monotonely incrementing.
+
+`options` include:
+```js
+{
+  fork: core.fork + 1, // The new fork id after truncating
+  keyPair: core.keyPair, // Key pair used for signing the truncation
+  signature: null, // Set signature for truncation
+}
+```
+
+If `options` is a number, it will be used as the `fork` id.
 
 #### `const hash = await core.treeHash([length])`
 
 Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
+
+#### `const proof = await core.proof(opts)`
+
+Generate a proof (a `TreeProof` instance) for the request `opts`.
+
+`opts` include:
+
+```
+{
+  block: { index, nodes }, // Block request
+  hash: { index, nodes }, // Hash Request
+  seek: { bytes, padding }, // Seek Request
+  upgrade: { start, length } // Upgrade request
+}
+```
+
+Note that you cannot seek & provide a block / hash request when upgrading.
+
+#### `const batch = await core.verifyFullyRemote(proof)`
+
+Return the merkle tree batch from the proof. Will throw if the proof cannot be verified.
+
+Note that you cannot seek & provide a block / hash request when upgrading.
+
+#### `const buffer = await core.signable([length], [fork])`
+
+Return a buffer which encodes the core's `key`, tree hash (`core.treeHash()`), `length`, & `fork`. If the `length` & `fork` arguments are not provided, the current values for the core are used by default.
 
 #### `const range = core.download([range])`
 
@@ -272,7 +382,8 @@ A range can have the following properties:
   start: startIndex,
   end: nonInclusiveEndIndex,
   blocks: [index1, index2, ...],
-  linear: false // download range linearly and not randomly
+  linear: false, // download range linearly and not randomly
+  activeRequests: undefined // Advanced option. Pass requests for replicating blocks
 }
 ```
 
@@ -296,6 +407,31 @@ To cancel downloading a range simply destroy the range instance.
 // will stop downloading now
 range.destroy()
 ```
+
+#### `const ext = core.registerExtension(name, handlers = {})`
+
+Register a custom protocol extension. This is a legacy implementation and is no longer recommended. Creating a [`Protomux`](https://github.com/holepunchto/protomux) protocol is recommended instead.
+
+`handlers` include:
+
+```
+{
+  encoding: 'json' | 'utf-8' | 'binary', // Compact encoding to use for messages. Defaults to buffer
+  onmessage: (message, peer) => { ... } // Callback for when a message for the extension is receive
+}
+```
+
+##### ext.send(message, peer)
+
+Sends the `message` to a specific `peer`.
+
+##### ext.broadcast(message)
+
+Sends the `message` to all peers.
+
+##### ext.destroy()
+
+Unregister and remove extension from the hypercore.
 
 #### `const session = core.session([options])`
 
@@ -342,9 +478,20 @@ Attempt to apply blocks from the session to the `core`. `core` must be a default
 
 Returns `null` if committing failed.
 
+`opts` includes:
+
+```
+{
+  length: session.length, // the core's length after committing the blocks
+  treeLength: core.length, // The expected length of the core's merkle tree prior to commit
+  keyPair: core.keyPair, // The keypair to use when committing
+  signature: undefined, // The signature for the blocks being committed
+}
+```
+
 #### `const snapshot = core.snapshot([options])`
 
-Same as above, but backed by a storage snapshot so will not truncate nor append.
+Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
 
 #### `const info = await core.info([options])`
 
@@ -378,9 +525,9 @@ Info {
 }
 ```
 
-#### `await core.close()`
+#### `await core.close([{ error }])`
 
-Fully close this core.
+Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.
 
 #### `core.on('close')`
 
@@ -401,7 +548,7 @@ Emitted after the core has initially opened all its internal state.
 
 #### `core.writable`
 
-Can we append to this core?
+Can we append to or truncate this core?
 
 Populated after `ready` has been emitted. Will be `false` before the event.
 
@@ -464,6 +611,36 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 How much padding is applied to each block of this core? Will be `0` unless block encryption is enabled.
 
+#### `core.peers`
+
+Array of current peers the core is replicating with.
+
+#### `await core.setEncryption(encryption)`
+
+Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
+
+#### `await core.setEncryptionKey(key, [opts])`
+
+Set the encryption key.
+
+`opts` includes:
+
+```
+{
+  block: false, // Whether the key is for block encryption
+}
+```
+
+#### `core.setKeyPair(keyPair)`
+
+Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hypercore, e.g. verifying blocks, identifying the core, etc.
+
+#### `core.setActive(active)`
+
+Set the core to be active or not. A core is considered 'active' if it should linger to download blocks from peers.
+
+When calling `core.setActive(true)` make sure to later call `core.setActive(false)` to mark it as inactive otherwise the core's activity tracking will be inaccurate and keep replication channels open.
+
 #### `await core.setUserData(key, value)`
 
 Set a key in the User Data key-value store.
@@ -476,7 +653,7 @@ Return the value for a key in the User Data key-value store.
 
 `key` is a string.
 
-#### `const stream = core.replicate(isInitiatorOrReplicationStream)`
+#### `const stream = core.replicate(isInitiatorOrReplicationStream, opts = {})`
 
 Create a replication stream. You should pipe this to another Hypercore instance.
 
@@ -500,6 +677,8 @@ const server = net.createServer(function (socket) {
 const socket = net.connect(...)
 socket.pipe(localCore.replicate(true)).pipe(socket)
 ```
+
+`opts` are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts--).
 
 #### `const done = core.findingPeers()`
 
@@ -531,3 +710,56 @@ Emitted when a block is uploaded to a peer.
 #### `core.on('download', index, byteLength, peer)`
 
 Emitted when a block is downloaded from a peer.
+
+#### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
+
+The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.
+
+#### `const key = Hypercore.key(manifest, options = {})`
+
+Returns the key for a given manifest.
+
+`options` include:
+
+```
+{
+  compat: false,  // Whether the manifest has a single singer whose public key is the key
+  version,        // Manifest version if the manifest argument is the public key of a single singer
+  namespace       // The signer namespace if the manifest argument is the public key of a single singer
+}
+```
+
+#### `const dKey = Hypercore.discoveryKey(key)`
+
+Returns the discovery key for the provided `key`.
+
+#### `const bkey = Hypercore.blockEncryptionKey(key, encryptionKey)`
+
+Returns a block encryption key derived from the `key` and `encryptionKey`.
+
+#### `const mux = Hypercore.getProtocolMuxer(stream)`
+
+Returns a protomux instance from the provided `stream` Hypercore protocol stream.
+
+#### `const core = Hypercore.createCore(storage, opts)`
+
+Returns the internal core using the `storage` and `opts` without creating a full Hypercore instance.
+
+#### `const stream = Hypercore.createProtocolStream(isInitiator, opts = {})`
+
+Create an encrypted noise stream with a protomux instance attached used for Hypercore's replication protocol.
+
+`isInitiator` can be a framed stream, a protomux or a boolean for whether the stream should be the initiator in the noise handshake.
+
+`opts` can include:
+
+```
+{
+  keepAlive: true, // Whether to keep the stream alive
+  ondiscoverykey: () => {}, // A handler for when a discovery key is set over the stream for corestore management
+}
+```
+
+#### `const storage = Hypercore.defaultStorage(storage, opts = {})`
+
+Returns a default hypercore storage. The `storage` argument can be a path where to create the `hypercore-storage` instance or an existing `hypercore-storage` instance. If an existing instance, it is immediately returned.
