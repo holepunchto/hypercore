@@ -23,11 +23,6 @@ Version 10 is not compatible with earlier versions (9 and earlier), but is consi
 npm install hypercore
 ```
 
-> [!NOTE]
-> This readme reflects Hypercore 11, our latest major version that is backed by RocksDB for storage and atomicity.
-> Whilst we are fully validating that, the npm dist-tag for latest is set to latest version of Hypercore 10, the previous major, to avoid too much disruption.
-> It will be updated to 11 in a few weeks.
-
 ## API
 
 #### `const core = new Hypercore(storage, [key], [options])`
