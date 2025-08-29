@@ -764,20 +764,6 @@ test('append alignment to bitfield boundary', async function (t) {
   }
 })
 
-test('setKeyPair', async function (t) {
-  const core = await create(t)
-
-  await core.append('hello')
-  t.is(core.length, 1)
-
-  const keyPair = crypto.keyPair()
-  t.unlike(core.keyPair, keyPair, 'generate new keyPair')
-  core.setKeyPair(keyPair)
-  t.alike(core.keyPair, keyPair, 'keyPair updated')
-
-  await t.exception(core.append('world'), /Public key is not a declared signer/)
-})
-
 function getBitfields (hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
