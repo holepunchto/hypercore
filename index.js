@@ -15,6 +15,7 @@ const Info = require('./lib/info')
 const Download = require('./lib/download')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
+const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
@@ -201,6 +202,10 @@ class Hypercore extends EventEmitter {
 
     const directory = storage
     return new CoreStorage(directory, opts)
+  }
+
+  static clearRequests (session, err) {
+    return Replicator.clearRequests(session, err)
   }
 
   snapshot (opts) {
