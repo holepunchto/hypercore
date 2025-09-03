@@ -1,5 +1,4 @@
 const test = require('brittle')
-const tmp = require('test-tmp')
 const b4a = require('b4a')
 const CoreStorage = require('hypercore-storage')
 const { create, createStorage, replicate, eventFlush } = require('./helpers')
@@ -108,8 +107,8 @@ test('clear blocks with diff option', async function (t) {
 })
 
 test('clear - no side effect from clearing unknown nodes', async function (t) {
-  const storageWriter = await tmp(t)
-  const storageReader = await tmp(t)
+  const storageWriter = await t.tmp()
+  const storageReader = await t.tmp()
 
   const writer1 = new Hypercore(storageWriter)
   await writer1.append(['a', 'b', 'c', 'd']) // => 'Error: Could not load node: 1'

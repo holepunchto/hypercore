@@ -53,9 +53,11 @@ test('basic replication stats', async function (t) {
   t.is(aStats.wireCancel.rx, 0, 'wireCancel init 0')
   t.is(aStats.wireCancel.tx, 0, 'wireCancel init 0')
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
+  t.is(aStats.invalidData, 0, 'invalid data init 0')
+  t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 9, 'Expected amount of stats')
+  t.is(initStatsLength, 12, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -107,6 +109,95 @@ test('basic replication stats', async function (t) {
   await a.close()
   await b.close()
   await c.close()
+})
+
+test('invalidRequest stat', async function (t) {
+  // Note: warnings about replication stream errors are expected
+  // for this test, since we force them
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.get(0) // to get them replicating
+
+  const peerForB = b.replicator.peers[0]
+  const peerForA = a.replicator.peers[0]
+
+  const invalidReq = {
+    peer: peerForB,
+    rt: 0,
+    id: 1,
+    fork: 0,
+    block: { index: 0, nodes: 2 },
+    hash: null,
+    seek: { bytes: 1, padding: 1 }, // invalid to both seek and block when upgrading
+    upgrade: { start: 0, length: 2 },
+    manifest: false,
+    priority: 1,
+    timestamp: 1754412092523,
+    elapsed: 0
+  }
+
+  b.replicator._inflight.add(invalidReq)
+  peerForB.wireRequest.send(invalidReq)
+
+  // let request go through
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  t.is(a.core.replicator.stats.invalidRequests, 1)
+  t.is(peerForA.stats.invalidRequests, 1)
+  t.is(peerForB.stats.backoffs, 1)
+
+  await a.close()
+  await b.close()
+})
+
+test('invalidRequests backoff (slow)', async function (t) {
+  // Note: warnings about replication stream errors are expected
+  // for this test, since we force them
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.get(0) // to get them replicating
+
+  const peerForB = b.replicator.peers[0]
+  const peerForA = a.replicator.peers[0]
+
+  for (let i = 0; i < 50; i++) {
+    const invalidReq = {
+      peer: peerForB,
+      rt: 0,
+      id: 1 + i,
+      fork: 0,
+      block: { index: 0, nodes: 2 },
+      hash: null,
+      seek: { bytes: 1, padding: 1 }, // invalid to both seek and block when upgrading
+      upgrade: { start: 0, length: 2 },
+      manifest: false,
+      priority: 1,
+      timestamp: 1754412092523,
+      elapsed: 0
+    }
+
+    b.replicator._inflight.add(invalidReq)
+    peerForB.wireRequest.send(invalidReq)
+  }
+
+  // let request go through
+  await new Promise(resolve => setTimeout(resolve, 7000))
+
+  t.is(a.core.replicator.stats.invalidRequests, 50)
+  t.is(peerForA.stats.invalidRequests, 50)
+  t.is(peerForB.stats.backoffs, 50)
+  t.is(peerForB.paused, true)
+
+  await a.close()
+  await b.close()
 })
 
 test('basic downloading is set immediately after ready', async function (t) {
@@ -258,7 +349,7 @@ test('high latency reorg', async function (t) {
 })
 
 test('invalid signature fails', async function (t) {
-  t.plan(1)
+  t.plan(3)
 
   const a = await create(t, null)
   const b = await create(t, a.key)
@@ -274,6 +365,8 @@ test('invalid signature fails', async function (t) {
 
   b.on('verification-error', function (err) {
     t.is(err.code, 'INVALID_SIGNATURE')
+    t.is(b.replicator.stats.invalidData, 1)
+    t.is(b.peers[0].stats.invalidData, 1)
   })
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -361,6 +454,65 @@ test('invalid capability fails', async function (t) {
       if (--missing === 0) resolve()
     }
   })
+})
+
+test('only replicates when remote can connect the proofs', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { eagerUpgrade: false })
+  const c = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  await a.append('0')
+  await b.get(0)
+
+  await a.append('1')
+  await a.append('2')
+  await a.append('3')
+  await a.append('4')
+  await a.append('5')
+  await a.append('6')
+  await a.append('7')
+
+  {
+    const s = replicate(a, c, t)
+    await c.get(7)
+    await unreplicate(s)
+  }
+
+  replicate(b, c, t)
+
+  t.is(b.length, 1)
+  t.is(c.length, 8)
+  t.is(a.length, 8)
+
+  let ok = false
+  setTimeout(async () => {
+    ok = true
+    await b.update({ wait: true })
+  }, 750)
+
+  await c.get(0)
+  t.ok(ok)
+
+  await b.get(1)
+  await a.append('8')
+  await a.append('9')
+  await a.append('10')
+  await a.append('11')
+  await a.append('12')
+  await a.append('13')
+  await a.append('14')
+  await a.append('15')
+
+  {
+    const s = replicate(a, c, t)
+    await c.get(15)
+    await unreplicate(s)
+  }
+
+  t.is(b.length, 8)
+  await c.get(1)
 })
 
 test('update with zero length', async function (t) {
@@ -1061,6 +1213,33 @@ test('download blocks available from when only a partial set is available', asyn
   t.ok(await c.has(2))
   t.ok(await c.has(3))
   t.ok(!(await c.has(4)))
+})
+
+test('big download range', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+  const d = await create(t, a.key)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+  replicate(c, d, t)
+  replicate(b, d, t)
+
+  const cnt = 10_000
+  for (let i = 0; i < cnt; i++) await a.append('tick')
+
+  const r1 = b.download({ start: 0, end: cnt })
+  const r2 = c.download({ start: 0, end: cnt })
+  const r3 = d.download({ start: 0, end: cnt })
+
+  await r1.done()
+  await r2.done()
+  await r3.done()
+
+  t.ok(b.contiguousLength, cnt)
+  t.ok(c.contiguousLength, cnt)
+  t.ok(d.contiguousLength, cnt)
 })
 
 test('download range resolves immediately if no peers', async function (t) {
@@ -1985,6 +2164,100 @@ test('download event includes "elapsed" time in metadata', async function (t) {
   })
 
   await b.download({ start: 0, end: a.length }).done()
+})
+
+test('range is broadcast when a core is fully available', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c'])
+  const reader = await create(t, writer.key)
+
+  replicate(writer, reader, t)
+  await reader.get(0)
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'transmitted range when connection opened')
+  t.is(reader.replicator.stats.wireRange.tx, 0, 'reader did not transmit range yet')
+
+  await reader.get(1)
+  await reader.get(2)
+  t.is(reader.contiguousLength, 3, 'fully downloaded core (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'reader transmitted range when fully downloaded')
+  t.is(writer.replicator.stats.wireRange.tx, 1, 'writer sent no new messages')
+
+  await writer.append(['d', 'e'])
+  t.is(writer.replicator.stats.wireRange.tx, 2, 'transmitted range when its lenght increased and it is still fully contig')
+
+  await reader.get(3)
+  t.is(reader.contiguousLength, 4, 'not fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 1, 'no new broadcast range since not fully downloaded')
+
+  await reader.get(4)
+  t.is(reader.contiguousLength, 5, 'fully downloaded (sanity check)')
+  t.is(reader.replicator.stats.wireRange.tx, 2, 'new broadcast range since it is again fully downloaded')
+
+  await writer.clear(1, 2)
+  t.is(writer.contiguousLength, 1, 'writer no longer contig')
+  await writer.append(['f', 'g'])
+  // Give time for messages to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(reader.replicator.peers[0].remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
+
+  await reader.get(5)
+  await reader.get(6)
+  // Give time for broadcastRange message to be received
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(writer.replicator.peers[0].remoteContiguousLength, 7, 'writer detected reader is fully contig')
+})
+
+test('range is broadcast when a core is fully available (multiple peers)', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c'])
+  const reader1 = await create(t, writer.key)
+  const reader2 = await create(t, writer.key)
+
+  replicate(writer, reader1, t)
+  await reader1.get(0)
+  const writerToReader1 = writer.replicator.peers[0]
+  const reader1ToWriter = reader1.replicator.peers[0]
+
+  replicate(writer, reader2, t)
+  await reader2.get(0)
+  const writerToReader2 = writer.replicator.peers[1]
+  const reader2ToWriter = reader1.replicator.peers[0]
+
+  replicate(reader1, reader2, t)
+  // Give time for replication to add the peers
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  const reader1ToReader2 = reader1.replicator.peers[1]
+  const reader2ToReader1 = reader2.replicator.peers[1]
+  t.is(reader1ToReader2 !== undefined, true, 'sanity check')
+  t.is(reader2ToReader1 !== undefined, true, 'sanity check')
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(writerToReader1.remoteContiguousLength, 0, 'reader1 skipped range update to writer (not contig yet)')
+  t.is(writerToReader2.remoteContiguousLength, 0, 'reader2 skipped range update to writer (not contig yet)')
+  t.is(reader1ToWriter.remoteContiguousLength, 3, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 3, 'writer updated for reader2')
+
+  await reader1.get(1)
+  await reader1.get(2)
+  await reader2.get(1)
+  await reader2.get(2)
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  t.is(reader1.contiguousLength, 3, 'sanity check')
+  t.is(reader2.contiguousLength, 3, 'sanity check')
+  t.is(writerToReader1.remoteContiguousLength, 3, 'reader1 sent range update to writer (became contig)')
+  t.is(writerToReader2.remoteContiguousLength, 3, 'reader2 sent range update to writer (became contig)')
+  t.is(reader1ToReader2.remoteContiguousLength, 3, 'reader2 broadcast to reader1 too')
+  t.is(reader2ToReader1.remoteContiguousLength, 3, 'reader1 broadcast to reader2 too')
+
+  await writer.append(['d', 'e'])
+  await new Promise(resolve => setTimeout(resolve, 100))
+  t.is(reader1ToWriter.remoteContiguousLength, 5, 'writer updated for reader1')
+  t.is(reader2ToWriter.remoteContiguousLength, 5, 'writer updated for reader2')
 })
 
 async function waitForRequestBlock (core) {

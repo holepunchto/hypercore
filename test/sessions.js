@@ -3,6 +3,7 @@ const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const c = require('compact-encoding')
 const b4a = require('b4a')
+const IdEnc = require('hypercore-id-encoding')
 const { create, createStorage } = require('./helpers')
 
 const Hypercore = require('../')
@@ -115,6 +116,22 @@ test('sessions - cannot set checkout if name not set', async function (t) {
   )
 
   t.execution(() => core.session({ checkout: 0, name: 'named' }), 'sanity check on happy path')
+
+  await core.close()
+})
+
+test('sessions - error includes discovery key', async function (t) {
+  const storage = await createStorage(t)
+  const core = new Hypercore(storage)
+  await core.append('Block0')
+
+  const discKey = IdEnc.normalize(core.discoveryKey)
+  try {
+    await core.session({ checkout: 0 })
+    t.fail('Should throw')
+  } catch (e) {
+    t.is(e.message.includes(discKey), true)
+  }
 
   await core.close()
 })
