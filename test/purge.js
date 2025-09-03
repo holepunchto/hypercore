@@ -1,12 +1,11 @@
 const test = require('brittle')
-const tmp = require('test-tmp')
 const fs = require('fs')
 const Path = require('path')
 
 const Hypercore = require('..')
 
 test('basic purge', async function (t) {
-  const dir = await tmp(t)
+  const dir = await t.tmp()
   const core = new Hypercore(dir)
   await core.append(['a', 'b', 'c'])
 
@@ -32,7 +31,7 @@ test('basic purge', async function (t) {
 })
 
 test('purge closes all sessions', async function (t) {
-  const dir = await tmp(t)
+  const dir = await t.tmp()
   const core = new Hypercore(dir)
   await core.append(['a', 'b', 'c'])
   const otherSession = core.session()

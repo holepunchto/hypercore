@@ -1,11 +1,10 @@
 const Hypercore = require('../../')
-const createTempDir = require('test-tmp')
 const CoreStorage = require('hypercore-storage')
 const safetyCatch = require('safety-catch')
 const DebuggingStream = require('debugging-stream')
 
 exports.create = async function (t, ...args) {
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
 
   const db = new CoreStorage(dir)
 
@@ -18,12 +17,12 @@ exports.create = async function (t, ...args) {
 }
 
 const createStorage = exports.createStorage = async function (t, dir) {
-  if (!dir) dir = await createTempDir(t)
+  if (!dir) dir = await t.tmp()
   return new CoreStorage(dir)
 }
 
 exports.createStored = async function (t) {
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
   let db = null
 
   return async function (...args) {

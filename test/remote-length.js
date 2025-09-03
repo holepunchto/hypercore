@@ -29,10 +29,10 @@ test('contiguous-length announce-on-update flow', async function (t) {
   replicate(a, b, t)
   replicate(b, c, t)
 
-  await a.append('a')
+  await a.append(['a', 'b'])
   await new Promise(resolve => setTimeout(resolve, 100))
   t.is(getPeer(c, b).remoteContiguousLength, 0, 'Sanity check: c knows nothing yet')
-  t.is(getPeer(b, a).remoteContiguousLength, 1, 'Sanity check: b knows about a')
+  t.is(getPeer(b, a).remoteContiguousLength, 2, 'Sanity check: b knows about a')
 
   await b.get(0)
   await new Promise(resolve => setTimeout(resolve, 100))

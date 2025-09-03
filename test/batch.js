@@ -1,5 +1,4 @@
 const test = require('brittle')
-const createTempDir = require('test-tmp')
 const b4a = require('b4a')
 
 const Hypercore = require('../')
@@ -446,7 +445,7 @@ test('encryption and bigger batches', async function (t) {
 })
 
 test('persistent batch', async function (t) {
-  const dir = await createTempDir()
+  const dir = await t.tmp()
   let storage = null
 
   const core = new Hypercore(await open())
@@ -526,7 +525,7 @@ test('clear', async function (t) {
   await b2.close()
 })
 
-test('batch append with huge batch', async function (t) {
+test('batch append with huge batch', { timeout: 120000 }, async function (t) {
   // Context: array.append(...otherArray) stops working after a certain amount of entries
   // due to a limit on the amount of function args
   // This caused a bug on large batches
@@ -544,7 +543,7 @@ test('batch append with huge batch', async function (t) {
 })
 
 test('batch does not append but reopens', async function (t) {
-  const dir = await createTempDir(t)
+  const dir = await t.tmp()
 
   let core = new Hypercore(dir)
 

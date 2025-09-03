@@ -1,7 +1,6 @@
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
-const tmpDir = require('test-tmp')
 const c = require('compact-encoding')
 
 const Hypercore = require('../')
@@ -710,7 +709,7 @@ test('multisig - multiple appends', async function (t) {
 })
 
 test('multisig - persist to disk', async function (t) {
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const storage = await createStorage(t, dir)
 
   const signers = []
@@ -947,7 +946,8 @@ test('multisig - normal operating mode', async function (t) {
   }
 })
 
-test('multisig - large patches', async function (t) {
+// Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
+test('multisig - large patches', { timeout: 120000 }, async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
   await Promise.all(signers.map(s => s.ready()))
@@ -1485,6 +1485,54 @@ test('create verifier - open existing core with manifest', async function (t) {
   await t.execution(compatCore.ready()) // compat flag is unset internally
 
   await compatCore.close()
+})
+
+test('manifest - persist if manifest is updated', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [{
+      signature: 'ed25519',
+      publicKey: keyPair.publicKey
+    }]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const create = await createStored(t)
+
+  {
+    const core = await create(key, { compat: false })
+    await core.ready()
+
+    t.is(core.manifest, null)
+    t.is(core.core.header.manifest, null)
+    t.alike(core.key, key)
+
+    await core.close()
+  }
+
+  {
+    const core = await create(key, { manifest, compat: false })
+    await core.ready()
+
+    t.not(core.manifest, null)
+    t.not(core.core.header.manifest, null)
+    t.alike(core.key, key)
+
+    await core.close()
+  }
+
+  {
+    const core = await create(key, { compat: false })
+    await core.ready()
+
+    t.not(core.manifest, null)
+    t.not(core.core.header.manifest, null)
+    t.alike(core.key, key)
+
+    await core.close()
+  }
 })
 
 function createMultiManifest (signers, prologue = null) {
