@@ -2216,6 +2216,53 @@ test('range is broadcast when a core is fully available (multiple peers)', async
   t.is(reader2ToWriter.remoteContiguousLength, 5, 'writer updated for reader2')
 })
 
+test('hotswap works for a download with many slow peers', async function (t) {
+  const nrBlocks = 500
+  const nrSeeders = 20
+  const nrQuickCores = 1
+  // Very big latency, will cause test timeout if hotswap does not trigger and divert to the quick peer
+  const latency = [10000, 10000]
+
+  const a = await create(t)
+  for (let i = 0; i < nrBlocks; i++) await a.append('data')
+
+  const seeders = [a]
+  {
+    const proms = []
+    for (let i = 0; i < nrSeeders; i++) {
+      proms.push(createAndDownload(t, a))
+    }
+    seeders.push(...await Promise.all(proms))
+  }
+
+  const downloader = await create(t, a.key)
+
+  for (let i = 0; i < nrQuickCores; i++) {
+    const core = seeders.pop()
+    const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+    core.replicate(n1)
+    downloader.replicate(n2)
+  }
+  for (const core of seeders) {
+    const [n1, n2] = makeStreamPair(t, { latency })
+    core.replicate(n1)
+    downloader.replicate(n2)
+  }
+
+  const start = Date.now()
+  const download = downloader.download({ start: 0, end: a.length })
+  await download.done()
+
+  t.pass(`Hotswap triggered (download took ${Date.now() - start}ms)`)
+})
+
+async function createAndDownload (t, core) {
+  const b = await create(t, core.key)
+  replicate(core, b, t, { teardown: false })
+  await b.download({ start: 0, end: core.length }).done()
+  return b
+}
+
 async function waitForRequestBlock (core) {
   while (true) {
     const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
