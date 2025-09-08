@@ -301,6 +301,45 @@ test('block encryption module', async function (t) {
   t.alike(await core.get(2), b4a.from('2'))
 })
 
+test('encryption provider is set on session', async function (t) {
+  class XOREncryption {
+    padding () {
+      return 0
+    }
+
+    async encrypt (index, block) {
+      await new Promise(setImmediate)
+
+      for (let i = 0; i < block.byteLength; i++) {
+        block[i] ^= ((index + 1) & 0xff) // +1 so no 0 xor in test
+      }
+    }
+
+    async decrypt (index, block) {
+      await new Promise(setImmediate)
+
+      for (let i = 0; i < block.byteLength; i++) {
+        block[i] ^= ((index + 1) & 0xff)
+      }
+    }
+  }
+
+  const encryption1 = new XOREncryption()
+  const encryption2 = new XOREncryption()
+
+  const core = await create(t, null, { encryption: encryption1 })
+  await core.ready()
+
+  await core.append('0')
+  await core.append('1')
+  await core.append('2')
+
+  const session = core.session({ encryption: encryption2 })
+  await session.ready()
+
+  t.not(core.encryption, session.encryption)
+})
+
 test('encryption backwards compatibility', async function (t) {
   const encryptionKey = b4a.alloc(32).fill('encryption key')
 
