@@ -68,10 +68,22 @@ test('bitfield - reload', async function (t) {
   }
 
   {
-    const b = await Bitfield.open(await createStorage(t, dir), 1424242425)
+    const storage = await createStorage(t, dir)
+    const b = await Bitfield.open(storage, 1424242425)
     t.ok(b.get(142))
     t.ok(b.get(40000))
     t.ok(b.get(1424242424))
+
+    // fully close db
+    await storage.db.close({ force: true })
+  }
+
+  {
+    const storage = await createStorage(t, dir)
+    const b = await Bitfield.open(storage, 40001)
+    t.ok(b.get(142))
+    t.ok(b.get(40000))
+    t.absent(b.get(1424242424))
   }
 })
 
