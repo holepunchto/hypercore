@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const { create, createStored, replicate, unreplicate, eventFlush, replicateDebugStream } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
+const crypto = require('hypercore-crypto')
 const Hypercore = require('../')
 
 const DEBUG = false
@@ -1871,6 +1872,66 @@ test('uses hotswaps to avoid long download tail', async t => {
   t.ok(slowPeer.stats.wireCancel.tx > 0, 'slow peer cancelled requests')
   t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'sanity check: received more data from fast peer')
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
+})
+
+test('multiple peers with the same remotePublicKey', async t => {
+  const core = await create(t)
+  const peer1 = await create(t, core.key)
+  const peer2 = await create(t, core.key)
+
+  const batch = []
+  while (batch.length < 100) {
+    batch.push(Buffer.allocUnsafe(60000))
+  }
+  await core.append(batch)
+
+  const keyPair = crypto.keyPair()
+
+  const sa1 = core.replicate(true)
+  const sa2 = peer1.replicate(false, { keyPair })
+
+  const sb1 = core.replicate(true)
+  const sb2 = peer2.replicate(false, { keyPair })
+
+  sa1.pipe(sa2).pipe(sa1)
+  sb1.pipe(sb2).pipe(sb1)
+
+  const download1 = peer1.download({ start: 0, end: core.length })
+  const download2 = peer2.download({ start: 0, end: core.length })
+
+  await Promise.all([
+    download1.done(),
+    download2.done()
+  ])
+
+  t.alike(core.peers[0].remotePublicKey, keyPair.publicKey)
+  t.alike(core.peers[1].remotePublicKey, keyPair.publicKey)
+
+  const closing = Promise.all([
+    closed(sa1),
+    closed(sa2),
+    closed(sb1),
+    closed(sb2)
+  ])
+
+  sa1.destroy()
+  sb1.destroy()
+
+  await closing
+
+  t.absent(await isSparse(peer1))
+  t.absent(await isSparse(peer2))
+
+  function closed (s) {
+    return new Promise(resolve => s.on('close', resolve))
+  }
+
+  async function isSparse (core) {
+    for (let i = 0; i < core.length; i++) {
+      if (!(await core.get(i))) return true
+    }
+    return false
+  }
 })
 
 test('messages exchanged when empty core connects to non-sparse', async function (t) {
