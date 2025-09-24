@@ -782,7 +782,7 @@ function getBitfields (hypercore, start = 0, end = null) {
 
   const res = []
   for (let i = start; i < end; i++) {
-    res.push(hypercore.core.bitfield.get(i))
+    res.push(hypercore.core.replicator.localBitfield.get(i))
   }
 
   return res

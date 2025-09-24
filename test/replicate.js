@@ -1736,7 +1736,7 @@ test('session id reuse does not stall', async function (t) {
     await session.ready()
     const all = []
     for (let i = 0; i < 100; i++) {
-      if (!session.core.bitfield.get(i)) {
+      if (!session.core.replicator.localBitfield.get(i)) {
         all.push(session.get(i).catch(noop))
       }
     }
