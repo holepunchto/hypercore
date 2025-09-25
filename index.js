@@ -748,9 +748,9 @@ class Hypercore extends EventEmitter {
     if (!isValidIndex(start) || !isValidIndex(end)) throw ASSERTION('has range is invalid', this.discoveryKey)
 
     if (this.state.isDefault()) {
-      if (end === start + 1) return this.core.bitfield.get(start)
+      if (end === start + 1) return this.core.replicator.localBitfield.get(start)
 
-      const i = this.core.bitfield.firstUnset(start)
+      const i = this.core.replicator.localBitfield.firstUnset(start)
       return i === -1 || i >= end
     }
 
@@ -844,7 +844,7 @@ class Hypercore extends EventEmitter {
 
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
-    if (this.core.bitfield.get(index)) {
+    if (this.core.replicator.localBitfield.get(index)) {
       const coreBlock = await readBlock(this.state.storage.read(), index)
       // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
       if (coreBlock !== null) return coreBlock
