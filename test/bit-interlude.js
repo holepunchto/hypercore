@@ -94,3 +94,25 @@ test('bit-interlude - setRange bridges undefine region updates higher range', t 
 
   t.is(bits.get(7), false, 'bit not updated should stay the same')
 })
+
+test('bit-interlude - setRange overlap but next range is same', t => {
+  const bits = new BitInterlude()
+
+  // Indexes:  [0123456789]
+  // Existing: [11111  000]
+  // Applied:  [     000  ]
+  // Expected: [1111100000]
+
+  // Setup of two ranges w/ gap inbetween
+  bits.setRange(0, 5, true)
+  bits.setRange(7, 10, false)
+
+  // Applying overlapping range
+  bits.setRange(5, 8, false)
+
+  t.is(bits.get(7), false)
+  t.alike(bits.ranges, [
+    { start: 0, end: 5, value: true },
+    { start: 5, end: 10, value: false }
+  ])
+})
