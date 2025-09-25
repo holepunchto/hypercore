@@ -70,3 +70,27 @@ test('bit-interlude - set & drop', t => {
   t.is(bits.contiguousLength(12), 2)
   t.is(bits.contiguousLength(16), 2)
 })
+
+test('bit-interlude - setRange bridges undefine region updates higher range', t => {
+  const bits = new BitInterlude()
+
+  // Indexes:  [0123456789]
+  // Existing: [11111  111]
+  // Applied:  [     000  ]
+  // Expected: [1111100011]
+
+  // Setup of two ranges w/ gap inbetween
+  bits.setRange(0, 5, true)
+  bits.setRange(7, 10, true)
+
+  // Applying "bridge" range
+  bits.setRange(5, 8, false)
+
+  t.is(bits.get(7), false)
+
+  // Add ranges to the end to make the range after the bridge range the midpoint.
+  bits.setRange(10, 11, false)
+  bits.setRange(11, 12, true)
+
+  t.is(bits.get(7), false, 'bit not updated should stay the same')
+})
