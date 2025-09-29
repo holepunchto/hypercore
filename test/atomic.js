@@ -172,8 +172,8 @@ test('atomic - across cores', async function (t) {
   t.is(core.length, 0)
   t.is(core2.length, 0)
 
-  t.is(core.core.replicator.localBitfield.get(0), false)
-  t.is(core2.core.replicator.localBitfield.get(0), false)
+  t.is(await core.core.replicator.localBitfield.get(0), false)
+  t.is(await core2.core.replicator.localBitfield.get(0), false)
 
   t.is(appends, 0)
 
@@ -182,8 +182,8 @@ test('atomic - across cores', async function (t) {
   t.is(core.length, 2)
   t.is(core2.length, 1)
 
-  t.is(core.core.replicator.localBitfield.get(0), true)
-  t.is(core2.core.replicator.localBitfield.get(0), true)
+  t.is(await core.core.replicator.localBitfield.get(0), true)
+  t.is(await core2.core.replicator.localBitfield.get(0), true)
 
   t.is(appends, 1)
 
