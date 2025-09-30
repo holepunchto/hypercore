@@ -212,6 +212,10 @@ class Hypercore extends EventEmitter {
     return this.session({ ...opts, snapshot: true })
   }
 
+  compact () {
+    return this.core.compact()
+  }
+
   session (opts = {}) {
     if (this.closing) {
       // This makes the closing logic a lot easier. If this turns out to be a problem
