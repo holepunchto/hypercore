@@ -95,37 +95,49 @@ test('bitfield - want', async function (t) {
 
   t.alike([...b.want(0, 0)], [])
 
-  t.alike([...b.want(0, 1)], [
-    {
-      start: 0,
-      bitfield: new Uint32Array(1024 /* 4 KiB */)
-    }
-  ])
+  t.alike(
+    [...b.want(0, 1)],
+    [
+      {
+        start: 0,
+        bitfield: new Uint32Array(1024 /* 4 KiB */)
+      }
+    ]
+  )
 
-  t.alike([...b.want(0, 1024 * 4 * 8 /* 4 KiB */)], [
-    {
-      start: 0,
-      bitfield: new Uint32Array(1024 /* 4 KiB */)
-    }
-  ])
+  t.alike(
+    [...b.want(0, 1024 * 4 * 8 /* 4 KiB */)],
+    [
+      {
+        start: 0,
+        bitfield: new Uint32Array(1024 /* 4 KiB */)
+      }
+    ]
+  )
 
-  t.alike([...b.want(0, 1024 * 13 * 8 /* 13 KiB */)], [
-    {
-      start: 0,
-      bitfield: new Uint32Array(1024 * 16 / 4 /* 16 KiB */)
-    }
-  ])
+  t.alike(
+    [...b.want(0, 1024 * 13 * 8 /* 13 KiB */)],
+    [
+      {
+        start: 0,
+        bitfield: new Uint32Array((1024 * 16) / 4 /* 16 KiB */)
+      }
+    ]
+  )
 
-  t.alike([...b.want(0, 1024 * 260 * 8 /* 260 KiB */)], [
-    {
-      start: 0,
-      bitfield: new Uint32Array(1024 * 256 / 4 /* 256 KiB */)
-    },
-    {
-      start: 2 ** 18 * 8,
-      bitfield: new Uint32Array(1024 /* 4 KiB */)
-    }
-  ])
+  t.alike(
+    [...b.want(0, 1024 * 260 * 8 /* 260 KiB */)],
+    [
+      {
+        start: 0,
+        bitfield: new Uint32Array((1024 * 256) / 4 /* 256 KiB */)
+      },
+      {
+        start: 2 ** 18 * 8,
+        bitfield: new Uint32Array(1024 /* 4 KiB */)
+      }
+    ]
+  )
 })
 
 test('bitfield - sparse array overflow', async function (t) {
@@ -139,7 +151,14 @@ test('bitfield - count', async function (t) {
   const s = await createStorage(t)
   const b = await Bitfield.open(s, 0)
 
-  for (const [start, end] of [[0, 2], [5, 6], [7, 9], [13, 14], [16, 19], [20, 25]]) {
+  for (const [start, end] of [
+    [0, 2],
+    [5, 6],
+    [7, 9],
+    [13, 14],
+    [16, 19],
+    [20, 25]
+  ]) {
     b.setRange(start, end, true)
   }
 
@@ -302,7 +321,7 @@ test('bitfield - setRange over multiple pages', async function (t) {
   t.is(b.get(32768 * 2 + 1), false)
 })
 
-async function createStorage (t, dir) {
+async function createStorage(t, dir) {
   if (!dir) dir = await t.tmp()
 
   const db = new CoreStorage(dir)
@@ -311,10 +330,13 @@ async function createStorage (t, dir) {
 
   const dkey = b4a.alloc(32)
 
-  return (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
+  return (
+    (await db.resume(dkey)) ||
+    (await db.create({ key: dkey, discoveryKey: dkey }))
+  )
 }
 
-async function flush (s, b, bitfield) {
+async function flush(s, b, bitfield) {
   const tx = s.write()
   b.flush(tx, bitfield)
   await tx.flush()

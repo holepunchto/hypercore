@@ -16,15 +16,23 @@ test('fully remote proof - proof and verify', async function (t) {
   }
 
   {
-    const proof = await remote.proof(core, { index: 0, block: b4a.from('hello') })
+    const proof = await remote.proof(core, {
+      index: 0,
+      block: b4a.from('hello')
+    })
     const p = await remote.verify(core.state.storage.store, proof)
     t.is(p.block.index, 0)
     t.alike(p.block.value, b4a.from('hello'))
   }
 
   {
-    const proof = await remote.proof(core, { index: 0, block: b4a.from('hello') })
-    const p = await remote.verify(core.state.storage.store, proof, { referrer: b4a.alloc(32) })
+    const proof = await remote.proof(core, {
+      index: 0,
+      block: b4a.from('hello')
+    })
+    const p = await remote.verify(core.state.storage.store, proof, {
+      referrer: b4a.alloc(32)
+    })
     t.is(p, null)
   }
 })

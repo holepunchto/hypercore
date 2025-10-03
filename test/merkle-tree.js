@@ -2,7 +2,11 @@ const test = require('brittle')
 const b4a = require('b4a')
 const CoreStorage = require('hypercore-storage')
 const crypto = require('hypercore-crypto')
-const { ReorgBatch, MerkleTreeBatch, MerkleTree } = require('../lib/merkle-tree')
+const {
+  ReorgBatch,
+  MerkleTreeBatch,
+  MerkleTree
+} = require('../lib/merkle-tree')
 
 test('missing nodes', async function (t) {
   const { session, storage } = await create(t)
@@ -38,7 +42,10 @@ test('proof only block', async function (t) {
   t.is(proof.seek, null)
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
-  t.alike(proof.block.nodes.map(n => n.index), [10, 13])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10, 13]
+  )
 })
 
 test('proof with upgrade', async function (t) {
@@ -56,11 +63,20 @@ test('proof with upgrade', async function (t) {
   t.is(proof.seek, null)
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 3)
-  t.alike(proof.block.nodes.map(n => n.index), [10, 13, 3])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10, 13, 3]
+  )
   t.is(proof.upgrade.start, 0)
   t.is(proof.upgrade.length, 10)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [17])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [17]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    []
+  )
 })
 
 test('proof with upgrade + additional', async function (t) {
@@ -78,11 +94,20 @@ test('proof with upgrade + additional', async function (t) {
   t.is(proof.seek, null)
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 3)
-  t.alike(proof.block.nodes.map(n => n.index), [10, 13, 3])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10, 13, 3]
+  )
   t.is(proof.upgrade.start, 0)
   t.is(proof.upgrade.length, 8)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [17])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    []
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    [17]
+  )
 })
 
 test('proof with upgrade from existing state', async function (t) {
@@ -100,11 +125,20 @@ test('proof with upgrade from existing state', async function (t) {
   t.is(proof.seek, null)
   t.is(proof.block.index, 1)
   t.is(proof.block.nodes.length, 0)
-  t.alike(proof.block.nodes.map(n => n.index), [])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    []
+  )
   t.is(proof.upgrade.start, 1)
   t.is(proof.upgrade.length, 9)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [5, 11, 17])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [5, 11, 17]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    []
+  )
 })
 
 test('proof with upgrade from existing state + additional', async function (t) {
@@ -122,11 +156,20 @@ test('proof with upgrade from existing state + additional', async function (t) {
   t.is(proof.seek, null)
   t.is(proof.block.index, 1)
   t.is(proof.block.nodes.length, 0)
-  t.alike(proof.block.nodes.map(n => n.index), [])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    []
+  )
   t.is(proof.upgrade.start, 1)
   t.is(proof.upgrade.length, 5)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [5, 9])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [13, 17])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [5, 9]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    [13, 17]
+  )
 })
 
 test('proof block and seek, no upgrade', async function (t) {
@@ -145,7 +188,10 @@ test('proof block and seek, no upgrade', async function (t) {
   t.is(proof.seek, null) // seek included in the block
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
-  t.alike(proof.block.nodes.map(n => n.index), [10, 13])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10, 13]
+  )
 })
 
 test('proof block and seek #2, no upgrade', async function (t) {
@@ -164,7 +210,10 @@ test('proof block and seek #2, no upgrade', async function (t) {
   t.is(proof.seek, null) // seek included in the block
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 2)
-  t.alike(proof.block.nodes.map(n => n.index), [10, 13])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10, 13]
+  )
 })
 
 test('proof block and seek #3, no upgrade', async function (t) {
@@ -180,10 +229,16 @@ test('proof block and seek #3, no upgrade', async function (t) {
   const proof = await p.settle()
 
   t.is(proof.upgrade, null)
-  t.alike(proof.seek.nodes.map(n => n.index), [12, 14])
+  t.alike(
+    proof.seek.nodes.map((n) => n.index),
+    [12, 14]
+  )
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 1)
-  t.alike(proof.block.nodes.map(n => n.index), [10])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10]
+  )
 })
 
 test('proof seek with padding, no upgrade', async function (t) {
@@ -199,8 +254,14 @@ test('proof seek with padding, no upgrade', async function (t) {
   const proof = await p.settle()
 
   t.is(proof.upgrade, null)
-  t.alike(proof.block.nodes.map(n => n.index), [2, 5, 23])
-  t.alike(proof.seek.nodes.map(n => n.index), [12, 14, 9])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [2, 5, 23]
+  )
+  t.alike(
+    proof.seek.nodes.map((n) => n.index),
+    [12, 14, 9]
+  )
 })
 
 test('proof block and seek that results in tree, no upgrade', async function (t) {
@@ -216,8 +277,14 @@ test('proof block and seek that results in tree, no upgrade', async function (t)
   const proof = await p.settle()
 
   t.is(proof.upgrade, null)
-  t.alike(proof.block.nodes.map(n => n.index), [2, 5, 11])
-  t.alike(proof.seek.nodes.map(n => n.index), [19, 27])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [2, 5, 11]
+  )
+  t.alike(
+    proof.seek.nodes.map((n) => n.index),
+    [19, 27]
+  )
 })
 
 test('proof block and seek, with upgrade', async function (t) {
@@ -233,14 +300,26 @@ test('proof block and seek, with upgrade', async function (t) {
   b.tryFlush()
   const proof = await p.settle()
 
-  t.alike(proof.seek.nodes.map(n => n.index), [12, 14])
+  t.alike(
+    proof.seek.nodes.map((n) => n.index),
+    [12, 14]
+  )
   t.is(proof.block.index, 4)
   t.is(proof.block.nodes.length, 1)
-  t.alike(proof.block.nodes.map(n => n.index), [10])
+  t.alike(
+    proof.block.nodes.map((n) => n.index),
+    [10]
+  )
   t.is(proof.upgrade.start, 8)
   t.is(proof.upgrade.length, 2)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [17])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [17]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    []
+  )
 })
 
 test('proof seek with upgrade', async function (t) {
@@ -255,12 +334,21 @@ test('proof seek with upgrade', async function (t) {
   b.tryFlush()
   const proof = await p.settle()
 
-  t.alike(proof.seek.nodes.map(n => n.index), [12, 14, 9, 3])
+  t.alike(
+    proof.seek.nodes.map((n) => n.index),
+    [12, 14, 9, 3]
+  )
   t.is(proof.block, null)
   t.is(proof.upgrade.start, 0)
   t.is(proof.upgrade.length, 10)
-  t.alike(proof.upgrade.nodes.map(n => n.index), [17])
-  t.alike(proof.upgrade.additionalNodes.map(n => n.index), [])
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [17]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    []
+  )
 })
 
 test('verify proof #1', async function (t) {
@@ -280,7 +368,10 @@ test('verify proof #1', async function (t) {
   await flushBatch(clone.session, b)
 
   t.is(await b.byteOffset(6), await MerkleTree.byteOffset(session, 6))
-  t.alike(await MerkleTree.get(clone.session, 6), await MerkleTree.get(session, 6))
+  t.alike(
+    await MerkleTree.get(clone.session, 6),
+    await MerkleTree.get(session, 6)
+  )
 })
 
 test('verify proof #2', async function (t) {
@@ -482,7 +573,7 @@ test('basic tree seeks', async function (t) {
 
   t.pass('checked all byte seeks')
 
-  async function linearSeek (session, bytes) {
+  async function linearSeek(session, bytes) {
     for (let i = 0; i < session.length * 2; i += 2) {
       const node = await MerkleTree.get(session, i)
       if (node.size > bytes) return [i / 2, bytes]
@@ -592,7 +683,7 @@ test('check if a length is upgradeable', async function (t) {
   t.is(await MerkleTree.upgradeable(clone.session, 5), true)
 })
 
-test('clone a batch', async t => {
+test('clone a batch', async (t) => {
   const a = await create(t, 5)
 
   const b = new MerkleTreeBatch(a.session)
@@ -629,7 +720,7 @@ test('clone a batch', async t => {
   t.not(b.nodes.length, c.nodes.length)
 })
 
-test('prune nodes in a batch', async t => {
+test('prune nodes in a batch', async (t) => {
   const a = await create(t, 0)
   const b = new MerkleTreeBatch(a.session)
 
@@ -639,12 +730,12 @@ test('prune nodes in a batch', async t => {
 
   b.prune(15)
 
-  const nodes = b.nodes.sort((a, b) => a.index - b.index).map(n => n.index)
+  const nodes = b.nodes.sort((a, b) => a.index - b.index).map((n) => n.index)
 
   t.alike(nodes, [15, 23, 27, 29, 30])
 })
 
-test('checkout nodes in a batch', async t => {
+test('checkout nodes in a batch', async (t) => {
   const a = await create(t, 0)
   const b = new MerkleTreeBatch(a.session)
 
@@ -656,11 +747,20 @@ test('checkout nodes in a batch', async t => {
 
   t.alike(b.length, 15)
   t.alike(b.byteLength, 135)
-  t.alike(b.roots.map(n => n.index), [7, 19, 25, 28])
+  t.alike(
+    b.roots.map((n) => n.index),
+    [7, 19, 25, 28]
+  )
 
-  const nodes = b.nodes.sort((a, b) => a.index - b.index).map(n => n.index)
+  const nodes = b.nodes.sort((a, b) => a.index - b.index).map((n) => n.index)
 
-  t.alike(nodes, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28])
+  t.alike(
+    nodes,
+    [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21,
+      22, 24, 25, 26, 28
+    ]
+  )
 })
 
 test('roots get unslabbed', async function (t) {
@@ -680,11 +780,7 @@ test('roots get unslabbed', async function (t) {
   const rootByteLength = 32
   const buffer = roots[0].hash.buffer
 
-  t.is(
-    buffer.byteLength,
-    rootByteLength,
-    'unslabbed the first root'
-  )
+  t.is(buffer.byteLength, rootByteLength, 'unslabbed the first root')
   t.is(
     roots[1].hash.buffer.byteLength,
     rootByteLength,
@@ -708,10 +804,14 @@ test.skip('buffer of cached nodes is copied to small slab', async function (t) {
   await flushBatch(session, b)
 
   const node = await MerkleTree.get(session, 0)
-  t.is(node.hash.buffer.byteLength, 32, 'created a new memory slab of the correct (small) size')
+  t.is(
+    node.hash.buffer.byteLength,
+    32,
+    'created a new memory slab of the correct (small) size'
+  )
 })
 
-test('reopen a tree', async t => {
+test('reopen a tree', async (t) => {
   const dir = await t.tmp()
 
   const a = await create(t, 16, dir)
@@ -727,7 +827,10 @@ test('reopen a tree', async t => {
 
   const byteLength = MerkleTree.size(b.roots)
 
-  t.alike(b.roots.map(n => n.index), [31])
+  t.alike(
+    b.roots.map((n) => n.index),
+    [31]
+  )
 
   // fully close db
   await a.storage.db.close({ force: true })
@@ -737,10 +840,13 @@ test('reopen a tree', async t => {
 
   t.alike(MerkleTree.span(roots) / 2, 32)
   t.alike(MerkleTree.size(roots), byteLength)
-  t.alike(roots.map(n => n.index), [31])
+  t.alike(
+    roots.map((n) => n.index),
+    [31]
+  )
 })
 
-async function audit (core) {
+async function audit(core) {
   const flat = require('flat-tree')
   const expectedRoots = flat.fullRoots(core.session.length * 2)
 
@@ -753,7 +859,7 @@ async function audit (core) {
 
   return true
 
-  async function check (node) {
+  async function check(node) {
     if ((node.index & 1) === 0) return true
 
     const [l, r] = flat.children(node.index)
@@ -762,11 +868,15 @@ async function audit (core) {
 
     if (!nl && !nr) return true
 
-    return b4a.equals(crypto.parent(nl, nr), node.hash) && await check(nl) && await check(nr)
+    return (
+      b4a.equals(crypto.parent(nl, nr), node.hash) &&
+      (await check(nl)) &&
+      (await check(nr))
+    )
   }
 }
 
-async function reorg (local, remote) {
+async function reorg(local, remote) {
   const upgrade = { start: 0, length: remote.session.length }
 
   const batch = remote.storage.read()
@@ -774,14 +884,20 @@ async function reorg (local, remote) {
 
   batch.tryFlush()
   const localBatch = new ReorgBatch(local.session)
-  const r = await MerkleTree.reorg(local.session, await proof.settle(), localBatch)
+  const r = await MerkleTree.reorg(
+    local.session,
+    await proof.settle(),
+    localBatch
+  )
 
   while (!r.finished) {
     const index = 2 * (r.want.end - 1)
     const nodes = r.want.nodes
 
     const batch = remote.storage.read()
-    const proof = await MerkleTree.proof(remote.session, batch, { hash: { index, nodes } })
+    const proof = await MerkleTree.proof(remote.session, batch, {
+      hash: { index, nodes }
+    })
 
     batch.tryFlush()
 
@@ -793,7 +909,7 @@ async function reorg (local, remote) {
   return r.ancestors
 }
 
-async function create (t, length = 0, dir, resume = 0) {
+async function create(t, length = 0, dir, resume = 0) {
   if (!dir) dir = await t.tmp()
 
   const db = new CoreStorage(dir)
@@ -802,7 +918,9 @@ async function create (t, length = 0, dir, resume = 0) {
 
   const dkey = b4a.alloc(32)
 
-  const storage = (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
+  const storage =
+    (await db.resume(dkey)) ||
+    (await db.create({ key: dkey, discoveryKey: dkey }))
 
   const session = createSession(storage)
 
@@ -818,7 +936,7 @@ async function create (t, length = 0, dir, resume = 0) {
   return { session, storage }
 }
 
-function createSession (storage) {
+function createSession(storage) {
   return {
     storage,
     fork: 0,
@@ -829,7 +947,7 @@ function createSession (storage) {
   }
 }
 
-async function flushBatch (session, batch) {
+async function flushBatch(session, batch) {
   const tx = session.storage.write()
   batch.commit(tx)
   await tx.flush()

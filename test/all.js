@@ -2,7 +2,7 @@
 
 runTests()
 
-async function runTests () {
+async function runTests() {
   const test = (await import('brittle')).default
 
   test.pause()

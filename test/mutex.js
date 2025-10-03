@@ -14,7 +14,7 @@ test('mutex - basic', async function (t) {
 
   t.is(count, 5)
 
-  async function counter (i) {
+  async function counter(i) {
     await mutex.lock()
     t.is(count++, i)
     setImmediate(() => mutex.unlock())
@@ -61,7 +61,12 @@ test('mutex - quick destroy', async function (t) {
   let resolveCount = 0
 
   for (let i = 0; i < 5; i++) {
-    promises.push(mutex.lock().then(() => resolveCount++, () => rejectCount++))
+    promises.push(
+      mutex.lock().then(
+        () => resolveCount++,
+        () => rejectCount++
+      )
+    )
   }
 
   const destroyed = mutex.destroy(new Error('Test error'))
@@ -83,7 +88,12 @@ test('mutex - graceful then quick destroy', async function (t) {
   let resolveCount = 0
 
   for (let i = 0; i < 5; i++) {
-    promises.push(mutex.lock().then(() => resolveCount++, () => rejectCount++))
+    promises.push(
+      mutex.lock().then(
+        () => resolveCount++,
+        () => rejectCount++
+      )
+    )
   }
 
   const destroyed = mutex.destroy()
@@ -118,7 +128,7 @@ test('mutex - quick destroy with re-entry', async function (t) {
   t.is(resolveCount, 1)
   t.is(rejectCount, 4)
 
-  async function lock () {
+  async function lock() {
     try {
       await mutex.lock()
       resolveCount++
@@ -141,7 +151,10 @@ test('mutex - error propagates', async function (t) {
   const err = new Error('Stop')
 
   for (let i = 0; i < 5; i++) {
-    mutex.lock().then(() => resolveCount++, err => rejectErrors.push(err))
+    mutex.lock().then(
+      () => resolveCount++,
+      (err) => rejectErrors.push(err)
+    )
   }
 
   await mutex.destroy(err)

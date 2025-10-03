@@ -300,8 +300,10 @@ test('flush with bg activity persists non conflicting values', async function (t
   const b = clone.session({ name: 'batch' })
 
   // bg
-  const promise = new Promise(resolve => {
-    clone.on('append', () => { if (clone.length === 3) resolve() })
+  const promise = new Promise((resolve) => {
+    clone.on('append', () => {
+      if (clone.length === 3) resolve()
+    })
   })
 
   await core.append('b')
@@ -479,7 +481,7 @@ test('persistent batch', async function (t) {
   await reopened.close()
   await reopen.close()
 
-  async function open () {
+  async function open() {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
     return storage
@@ -499,7 +501,7 @@ test('clear', async function (t) {
 
   const [s1, s2] = replicate(core, clone, t)
 
-  await new Promise(resolve => clone.on('append', resolve))
+  await new Promise((resolve) => clone.on('append', resolve))
 
   await clone.commit(b)
   await b.close()
@@ -530,7 +532,7 @@ test('batch append with huge batch', { timeout: 120000 }, async function (t) {
   // due to a limit on the amount of function args
   // This caused a bug on large batches
   const core = await create(t)
-  const bigBatch = (new Array(200_000)).fill('o')
+  const bigBatch = new Array(200_000).fill('o')
 
   const b = core.session({ name: 'batch' })
   await b.append(bigBatch)
@@ -690,7 +692,7 @@ test('batch catchup to same length and hash', async function (t) {
 
   replicate(core, clone, t)
 
-  await new Promise(resolve => clone.on('append', resolve))
+  await new Promise((resolve) => clone.on('append', resolve))
 
   t.is(clone.length, core.length)
   t.is(b.length, core.length)

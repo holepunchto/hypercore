@@ -7,7 +7,7 @@ module.exports = {
   makeStreamPair
 }
 
-function makeStreamPair (t, opts = {}) {
+function makeStreamPair(t, opts = {}) {
   const u = new UDX()
   const a = u.createSocket()
   const b = u.createSocket()
@@ -20,11 +20,14 @@ function makeStreamPair (t, opts = {}) {
   b.bind(0, '127.0.0.1')
 
   const p = proxy({ from: a, to: b }, async function () {
-    const delay = opts.latency[0] + Math.round(Math.random() * (opts.latency[1] - opts.latency[0]))
+    const delay =
+      opts.latency[0] +
+      Math.round(Math.random() * (opts.latency[1] - opts.latency[0]))
     if (delay) {
       const { promise, resolve } = rrp()
       const timeout = setTimeout(resolve, delay)
-      t.teardown(() => { // If the test ends before our delay triggered
+      t.teardown(() => {
+        // If the test ends before our delay triggered
         clearTimeout(timeout)
         resolve()
       })
@@ -52,7 +55,7 @@ function makeStreamPair (t, opts = {}) {
   return [n1, n2]
 }
 
-function proxy ({ from, to, bind } = {}, handler) {
+function proxy({ from, to, bind } = {}, handler) {
   from = from.address().port
   to = to.address().port
 
@@ -66,7 +69,7 @@ function proxy ({ from, to, bind } = {}, handler) {
     if (forwarding && forwarding.then) forwarding.then(fwd).catch(safetyCatch)
     else fwd(forwarding)
 
-    function fwd () {
+    function fwd() {
       socket.trySend(buf, port, '127.0.0.1')
     }
   })

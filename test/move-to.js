@@ -26,9 +26,11 @@ test('move - basic', async function (t) {
       length: core.length,
       hash: core.state.hash()
     },
-    signers: [{
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const core2 = await create(t, { manifest, keyPair })
@@ -36,7 +38,9 @@ test('move - basic', async function (t) {
 
   t.is(core2.length, 3)
 
-  sess.once('migrate', key => { t.alike(key, core2.key) })
+  sess.once('migrate', (key) => {
+    t.alike(key, core2.key)
+  })
 
   await sess.state.moveTo(core2, core2.length)
   await sess.append('4')
@@ -82,9 +86,11 @@ test('move - snapshots', async function (t) {
       length: core.length,
       hash: core.state.hash()
     },
-    signers: [{
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const core2 = await create(t, { manifest, keyPair })

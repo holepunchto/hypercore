@@ -8,17 +8,25 @@ test('when the writer appends he broadcasts the new contiguous length', async fu
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   t.is(getPeer(b, a).remoteContiguousLength, 0, 'Sanity check')
 
   await a.append('a')
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(b, a).remoteContiguousLength, 1, 'Broadcast new length to other peers')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(b, a).remoteContiguousLength,
+    1,
+    'Broadcast new length to other peers'
+  )
 
   await a.append('b')
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(b, a).remoteContiguousLength, 2, 'Broadcast new length to other peers')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(b, a).remoteContiguousLength,
+    2,
+    'Broadcast new length to other peers'
+  )
 })
 
 test('contiguous-length announce-on-update flow', async function (t) {
@@ -30,14 +38,26 @@ test('contiguous-length announce-on-update flow', async function (t) {
   replicate(b, c, t)
 
   await a.append(['a', 'b'])
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(c, b).remoteContiguousLength, 0, 'Sanity check: c knows nothing yet')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(c, b).remoteContiguousLength,
+    0,
+    'Sanity check: c knows nothing yet'
+  )
   t.is(getPeer(b, a).remoteContiguousLength, 2, 'Sanity check: b knows about a')
 
   await b.get(0)
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(c, b).remoteContiguousLength, 1, 'b broadcast its new contiguous length to the other peers')
-  t.is(getPeer(a, b).remoteContiguousLength, 0, 'b did not notify peers he already knows own that block')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(c, b).remoteContiguousLength,
+    1,
+    'b broadcast its new contiguous length to the other peers'
+  )
+  t.is(
+    getPeer(a, b).remoteContiguousLength,
+    0,
+    'b did not notify peers he already knows own that block'
+  )
 })
 
 test('announce-range-on-update flow with big core (multiple bitfield pages)', async function (t) {
@@ -58,7 +78,7 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
   }
   await a.append(blocks)
 
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   const lastBlock = nrBlocks - 1
 
@@ -74,12 +94,13 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
   )
 
   await b.get(nrBlocks - 1)
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   t.is(
     getPeer(c, b)._remoteHasBlock(lastBlock),
     true,
-    'b broadcast its new block to the other peers')
+    'b broadcast its new block to the other peers'
+  )
   t.is(
     getPeer(a, b)._remoteHasBlock(lastBlock),
     false,
@@ -103,7 +124,8 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
   await t.exception(
     async () => await c.get(nrBlocks - 2, getOpts),
     /REQUEST_TIMEOUT/,
-    'Sanity check: peer c can not get blocks peer b does not have')
+    'Sanity check: peer c can not get blocks peer b does not have'
+  )
 })
 
 test('truncates by the writer result in the updated contiguous length being announced', async function (t) {
@@ -111,24 +133,33 @@ test('truncates by the writer result in the updated contiguous length being anno
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   t.is(getPeer(b, a).remoteContiguousLength, 0, 'Sanity check')
 
   await a.append(['a', 'b'])
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(b, a).remoteContiguousLength, 2, 'updated length broadcast to other peers')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(b, a).remoteContiguousLength,
+    2,
+    'updated length broadcast to other peers'
+  )
 
   await a.truncate(1)
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(getPeer(b, a).remoteContiguousLength, 1, 'truncate broadcast to other peers')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    getPeer(b, a).remoteContiguousLength,
+    1,
+    'truncate broadcast to other peers'
+  )
 })
 
 // Get peer b as seen by peer a (b is the remote peer).
-function getPeer (a, b) {
+function getPeer(a, b) {
   for (const aPeer of a.core.replicator.peers) {
     for (const bPeer of b.core.replicator.peers) {
-      if (b4a.equals(aPeer.stream.remotePublicKey, bPeer.stream.publicKey)) return aPeer
+      if (b4a.equals(aPeer.stream.remotePublicKey, bPeer.stream.publicKey))
+        return aPeer
     }
   }
 
