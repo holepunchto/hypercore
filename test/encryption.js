@@ -264,23 +264,23 @@ test('session keeps encryption', async function (t) {
 // block encryption module is only available after bmping manifest version
 test('block encryption module', async function (t) {
   class XOREncryption {
-    padding () {
+    padding() {
       return 0
     }
 
-    async encrypt (index, block) {
+    async encrypt(index, block) {
       await new Promise(setImmediate)
 
       for (let i = 0; i < block.byteLength; i++) {
-        block[i] ^= ((index + 1) & 0xff) // +1 so no 0 xor in test
+        block[i] ^= (index + 1) & 0xff // +1 so no 0 xor in test
       }
     }
 
-    async decrypt (index, block) {
+    async decrypt(index, block) {
       await new Promise(setImmediate)
 
       for (let i = 0; i < block.byteLength; i++) {
-        block[i] ^= ((index + 1) & 0xff)
+        block[i] ^= (index + 1) & 0xff
       }
     }
   }
@@ -315,10 +315,26 @@ test('encryption backwards compatibility', async function (t) {
     getFixture('block')
   ]
 
-  const compat = await create(t, null, { keyPair: compatKey, encryptionKey, compat: true })
-  const def = await create(t, null, { keyPair: defaultKey, encryptionKey, isBlockKey: false })
-  const notBlock = await create(t, null, { keyPair: defaultKey, encryptionKey, isBlockKey: false })
-  const block = await create(t, null, { keyPair: blockKey, encryptionKey, isBlockKey: true })
+  const compat = await create(t, null, {
+    keyPair: compatKey,
+    encryptionKey,
+    compat: true
+  })
+  const def = await create(t, null, {
+    keyPair: defaultKey,
+    encryptionKey,
+    isBlockKey: false
+  })
+  const notBlock = await create(t, null, {
+    keyPair: defaultKey,
+    encryptionKey,
+    isBlockKey: false
+  })
+  const block = await create(t, null, {
+    keyPair: blockKey,
+    encryptionKey,
+    isBlockKey: true
+  })
 
   await compat.ready()
   await def.ready()
@@ -373,14 +389,14 @@ test('encryption backwards compatibility', async function (t) {
   }
 })
 
-function getBlock (core, index) {
+function getBlock(core, index) {
   const batch = core.core.storage.read()
   const b = batch.getBlock(index)
   batch.tryFlush()
   return b
 }
 
-function getFixture (name) {
+function getFixture(name) {
   const blocks = fixturesRaw[name]
-  return blocks.map(b => b4a.from(b, 'base64'))
+  return blocks.map((b) => b4a.from(b, 'base64'))
 }

@@ -83,7 +83,7 @@ test('sessions - truncate a checkout session', async function (t) {
 })
 
 test.skip('session on a from instance does not inject itself to other sessions', async function (t) {
-  const a = await create(t, { })
+  const a = await create(t, {})
 
   const b = new Hypercore({ core: a.core, encryptionKey: null })
   await b.ready()
@@ -115,7 +115,10 @@ test('sessions - cannot set checkout if name not set', async function (t) {
     /Checkouts are only supported on atoms or named sessions/
   )
 
-  t.execution(() => core.session({ checkout: 0, name: 'named' }), 'sanity check on happy path')
+  t.execution(
+    () => core.session({ checkout: 0, name: 'named' }),
+    'sanity check on happy path'
+  )
 
   await core.close()
 })
@@ -175,4 +178,4 @@ test('sessions - checkout breaks prologue', async function (t) {
   uncaughts.off(noop)
 })
 
-function noop () {}
+function noop() {}

@@ -16,7 +16,7 @@ test('core and session timeout property', async function (t) {
   const b = core.session({ timeout: 50 })
   t.is(b.timeout, 50)
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   await core.close()
   await a.close()
@@ -36,7 +36,7 @@ test('core session inherits timeout property', async function (t) {
   const b = core.session({ timeout: 0 })
   t.is(b.timeout, 0)
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   await core.close()
   await a.close()

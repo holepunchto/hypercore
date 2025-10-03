@@ -188,7 +188,7 @@ test('reopen and overwrite', async function (t) {
 
   await overwritten.close()
 
-  async function open () {
+  async function open() {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
     return storage
@@ -214,7 +214,9 @@ test('treeHash gets the tree hash at a given core length', async function (t) {
   const core = new Hypercore(await createStorage(t))
   await core.ready()
 
-  const { core: { state } } = core
+  const {
+    core: { state }
+  } = core
 
   const hashes = [state.hash()]
 
@@ -308,7 +310,9 @@ test('read ahead', async function (t) {
 test('defaults for wait', async function (t) {
   t.plan(5)
 
-  const core = new Hypercore(await createStorage(t), b4a.alloc(32), { valueEncoding: 'utf-8' })
+  const core = new Hypercore(await createStorage(t), b4a.alloc(32), {
+    valueEncoding: 'utf-8'
+  })
 
   const a = core.get(1)
 
@@ -420,7 +424,7 @@ test('key is set sync', async function (t) {
   const core1 = new Hypercore(dir1, key)
   const core2 = new Hypercore(dir2)
   const core3 = new Hypercore(dir3, { key })
-  const core4 = new Hypercore(dir4, { })
+  const core4 = new Hypercore(dir4, {})
 
   // flush all db ops before teardown
   t.teardown(() => core1.close())
@@ -569,7 +573,10 @@ test('valid manifest passed to a session is stored', async function (t) {
   await core.ready()
 
   const a = new Hypercore(await createStorage(t), core.key)
-  const b = new Hypercore(null, core.key, { manifest: core.manifest, core: a.core })
+  const b = new Hypercore(null, core.key, {
+    manifest: core.manifest,
+    core: a.core
+  })
 
   await b.ready()
 
@@ -692,19 +699,46 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     t.is(await getContiguousLengthInStorage(core), 5)
 
     await core.append(['f', 'g'])
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, true, true, true, false])
+    t.alike(getBitfields(core, 0, 8), [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ])
     t.is(core.contiguousLength, 7)
     t.is(core.core.header.hints.contiguousLength, 7)
     t.is(await getContiguousLengthInStorage(core), 7)
 
     await core.clear(4)
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, false])
+    t.alike(getBitfields(core, 0, 8), [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
 
     await core.append(['h'])
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.alike(getBitfields(core, 0, 8), [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
@@ -716,7 +750,16 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.alike(getBitfields(core, 0, 8), [
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
@@ -777,7 +820,7 @@ test('setKeyPair', async function (t) {
   await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
-function getBitfields (hypercore, start = 0, end = null) {
+function getBitfields(hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
   const res = []
@@ -788,7 +831,7 @@ function getBitfields (hypercore, start = 0, end = null) {
   return res
 }
 
-async function getContiguousLengthInStorage (hypercore) {
+async function getContiguousLengthInStorage(hypercore) {
   const storageRx = hypercore.core.storage.read()
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
   return res === null ? null : res.contiguousLength

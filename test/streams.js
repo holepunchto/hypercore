@@ -6,12 +6,7 @@ const { create } = require('./helpers')
 test('basic read stream', async function (t) {
   const core = await create(t)
 
-  const expected = [
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ]
+  const expected = ['hello', 'world', 'verden', 'welt']
 
   await core.append(expected)
 
@@ -25,12 +20,7 @@ test('basic read stream', async function (t) {
 test('read stream with start / end', async function (t) {
   const core = await create(t)
 
-  const datas = [
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ]
+  const datas = ['hello', 'world', 'verden', 'welt']
 
   await core.append(datas)
 
@@ -58,21 +48,11 @@ test('read stream with start / end', async function (t) {
 test('read stream with end and live (live should be ignored)', async function (t) {
   const core = await create(t)
 
-  const initial = [
-    'alpha',
-    'beta',
-    'gamma',
-    'delta',
-    'epsilon'
-  ]
+  const initial = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
 
   await core.append(initial)
 
-  const expected = [
-    'alpha',
-    'beta',
-    'gamma'
-  ]
+  const expected = ['alpha', 'beta', 'gamma']
 
   const stream = core.createReadStream({ end: 3, live: true })
   const collected = []
@@ -87,19 +67,14 @@ test('read stream with end and live (live should be ignored)', async function (t
 test('basic write+read stream', async function (t) {
   const core = await create(t)
 
-  const expected = [
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ]
+  const expected = ['hello', 'world', 'verden', 'welt']
 
   const ws = core.createWriteStream()
 
   for (const data of expected) ws.write(data)
   ws.end()
 
-  await new Promise(resolve => ws.on('finish', resolve))
+  await new Promise((resolve) => ws.on('finish', resolve))
 
   for await (const data of core.createReadStream()) {
     t.alike(b4a.toString(data), expected.shift())
@@ -111,12 +86,7 @@ test('basic write+read stream', async function (t) {
 test('basic byte stream', async function (t) {
   const core = await create(t)
 
-  const expected = [
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ]
+  const expected = ['hello', 'world', 'verden', 'welt']
 
   await core.append(expected)
 
@@ -130,18 +100,10 @@ test('basic byte stream', async function (t) {
 test('basic byte stream with byteOffset / byteLength', async function (t) {
   const core = await create(t)
 
-  await core.append([
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ])
+  await core.append(['hello', 'world', 'verden', 'welt'])
 
   const opts = { byteOffset: 5, byteLength: 11 }
-  const expected = [
-    'world',
-    'verden'
-  ]
+  const expected = ['world', 'verden']
 
   for await (const data of core.createByteStream(opts)) {
     t.alike(b4a.toString(data), expected.shift())
@@ -153,18 +115,10 @@ test('basic byte stream with byteOffset / byteLength', async function (t) {
 test('basic byte stream with byteOffset / byteLength of a core that has valueEncoding', async function (t) {
   const core = await create(t, { valueEncoding: 'utf8' })
 
-  await core.append([
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ])
+  await core.append(['hello', 'world', 'verden', 'welt'])
 
   const opts = { byteOffset: 5, byteLength: 11 }
-  const expected = [
-    'world',
-    'verden'
-  ]
+  const expected = ['world', 'verden']
 
   for await (const data of core.createByteStream(opts)) {
     t.ok(b4a.isBuffer(data))
@@ -177,17 +131,10 @@ test('basic byte stream with byteOffset / byteLength of a core that has valueEnc
 test('byte stream with lower byteLength than byteOffset', async function (t) {
   const core = await create(t)
 
-  await core.append([
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ])
+  await core.append(['hello', 'world', 'verden', 'welt'])
 
   const opts = { byteOffset: 10, byteLength: 6 }
-  const expected = [
-    'verden'
-  ]
+  const expected = ['verden']
 
   for await (const data of core.createByteStream(opts)) {
     t.alike(b4a.toString(data), expected.shift())
@@ -199,18 +146,10 @@ test('byte stream with lower byteLength than byteOffset', async function (t) {
 test('basic byte stream with custom byteOffset but default byteLength', async function (t) {
   const core = await create(t)
 
-  await core.append([
-    'hello',
-    'world',
-    'verden',
-    'welt'
-  ])
+  await core.append(['hello', 'world', 'verden', 'welt'])
 
   const opts = { byteOffset: 10 }
-  const expected = [
-    'verden',
-    'welt'
-  ]
+  const expected = ['verden', 'welt']
 
   for await (const data of core.createByteStream(opts)) {
     t.alike(b4a.toString(data), expected.shift())
