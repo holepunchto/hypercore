@@ -711,3 +711,44 @@ test('batch catchup to same length and hash', async function (t) {
 
   await b.close()
 })
+
+test('compact all batches', async function (t) {
+  const a = new Hypercore(await createStorage(t))
+
+  const a1 = a.session({ name: 's1' })
+
+  for (let i = 0; i < 50; i++) {
+    await a.append('data ' + i)
+    await a1.append('s1 data ' + i)
+  }
+
+  const a2 = a.session({ name: 's2' })
+
+  for (let i = 50; i < 100; i++) {
+    await a.append('data ' + i)
+    await a2.append('s2 data ' + i)
+  }
+
+  const a3 = a.session({ name: 's3' })
+  for (let i = 100; i < 150; i++) {
+    await a.append('data ' + i)
+    await a3.append('s3 data ' + i)
+  }
+
+  await t.execution(a.compact())
+
+  t.is(a.length, 150)
+  t.is(a3.length, 150)
+  t.is(a2.length, 100)
+  t.is(a1.length, 50)
+
+  t.is((await a.get(a.length - 1)).toString(), 'data 149')
+  t.is((await a3.get(a3.length - 1)).toString(), 's3 data 149')
+  t.is((await a2.get(a2.length - 1)).toString(), 's2 data 99')
+  t.is((await a1.get(a1.length - 1)).toString(), 's1 data 49')
+
+  await a.close()
+  await a1.close()
+  await a2.close()
+  await a3.close()
+})
