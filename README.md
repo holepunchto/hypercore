@@ -8,11 +8,11 @@ Built for sharing large datasets and streams of real time data
 
 ## Features
 
-* **Sparse replication.** Only download the data you are interested in.
-* **Realtime.** Get the latest updates to the log fast and securely.
-* **Performant.** Uses a simple flat file structure to maximize I/O performance.
-* **Secure.** Uses signed merkle trees to verify log integrity in real time.
-* **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.
+- **Sparse replication.** Only download the data you are interested in.
+- **Realtime.** Get the latest updates to the log fast and securely.
+- **Performant.** Uses a simple flat file structure to maximize I/O performance.
+- **Secure.** Uses signed merkle trees to verify log integrity in real time.
+- **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.
 
 Note that the latest release is Hypercore 10, which adds support for truncate and many other things.
 Version 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning the storage format and wire protocol is forward compatible with future versions.
@@ -31,7 +31,7 @@ Make a new Hypercore instance.
 
 `storage` should be set to a directory where you want to store the data and core metadata.
 
-``` js
+```js
 const core = new Hypercore('./directory') // store data in ./directory
 ```
 
@@ -41,7 +41,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 
 `options` include:
 
-``` js
+```js
 {
   createIfMissing: true, // create a new Hypercore key pair if none was present in storage
   overwrite: false, // overwrite any old Hypercore that might already exist
@@ -114,7 +114,7 @@ Signers are an array of objects with the following structure:
 Append a block of data (or an array of blocks) to the core.
 Returns the new length and byte length of the core.
 
-``` js
+```js
 // simple call append with a new block of data
 await core.append(Buffer.from('I am a block of data'))
 
@@ -138,7 +138,7 @@ await core.append([Buffer.from('batch block 1'), Buffer.from('batch block 2')])
 Get a block of data.
 If the data is not available locally this method will prioritize and wait for the data to be downloaded.
 
-``` js
+```js
 // get block #42
 const block = await core.get(42)
 
@@ -151,7 +151,7 @@ const blockLocal = await core.get(44, { wait: false })
 
 `options` include:
 
-``` js
+```js
 {
   wait: true, // wait for block to be downloaded
   onwait: () => {}, // hook that is called if the get is waiting for download
@@ -171,7 +171,7 @@ Check if the core has all blocks between `start` and `end`.
 
 Waits for initial proof of the new core length until all `findingPeers` calls has finished.
 
-``` js
+```js
 const updated = await core.update()
 
 console.log('core was updated?', updated, 'length is', core.length)
@@ -179,7 +179,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 
 `options` include:
 
-``` js
+```js
 {
   wait: false,
   activeRequests: undefined, // Advanced option. Pass requests for replicating blocks
@@ -196,7 +196,7 @@ Seek to a byte offset.
 Returns `[index, relativeOffset]`, where `index` is the data block the `byteOffset` is contained in and `relativeOffset` is
 the relative byte offset in the data block.
 
-``` js
+```js
 await core.append([Buffer.from('abc'), Buffer.from('d'), Buffer.from('efg')])
 
 const first = await core.seek(1) // returns [0, 1]
@@ -204,7 +204,7 @@ const second = await core.seek(3) // returns [1, 0]
 const third = await core.seek(5) // returns [2, 1]
 ```
 
-``` js
+```js
 {
   wait: true, // wait for data to be downloaded
   timeout: 0, // wait at max some milliseconds (0 means no timeout)
@@ -216,7 +216,7 @@ const third = await core.seek(5) // returns [2, 1]
 
 Make a read stream to read a range of data out at once.
 
-``` js
+```js
 // read the full core
 const fullStream = core.createReadStream()
 
@@ -233,7 +233,7 @@ for await (const data of fullStream) {
 
 `options` include:
 
-``` js
+```js
 {
   start: 0,
   end: core.length,
@@ -248,7 +248,7 @@ for await (const data of fullStream) {
 
 Make a byte stream to read a range of bytes.
 
-``` js
+```js
 // Read the full core
 const fullStream = core.createByteStream()
 
@@ -266,7 +266,7 @@ partialStream.pipe(process.stdout)
 
 `options` include:
 
-``` js
+```js
 {
   byteOffset: 0, // Offset where to start from
   byteLength: core.byteLength - options.byteOffset, // How many bytes to read
@@ -278,11 +278,11 @@ partialStream.pipe(process.stdout)
 
 Make a write stream to append chunks as blocks.
 
-``` js
+```js
 const ws = core.createWriteStream()
 
 // Listen for stream finishing
-const done = new Promise(resolve => ws.on('finish', resolve))
+const done = new Promise((resolve) => ws.on('finish', resolve))
 
 for (const data of ['hello', 'world']) ws.write(data)
 ws.end()
@@ -297,7 +297,7 @@ console.log(await core.get(core.length - 1)) // 'world'
 
 Clear stored blocks between `start` and `end`, reclaiming storage when possible.
 
-``` js
+```js
 await core.clear(4) // clear block 4 from your local cache
 await core.clear(0, 10) // clear block 0-10 from your local cache
 ```
@@ -305,6 +305,7 @@ await core.clear(0, 10) // clear block 0-10 from your local cache
 The core will also gossip to peers it is connected to, that is no longer has these blocks.
 
 `options` include:
+
 ```js
 {
   diff: false // Returned `cleared` bytes object is null unless you enable this
@@ -319,6 +320,7 @@ Per default this will update the fork id of the core to `+ 1`, but you can set t
 Note that the fork id should be monotonely incrementing.
 
 `options` include:
+
 ```js
 {
   fork: core.fork + 1, // The new fork id after truncating
@@ -372,7 +374,7 @@ await range.done()
 
 A range can have the following properties:
 
-``` js
+```js
 {
   start: startIndex,
   end: nonInclusiveEndIndex,
@@ -384,7 +386,7 @@ A range can have the following properties:
 
 To download the full core continuously (often referred to as non sparse mode) do
 
-``` js
+```js
 // Note that this will never be considered downloaded as the range
 // will keep waiting for new blocks to be appended.
 core.download({ start: 0, end: -1 })
@@ -398,7 +400,7 @@ core.download({ blocks: [4, 9, 7] })
 
 To cancel downloading a range simply destroy the range instance.
 
-``` js
+```js
 // will stop downloading now
 range.destroy()
 ```
@@ -504,10 +506,10 @@ Info {
   fork: 0,
   padding: 8,
   storage: {
-    oplog: 8192, 
-    tree: 4096, 
-    blocks: 4096, 
-    bitfield: 4096 
+    oplog: 8192,
+    tree: 4096,
+    blocks: 4096,
+    bitfield: 4096
   }
 }
 ```
@@ -660,7 +662,7 @@ If you are using a P2P swarm like [Hyperswarm](https://github.com/hyperswarm/hyp
 If you want to multiplex the replication over an existing Hypercore replication stream you can pass
 another stream instance instead of the `isInitiator` boolean.
 
-``` js
+```js
 // assuming we have two cores, localCore + remoteCore, sharing the same key
 // on a server
 const net = require('net')

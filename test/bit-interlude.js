@@ -1,9 +1,13 @@
 const test = require('brittle')
 const BitInterlude = require('../lib/bit-interlude')
 
-const bitfield = (val = false) => ({ get () { return val } })
+const bitfield = (val = false) => ({
+  get() {
+    return val
+  }
+})
 
-test('bit-interlude - basic', t => {
+test('bit-interlude - basic', (t) => {
   const bits = new BitInterlude(bitfield())
 
   bits.setRange(0, 5, true)
@@ -21,7 +25,7 @@ test('bit-interlude - basic', t => {
   t.is(bits.contiguousLength(16), 20)
 })
 
-test('bit-interlude - drop', t => {
+test('bit-interlude - drop', (t) => {
   const bits = new BitInterlude(bitfield(true))
 
   bits.setRange(15, 20, false)
@@ -34,7 +38,7 @@ test('bit-interlude - drop', t => {
   t.is(bits.contiguousLength(16), 15)
 })
 
-test('bit-interlude - drop multiple', t => {
+test('bit-interlude - drop multiple', (t) => {
   const bits = new BitInterlude(bitfield(true))
 
   bits.setRange(0, 10, false)
@@ -50,7 +54,7 @@ test('bit-interlude - drop multiple', t => {
   t.is(bits.contiguousLength(16), 0)
 })
 
-test('bit-interlude - set & drop', t => {
+test('bit-interlude - set & drop', (t) => {
   const bits = new BitInterlude(bitfield())
 
   bits.setRange(0, 10, true)

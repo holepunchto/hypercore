@@ -35,7 +35,11 @@ test('snapshot does not change when original gets modified', async function (t) 
 
   await core.append('new Block2')
   t.is(snap.length, 3, 'correct length')
-  t.is(snap.signedLength, 2, 'signed length remains at lowest value after appending again to the original')
+  t.is(
+    snap.signedLength,
+    2,
+    'signed length remains at lowest value after appending again to the original'
+  )
   t.is(b4a.toString(await snap.get(2)), 'block2', 'Old block still (snapshot did not change)')
 
   {
@@ -179,7 +183,7 @@ test('snapshots are consistent', async function (t) {
 
   t.is(await snapshot.get(1), 'block #1.0')
 
-  const promise = new Promise(resolve => clone.once('truncate', resolve))
+  const promise = new Promise((resolve) => clone.once('truncate', resolve))
 
   await core.truncate(1)
   await core.append('block #1.1')
@@ -248,7 +252,11 @@ test('error when using inconsistent snapshot', async function (t) {
     t.fail('should throw')
   } catch (e) {
     t.is(e.code, 'SNAPSHOT_NOT_AVAILABLE')
-    t.is(e.message.includes(IdEnc.normalize(core.discoveryKey)), true, 'error message includes the discovery key')
+    t.is(
+      e.message.includes(IdEnc.normalize(core.discoveryKey)),
+      true,
+      'error message includes the discovery key'
+    )
   }
 
   await snapshot.close()

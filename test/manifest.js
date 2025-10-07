@@ -15,21 +15,21 @@ const { create, createStorage, createStored, replicate, unreplicate } = require(
 // TODO: move this to be actual tree batches instead - less future surprises
 // for now this is just to get the tests to work as they test important things
 class AssertionTreeBatch {
-  constructor (hash, signable) {
+  constructor(hash, signable) {
     this._hash = hash
     this._signable = signable
     this.length = 1
   }
 
-  hash () {
+  hash() {
     return this._hash
   }
 
-  signable (key) {
+  signable(key) {
     return b4a.concat([key, this._signable])
   }
 
-  signableCompat () {
+  signableCompat() {
     return this._signable
   }
 }
@@ -68,11 +68,13 @@ test('create verifier - single signer no sign (v0)', async function (t) {
   const manifest = {
     version: 0,
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const verifier = Verifier.fromManifest(manifest)
@@ -95,18 +97,26 @@ test('create verifier - single signer no sign', async function (t) {
 
   const manifest = {
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const verifier = Verifier.fromManifest(manifest)
 
   const batch = new AssertionTreeBatch(null, b4a.alloc(32, 1))
 
-  const signature = assemble([{ signer: 0, signature: crypto.sign(batch.signable(verifier.manifestHash), keyPair.secretKey), patch: null }])
+  const signature = assemble([
+    {
+      signer: 0,
+      signature: crypto.sign(batch.signable(verifier.manifestHash), keyPair.secretKey),
+      patch: null
+    }
+  ])
 
   t.ok(verifier.verify(batch, signature))
 
@@ -122,11 +132,13 @@ test('create verifier - single signer', async function (t) {
 
   const manifest = {
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const verifier = Verifier.fromManifest(manifest)
@@ -152,15 +164,18 @@ test('create verifier - multi signer', async function (t) {
   const manifest = {
     allowPatch: false,
     quorum: 2,
-    signers: [{
-      publicKey: a.publicKey,
-      namespace: aEntropy,
-      signature: 'ed25519'
-    }, {
-      publicKey: b.publicKey,
-      namespace: bEntropy,
-      signature: 'ed25519'
-    }]
+    signers: [
+      {
+        publicKey: a.publicKey,
+        namespace: aEntropy,
+        signature: 'ed25519'
+      },
+      {
+        publicKey: b.publicKey,
+        namespace: bEntropy,
+        signature: 'ed25519'
+      }
+    ]
   }
 
   const batch = new AssertionTreeBatch(null, signable)
@@ -169,9 +184,18 @@ test('create verifier - multi signer', async function (t) {
   const asig = crypto.sign(batch.signable(verifier.manifestHash), a.secretKey)
   const bsig = crypto.sign(batch.signable(verifier.manifestHash), b.secretKey)
 
-  const signature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 1, signature: bsig, patch: 0 }])
-  const badSignature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 1, signature: asig, patch: 0 }])
-  const secondBadSignature = assemble([{ signer: 0, signature: asig, patch: 0 }, { signer: 0, signature: asig, patch: 0 }])
+  const signature = assemble([
+    { signer: 0, signature: asig, patch: 0 },
+    { signer: 1, signature: bsig, patch: 0 }
+  ])
+  const badSignature = assemble([
+    { signer: 0, signature: asig, patch: 0 },
+    { signer: 1, signature: asig, patch: 0 }
+  ])
+  const secondBadSignature = assemble([
+    { signer: 0, signature: asig, patch: 0 },
+    { signer: 0, signature: asig, patch: 0 }
+  ])
   const thirdBadSignature = assemble([{ signer: 0, signature: asig, patch: 0 }])
 
   t.ok(verifier.verify(batch, signature))
@@ -185,10 +209,12 @@ test('create verifier - defaults', async function (t) {
 
   const manifest = Verifier.createManifest({
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
   })
 
   const verifier = Verifier.fromManifest(manifest)
@@ -211,10 +237,12 @@ test('create verifier - unsupported curve', async function (t) {
   const keyPair = crypto.keyPair()
 
   const manifest = {
-    signers: [{
-      signature: 'SECP_256K1',
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'SECP_256K1',
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   try {
@@ -238,11 +266,13 @@ test('create verifier - compat signer', async function (t) {
 
   const manifest = {
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   const verifier = Verifier.fromManifest(manifest, { compat: true })
@@ -258,7 +288,7 @@ test('create verifier - compat signer', async function (t) {
 test('multisig - append', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers, 0)
 
@@ -322,7 +352,7 @@ test('multisig - batch failed', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   let multisig = null
 
@@ -379,7 +409,7 @@ test('multisig - batch failed', async function (t) {
 test('multisig - patches', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -434,7 +464,7 @@ test('multisig - patches', async function (t) {
 test('multisig - batch append', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -460,14 +490,11 @@ test('multisig - batch append', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append([
-    b4a.from('0'),
-    b4a.from('1'),
-    b4a.from('2'),
-    b4a.from('3')
-  ], {
-    signature: multisig
-  }))
+  await t.execution(
+    core.append([b4a.from('0'), b4a.from('1'), b4a.from('2'), b4a.from('3')], {
+      signature: multisig
+    })
+  )
 
   t.is(core.length, 4)
 
@@ -500,7 +527,7 @@ test('multisig - batch append', async function (t) {
 test('multisig - batch append with patches', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -530,14 +557,11 @@ test('multisig - batch append with patches', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append([
-    b4a.from('0'),
-    b4a.from('1'),
-    b4a.from('2'),
-    b4a.from('3')
-  ], {
-    signature: multisig
-  }))
+  await t.execution(
+    core.append([b4a.from('0'), b4a.from('1'), b4a.from('2'), b4a.from('3')], {
+      signature: multisig
+    })
+  )
 
   t.is(core.length, 4)
 
@@ -570,7 +594,7 @@ test('multisig - batch append with patches', async function (t) {
 test('multisig - cannot divide batch', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -597,12 +621,11 @@ test('multisig - cannot divide batch', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append([
-    b4a.from('0'),
-    b4a.from('1')
-  ], {
-    signature: multisig
-  }))
+  await t.execution(
+    core.append([b4a.from('0'), b4a.from('1')], {
+      signature: multisig
+    })
+  )
 
   const core2 = await create(t, { manifest })
 
@@ -626,7 +649,7 @@ test('multisig - cannot divide batch', async function (t) {
 test('multisig - multiple appends', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -678,10 +701,7 @@ test('multisig - multiple appends', async function (t) {
     core2.on('append', resolve)
   })
 
-  core.append([
-    b4a.from('0'),
-    b4a.from('1')
-  ], {
+  core.append([b4a.from('0'), b4a.from('1')], {
     signature: multisig1
   })
 
@@ -695,10 +715,7 @@ test('multisig - multiple appends', async function (t) {
     core.on('append', resolve)
   })
 
-  core2.append([
-    b4a.from('2'),
-    b4a.from('3')
-  ], {
+  core2.append([b4a.from('2'), b4a.from('3')], {
     signature: multisig2
   })
 
@@ -714,7 +731,7 @@ test('multisig - persist to disk', async function (t) {
 
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -774,7 +791,7 @@ test('multisig - overlapping appends', async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
 
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -814,18 +831,11 @@ test('multisig - overlapping appends', async function (t) {
     await partialCoreSignature(core, signers[0], len)
   ])
 
-  await core.append([
-    b4a.from('0'),
-    b4a.from('1')
-  ], {
+  await core.append([b4a.from('0'), b4a.from('1')], {
     signature: multisig1
   })
 
-  await core2.append([
-    b4a.from('0'),
-    b4a.from('1'),
-    b4a.from('2')
-  ], {
+  await core2.append([b4a.from('0'), b4a.from('1'), b4a.from('2')], {
     signature: multisig2
   })
 
@@ -861,7 +871,7 @@ test('multisig - normal operating mode', async function (t) {
 
   const [a, b, d] = signers
 
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
   const manifest = createMultiManifest(signers)
 
   const signer1 = signer(a, b)
@@ -904,7 +914,7 @@ test('multisig - normal operating mode', async function (t) {
       const m1s = Math.min(ai, bi)
       if (m1s <= core2.length) continue
 
-      const p = new Promise(resolve => core2.once('append', resolve))
+      const p = new Promise((resolve) => core2.once('append', resolve))
 
       core.append(inputs.slice(core.length, m1s), { signature: await signer1() })
 
@@ -913,7 +923,7 @@ test('multisig - normal operating mode', async function (t) {
       const m2s = Math.min(bi, ci)
       if (m2s <= core.length) continue
 
-      const p = new Promise(resolve => core.once('append', resolve))
+      const p = new Promise((resolve) => core.once('append', resolve))
 
       core2.append(inputs.slice(core2.length, m2s), { signature: await signer2() })
 
@@ -934,7 +944,7 @@ test('multisig - normal operating mode', async function (t) {
 
   t.pass()
 
-  function signer (w1, w2) {
+  function signer(w1, w2) {
     return async (batch) => {
       const len = signableLength([w1.length, w2.length], 2)
 
@@ -950,7 +960,7 @@ test('multisig - normal operating mode', async function (t) {
 test('multisig - large patches', { timeout: 120000 }, async function (t) {
   const signers = []
   for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const manifest = createMultiManifest(signers)
 
@@ -1035,7 +1045,7 @@ test('multisig - large patches', { timeout: 120000 }, async function (t) {
 test('multisig - prologue', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -1088,7 +1098,7 @@ test('multisig - prologue', async function (t) {
 test('multisig - prologue replicate', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   await signers[0].append(b4a.from('0'))
   await signers[0].append(b4a.from('1'))
@@ -1132,7 +1142,7 @@ test('multisig - prologue replicate', async function (t) {
 test('multisig - prologue verify hash', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const s0 = signers[0]
 
@@ -1182,7 +1192,7 @@ test('multisig - prologue morphs request', async function (t) {
   let multisig = null
 
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   const [s0, s1] = signers
 
@@ -1257,7 +1267,7 @@ test('multisig - prologue morphs request', async function (t) {
 test('multisig - append/truncate before prologue', async function (t) {
   const signers = []
   for (let i = 0; i < 2; i++) signers.push(await create(t, { compat: false }))
-  await Promise.all(signers.map(s => s.ready()))
+  await Promise.all(signers.map((s) => s.ready()))
 
   await signers[0].append(b4a.from('0'))
   await signers[1].append(b4a.from('0'))
@@ -1299,11 +1309,13 @@ test('create verifier - default quorum', async function (t) {
 
   const manifest = {
     version: 0,
-    signers: [{
-      signature: 'ed25519',
-      namespace,
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace,
+        publicKey: keyPair.publicKey
+      }
+    ]
   }
 
   // single v0
@@ -1328,7 +1340,7 @@ test('create verifier - default quorum', async function (t) {
   t.is(Verifier.fromManifest(manifest).quorum, 2)
 })
 
-test('manifest encoding', t => {
+test('manifest encoding', (t) => {
   const keyPair = crypto.keyPair()
   const keyPair2 = crypto.keyPair()
 
@@ -1338,11 +1350,13 @@ test('manifest encoding', t => {
     allowPatch: false,
     prologue: null,
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      namespace: b4a.alloc(32, 1),
-      publicKey: keyPair.publicKey
-    }],
+    signers: [
+      {
+        signature: 'ed25519',
+        namespace: b4a.alloc(32, 1),
+        publicKey: keyPair.publicKey
+      }
+    ],
     linked: null,
     userData: null
   }
@@ -1437,7 +1451,7 @@ test('manifest encoding', t => {
   manifest.userData = b4a.from([200])
   t.alike(reencode(manifest), manifest)
 
-  function reencode (m) {
+  function reencode(m) {
     return c.decode(enc.manifest, c.encode(enc.manifest, m))
   }
 })
@@ -1447,10 +1461,12 @@ test('create verifier - open existing core with manifest', async function (t) {
 
   const manifest = Verifier.createManifest({
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
   })
 
   const key = Verifier.manifestHash(manifest)
@@ -1492,10 +1508,12 @@ test('manifest - persist if manifest is updated', async function (t) {
 
   const manifest = Verifier.createManifest({
     quorum: 1,
-    signers: [{
-      signature: 'ed25519',
-      publicKey: keyPair.publicKey
-    }]
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
   })
 
   const key = Verifier.manifestHash(manifest)
@@ -1535,12 +1553,12 @@ test('manifest - persist if manifest is updated', async function (t) {
   }
 })
 
-function createMultiManifest (signers, prologue = null) {
+function createMultiManifest(signers, prologue = null) {
   return {
     hash: 'blake2b',
     allowPatch: true,
     quorum: (signers.length >> 1) + 1,
-    signers: signers.map(s => ({
+    signers: signers.map((s) => ({
       signature: 'ed25519',
       namespace: caps.DEFAULT_NAMESPACE,
       publicKey: s.manifest.signers[0].publicKey
@@ -1550,7 +1568,7 @@ function createMultiManifest (signers, prologue = null) {
   }
 }
 
-async function partialCoreSignature (core, s, len) {
+async function partialCoreSignature(core, s, len) {
   const sig = await core.core.verifier.sign(s.state.createTreeBatch(), s.keyPair)
   let index = 0
   for (; index < core.manifest.signers.length; index++) {
