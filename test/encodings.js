@@ -11,7 +11,16 @@ test('encodings - supports built ins', async function (t) {
 })
 
 test('encodings - supports custom encoding', async function (t) {
-  const a = await create(t, null, { valueEncoding: { encode () { return b4a.from('foo') }, decode () { return 'bar' } } })
+  const a = await create(t, null, {
+    valueEncoding: {
+      encode() {
+        return b4a.from('foo')
+      },
+      decode() {
+        return 'bar'
+      }
+    }
+  })
 
   await a.append({ hello: 'world' })
   t.is(await a.get(0), 'bar')
@@ -20,7 +29,7 @@ test('encodings - supports custom encoding', async function (t) {
 
 test('encodings - supports custom batch encoding', async function (t) {
   const a = await create(t, null, {
-    encodeBatch: batch => {
+    encodeBatch: (batch) => {
       return [b4a.from(batch.join('-'))]
     },
     valueEncoding: 'utf-8'

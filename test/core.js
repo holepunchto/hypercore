@@ -8,52 +8,34 @@ test('core - append', async function (t) {
   const { core } = await create(t)
 
   {
-    const info = await core.state.append([
-      b4a.from('hello'),
-      b4a.from('world')
-    ])
+    const info = await core.state.append([b4a.from('hello'), b4a.from('world')])
 
     t.alike(info, { length: 2, byteLength: 10 })
     t.is(core.state.length, 2)
     t.is(core.state.byteLength, 10)
-    t.alike([
-      await getBlock(core, 0),
-      await getBlock(core, 1)
-    ], [
-      b4a.from('hello'),
-      b4a.from('world')
-    ])
+    t.alike(
+      [await getBlock(core, 0), await getBlock(core, 1)],
+      [b4a.from('hello'), b4a.from('world')]
+    )
   }
 
   {
-    const info = await core.state.append([
-      b4a.from('hej')
-    ])
+    const info = await core.state.append([b4a.from('hej')])
 
     t.alike(info, { length: 3, byteLength: 13 })
     t.is(core.state.length, 3)
     t.is(core.state.byteLength, 13)
-    t.alike([
-      await getBlock(core, 0),
-      await getBlock(core, 1),
-      await getBlock(core, 2)
-    ], [
-      b4a.from('hello'),
-      b4a.from('world'),
-      b4a.from('hej')
-    ])
+    t.alike(
+      [await getBlock(core, 0), await getBlock(core, 1), await getBlock(core, 2)],
+      [b4a.from('hello'), b4a.from('world'), b4a.from('hej')]
+    )
   }
 })
 
 test('core - append and truncate', async function (t) {
   const { core, reopen } = await create(t)
 
-  await core.state.append([
-    b4a.from('hello'),
-    b4a.from('world'),
-    b4a.from('fo'),
-    b4a.from('ooo')
-  ])
+  await core.state.append([b4a.from('hello'), b4a.from('world'), b4a.from('fo'), b4a.from('ooo')])
 
   t.is(core.state.lastTruncation, null)
 
@@ -66,12 +48,7 @@ test('core - append and truncate', async function (t) {
   t.is(core.state.byteLength, 12)
   t.is(core.state.fork, 1)
 
-  await core.state.append([
-    b4a.from('a'),
-    b4a.from('b'),
-    b4a.from('c'),
-    b4a.from('d')
-  ])
+  await core.state.append([b4a.from('a'), b4a.from('b'), b4a.from('c'), b4a.from('d')])
 
   await core.state.truncate(3, 2)
 
@@ -162,13 +139,13 @@ test('core - user data', async function (t) {
 
   t.is(await countEntries(coreReopen.createUserDataStream({ gte: 'hello' })), 0)
 
-  function putUserData (storage, key, value) {
+  function putUserData(storage, key, value) {
     const tx = storage.write()
     tx.putUserData(key, value)
     return tx.flush()
   }
 
-  async function countEntries (stream) {
+  async function countEntries(stream) {
     let count = 0
     // eslint-disable-next-line no-unused-vars
     for await (const entry of stream) count++
@@ -182,8 +159,16 @@ test('core - header does not retain slabs', async function (t) {
   t.is(core.header.key.buffer.byteLength, 32, 'unslabbed key')
   t.is(core.header.keyPair.publicKey.buffer.byteLength, 32, 'unslabbed public key')
   t.is(core.header.keyPair.secretKey.buffer.byteLength, 64, 'unslabbed private key')
-  t.is(core.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'unslabbed signers namespace')
-  t.is(core.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'unslabbed signers publicKey')
+  t.is(
+    core.header.manifest.signers[0].namespace.buffer.byteLength,
+    32,
+    'unslabbed signers namespace'
+  )
+  t.is(
+    core.header.manifest.signers[0].publicKey.buffer.byteLength,
+    32,
+    'unslabbed signers publicKey'
+  )
 
   // check the different code path when re-opening
   const coreReopen = await reopen()
@@ -191,8 +176,16 @@ test('core - header does not retain slabs', async function (t) {
   t.is(coreReopen.header.key.buffer.byteLength, 32, 'reopen unslabbed key')
   t.is(coreReopen.header.keyPair.publicKey.buffer.byteLength, 32, 'reopen unslabbed public key')
   t.is(coreReopen.header.keyPair.secretKey.buffer.byteLength, 64, 'reopen unslabbed secret key')
-  t.is(coreReopen.header.manifest.signers[0].namespace.buffer.byteLength, 32, 'reopen unslabbed signers namespace')
-  t.is(coreReopen.header.manifest.signers[0].publicKey.buffer.byteLength, 32, 'reopen unslabbed signers publicKey')
+  t.is(
+    coreReopen.header.manifest.signers[0].namespace.buffer.byteLength,
+    32,
+    'reopen unslabbed signers namespace'
+  )
+  t.is(
+    coreReopen.header.manifest.signers[0].publicKey.buffer.byteLength,
+    32,
+    'reopen unslabbed signers publicKey'
+  )
 
   await coreReopen.close()
 })
@@ -252,39 +245,33 @@ test('core - verify parallel upgrades', async function (t) {
 test('core - clone', async function (t) {
   const { core } = await create(t)
 
-  await core.state.append([
-    b4a.from('hello'),
-    b4a.from('world')
-  ])
+  await core.state.append([b4a.from('hello'), b4a.from('world')])
 
   const manifest = { prologue: { hash: await core.state.hash(), length: core.state.length } }
-  const { core: copy } = (await create(t, { manifest }))
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core.state)
 
-  t.alike([
-    await getBlock(copy, 0),
-    await getBlock(copy, 1)
-  ], [
-    b4a.from('hello'),
-    b4a.from('world')
-  ])
+  t.alike(
+    [await getBlock(copy, 0), await getBlock(copy, 1)],
+    [b4a.from('hello'), b4a.from('world')]
+  )
 
   const signature = copy.state.signature
-  const roots = copy.state.roots.map(r => r.index)
+  const roots = copy.state.roots.map((r) => r.index)
 
   for (let i = 0; i <= core.state.length * 2; i++) {
-    t.alike(
-      await MerkleTree.get(copy.state, i, false),
-      await MerkleTree.get(core.state, i, false)
-    )
+    t.alike(await MerkleTree.get(copy.state, i, false), await MerkleTree.get(core.state, i, false))
   }
 
   await core.state.append([b4a.from('c')])
 
   // copy should be independent
   t.alike(copy.state.signature, signature)
-  t.alike(copy.state.roots.map(r => r.index), roots)
+  t.alike(
+    copy.state.roots.map((r) => r.index),
+    roots
+  )
   t.is(copy.header.hints.contiguousLength, 2)
 })
 
@@ -334,7 +321,7 @@ test('core - partial clone', async function (t) {
   await core.state.append([b4a.from('2')])
   await core.state.append([b4a.from('3')])
 
-  const { core: copy } = (await create(t, { manifest }))
+  const { core: copy } = await create(t, { manifest })
 
   await copy.copyPrologue(core.state)
 
@@ -344,20 +331,17 @@ test('core - partial clone', async function (t) {
   t.is(core.header.hints.contiguousLength, 4)
   t.is(copy.header.hints.contiguousLength, 2)
 
-  t.alike([
-    await getBlock(copy, 0),
-    await getBlock(copy, 1),
-    await getBlock(copy, 2)
-  ], [
-    b4a.from('0'),
-    b4a.from('1'),
-    null
-  ])
+  t.alike(
+    [await getBlock(copy, 0), await getBlock(copy, 1), await getBlock(copy, 2)],
+    [b4a.from('0'), b4a.from('1'), null]
+  )
 })
 
 test('core - copyPrologue bails if core is not the same', async function (t) {
   const { core } = await create(t)
-  const { core: copy } = await create(t, { manifest: { prologue: { hash: b4a.alloc(32), length: 1 } } })
+  const { core: copy } = await create(t, {
+    manifest: { prologue: { hash: b4a.alloc(32), length: 1 } }
+  })
 
   // copy should be independent
   await core.state.append([b4a.from('a')])
@@ -425,8 +409,8 @@ test('core - copyPrologue many', async function (t) {
   t.alike(await getBlock(copy4, 1), b4a.from('b'))
 })
 
-async function create (t, opts = {}) {
-  const dir = opts.dir || await t.tmp()
+async function create(t, opts = {}) {
+  const dir = opts.dir || (await t.tmp())
 
   let db = null
 
@@ -447,19 +431,19 @@ async function create (t, opts = {}) {
 
   return { core, reopen }
 
-  async function teardown () {
+  async function teardown() {
     if (db) await db.close()
   }
 }
 
-async function getBlock (core, i) {
+async function getBlock(core, i) {
   const r = core.storage.read()
   const p = r.getBlock(i)
   r.tryFlush()
   return p
 }
 
-async function getProof (core, req) {
+async function getProof(core, req) {
   const batch = core.storage.read()
   const p = await MerkleTree.proof(core.state, batch, req)
   const block = req.block ? batch.getBlock(req.block.index) : null
@@ -469,7 +453,7 @@ async function getProof (core, req) {
   return proof
 }
 
-function getCoreHead (storage) {
+function getCoreHead(storage) {
   const b = storage.read()
   const p = b.getHead()
   b.tryFlush()

@@ -5,7 +5,7 @@ const b4a = require('b4a')
 const { create } = require('../helpers')
 const { makeStreamPair } = require('../helpers/networking.js')
 
-async function setup (t, opts = {}) {
+async function setup(t, opts = {}) {
   t.timeout(60 * 1000)
 
   const a = await create()
@@ -28,7 +28,7 @@ async function setup (t, opts = {}) {
 
   return [a, b]
 
-  function onchange () {
+  function onchange() {
     if (b.replicator.peers.length !== 1) throw new Error('Different number of peers')
 
     if (Date.now() - started < 500) return
@@ -36,7 +36,15 @@ async function setup (t, opts = {}) {
 
     const peer = b.replicator.peers[0]
     const rtt = peer.stream.rawStream.rtt
-    t.comment('Blocks', Math.ceil(info.blocks.down()), '(' + byteSize(info.network.down()) + ' bytes)', 'RTT', rtt, 'Max inflight', peer.getMaxInflight())
+    t.comment(
+      'Blocks',
+      Math.ceil(info.blocks.down()),
+      '(' + byteSize(info.network.down()) + ' bytes)',
+      'RTT',
+      rtt,
+      'Max inflight',
+      peer.getMaxInflight()
+    )
   }
 }
 
@@ -60,7 +68,7 @@ test('replication speed - orbit', async function (t) {
   await setup(t, { append: 5000, latency: [500, 500] })
 })
 
-function track (core) {
+function track(core) {
   const info = {
     blocks: { down: speedometer(), up: speedometer() },
     network: { down: speedometer(), up: speedometer() }
@@ -72,7 +80,7 @@ function track (core) {
   return info
 }
 
-function onspeed (eventName, info, index, byteLength, from) {
+function onspeed(eventName, info, index, byteLength, from) {
   const block = info.blocks[eventName]
   const network = info.network[eventName]
 

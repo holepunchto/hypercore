@@ -1,7 +1,7 @@
 const test = require('brittle')
 const BitInterlude = require('../lib/bit-interlude')
 
-test('bit-interlude - basic', t => {
+test('bit-interlude - basic', (t) => {
   const bits = new BitInterlude()
 
   bits.setRange(0, 5, true)
@@ -19,7 +19,7 @@ test('bit-interlude - basic', t => {
   t.is(bits.contiguousLength(16), 20)
 })
 
-test('bit-interlude - drop', t => {
+test('bit-interlude - drop', (t) => {
   const bits = new BitInterlude()
   bits.setRange(0, 20, true)
 
@@ -33,7 +33,7 @@ test('bit-interlude - drop', t => {
   t.is(bits.contiguousLength(16), 15)
 })
 
-test('bit-interlude - drop multiple', t => {
+test('bit-interlude - drop multiple', (t) => {
   const bits = new BitInterlude()
   bits.setRange(0, 20, true)
 
@@ -50,7 +50,7 @@ test('bit-interlude - drop multiple', t => {
   t.is(bits.contiguousLength(16), 0)
 })
 
-test('bit-interlude - set & drop', t => {
+test('bit-interlude - set & drop', (t) => {
   const bits = new BitInterlude()
 
   bits.setRange(0, 10, true)
@@ -71,7 +71,7 @@ test('bit-interlude - set & drop', t => {
   t.is(bits.contiguousLength(16), 2)
 })
 
-test('bit-interlude - setRange bridges undefine region updates higher range', t => {
+test('bit-interlude - setRange bridges undefine region updates higher range', (t) => {
   const bits = new BitInterlude()
 
   // Indexes:  [0123456789]
@@ -95,7 +95,7 @@ test('bit-interlude - setRange bridges undefine region updates higher range', t 
   t.is(bits.get(7), false, 'bit not updated should stay the same')
 })
 
-test('bit-interlude - setRange overlap but next range is same', t => {
+test('bit-interlude - setRange overlap but next range is same', (t) => {
   const bits = new BitInterlude()
 
   // Indexes:  [0123456789]

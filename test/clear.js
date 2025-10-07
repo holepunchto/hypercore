@@ -156,8 +156,14 @@ test('clear - large cores', async function (t) {
   t.is(await a.get(999, { wait: false }), null)
   t.is(b4a.toString(await a.get(1000)), 'Block-1000')
   {
-    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 99, lte: 1000 }))
-    t.alike(storageBlocks.map(b => b.index), [99, 1000], 'correct state in hypercore storage')
+    const storageBlocks = await consumeStream(
+      a.state.storage.createBlockStream({ gte: 99, lte: 1000 })
+    )
+    t.alike(
+      storageBlocks.map((b) => b.index),
+      [99, 1000],
+      'correct state in hypercore storage'
+    )
   }
 
   t.is(b4a.toString(await a.get(2 ** 16 - 11)), 'Block-65525')
@@ -165,8 +171,14 @@ test('clear - large cores', async function (t) {
   t.is(await a.get(2 ** 16 + 9, { wait: false }), null)
   t.is(b4a.toString(await a.get(2 ** 16 + 10)), 'Block-65546')
   {
-    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 2 ** 16 - 11, lte: 2 ** 16 + 10 }))
-    t.alike(storageBlocks.map(b => b.index), [65525, 65546], 'correct state in hypercore storage')
+    const storageBlocks = await consumeStream(
+      a.state.storage.createBlockStream({ gte: 2 ** 16 - 11, lte: 2 ** 16 + 10 })
+    )
+    t.alike(
+      storageBlocks.map((b) => b.index),
+      [65525, 65546],
+      'correct state in hypercore storage'
+    )
   }
 
   t.is(b4a.toString(await a.get(290000 - 1)), 'Block-289999')
@@ -174,12 +186,18 @@ test('clear - large cores', async function (t) {
   t.is(await a.get(299997, { wait: false }), null)
   t.is(b4a.toString(await a.get(299998)), 'Block-299998')
   {
-    const storageBlocks = await consumeStream(a.state.storage.createBlockStream({ gte: 289999, lte: 299998 }))
-    t.alike(storageBlocks.map(b => b.index), [289999, 299998], 'correct state in hypercore storage')
+    const storageBlocks = await consumeStream(
+      a.state.storage.createBlockStream({ gte: 289999, lte: 299998 })
+    )
+    t.alike(
+      storageBlocks.map((b) => b.index),
+      [289999, 299998],
+      'correct state in hypercore storage'
+    )
   }
 })
 
-async function consumeStream (rx) {
+async function consumeStream(rx) {
   const res = []
   for await (const b of rx) res.push(b)
   return res

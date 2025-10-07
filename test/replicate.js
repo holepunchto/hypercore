@@ -1,7 +1,14 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
-const { create, createStored, replicate, unreplicate, eventFlush, replicateDebugStream } = require('./helpers')
+const {
+  create,
+  createStored,
+  replicate,
+  unreplicate,
+  eventFlush,
+  replicateDebugStream
+} = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const crypto = require('hypercore-crypto')
 const Hypercore = require('../')
@@ -68,7 +75,11 @@ test('basic replication stats', async function (t) {
   await r.done()
 
   const aPeerStats = a.core.replicator.peers[0].stats
-  t.alike(aPeerStats, aStats, 'same stats for peer as entire replicator (when there is only 1 peer)')
+  t.alike(
+    aPeerStats,
+    aStats,
+    'same stats for peer as entire replicator (when there is only 1 peer)'
+  )
 
   t.ok(aStats.wireSync.rx > 0, 'wiresync incremented')
   t.is(aStats.wireSync.rx, bStats.wireSync.tx, 'wireSync received == transmitted')
@@ -90,7 +101,7 @@ test('basic replication stats', async function (t) {
     encoding: 'utf-8'
   })
   aExt.send('hello', a.peers[0])
-  await new Promise(resolve => setImmediate(resolve))
+  await new Promise((resolve) => setImmediate(resolve))
   t.ok(bStats.wireExtension.rx > 0, 'extension incremented')
   t.is(aStats.wireExtension.tx, bStats.wireExtension.rx, 'extension received == transmitted')
 
@@ -99,7 +110,7 @@ test('basic replication stats', async function (t) {
   const c = await create(t, a.key)
   replicate(c, b, t)
   c.get(1).catch(() => {})
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
   await c.core.storage.db.idle()
   const cStats = c.core.replicator.stats
   t.ok(cStats.wireBitfield.rx > 0, 'bitfield incremented')
@@ -145,7 +156,7 @@ test('invalidRequest stat', async function (t) {
   peerForB.wireRequest.send(invalidReq)
 
   // let request go through
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   t.is(a.core.replicator.stats.invalidRequests, 1)
   t.is(peerForA.stats.invalidRequests, 1)
@@ -190,7 +201,7 @@ test('invalidRequests backoff (slow)', async function (t) {
   }
 
   // let request go through
-  await new Promise(resolve => setTimeout(resolve, 7000))
+  await new Promise((resolve) => setTimeout(resolve, 7000))
 
   t.is(a.core.replicator.stats.invalidRequests, 50)
   t.is(peerForA.stats.invalidRequests, 50)
@@ -277,7 +288,7 @@ test('eager replication of updates per default', async function (t) {
 
   replicate(a, b, t)
 
-  const appended = new Promise(resolve => {
+  const appended = new Promise((resolve) => {
     b.on('append', function () {
       t.pass('appended')
       resolve()
@@ -356,10 +367,10 @@ test('invalid signature fails', async function (t) {
   const b = await create(t, a.key)
 
   a.core.verifier = {
-    sign () {
+    sign() {
       return b4a.alloc(64)
     },
-    verify (s, sig) {
+    verify(s, sig) {
       return false
     }
   }
@@ -390,7 +401,10 @@ test('more invalid signatures fails', async function (t) {
       sub.is(err.code, 'INVALID_SIGNATURE')
     })
 
-    b.get(0).then(() => sub.fail('should not get block'), () => {})
+    b.get(0).then(
+      () => sub.fail('should not get block'),
+      () => {}
+    )
     sub.teardown(() => b.close())
   })
 
@@ -406,7 +420,10 @@ test('more invalid signatures fails', async function (t) {
       sub.is(err.code, 'INVALID_SIGNATURE')
     })
 
-    b.get(0).then(() => sub.fail('should not get block'), () => {})
+    b.get(0).then(
+      () => sub.fail('should not get block'),
+      () => {}
+    )
     sub.teardown(() => b.close())
   })
 
@@ -416,7 +433,7 @@ test('more invalid signatures fails', async function (t) {
     const b = await create(t, a.key)
     replicate(a, b, sub)
 
-    await new Promise(resolve => setImmediate(resolve))
+    await new Promise((resolve) => setImmediate(resolve))
 
     sub.alike(await b.get(0), b4a.from('a'), 'got block')
 
@@ -451,7 +468,7 @@ test('invalid capability fails', async function (t) {
     s1.on('close', onclose)
     s2.on('close', onclose)
 
-    function onclose () {
+    function onclose() {
       if (--missing === 0) resolve()
     }
   })
@@ -567,7 +584,7 @@ test('async multiplexing', async function (t) {
   await eventFlush()
   b2.replicate(b)
 
-  await new Promise(resolve => b2.once('peer-add', resolve))
+  await new Promise((resolve) => b2.once('peer-add', resolve))
 
   t.is(b2.peers.length, 1)
   t.alike(await b2.get(0), b4a.from('ho'))
@@ -889,7 +906,7 @@ test('request cancellation regression', async function (t) {
   b.get(2).catch(onerror)
 
   // have to wait for the storage lookup here, TODO: add a flush sort of api for testing this
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   // No explict api to trigger this (maybe we add a cancel signal / abort controller?) but cancel get(1)
   b.activeRequests[1].context.detach(b.activeRequests[1])
@@ -899,7 +916,7 @@ test('request cancellation regression', async function (t) {
   t.is(b.activeRequests.length, 0)
   t.is(errored, 3)
 
-  function onerror () {
+  function onerror() {
     errored++
   }
 })
@@ -961,9 +978,7 @@ test.skip('can disable downloading from a peer', async function (t) {
     await r.done()
   }
 
-  const aPeer = b.peers[0].stream.rawStream === aStream
-    ? b.peers[0]
-    : b.peers[1]
+  const aPeer = b.peers[0].stream.rawStream === aStream ? b.peers[0] : b.peers[1]
 
   aPeer.setDownloading(false)
 
@@ -1232,7 +1247,11 @@ test('downloaded blocks are unslabbed if small', async function (t) {
 
   replicate(a, b, t)
 
-  t.is(b.contiguousLength, 0, 'sanity check: we want to receive the downloaded buffer (not from fs)')
+  t.is(
+    b.contiguousLength,
+    0,
+    'sanity check: we want to receive the downloaded buffer (not from fs)'
+  )
   const block = await b.get(0)
 
   t.is(block.buffer.byteLength, 1, 'unslabbed block')
@@ -1242,17 +1261,17 @@ test('downloaded blocks are not unslabbed if bigger than half of slab size', asy
   const a = await create(t)
 
   await a.append(Buffer.alloc(5000))
-  t.is(
-    Buffer.poolSize < 5000 * 2,
-    true,
-    'Sanity check (adapt test if fails)'
-  )
+  t.is(Buffer.poolSize < 5000 * 2, true, 'Sanity check (adapt test if fails)')
 
   const b = await create(t, a.key)
 
   replicate(a, b, t)
 
-  t.is(b.contiguousLength, 0, 'sanity check: we want to receive the downloaded buffer (not from fs)')
+  t.is(
+    b.contiguousLength,
+    0,
+    'sanity check: we want to receive the downloaded buffer (not from fs)'
+  )
   const block = await b.get(0)
 
   t.is(
@@ -1334,11 +1353,7 @@ test('force update writable cores', async function (t) {
 
   await b.update({ force: true, wait: true })
 
-  t.is(
-    b.length,
-    a.length,
-    'new device did bootstrap its state from the network'
-  )
+  t.is(b.length, a.length, 'new device did bootstrap its state from the network')
 })
 
 test('replicate to writable cores after clearing', async function (t) {
@@ -1382,40 +1397,48 @@ test('large linear download', async function (t) {
 })
 
 // Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
-test('replicate range that fills initial size of bitfield page', { timeout: 120000 }, async function (t) {
-  const a = await create(t)
-  await a.append(new Array(2 ** 15).fill('a'))
+test(
+  'replicate range that fills initial size of bitfield page',
+  { timeout: 120000 },
+  async function (t) {
+    const a = await create(t)
+    await a.append(new Array(2 ** 15).fill('a'))
 
-  const b = await create(t, a.key)
+    const b = await create(t, a.key)
 
-  let d = 0
-  b.on('download', () => d++)
+    let d = 0
+    b.on('download', () => d++)
 
-  replicate(a, b, t)
+    replicate(a, b, t)
 
-  const r = b.download({ start: 0, end: a.length })
-  await r.done()
+    const r = b.download({ start: 0, end: a.length })
+    await r.done()
 
-  t.is(d, a.length)
-})
+    t.is(d, a.length)
+  }
+)
 
 // Should take ~2s, but sometimes slow on CI machine, so lots of margin on timeout
-test('replicate range that overflows initial size of bitfield page', { timeout: 120000 }, async function (t) {
-  const a = await create(t)
-  await a.append(new Array(2 ** 15 + 1).fill('a'))
+test(
+  'replicate range that overflows initial size of bitfield page',
+  { timeout: 120000 },
+  async function (t) {
+    const a = await create(t)
+    await a.append(new Array(2 ** 15 + 1).fill('a'))
 
-  const b = await create(t, a.key)
+    const b = await create(t, a.key)
 
-  let d = 0
-  b.on('download', () => d++)
+    let d = 0
+    b.on('download', () => d++)
 
-  replicate(a, b, t)
+    replicate(a, b, t)
 
-  const r = b.download({ start: 0, end: a.length })
-  await r.done()
+    const r = b.download({ start: 0, end: a.length })
+    await r.done()
 
-  t.is(d, a.length)
-})
+    t.is(d, a.length)
+  }
+)
 
 test('replicate ranges in reverse order', async function (t) {
   const a = await create(t)
@@ -1428,7 +1451,10 @@ test('replicate ranges in reverse order', async function (t) {
 
   replicate(a, b, t)
 
-  const ranges = [[1, 1], [0, 1]] // Order is important
+  const ranges = [
+    [1, 1],
+    [0, 1]
+  ] // Order is important
 
   for (const [start, length] of ranges) {
     const r = b.download({ start, length })
@@ -1463,7 +1489,11 @@ test('cancel block', async function (t) {
   t.alike(await b.get(1), b4a.from('b'))
 
   t.ok(a.core.replicator.stats.wireCancel.rx > 0, 'wireCancel stats incremented')
-  t.is(a.core.replicator.stats.wireCancel.rx, b.core.replicator.stats.wireCancel.tx, 'wireCancel stats consistent')
+  t.is(
+    a.core.replicator.stats.wireCancel.rx,
+    b.core.replicator.stats.wireCancel.tx,
+    'wireCancel stats consistent'
+  )
 
   await a.close()
   await b.close()
@@ -1557,7 +1587,7 @@ test('retry failed block requests to another peer', async function (t) {
   n5.destroy()
   n6.destroy()
 
-  async function onupload (core, name) {
+  async function onupload(core, name) {
     t.pass('onupload: ' + name + ' (' + (once ? 'allow' : 'deny') + ')')
 
     if (once) return
@@ -1698,11 +1728,7 @@ test('can define default max-inflight blocks for replicator peers', async functi
   replicate(a, b, t)
   await b.get(0)
 
-  t.alike(
-    a.core.replicator.peers[0].inflightRange,
-    [123, 123],
-    'Uses the custom inflight range'
-  )
+  t.alike(a.core.replicator.peers[0].inflightRange, [123, 123], 'Uses the custom inflight range')
   t.alike(
     b.core.replicator.peers[0].inflightRange,
     [16, 512],
@@ -1719,7 +1745,9 @@ test('session id reuse does not stall', async function (t) {
 
   const n = 500
 
-  const batch = Array(n).fill().map(e => b4a.from([0]))
+  const batch = Array(n)
+    .fill()
+    .map((e) => b4a.from([0]))
   for (let i = 0; i < n; i++) await a.append(batch)
 
   const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
@@ -1765,7 +1793,7 @@ test('restore after cancelled block request', async function (t) {
   a.replicate(n1)
   b.replicate(n2)
 
-  await new Promise(resolve => b.on('append', resolve))
+  await new Promise((resolve) => b.on('append', resolve))
 
   const session = b.session()
   t.exception(session.get(a.length)) // async
@@ -1775,7 +1803,7 @@ test('restore after cancelled block request', async function (t) {
   // trigger upgrade
   a.append([b4a.from([4]), b4a.from([5])])
 
-  await new Promise(resolve => b.on('append', resolve))
+  await new Promise((resolve) => b.on('append', resolve))
 
   t.is(b.length, a.length)
 
@@ -1836,7 +1864,7 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
-test('uses hotswaps to avoid long download tail', async t => {
+test('uses hotswaps to avoid long download tail', async (t) => {
   const core = await create(t)
   const slowCore = await create(t, core.key)
 
@@ -1862,19 +1890,24 @@ test('uses hotswaps to avoid long download tail', async t => {
 
   await peerCore.download({ start: 0, end: core.length }).done()
 
-  const fastPeer = peerCore.replicator.peers.filter(
-    p => b4a.equals(p.stream.remotePublicKey, fastKey))[0]
-  const slowPeer = peerCore.replicator.peers.filter(
-    p => b4a.equals(p.stream.remotePublicKey, slowKey))[0]
+  const fastPeer = peerCore.replicator.peers.filter((p) =>
+    b4a.equals(p.stream.remotePublicKey, fastKey)
+  )[0]
+  const slowPeer = peerCore.replicator.peers.filter((p) =>
+    b4a.equals(p.stream.remotePublicKey, slowKey)
+  )[0]
 
   t.ok(fastPeer.stats.hotswaps > 0, 'hotswaps happened for fast peer')
   t.ok(slowPeer.stats.hotswaps === 0, 'No hotswaps happened for slow peer')
   t.ok(slowPeer.stats.wireCancel.tx > 0, 'slow peer cancelled requests')
-  t.ok(fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx, 'sanity check: received more data from fast peer')
+  t.ok(
+    fastPeer.stats.wireData.rx > slowPeer.stats.wireData.rx,
+    'sanity check: received more data from fast peer'
+  )
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
 })
 
-test('multiple peers with the same remotePublicKey', async t => {
+test('multiple peers with the same remotePublicKey', async (t) => {
   const core = await create(t)
   const peer1 = await create(t, core.key)
   const peer2 = await create(t, core.key)
@@ -1899,20 +1932,12 @@ test('multiple peers with the same remotePublicKey', async t => {
   const download1 = peer1.download({ start: 0, end: core.length })
   const download2 = peer2.download({ start: 0, end: core.length })
 
-  await Promise.all([
-    download1.done(),
-    download2.done()
-  ])
+  await Promise.all([download1.done(), download2.done()])
 
   t.alike(core.peers[0].remotePublicKey, keyPair.publicKey)
   t.alike(core.peers[1].remotePublicKey, keyPair.publicKey)
 
-  const closing = Promise.all([
-    closed(sa1),
-    closed(sa2),
-    closed(sb1),
-    closed(sb2)
-  ])
+  const closing = Promise.all([closed(sa1), closed(sa2), closed(sb1), closed(sb2)])
 
   sa1.destroy()
   sb1.destroy()
@@ -1922,11 +1947,11 @@ test('multiple peers with the same remotePublicKey', async t => {
   t.absent(await isSparse(peer1))
   t.absent(await isSparse(peer2))
 
-  function closed (s) {
-    return new Promise(resolve => s.on('close', resolve))
+  function closed(s) {
+    return new Promise((resolve) => s.on('close', resolve))
   }
 
-  async function isSparse (core) {
+  async function isSparse(core) {
     for (let i = 0; i < core.length; i++) {
       if (!(await core.get(i))) return true
     }
@@ -1943,7 +1968,7 @@ test('messages exchanged when empty core connects to non-sparse', async function
   const b = await create(t, a.key)
 
   replicate(a, b, t)
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   const msgs = b.replicator.peers[0].stats
   t.is(msgs.wireSync.tx, 3, 'wire syncs tx')
@@ -1978,7 +2003,7 @@ test('messages exchanged when empty core connects to sparse', async function (t)
   }
 
   replicate(newCore, sparse, t)
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   t.is(sparse.contiguousLength, 0, 'sanity check')
   t.is(sparse.replicator.peers.length, 1, 'sanity check')
@@ -2023,7 +2048,7 @@ test('messages exchanged when 2 sparse cores connect', async function (t) {
   }
 
   replicate(sparse1, sparse2, t)
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   t.is(sparse1.contiguousLength, 0, 'sanity check')
   t.is(sparse2.contiguousLength, 0, 'sanity check')
@@ -2070,7 +2095,7 @@ test('messages exchanged when 2 non-sparse cores connect', async function (t) {
   t.is(full2.contiguousLength, 5, 'sanity check')
 
   replicate(full1, full2, t)
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   t.is(full2.replicator.peers.length, 1, 'sanity check')
 
@@ -2103,7 +2128,7 @@ test('messages exchanged when 2 empty cores connect', async function (t) {
   t.is(empty2.length, 0, 'sanity check')
 
   replicate(empty1, empty2, t)
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   t.is(empty2.replicator.peers.length, 1, 'sanity check')
 
@@ -2201,7 +2226,11 @@ test('range is broadcast when a core is fully available', async function (t) {
   t.is(writer.replicator.stats.wireRange.tx, 1, 'writer sent no new messages')
 
   await writer.append(['d', 'e'])
-  t.is(writer.replicator.stats.wireRange.tx, 2, 'transmitted range when its lenght increased and it is still fully contig')
+  t.is(
+    writer.replicator.stats.wireRange.tx,
+    2,
+    'transmitted range when its lenght increased and it is still fully contig'
+  )
 
   await reader.get(3)
   t.is(reader.contiguousLength, 4, 'not fully downloaded (sanity check)')
@@ -2209,20 +2238,32 @@ test('range is broadcast when a core is fully available', async function (t) {
 
   await reader.get(4)
   t.is(reader.contiguousLength, 5, 'fully downloaded (sanity check)')
-  t.is(reader.replicator.stats.wireRange.tx, 2, 'new broadcast range since it is again fully downloaded')
+  t.is(
+    reader.replicator.stats.wireRange.tx,
+    2,
+    'new broadcast range since it is again fully downloaded'
+  )
 
   await writer.clear(1, 2)
   t.is(writer.contiguousLength, 1, 'writer no longer contig')
   await writer.append(['f', 'g'])
   // Give time for messages to be received
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(reader.replicator.peers[0].remoteContiguousLength, 1, 'reader detected writer no longer fully contig')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    reader.replicator.peers[0].remoteContiguousLength,
+    1,
+    'reader detected writer no longer fully contig'
+  )
 
   await reader.get(5)
   await reader.get(6)
   // Give time for broadcastRange message to be received
-  await new Promise(resolve => setTimeout(resolve, 100))
-  t.is(writer.replicator.peers[0].remoteContiguousLength, 7, 'writer detected reader is fully contig')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(
+    writer.replicator.peers[0].remoteContiguousLength,
+    7,
+    'writer detected reader is fully contig'
+  )
 })
 
 test('range is broadcast when a core is fully available (multiple peers)', async function (t) {
@@ -2244,17 +2285,25 @@ test('range is broadcast when a core is fully available (multiple peers)', async
 
   replicate(reader1, reader2, t)
   // Give time for replication to add the peers
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   const reader1ToReader2 = reader1.replicator.peers[1]
   const reader2ToReader1 = reader2.replicator.peers[1]
   t.is(reader1ToReader2 !== undefined, true, 'sanity check')
   t.is(reader2ToReader1 !== undefined, true, 'sanity check')
 
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
-  t.is(writerToReader1.remoteContiguousLength, 0, 'reader1 skipped range update to writer (not contig yet)')
-  t.is(writerToReader2.remoteContiguousLength, 0, 'reader2 skipped range update to writer (not contig yet)')
+  t.is(
+    writerToReader1.remoteContiguousLength,
+    0,
+    'reader1 skipped range update to writer (not contig yet)'
+  )
+  t.is(
+    writerToReader2.remoteContiguousLength,
+    0,
+    'reader2 skipped range update to writer (not contig yet)'
+  )
   t.is(reader1ToWriter.remoteContiguousLength, 3, 'writer updated for reader1')
   t.is(reader2ToWriter.remoteContiguousLength, 3, 'writer updated for reader2')
 
@@ -2262,17 +2311,25 @@ test('range is broadcast when a core is fully available (multiple peers)', async
   await reader1.get(2)
   await reader2.get(1)
   await reader2.get(2)
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
 
   t.is(reader1.contiguousLength, 3, 'sanity check')
   t.is(reader2.contiguousLength, 3, 'sanity check')
-  t.is(writerToReader1.remoteContiguousLength, 3, 'reader1 sent range update to writer (became contig)')
-  t.is(writerToReader2.remoteContiguousLength, 3, 'reader2 sent range update to writer (became contig)')
+  t.is(
+    writerToReader1.remoteContiguousLength,
+    3,
+    'reader1 sent range update to writer (became contig)'
+  )
+  t.is(
+    writerToReader2.remoteContiguousLength,
+    3,
+    'reader2 sent range update to writer (became contig)'
+  )
   t.is(reader1ToReader2.remoteContiguousLength, 3, 'reader2 broadcast to reader1 too')
   t.is(reader2ToReader1.remoteContiguousLength, 3, 'reader1 broadcast to reader2 too')
 
   await writer.append(['d', 'e'])
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise((resolve) => setTimeout(resolve, 100))
   t.is(reader1ToWriter.remoteContiguousLength, 5, 'writer updated for reader1')
   t.is(reader2ToWriter.remoteContiguousLength, 5, 'writer updated for reader2')
 })
@@ -2293,7 +2350,7 @@ test('hotswap works for a download with many slow peers', async function (t) {
     for (let i = 0; i < nrSeeders; i++) {
       proms.push(createAndDownload(t, a))
     }
-    seeders.push(...await Promise.all(proms))
+    seeders.push(...(await Promise.all(proms)))
   }
 
   const downloader = await create(t, a.key)
@@ -2317,20 +2374,20 @@ test('hotswap works for a download with many slow peers', async function (t) {
   t.pass(`Hotswap triggered (download took ${Date.now() - start}ms)`)
 })
 
-async function createAndDownload (t, core) {
+async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
   await b.download({ start: 0, end: core.length }).done()
   return b
 }
 
-async function waitForRequestBlock (core) {
+async function waitForRequestBlock(core) {
   while (true) {
-    const reqBlock = core.core.replicator._inflight._requests.find(req => req && req.block)
+    const reqBlock = core.core.replicator._inflight._requests.find((req) => req && req.block)
     if (reqBlock) break
 
-    await new Promise(resolve => setImmediate(resolve))
+    await new Promise((resolve) => setImmediate(resolve))
   }
 }
 
-function noop () {}
+function noop() {}
