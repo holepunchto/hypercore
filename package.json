@@ -4,7 +4,8 @@
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
   "scripts": {
-    "test": "standard && brittle test/all.js",
+    "format": "prettier --write .",
+    "test": "prettier --check . && brittle test/all.js",
     "test:bare": "bare test/all.js",
     "test:generate": "brittle -r test/all.js test/*.js"
   },
@@ -68,11 +69,12 @@
     "brittle": "^3.0.0",
     "debugging-stream": "^3.1.0",
     "hyperswarm": "^4.3.6",
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^2.0.0",
     "rache": "^1.0.0",
     "range-parser": "^1.2.1",
     "resolve-reject-promise": "^1.1.0",
     "speedometer": "^1.1.0",
-    "standard": "^17.0.0",
     "test-tmp": "^1.0.2",
     "tiny-byte-size": "^1.1.0",
     "udx-native": "^1.6.1",
