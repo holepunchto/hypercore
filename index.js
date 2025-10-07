@@ -10,6 +10,7 @@ const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 
+const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
@@ -29,7 +30,7 @@ const {
   DECODING_ERROR
 } = require('hypercore-errors')
 
-const inspect = Symbol.for('nodejs.util.inspect.custom')
+const inspectSymbol = Symbol.for('nodejs.util.inspect.custom')
 
 // Hypercore actually does not have any notion of max/min block sizes
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
@@ -96,92 +97,8 @@ class Hypercore extends EventEmitter {
     this.on('newListener', maybeAddMonitor)
   }
 
-  [inspect](depth, opts) {
-    let indent = ''
-    if (typeof opts.indentationLvl === 'number') {
-      while (indent.length < opts.indentationLvl) indent += ' '
-    }
-
-    let peers = ''
-    const min = Math.min(this.peers.length, 5)
-
-    for (let i = 0; i < min; i++) {
-      const peer = this.peers[i]
-
-      peers += indent + '    Peer(\n'
-      peers +=
-        indent +
-        '      remotePublicKey: ' +
-        opts.stylize(toHex(peer.remotePublicKey), 'string') +
-        '\n'
-      peers += indent + '      remoteLength: ' + opts.stylize(peer.remoteLength, 'number') + '\n'
-      peers += indent + '      remoteFork: ' + opts.stylize(peer.remoteFork, 'number') + '\n'
-      peers +=
-        indent + '      remoteCanUpgrade: ' + opts.stylize(peer.remoteCanUpgrade, 'boolean') + '\n'
-      peers += indent + '    )' + '\n'
-    }
-
-    if (this.peers.length > 5) {
-      peers += indent + '  ... and ' + (this.peers.length - 5) + ' more\n'
-    }
-
-    if (peers) peers = '[\n' + peers + indent + '  ]'
-    else peers = '[ ' + opts.stylize(0, 'number') + ' ]'
-
-    return (
-      this.constructor.name +
-      '(\n' +
-      indent +
-      '  id: ' +
-      opts.stylize(this.id, 'string') +
-      '\n' +
-      indent +
-      '  key: ' +
-      opts.stylize(toHex(this.key), 'string') +
-      '\n' +
-      indent +
-      '  discoveryKey: ' +
-      opts.stylize(toHex(this.discoveryKey), 'string') +
-      '\n' +
-      indent +
-      '  opened: ' +
-      opts.stylize(this.opened, 'boolean') +
-      '\n' +
-      indent +
-      '  closed: ' +
-      opts.stylize(this.closed, 'boolean') +
-      '\n' +
-      indent +
-      '  snapshotted: ' +
-      opts.stylize(this.snapshotted, 'boolean') +
-      '\n' +
-      indent +
-      '  writable: ' +
-      opts.stylize(this.writable, 'boolean') +
-      '\n' +
-      indent +
-      '  length: ' +
-      opts.stylize(this.length, 'number') +
-      '\n' +
-      indent +
-      '  fork: ' +
-      opts.stylize(this.fork, 'number') +
-      '\n' +
-      indent +
-      '  sessions: [ ' +
-      opts.stylize(this.sessions.length, 'number') +
-      ' ]\n' +
-      indent +
-      '  activeRequests: [ ' +
-      opts.stylize(this.activeRequests.length, 'number') +
-      ' ]\n' +
-      indent +
-      '  peers: ' +
-      peers +
-      '\n' +
-      indent +
-      ')'
-    )
+  [inspectSymbol](depth, opts) {
+    return inspect(this, depth, opts)
   }
 
   static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
@@ -442,17 +359,12 @@ class Hypercore extends EventEmitter {
         throw ASSERTION('Checkouts must be named or atomized', this.discoveryKey)
       if (checkout > this.state.length)
         throw ASSERTION(
-          'Invalid checkout ' + checkout + ' for ' + opts.name + ', length is ' + this.state.length,
+          `Invalid checkout ${checkout} for ${opts.name}, length is ${this.state.length}`,
           this.discoveryKey
         )
       if (this.state.prologue && checkout < this.state.prologue.length) {
         throw ASSERTION(
-          'Invalid checkout ' +
-            checkout +
-            ' for ' +
-            opts.name +
-            ', prologue length is ' +
-            this.state.prologue.length,
+          `Invalid checkout ${checkout} for ${opts.name}, prologue length is ${this.state.prologue.length}`,
           this.discoveryKey
         )
       }
@@ -1163,10 +1075,6 @@ module.exports = Hypercore
 
 function isStream(s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
-}
-
-function toHex(buf) {
-  return buf && b4a.toString(buf, 'hex')
 }
 
 async function preappend(blocks) {
