@@ -969,6 +969,11 @@ class Hypercore extends EventEmitter {
     return crypto.tree(roots)
   }
 
+  async missingNodes(index) {
+    if (this.opened === false) await this.opening
+    return await MerkleTree.missingNodes(this.core.state, 2 * index, this.core.state.length)
+  }
+
   async proof(opts) {
     if (this.opened === false) await this.opening
     const rx = this.state.storage.read()
