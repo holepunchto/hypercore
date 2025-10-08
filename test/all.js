@@ -7,8 +7,10 @@ async function runTests() {
 
   test.pause()
 
+  await import('./atomic.js')
   await import('./basic.js') // todo: implement storageInfo API
   await import('./batch.js')
+  await import('./bit-interlude.js')
   await import('./bitfield.js')
   await import('./clear.js') // todo: replace Info.bytesUsed API
   // await import('./compat.js') // todo: how to test compat?
@@ -17,6 +19,7 @@ async function runTests() {
   await import('./encodings.js')
   await import('./encryption.js')
   await import('./extension.js')
+  await import('./fully-remote-proof.js')
   await import('./manifest.js')
   await import('./merkle-tree.js')
   await import('./move-to.js')
@@ -31,7 +34,6 @@ async function runTests() {
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')
-  await import('./atomic.js')
 
   test.resume()
 }
