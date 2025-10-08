@@ -977,9 +977,18 @@ class Hypercore extends EventEmitter {
   async proof(opts) {
     if (this.opened === false) await this.opening
     const rx = this.state.storage.read()
-    const promise = MerkleTree.proof(this.state, rx, opts)
+    const proofPromise = MerkleTree.proof(this.state, rx, opts)
+    const blockPromise = opts && opts.block ? rx.getBlock(opts.block.index) : null
     rx.tryFlush()
-    return promise
+    const [proof, block] = await Promise.all([proofPromise, blockPromise])
+    const settled = await proof.settle()
+    if (block) settled.block.value = block
+    return settled
+  }
+
+  async applyProof(proof, from) {
+    if (this.opened === false) await this.opening
+    return this.core.verify(proof, from)
   }
 
   async verifyFullyRemote(proof) {
