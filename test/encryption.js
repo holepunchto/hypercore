@@ -338,6 +338,8 @@ test('encryption provider is set on session', async function (t) {
   await session.ready()
 
   t.not(core.encryption, session.encryption)
+
+  await session.close()
 })
 
 test('encryption backwards compatibility', async function (t) {
