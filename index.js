@@ -305,10 +305,10 @@ class Hypercore extends EventEmitter {
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
     const parent = opts.parent || null
-    if (parent && parent.encryption) this.encryption = parent.encryption
+    const encryption = getEncryptionOption(opts)
 
-    const e = getEncryptionOption(opts)
-    if (!this.encryption) this.encryption = this._getEncryptionProvider(e)
+    if (encryption) this.encryption = this._getEncryptionProvider(encryption)
+    else if (parent && parent.encryption) this.encryption = parent.encryption
 
     this.writable = this._isWritable()
 
