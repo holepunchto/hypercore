@@ -303,23 +303,23 @@ test('block encryption module', async function (t) {
 
 test('encryption provider is set on session', async function (t) {
   class XOREncryption {
-    padding () {
+    padding() {
       return 0
     }
 
-    async encrypt (index, block) {
+    async encrypt(index, block) {
       await new Promise(setImmediate)
 
       for (let i = 0; i < block.byteLength; i++) {
-        block[i] ^= ((index + 1) & 0xff) // +1 so no 0 xor in test
+        block[i] ^= (index + 1) & 0xff // +1 so no 0 xor in test
       }
     }
 
-    async decrypt (index, block) {
+    async decrypt(index, block) {
       await new Promise(setImmediate)
 
       for (let i = 0; i < block.byteLength; i++) {
-        block[i] ^= ((index + 1) & 0xff)
+        block[i] ^= (index + 1) & 0xff
       }
     }
   }
