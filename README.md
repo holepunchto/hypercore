@@ -490,6 +490,24 @@ Returns `null` if committing failed.
 
 Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
 
+#### `const readBatch = core.read()`
+
+Create a read batch.
+
+Reads made on the batch shall be condensed into a single read transaction on the underlying storage.
+
+Any blocks that are not in storage shall be fetched via replication, unless otherwise specified.
+
+#### `const promise = readBatch.get(index, opts)`
+
+Request a block from the read batch. `promise` shall resolve with the block or `null` after the batch is flushed.
+
+`opts` are identical to the `get` API.
+
+#### `readBatch.tryFlush()`
+
+Flush the read batch, any gets made on the batch will only resolve _after_ calling `tryFlush`.
+
 #### `const info = await core.info([options])`
 
 Get information about this core, such as its total size in bytes.
