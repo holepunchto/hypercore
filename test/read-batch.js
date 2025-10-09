@@ -47,7 +47,7 @@ test('replication', async function (t) {
   t.alike(await b1, null)
 })
 
-test('mixed', async function (t) {
+test('mixed replication', async function (t) {
   const core = await create(t)
   const other = await create(t, core.key)
 
@@ -69,4 +69,28 @@ test('mixed', async function (t) {
 
   t.alike(await b0, b4a.from('hello'))
   t.alike(await b1, b4a.from('world'))
+})
+
+test('destroy', async function (t) {
+  const core = await create(t)
+  const other = await create(t, core.key)
+
+  await core.append('hello')
+  await core.append('world')
+
+  t.is(core.length, 2)
+
+  replicate(core, other, t)
+
+  t.alike(await other.get(0), b4a.from('hello'))
+
+  const read = other.read()
+
+  const exception = t.exception(read.get(0), /Batch is destroyed/)
+
+  read.destroy()
+
+  await exception
+
+  await t.execution(other.close())
 })

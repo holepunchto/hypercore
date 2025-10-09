@@ -102,6 +102,8 @@ class Hypercore extends EventEmitter {
     this._marking = false
     this._marks = null
 
+    this._readBatches = []
+
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
     this._monitorIndex = -1 // maintained by replication state
@@ -531,6 +533,10 @@ class Hypercore extends EventEmitter {
 
     if (this.closed === true) return
 
+    for (const batch of this._readBatches.slice()) {
+      batch.destroy()
+    }
+
     this.core.removeMonitor(this)
     this.state.removeSession(this)
     this._removeSession()
@@ -865,7 +871,17 @@ class Hypercore extends EventEmitter {
   }
 
   read() {
-    return new ReadBatch(this)
+    const read = new ReadBatch(this)
+    read.index = this._readBatches.push(read) - 1
+
+    return read
+  }
+
+  _removeReadBatch(batch) {
+    const last = this._readBatches.pop()
+    if (last === batch) return
+    this._readBatches[batch.index] = last
+    last.index = batch.index
   }
 
   async get(index, opts) {
