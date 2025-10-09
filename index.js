@@ -16,6 +16,7 @@ const Info = require('./lib/info')
 const Download = require('./lib/download')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
+const ReadBatch = require('./lib/read-batch')
 const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
@@ -755,6 +756,10 @@ class Hypercore extends EventEmitter {
     return count === end - start
   }
 
+  read() {
+    return new ReadBatch(this)
+  }
+
   async get(index, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
@@ -762,17 +767,22 @@ class Hypercore extends EventEmitter {
     if (this.closing !== null)
       throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
 
-    const encoding =
-      (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
-
     if (this.onseq !== null) this.onseq(index, this)
 
     const req = this._get(index, opts)
 
     let block = await req
+
+    return this._handleBlock(index, block, opts)
+  }
+
+  async _handleBlock(index, block, opts) {
     if (!block) return null
 
     if (opts && opts.raw) return block
+
+    const encoding =
+      (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     if (this.encryption && (!opts || opts.decrypt !== false)) {
       // Copy the block as it might be shared with other sessions.
