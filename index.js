@@ -30,8 +30,6 @@ const {
   DECODING_ERROR
 } = require('hypercore-errors')
 
-const inspectSymbol = Symbol.for('nodejs.util.inspect.custom')
-
 // Hypercore actually does not have any notion of max/min block sizes
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
@@ -97,7 +95,7 @@ class Hypercore extends EventEmitter {
     this.on('newListener', maybeAddMonitor)
   }
 
-  [inspectSymbol](depth, opts) {
+  [Symbol.for('nodejs.util.inspect.custom')](depth, opts) {
     return inspect(this, depth, opts)
   }
 

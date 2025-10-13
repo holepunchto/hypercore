@@ -877,7 +877,7 @@ async function reorg(local, remote) {
   return r.ancestors
 }
 
-async function create(t, length = 0, dir, resume = 0) {
+async function create(t, length = 0, dir) {
   if (!dir) dir = await t.tmp()
 
   const db = new CoreStorage(dir)
