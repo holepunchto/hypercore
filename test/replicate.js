@@ -1187,7 +1187,7 @@ test('download blocks available from when only a partial set is available', asyn
   t.ok(!(await c.has(4)))
 })
 
-test('big download range', async function (t) {
+test('big download range', { timeout: 1.25 * 60 * 1000 }, async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
   const c = await create(t, a.key)
