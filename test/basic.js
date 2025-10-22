@@ -605,7 +605,7 @@ test('truncate has correct storage state in memory and persisted', async functio
     const core = new Hypercore(storage)
     await core.append(['a', 'b', 'c', 'd', 'e'])
     await core.truncate(2)
-    t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    t.alike(await getBitfields(core, 0, 5), [true, true, false, false, false])
     t.is(core.contiguousLength, 2)
     t.is(core.core.header.hints.contiguousLength, 2)
     t.is(await getContiguousLengthInStorage(core), 2)
@@ -616,7 +616,7 @@ test('truncate has correct storage state in memory and persisted', async functio
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-    t.alike(getBitfields(core, 0, 5), [true, true, false, false, false])
+    t.alike(await getBitfields(core, 0, 5), [true, true, false, false, false])
     t.is(core.contiguousLength, 2)
     t.is(core.core.header.hints.contiguousLength, 2)
     t.is(await getContiguousLengthInStorage(core), 2)
@@ -631,7 +631,7 @@ test('clear has correct storage state in memory and persisted', async function (
     const core = new Hypercore(storage)
     await core.append(['a', 'b', 'c', 'd', 'e'])
     await core.clear(2)
-    t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    t.alike(await getBitfields(core, 0, 5), [true, true, false, true, true])
     t.is(core.contiguousLength, 2)
     t.is(core.core.header.hints.contiguousLength, 2)
     t.is(await getContiguousLengthInStorage(core), 2)
@@ -642,7 +642,7 @@ test('clear has correct storage state in memory and persisted', async function (
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-    t.alike(getBitfields(core, 0, 5), [true, true, false, true, true])
+    t.alike(await getBitfields(core, 0, 5), [true, true, false, true, true])
     t.is(core.contiguousLength, 2)
     t.is(core.core.header.hints.contiguousLength, 2)
     t.is(await getContiguousLengthInStorage(core), 2)
@@ -677,7 +677,7 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.append(['a', 'b', 'c', 'd', 'e'])
-    t.alike(getBitfields(core, 0, 5), [true, true, true, true, true])
+    t.alike(await getBitfields(core, 0, 5), [true, true, true, true, true])
     t.is(core.contiguousLength, 5)
     t.is(core.core.header.hints.contiguousLength, 5)
     t.is(await getContiguousLengthInStorage(core), 5)
@@ -688,25 +688,25 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-    t.alike(getBitfields(core, 0, 5), [true, true, true, true, true])
+    t.alike(await getBitfields(core, 0, 5), [true, true, true, true, true])
     t.is(core.contiguousLength, 5)
     t.is(core.core.header.hints.contiguousLength, 5)
     t.is(await getContiguousLengthInStorage(core), 5)
 
     await core.append(['f', 'g'])
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, true, true, true, false])
+    t.alike(await getBitfields(core, 0, 8), [true, true, true, true, true, true, true, false])
     t.is(core.contiguousLength, 7)
     t.is(core.core.header.hints.contiguousLength, 7)
     t.is(await getContiguousLengthInStorage(core), 7)
 
     await core.clear(4)
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, false])
+    t.alike(await getBitfields(core, 0, 8), [true, true, true, true, false, true, true, false])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
 
     await core.append(['h'])
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.alike(await getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
@@ -718,7 +718,7 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
     const storage = new HypercoreStorage(tmpDir)
     const core = new Hypercore(storage)
     await core.ready()
-    t.alike(getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
+    t.alike(await getBitfields(core, 0, 8), [true, true, true, true, false, true, true, true])
     t.is(core.contiguousLength, 4)
     t.is(core.core.header.hints.contiguousLength, 4)
     t.is(await getContiguousLengthInStorage(core), 4)
@@ -745,7 +745,7 @@ test('append alignment to bitfield boundary', async function (t) {
 
     await core.append(b)
 
-    t.alike(getBitfields(core, 0, 32769), expectedBitfields)
+    t.alike(await getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
 
@@ -757,7 +757,7 @@ test('append alignment to bitfield boundary', async function (t) {
     const core = new Hypercore(storage)
     await core.ready()
 
-    t.alike(getBitfields(core, 0, 32769), expectedBitfields)
+    t.alike(await getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
 
@@ -779,15 +779,15 @@ test('setKeyPair', async function (t) {
   await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
-function getBitfields(hypercore, start = 0, end = null) {
+async function getBitfields(hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
   const res = []
   for (let i = start; i < end; i++) {
-    res.push(hypercore.core.bitfield.get(i))
+    res.push(hypercore.core.replicator.localBitfield.get(i))
   }
 
-  return res
+  return Promise.all(res)
 }
 
 async function getContiguousLengthInStorage(hypercore) {
