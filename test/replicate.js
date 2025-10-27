@@ -2429,6 +2429,33 @@ test('remote contiguous length - fully contiguous only', async function (t) {
   t.is(a.remoteContiguousLength, 2, 'remoteContiguousLength updates')
 })
 
+test('remote contiguous length - updates on truncate', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1'])
+  await a.append(['a2'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(1)
+
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  t.is(a.remoteContiguousLength, 2)
+
+  await a.truncate(a.length - 1)
+
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  t.is(a.remoteContiguousLength, 1)
+  t.is(b.contiguousLength, 1)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
