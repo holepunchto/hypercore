@@ -716,7 +716,7 @@ Emitted when a block is downloaded from a peer.
 
 #### `core.on('remote-contiguous-length', length)`
 
-Emitted when the max known contiguous `length` from a remote, ie `core.remoteContiguousLength`, is updated. Not emitted when core is truncated since that is a local update rather than a remote change.
+Emitted when the max known contiguous `length` from a remote, ie `core.remoteContiguousLength`, is updated. Note this is not emitted when core is truncated.
 
 #### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
 
