@@ -2384,6 +2384,10 @@ test.solo('remote contiguous length', async function (t) {
 
   t.is(a.remoteContiguousLength, 0)
 
+  a.on('remote-contiguous-length', () => {
+    t.pass('`remote-contiguous-length` event fired')
+  })
+
   replicate(a, b, t)
 
   await new Promise((resolve) => setTimeout(resolve, 2000))
