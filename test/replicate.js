@@ -2384,8 +2384,8 @@ test('remote contiguous length', async function (t) {
 
   t.is(a.remoteContiguousLength, 0)
 
-  a.on('remote-contiguous-length', () => {
-    t.pass('`remote-contiguous-length` event fired')
+  a.on('remote-contiguous-length', (length) => {
+    t.is(length, 1, '`remote-contiguous-length` event fired')
   })
 
   replicate(a, b, t)
@@ -2409,8 +2409,8 @@ test('remote contiguous length - fully contiguous only', async function (t) {
 
   t.is(a.remoteContiguousLength, 0)
 
-  a.on('remote-contiguous-length', () => {
-    t.pass('`remote-contiguous-length` event fired')
+  a.on('remote-contiguous-length', (length) => {
+    t.is(length, 2, '`remote-contiguous-length` event fired')
   })
 
   replicate(a, b, t)
