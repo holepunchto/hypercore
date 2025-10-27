@@ -2456,6 +2456,56 @@ test('remote contiguous length - updates on truncate', async function (t) {
   t.is(b.contiguousLength, 1)
 })
 
+test(
+  'remote contiguous length - updates up to when truncated dont fire event',
+  async function (t) {
+    t.plan(10)
+    const a = await create(t)
+    const b = await create(t, a.key)
+
+    t.is(a.remoteContiguousLength, 0)
+
+    await a.append(['a1', 'a2', 'a3'])
+
+    t.is(a.remoteContiguousLength, 0)
+
+    replicate(a, b, t)
+
+    await b.download({ start: 0, end: a.length })
+
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    t.is(a.remoteContiguousLength, 3)
+
+    await a.truncate(1)
+
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    t.is(a.remoteContiguousLength, 1)
+    t.is(b.contiguousLength, 1)
+
+    const neverFires = () => t.fail('shouldnt fire')
+    b.on('remote-contiguous-length', neverFires)
+
+    await a.append(['a2v2', 'a3v2'])
+
+    await b.download({ start: 0, end: a.length })
+
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    t.is(a.remoteContiguousLength, 3)
+    t.is(b.contiguousLength, 3)
+
+    await a.append('a4')
+
+    b.off('remote-contiguous-length', neverFires)
+    b.on('remote-contiguous-length', () => t.pass('fires again'))
+    await b.download({ start: 0, end: a.length })
+
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    t.is(a.remoteContiguousLength, 4)
+    t.is(b.contiguousLength, 4)
+  }
+)
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
