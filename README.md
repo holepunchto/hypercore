@@ -594,7 +594,13 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `core.contiguousLength`
 
-How many blocks are contiguously available starting from the first block of this core?
+How many blocks are contiguously available starting from the first block of this core.
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
+#### `core.remoteContiguousLength`
+
+How many blocks are contiguously available starting from the first block of this core on any known remote. This is only updated when a remote thinks it is fully contiguous such that they have all known blocks.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
