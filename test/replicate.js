@@ -2386,11 +2386,11 @@ test.solo('remote contiguous length', async function (t) {
 
   replicate(a, b, t)
 
-  await new Promise(resolve => setTimeout(resolve, 2000))
+  await new Promise((resolve) => setTimeout(resolve, 2000))
   console.log('-------------------')
   await b.get(0)
 
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
 
   t.is(a.remoteContiguousLength, 1)
 })

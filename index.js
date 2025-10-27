@@ -561,7 +561,7 @@ class Hypercore extends EventEmitter {
     return this.state.byteLength - this.state.length * this.padding
   }
 
-  get remoteContiguousLength () {
+  get remoteContiguousLength() {
     if (this.opened === false) return 0
     return Math.min(this.core.state.length, this.core.header.hints.remoteContiguousLength)
   }
