@@ -2390,13 +2390,43 @@ test.solo('remote contiguous length', async function (t) {
 
   replicate(a, b, t)
 
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  console.log('-------------------')
   await b.get(0)
 
   await new Promise((resolve) => setTimeout(resolve, 500))
 
   t.is(a.remoteContiguousLength, 1)
+})
+
+test('remote contiguous length - fully contiguous only', async function (t) {
+  t.plan(7)
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1'])
+  await a.append(['a2'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  a.on('remote-contiguous-length', () => {
+    t.pass('`remote-contiguous-length` event fired')
+  })
+
+  replicate(a, b, t)
+
+  await b.get(0)
+
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  t.is(a.remoteContiguousLength, 0, 'remoteContiguousLength didnt update')
+  t.is(b.contiguousLength, 1, 'b has 1st block')
+
+  await b.get(1)
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  t.is(b.contiguousLength, 2, 'b all blocks')
+  t.is(a.remoteContiguousLength, 2, 'remoteContiguousLength updates')
 })
 
 async function createAndDownload(t, core) {
