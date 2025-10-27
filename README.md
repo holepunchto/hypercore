@@ -714,6 +714,10 @@ Emitted when a block is uploaded to a peer.
 
 Emitted when a block is downloaded from a peer.
 
+#### `core.on('remote-contiguous-length', length)`
+
+Emitted when the max known contiguous `length` from a remote, ie `core.remoteContiguousLength`, is updated. Not emitted when core is truncated since that is a local update rather than a remote change.
+
 #### `Hypercore.MAX_SUGGESTED_BLOCK_SIZE`
 
 The constant for max size (15MB) for blocks appended to Hypercore. This max ensures blocks are replicated smoothly.
