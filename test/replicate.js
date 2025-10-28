@@ -2491,6 +2491,36 @@ test('remote contiguous length - event fires after truncating', async function (
   t.is(b.contiguousLength, 3)
 })
 
+test('remote contiguous length - persists', async function (t) {
+  const createA = await createStored(t)
+  const a = await createA()
+  await a.ready()
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1', 'a2', 'a3'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await b.download({ start: 0, end: a.length })
+
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  t.is(a.remoteContiguousLength, 3)
+
+  await a.close()
+
+  const a2 = await createA(a.key)
+  t.is(a2.remoteContiguousLength, 0, 'remoteContiguousLength initial 0 before ready')
+  await a2.ready()
+  t.teardown(() => a2.close())
+
+  t.is(a2.remoteContiguousLength, 3)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
