@@ -288,6 +288,13 @@ test('bitfield - set range on page boundary', async function (t) {
   t.is(b.findFirst(true, 2048), 2048)
 })
 
+test('bitfield - set false range on page that does not yet exist', async function (t) {
+  const s = await createStorage(t)
+  const b = await Bitfield.open(s, 0)
+
+  t.execution(() => b.setRange(32769, 32780, false), 'does not throw')
+})
+
 test('set last bits in segment and findFirst', async function (t) {
   const s = await createStorage(t)
   const b = await Bitfield.open(s, 0)
