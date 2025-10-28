@@ -2392,7 +2392,7 @@ test('remote contiguous length', async function (t) {
 
   await b.get(0)
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await eventFlush()
 
   t.is(a.remoteContiguousLength, 1)
 })
@@ -2417,13 +2417,13 @@ test('remote contiguous length - fully contiguous only', async function (t) {
 
   await b.get(0)
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await eventFlush()
 
   t.is(a.remoteContiguousLength, 0, 'remoteContiguousLength didnt update')
   t.is(b.contiguousLength, 1, 'b has 1st block')
 
   await b.get(1)
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await eventFlush()
 
   t.is(b.contiguousLength, 2, 'b all blocks')
   t.is(a.remoteContiguousLength, 2, 'remoteContiguousLength updates')
@@ -2445,13 +2445,15 @@ test('remote contiguous length - updates on truncate', async function (t) {
   await b.get(0)
   await b.get(1)
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await eventFlush()
 
   t.is(a.remoteContiguousLength, 2)
 
+  const truncateReceived = new Promise((resolve) => b.on('truncate', resolve))
   await a.truncate(a.length - 1)
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await truncateReceived
+
   t.is(a.remoteContiguousLength, 1)
   t.is(b.contiguousLength, 1)
 })
@@ -2469,24 +2471,45 @@ test('remote contiguous length - event fires after truncating', async function (
 
   replicate(a, b, t)
 
+  const doneUploading = new Promise((resolve) => {
+    let uploads = 0
+    let bContigAtStart = b.contiguousLength
+    b.on('download', () => {
+      uploads++
+      if (uploads === a.length - bContigAtStart) resolve()
+    })
+  })
   await b.download({ start: 0, end: a.length })
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await doneUploading
+  await eventFlush() // To let `a` update `remoteContiguousLength`
 
   t.is(a.remoteContiguousLength, 3)
 
+  const truncateReceived = new Promise((resolve) => b.on('truncate', resolve))
   await a.truncate(1)
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await truncateReceived
+
   t.is(a.remoteContiguousLength, 1)
   t.is(b.contiguousLength, 1)
 
   b.on('remote-contiguous-length', () => t.pass('fires after truncating'))
   await a.append(['a2v2', 'a3v2'])
 
+  const doneUploading2 = new Promise((resolve) => {
+    let uploads = 0
+    let bContigAtStart = b.contiguousLength
+    b.on('download', () => {
+      uploads++
+      if (uploads === a.length - bContigAtStart) resolve()
+    })
+  })
   await b.download({ start: 0, end: a.length })
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await doneUploading2
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
   t.is(a.remoteContiguousLength, 3)
   t.is(b.contiguousLength, 3)
 })
@@ -2505,9 +2528,18 @@ test('remote contiguous length - persists', async function (t) {
 
   replicate(a, b, t)
 
+  const doneUploading = new Promise((resolve) => {
+    let uploads = 0
+    b.on('download', () => {
+      uploads++
+      if (uploads === a.length) resolve()
+    })
+  })
+
   await b.download({ start: 0, end: a.length })
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await doneUploading
+  await eventFlush() // To let `a` update `remoteContiguousLength`
 
   t.is(a.remoteContiguousLength, 3)
 
