@@ -811,7 +811,7 @@ test('reopen a tree', async (t) => {
   )
 
   // fully close db
-  await a.storage.db.close({ force: true })
+  await a.storage.store.close({ force: true })
 
   const a1 = await create(t, 0, dir, b.length)
   const roots = await MerkleTree.getRoots(a1.session, b.length)
@@ -886,7 +886,8 @@ async function create(t, length = 0, dir) {
 
   const dkey = b4a.alloc(32)
 
-  const storage = (await db.resume(dkey)) || (await db.create({ key: dkey, discoveryKey: dkey }))
+  const storage =
+    (await db.resumeCore(dkey)) || (await db.createCore({ key: dkey, discoveryKey: dkey }))
 
   const session = createSession(storage)
 

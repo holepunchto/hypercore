@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "format": "prettier --write .",
-    "test": "prettier --check . && brittle test/all.js",
+    "lint": "prettier --check .",
+    "test": "brittle test/all.js",
     "test:bare": "bare test/all.js",
     "test:generate": "brittle -r test/all.js test/*.js"
   },
@@ -53,7 +54,7 @@
     "hypercore-crypto": "^3.2.1",
     "hypercore-errors": "^1.5.0",
     "hypercore-id-encoding": "^1.2.0",
-    "hypercore-storage": "^1.0.0",
+    "hypercore-storage": "^2.0.0",
     "is-options": "^1.0.1",
     "nanoassert": "^2.0.0",
     "protomux": "^3.5.0",
@@ -69,6 +70,7 @@
     "brittle": "^3.0.0",
     "debugging-stream": "^3.1.0",
     "hyperswarm": "^4.3.6",
+    "lunte": "^1.2.0",
     "prettier": "^3.6.2",
     "prettier-config-holepunch": "^2.0.0",
     "rache": "^1.0.0",
