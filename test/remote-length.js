@@ -88,21 +88,15 @@ test('announce-range-on-update flow with big core (multiple bitfield pages)', as
   )
 
   // Some sanity checks on the actual public api
-
-  const getOpts = {
-    timeout: 500,
-    valueEncoding: 'utf-8'
-  }
-
   // Note: This check is expected to fail if BITS_PER_PAGE changes; just update it then
   t.is(
-    await c.get(nrBlocks - 1, getOpts),
+    await c.get(nrBlocks - 1, { valueEncoding: 'utf-8' }),
     'block-32777',
     'Peer c can get the block peer b also has'
   )
 
   await t.exception(
-    async () => await c.get(nrBlocks - 2, getOpts),
+    async () => await c.get(nrBlocks - 2, { timeout: 500, valueEncoding: 'utf-8' }),
     /REQUEST_TIMEOUT/,
     'Sanity check: peer c can not get blocks peer b does not have'
   )

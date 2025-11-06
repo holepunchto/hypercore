@@ -104,8 +104,9 @@ class Hypercore extends EventEmitter {
   static DefaultEncryption = DefaultEncryption
 
   static key(manifest, { compat, version, namespace } = {}) {
-    if (b4a.isBuffer(manifest))
+    if (b4a.isBuffer(manifest)) {
       manifest = { version, signers: [{ publicKey: manifest, namespace }] }
+    }
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
   }
 
@@ -353,13 +354,15 @@ class Hypercore extends EventEmitter {
     }
 
     if (this.state && checkout !== -1) {
-      if (!opts.name && !opts.atom)
+      if (!opts.name && !opts.atom) {
         throw ASSERTION('Checkouts must be named or atomized', this.discoveryKey)
-      if (checkout > this.state.length)
+      }
+      if (checkout > this.state.length) {
         throw ASSERTION(
           `Invalid checkout ${checkout} for ${opts.name}, length is ${this.state.length}`,
           this.discoveryKey
         )
+      }
       if (this.state.prologue && checkout < this.state.prologue.length) {
         throw ASSERTION(
           `Invalid checkout ${checkout} for ${opts.name}, prologue length is ${this.state.prologue.length}`,
@@ -709,8 +712,9 @@ class Hypercore extends EventEmitter {
     const offset = await s.update()
     if (offset) return offset
 
-    if (this.closing !== null)
+    if (this.closing !== null) {
       throw SESSION_CLOSED('cannot seek on a closed session', this.discoveryKey)
+    }
 
     if (!this._shouldWait(opts, this.wait)) return null
 
@@ -729,8 +733,9 @@ class Hypercore extends EventEmitter {
 
   async has(start, end = start + 1) {
     if (this.opened === false) await this.opening
-    if (!isValidIndex(start) || !isValidIndex(end))
+    if (!isValidIndex(start) || !isValidIndex(end)) {
       throw ASSERTION('has range is invalid', this.discoveryKey)
+    }
 
     if (this.state.isDefault()) {
       if (end === start + 1) return this.core.bitfield.get(start)
@@ -762,8 +767,9 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
 
-    if (this.closing !== null)
+    if (this.closing !== null) {
       throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
+    }
 
     const encoding =
       (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
@@ -789,16 +795,18 @@ class Hypercore extends EventEmitter {
 
   async clear(start, end = start + 1, opts) {
     if (this.opened === false) await this.opening
-    if (this.closing !== null)
+    if (this.closing !== null) {
       throw SESSION_CLOSED('cannot clear on a closed session', this.discoveryKey)
+    }
 
     if (typeof end === 'object') {
       opts = end
       end = start + 1
     }
 
-    if (!isValidIndex(start) || !isValidIndex(end))
+    if (!isValidIndex(start) || !isValidIndex(end)) {
       throw ASSERTION('clear range is invalid', this.discoveryKey)
+    }
 
     const cleared = opts && opts.diff ? { blocks: 0 } : null
 
@@ -820,8 +828,9 @@ class Hypercore extends EventEmitter {
 
     if (block !== null) return block
 
-    if (this.closing !== null)
+    if (this.closing !== null) {
       throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
+    }
 
     // snapshot should check if core has block
     if (this._snapshot !== null) {
@@ -911,8 +920,9 @@ class Hypercore extends EventEmitter {
 
     const isDefault = this.state === this.core.state
     const writable = !this._readonly && !!(signature || (keyPair && keyPair.secretKey))
-    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork))
+    if (isDefault && writable === false && (newLength > 0 || fork !== this.state.fork)) {
       throw SESSION_NOT_WRITABLE('cannot append to a non-writable core', this.discoveryKey)
+    }
 
     await this.state.truncate(newLength, fork, { keyPair, signature })
 
@@ -930,8 +940,9 @@ class Hypercore extends EventEmitter {
     const writable =
       !isDefault || !!signature || !!(keyPair && keyPair.secretKey) || opts.writable === true
 
-    if (this._readonly || writable === false)
+    if (this._readonly || writable === false) {
       throw SESSION_NOT_WRITABLE('cannot append to a readonly core', this.discoveryKey)
+    }
 
     blocks = Array.isArray(blocks) ? blocks : [blocks]
 
@@ -1113,11 +1124,12 @@ function maybeUnslab(block) {
 }
 
 function checkSnapshot(snapshot, index) {
-  if (index >= snapshot.state.snapshotCompatLength)
+  if (index >= snapshot.state.snapshotCompatLength) {
     throw SNAPSHOT_NOT_AVAILABLE(
       `snapshot at index ${index} not available (max compat length ${snapshot.state.snapshotCompatLength})`,
       snapshot.discoveryKey
     )
+  }
 }
 
 function readBlock(rx, index) {
