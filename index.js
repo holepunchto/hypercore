@@ -533,8 +533,8 @@ class Hypercore extends EventEmitter {
 
     if (this.closed === true) return
 
-    for (const batch of this._readBatches.slice()) {
-      batch.destroy()
+    while (this._readBatches.length) {
+      this._readBatches[0].destroy()
     }
 
     this.core.removeMonitor(this)
