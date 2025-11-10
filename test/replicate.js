@@ -2374,6 +2374,199 @@ test('hotswap works for a download with many slow peers', async function (t) {
   t.pass(`Hotswap triggered (download took ${Date.now() - start}ms)`)
 })
 
+test('remote contiguous length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  a.on('remote-contiguous-length', (length) => {
+    t.is(length, 1, '`remote-contiguous-length` event fired')
+  })
+
+  replicate(a, b, t)
+
+  await b.get(0)
+
+  await eventFlush()
+
+  t.is(a.remoteContiguousLength, 1)
+})
+
+test('remote contiguous length - fully contiguous only', async function (t) {
+  t.plan(7)
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1'])
+  await a.append(['a2'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  a.on('remote-contiguous-length', (length) => {
+    t.is(length, 2, '`remote-contiguous-length` event fired')
+  })
+
+  replicate(a, b, t)
+
+  await b.get(0)
+
+  await eventFlush()
+
+  t.is(a.remoteContiguousLength, 0, 'remoteContiguousLength didnt update')
+  t.is(b.contiguousLength, 1, 'b has 1st block')
+
+  await b.get(1)
+  await eventFlush()
+
+  t.is(b.contiguousLength, 2, 'b all blocks')
+  t.is(a.remoteContiguousLength, 2, 'remoteContiguousLength updates')
+})
+
+test('remote contiguous length - updates on truncate', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1'])
+  await a.append(['a2'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(1)
+
+  await eventFlush()
+
+  t.is(a.remoteContiguousLength, 2)
+
+  const truncateReceived = new Promise((resolve) => b.on('truncate', resolve))
+  await a.truncate(a.length - 1)
+
+  await truncateReceived
+
+  t.is(a.remoteContiguousLength, 1)
+  t.is(b.contiguousLength, 1)
+})
+
+test('remote contiguous length - event fires after truncating', async function (t) {
+  t.plan(8)
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1', 'a2', 'a3'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await b.download({ start: 0, end: a.length }).done()
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
+  t.is(a.remoteContiguousLength, 3)
+
+  const truncateReceived = new Promise((resolve) => b.on('truncate', resolve))
+  await a.truncate(1)
+
+  await truncateReceived
+
+  t.is(a.remoteContiguousLength, 1)
+  t.is(b.contiguousLength, 1)
+
+  b.on('remote-contiguous-length', () => t.pass('fires after truncating'))
+  await a.append(['a2v2', 'a3v2'])
+
+  await b.download({ start: 0, end: a.length }).done()
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
+  t.is(a.remoteContiguousLength, 3)
+  t.is(b.contiguousLength, 3)
+})
+
+test('remote contiguous length - correct after reorg', async function (t) {
+  t.plan(9)
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1', 'a2', 'a3'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  const streams = replicate(a, b, t)
+
+  await b.download({ start: 0, end: a.length }).done()
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
+  t.is(a.remoteContiguousLength, 3)
+
+  const truncateReceived = new Promise((resolve) => b.on('truncate', resolve))
+
+  // Stop replicating to clear any messages immediately after truncation & append
+  unreplicate(streams)
+
+  await a.truncate(1)
+  await a.append('a2v2')
+
+  // Rereplicate to update b
+  replicate(a, b, t)
+  await truncateReceived
+
+  t.is(a.remoteContiguousLength, 1, 'remoteContiguousLength shows truncated length')
+  t.is(b.contiguousLength, 1)
+  t.is(b.remoteContiguousLength, 2)
+
+  b.on('remote-contiguous-length', () => t.pass('fires after truncating'))
+  await a.append(['a3v2'])
+
+  await b.download({ start: 0, end: a.length }).done()
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
+  t.is(a.remoteContiguousLength, 3)
+  t.is(b.contiguousLength, 3)
+})
+
+test('remote contiguous length - persists', async function (t) {
+  const createA = await createStored(t)
+  const a = await createA()
+  await a.ready()
+  const b = await create(t, a.key)
+
+  t.is(a.remoteContiguousLength, 0)
+
+  await a.append(['a1', 'a2', 'a3'])
+
+  t.is(a.remoteContiguousLength, 0)
+
+  replicate(a, b, t)
+
+  await b.download({ start: 0, end: a.length }).done()
+  await eventFlush() // To let `a` update `remoteContiguousLength`
+
+  t.is(a.remoteContiguousLength, 3)
+
+  await a.close()
+
+  const a2 = await createA(a.key)
+  t.is(a2.remoteContiguousLength, 0, 'remoteContiguousLength initial 0 before ready')
+  await a2.ready()
+  t.teardown(() => a2.close())
+
+  t.is(a2.remoteContiguousLength, 3)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
