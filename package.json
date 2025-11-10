@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "format": "prettier --write .",
-    "lint": "prettier --check .",
+    "lint": "prettier --check . && lunte",
     "test": "brittle test/all.js",
     "test:bare": "bare test/all.js",
     "test:generate": "brittle -r test/all.js test/*.js"
@@ -70,7 +70,7 @@
     "brittle": "^3.0.0",
     "debugging-stream": "^3.1.0",
     "hyperswarm": "^4.3.6",
-    "lunte": "^1.2.0",
+    "lunte": "^1.3.0",
     "prettier": "^3.6.2",
     "prettier-config-holepunch": "^2.0.0",
     "rache": "^1.0.0",
