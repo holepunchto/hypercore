@@ -605,6 +605,8 @@ class Hypercore extends EventEmitter {
 
   async setUserData(key, value) {
     if (this.opened === false) await this.opening
+    const existing = await this.getUserData(key)
+    if (existing && b4a.isBuffer(value) && b4a.equals(existing, value)) return
     await this.state.setUserData(key, value)
   }
 
