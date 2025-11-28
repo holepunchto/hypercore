@@ -1775,7 +1775,7 @@ test('session id reuse does not stall', async function (t) {
 
   // wait a little bit, cause technically the above has a storage race
   // since it checks the bitfield manually and the event isnt timed to that
-  await new Promise(resolve => setTimeout(resolve, 1000))
+  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   t.pass('All blocks downloaded')
   t.is(downloaded, 100, 'Downloaded all blocks exactly once')
