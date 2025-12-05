@@ -762,7 +762,6 @@ Create an encrypted noise stream with a protomux instance attached used for Hype
 
 ```
 {
-  keepAlive: true, // Whether to keep the stream alive
   ondiscoverykey: () => {}, // A handler for when a discovery key is set over the stream for corestore management
 }
 ```

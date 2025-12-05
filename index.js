@@ -146,7 +146,7 @@ class Hypercore extends EventEmitter {
     if (!noiseStream.userData) {
       const protocol = Protomux.from(noiseStream)
 
-      if (opts.keepAlive !== false) {
+      if (opts.keepAlive !== false && noiseStream.keepAlive === 0) {
         noiseStream.setKeepAlive(5000)
       }
       noiseStream.userData = protocol
