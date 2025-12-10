@@ -2591,8 +2591,8 @@ test('push mode', async function (t) {
   await a.append(['world1', 'world2'], {
     // post append is guaranteed to run post append but PRE
     async postappend () {
-      await a.peers[0].push(1)
-      await a.peers[0].push(2)
+      await a.replicator.push(1)
+      await a.replicator.push(2)
     }
   })
 
