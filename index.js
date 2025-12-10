@@ -1149,6 +1149,7 @@ function initOnce(session, storage, key, opts) {
     eagerUpgrade: opts.eagerUpgrade !== false,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
+    alwaysLatestBlock: !!opts.allowLatestBlock,
     inflightRange: opts.inflightRange,
     compat: opts.compat === true,
     force: opts.force,
