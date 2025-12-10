@@ -2571,6 +2571,39 @@ test('remote contiguous length - persists', async function (t) {
   t.is(a2.remoteContiguousLength, 3)
 })
 
+test('push mode', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { allowPush: true })
+
+  replicate(a, b, t)
+
+  await a.append('hello')
+  await b.get(0)
+
+  let pushed = 0
+  let notPushed = 0
+
+  b.on('download', function (index, size, peer, req) {
+    if (!req) pushed++
+    else notPushed++
+  })
+
+  await a.append(['world1', 'world2'], {
+    // post append is guaranteed to run post append but PRE
+    async postappend () {
+      await a.peers[0].push(1)
+      await a.peers[0].push(2)
+    }
+  })
+
+  while (pushed < 2) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  t.is(pushed, 2)
+  t.is(notPushed, 0)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
