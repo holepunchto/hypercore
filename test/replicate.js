@@ -2591,7 +2591,9 @@ test('push mode', async function (t) {
   await a.append(['world1', 'world2'], {
     // post append is guaranteed to run post append but PRE
     async postappend() {
+      // TODO: once we have a response queue, reenable two pushes
       await a.replicator.push(1)
+      // await a.replicator.push(2)
     }
   })
 
