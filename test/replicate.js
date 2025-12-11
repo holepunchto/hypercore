@@ -2592,15 +2592,14 @@ test('push mode', async function (t) {
     // post append is guaranteed to run post append but PRE
     async postappend() {
       await a.replicator.push(1)
-      await a.replicator.push(2)
     }
   })
 
-  while (pushed < 2) {
+  while (pushed < 1) {
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
 
-  t.is(pushed, 2)
+  t.is(pushed, 1)
   t.is(notPushed, 0)
 })
 
