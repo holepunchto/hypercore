@@ -938,7 +938,7 @@ class Hypercore extends EventEmitter {
     const isDefault = this.state === this.core.state
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
 
-    const { keyPair = defaultKeyPair, signature = null, maxLength } = opts
+    const { keyPair = defaultKeyPair, signature = null, maxLength, postappend = null } = opts
     const writable =
       !isDefault || !!signature || !!(keyPair && keyPair.secretKey) || opts.writable === true
 
@@ -966,7 +966,7 @@ class Hypercore extends EventEmitter {
       }
     }
 
-    return this.state.append(buffers, { keyPair, signature, preappend, maxLength })
+    return this.state.append(buffers, { keyPair, signature, preappend, postappend, maxLength })
   }
 
   async signable(length = -1, fork = -1) {
@@ -1149,6 +1149,7 @@ function initOnce(session, storage, key, opts) {
     eagerUpgrade: opts.eagerUpgrade !== false,
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
+    allowPush: !!opts.allowPush,
     alwaysLatestBlock: !!opts.allowLatestBlock,
     inflightRange: opts.inflightRange,
     compat: opts.compat === true,
