@@ -2603,6 +2603,21 @@ test('push mode', async function (t) {
 
   t.is(pushed, 1)
   t.is(notPushed, 0)
+
+  b.replicator.setAllowPush(false)
+
+  while (a.peers[0].remoteAllowPush) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  t.is(a.peers[0].remoteAllowPush, false, 'push disabled at runtime')
+  b.replicator.setAllowPush(true)
+
+  while (!a.peers[0].remoteAllowPush) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+  }
+
+  t.is(a.peers[0].remoteAllowPush, true, 'push enabled at runtime')
 })
 
 async function createAndDownload(t, core) {
