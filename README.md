@@ -66,7 +66,7 @@ Alternatively you can pass a [Hypercore Storage](https://github.com/holepunchto/
 }
 ```
 
-You can also set `valueEncoding` to any [compact-encoding](https://github.com/compact-encoding) instance.
+You can also set `valueEncoding` to any [compact-encoding](https://github.com/holepunchto/compact-encoding) instance.
 
 `valueEncoding`s will be applied to individual blocks, even if you append batches. If you want to control encoding at the batch-level, you can use the `encodeBatch` option, which is a function that takes a batch and returns a binary-encoded batch. If you provide a custom `valueEncoding`, it will not be applied prior to `encodeBatch`.
 
@@ -169,7 +169,7 @@ Check if the core has all blocks between `start` and `end`.
 
 #### `const updated = await core.update([options])`
 
-Waits for initial proof of the new core length until all `findingPeers` calls has finished.
+Waits for initial proof of the new core length until all `findingPeers` calls have finished.
 
 ```js
 const updated = await core.update()
@@ -414,7 +414,7 @@ Register a custom protocol extension. This is a legacy implementation and is no 
 ```
 {
   encoding: 'json' | 'utf-8' | 'binary', // Compact encoding to use for messages. Defaults to buffer
-  onmessage: (message, peer) => { ... } // Callback for when a message for the extension is receive
+  onmessage: (message, peer) => { ... } // Callback for when a message for the extension is received
 }
 ```
 
@@ -438,7 +438,7 @@ You must close any session you make.
 
 Options are inherited from the parent instance, unless they are re-set.
 
-`options` are the same as in the constructor with the follow additions:
+`options` are the same as in the constructor with the following additions:
 
 ```
 {
@@ -588,7 +588,7 @@ Populated after `ready` has been emitted. Will be `0` before the event.
 
 #### `core.signedLength`
 
-How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores's with a single signer.
+How many blocks of data are available on this core that have been signed by a quorum. This is equal to `core.length` for Hypercores with a single signer.
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
@@ -730,9 +730,9 @@ Returns the key for a given manifest.
 
 ```
 {
-  compat: false,  // Whether the manifest has a single singer whose public key is the key
-  version,        // Manifest version if the manifest argument is the public key of a single singer
-  namespace       // The signer namespace if the manifest argument is the public key of a single singer
+  compat: false,  // Whether the manifest has a single signer whose public key is the key
+  version,        // Manifest version if the manifest argument is the public key of a single signer
+  namespace       // The signer namespace if the manifest argument is the public key of a single signer
 }
 ```
 
