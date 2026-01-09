@@ -2643,7 +2643,6 @@ test('non active disables push mode', async function (t) {
   t.ok(a.peers[0].remoteAllowPush)
 })
 
-
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
