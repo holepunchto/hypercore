@@ -2620,6 +2620,29 @@ test('push mode', async function (t) {
   t.is(a.peers[0].remoteAllowPush, true, 'push enabled at runtime')
 })
 
+test('non active disables push mode', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { allowPush: true })
+
+  replicate(a, b, t)
+
+  await a.append('1')
+  await a.append('2')
+  await a.append('3')
+  await b.get(0)
+
+  t.ok(a.peers[0].remoteAllowPush)
+  b.setActive(false)
+
+  await b.get(1) // just to wait for an rt
+  t.not(a.peers[0].remoteAllowPush)
+
+  b.setActive(true)
+
+  await b.get(2) // just to wait for an rt
+  t.ok(a.peers[0].remoteAllowPush)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
