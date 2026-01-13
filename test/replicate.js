@@ -15,7 +15,55 @@ const Hypercore = require('../')
 
 const DEBUG = false
 
-test('basic replication', async function (t) {
+test('basic replication get', async function (t) {
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(t, a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(3)
+
+  t.is(d, 2)
+})
+
+test('basic replication get (sparse)', async function (t) {
+  const a = await create(t)
+
+  const batch = []
+  for (let i = 0; i < 100_000; i++) batch.push('#' + i)
+  await a.append(batch)
+
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(3)
+  await b.get(55555)
+
+  t.pass('b ready')
+
+  replicate(b, c, t)
+
+  await c.get(0)
+  t.pass('c got 0')
+
+  await c.get(3)
+  t.pass('c got 3')
+
+  await c.get(55555)
+  t.pass('c got 55555')
+})
+
+test('basic replication download', async function (t) {
   const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -65,7 +113,7 @@ test('basic replication stats', async function (t) {
   t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 12, 'Expected amount of stats')
+  t.is(initStatsLength, 13, 'Expected amount of stats')
 
   replicate(a, b, t)
 
