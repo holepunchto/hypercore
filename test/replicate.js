@@ -1329,7 +1329,7 @@ test('downloaded blocks are not unslabbed if bigger than half of slab size', asy
   )
 })
 
-test.solo('sparse replication without gossiping', async function (t) {
+test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
   const a = await create(t)
@@ -1711,6 +1711,7 @@ test('remote has larger tree', async function (t) {
   p.catch(noop) // Throws a REQUEST_CANCELLED error during teardown
 
   await eventFlush()
+
   t.ok(!!(await c.get(2)), 'got block #2')
   t.ok(!!(await c.get(3)), 'got block #3')
 })
