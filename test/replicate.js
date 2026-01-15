@@ -1329,7 +1329,7 @@ test('downloaded blocks are not unslabbed if bigger than half of slab size', asy
   )
 })
 
-test('sparse replication without gossiping', async function (t) {
+test.solo('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
   const a = await create(t)
