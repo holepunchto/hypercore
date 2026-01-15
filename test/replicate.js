@@ -2643,6 +2643,35 @@ test('non active disables push mode', async function (t) {
   t.ok(a.peers[0].remoteAllowPush)
 })
 
+test('no requests in pushOnly mode', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { allowPush: true, pushOnly: true })
+
+  b.replicator.setPushOnly(true)
+
+  t.is(b.replicator.pushOnly, true)
+
+  replicate(a, b, t)
+
+  await a.append('1')
+  await a.append('2')
+  await a.append('3')
+
+  await t.exception(b.get(0, { timeout: 500 }), /REQUEST_TIMEOUT/)
+  await t.exception(b.get(1, { timeout: 500 }), /REQUEST_TIMEOUT/)
+  await t.exception(b.get(2, { timeout: 500 }), /REQUEST_TIMEOUT/)
+
+  t.ok(a.peers[0].remoteAllowPush)
+
+  await a.replicator.push(0)
+  await a.replicator.push(1)
+  await a.replicator.push(2)
+
+  await t.execution(b.get(0, { timeout: 500 }))
+  await t.execution(b.get(1, { timeout: 500 }))
+  await t.execution(b.get(2, { timeout: 500 }))
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
