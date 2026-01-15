@@ -2643,6 +2643,32 @@ test('non active disables push mode', async function (t) {
   t.ok(a.peers[0].remoteAllowPush)
 })
 
+test('one missing block, big core (slow)', async function (t) {
+  t.timeout(120_000)
+
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 1_000_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+  await a.clear(42)
+
+  const [s1] = replicate(a, b, t)
+  let traffic = 0
+
+  s1.on('data', function (data) {
+    traffic += data.byteLength
+  })
+
+  await b.get(49)
+  t.comment('traffic used: ' + traffic + ' bytes')
+  t.pass('works')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
