@@ -2718,6 +2718,51 @@ test('one missing block, big core (slow)', async function (t) {
   t.pass('works')
 })
 
+test('seek gossip with oob batch', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 10_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  await b.get(4999)
+
+  const res = await c.seek(4999)
+  t.alike(res, [4999, 0])
+})
+
+test('fork gossip with oob batch', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 10_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  const forked = new Promise(resolve => c.once('truncate', resolve))
+
+  await b.get(9984)
+  await a.truncate(a.length - 1)
+
+  await forked
+  t.is(c.fork, 1)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
