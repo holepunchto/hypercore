@@ -34,6 +34,7 @@ async function runTests() {
   await import('./streams.js')
   await import('./timeouts.js')
   await import('./user-data.js')
+  await import('./wants.js')
 
   test.resume()
 }
