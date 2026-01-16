@@ -2754,7 +2754,7 @@ test('fork gossip with oob batch', async function (t) {
   replicate(a, b, t)
   replicate(b, c, t)
 
-  const forked = new Promise(resolve => c.once('truncate', resolve))
+  const forked = new Promise((resolve) => c.once('truncate', resolve))
 
   await b.get(9984)
   await a.truncate(a.length - 1)
