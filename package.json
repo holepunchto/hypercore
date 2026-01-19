@@ -60,6 +60,7 @@
     "protomux": "^3.5.0",
     "quickbit-universal": "^2.2.0",
     "random-array-iterator": "^1.0.0",
+    "resolve-reject-promise": "^1.1.0",
     "safety-catch": "^1.0.1",
     "sodium-universal": "^5.0.1",
     "streamx": "^2.12.4",
