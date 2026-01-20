@@ -12,7 +12,11 @@ test('local want - .add() returns obj', (t) => {
   const result = localWant.add(index, handler)
 
   t.not(result, null, 'returns obj')
-  t.is(result.want.start, Math.floor(index / WANT_BATCH) * WANT_BATCH, 'returns index of start of batch')
+  t.is(
+    result.want.start,
+    Math.floor(index / WANT_BATCH) * WANT_BATCH,
+    'returns index of start of batch'
+  )
   t.is(result.want.length, WANT_BATCH, 'sets length to batch length')
   t.absent(result.want.any, 'any = false')
   t.is(localWant.wants.size, 1, 'want was added to internal wants')
@@ -121,7 +125,10 @@ test('remote want - add()', (t) => {
   t.alike(remoteWants.batches[0].ranges, new Set([0, 2]), 'updates batch')
   t.is(remoteWants.size, 2, 'inc size')
 
-  t.absent(remoteWants.add({ start: 0, length: 2 * 1024 * 1024 + 1, any: false }), 'exceeding MAX_RANGE will fail')
+  t.absent(
+    remoteWants.add({ start: 0, length: 2 * 1024 * 1024 + 1, any: false }),
+    'exceeding MAX_RANGE will fail'
+  )
 })
 
 test('remote want - remove()', (t) => {
@@ -137,8 +144,14 @@ test('remote want - remove()', (t) => {
 
   t.comment('Validation fails')
   t.absent(remoteWants.remove({ start: 0, length: 1, any: false }), 'fails because < MIN_RANGE')
-  t.absent(remoteWants.remove({ start: 0, length: 33, any: false }), 'fails because length not power of 2')
-  t.absent(remoteWants.remove({ start: 5, length: 33, any: false }), 'fails because start not multiple of length')
+  t.absent(
+    remoteWants.remove({ start: 0, length: 33, any: false }),
+    'fails because length not power of 2'
+  )
+  t.absent(
+    remoteWants.remove({ start: 5, length: 33, any: false }),
+    'fails because start not multiple of length'
+  )
   t.absent(remoteWants.remove({ start: 0, length: 128, any: false }), 'fails if range doesnt match')
 
   t.comment('Success')
@@ -168,7 +181,7 @@ test('remote want - hasRange()', (t) => {
   t.ok(remoteWants.hasRange(1024, 512), 'hits max checks')
 })
 
-function makeHandler (t, handlers = []) {
+function makeHandler(t, handlers = []) {
   const handler = {
     addWant: () => t.pass('called addWant'),
     removeWant: () => t.pass('called removeWant')
