@@ -11,6 +11,13 @@ on:
       - main
       - rocksdb
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm install
+      - run: npm run lint
   build:
     if: ${{ !startsWith(github.ref, 'refs/tags/')}} # Already runs for the push of the commit, no need to run again for the tag
     strategy:
@@ -25,7 +32,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install
-      - run: npm run lint
       - run: npm test
       - run: npm -g install bare
       - run: npm run test:bare
