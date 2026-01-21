@@ -1262,6 +1262,37 @@ test('big download range', async function (t) {
   t.ok(d.contiguousLength, cnt)
 })
 
+test('big download range (non contig)', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+  const d = await create(t, a.key)
+
+  const cnt = 10_000
+  const batch = []
+  for (let i = 0; i < cnt; i++) batch.push('tick')
+  await a.append(batch)
+  await a.clear(0)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+  replicate(c, d, t)
+  replicate(b, d, t)
+
+  const r1 = b.download({ start: 1, end: cnt })
+  const r2 = c.download({ start: 1, end: cnt })
+  const r3 = d.download({ start: 1, end: cnt })
+
+  await r1.done()
+  t.pass('b done')
+
+  await r2.done()
+  t.pass('c done')
+
+  await r3.done()
+  t.pass('d done')
+})
+
 test('download range resolves immediately if no peers', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
