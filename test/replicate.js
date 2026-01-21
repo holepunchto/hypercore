@@ -15,7 +15,55 @@ const Hypercore = require('../')
 
 const DEBUG = false
 
-test('basic replication', async function (t) {
+test('basic replication get', async function (t) {
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  const b = await create(t, a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(3)
+
+  t.is(d, 2)
+})
+
+test('basic replication get (sparse)', async function (t) {
+  const a = await create(t)
+
+  const batch = []
+  for (let i = 0; i < 100_000; i++) batch.push('#' + i)
+  await a.append(batch)
+
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(3)
+  await b.get(55555)
+
+  t.pass('b ready')
+
+  replicate(b, c, t)
+
+  await c.get(0)
+  t.pass('c got 0')
+
+  await c.get(3)
+  t.pass('c got 3')
+
+  await c.get(55555)
+  t.pass('c got 55555')
+})
+
+test('basic replication download', async function (t) {
   const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -65,7 +113,7 @@ test('basic replication stats', async function (t) {
   t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 12, 'Expected amount of stats')
+  t.is(initStatsLength, 13, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -1214,6 +1262,37 @@ test('big download range', async function (t) {
   t.ok(d.contiguousLength, cnt)
 })
 
+test('big download range (non contig)', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+  const d = await create(t, a.key)
+
+  const cnt = 10_000
+  const batch = []
+  for (let i = 0; i < cnt; i++) batch.push('tick')
+  await a.append(batch)
+  await a.clear(0)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+  replicate(c, d, t)
+  replicate(b, d, t)
+
+  const r1 = b.download({ start: 1, end: cnt })
+  const r2 = c.download({ start: 1, end: cnt })
+  const r3 = d.download({ start: 1, end: cnt })
+
+  await r1.done()
+  t.pass('b done')
+
+  await r2.done()
+  t.pass('c done')
+
+  await r3.done()
+  t.pass('d done')
+})
+
 test('download range resolves immediately if no peers', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -1663,6 +1742,7 @@ test('remote has larger tree', async function (t) {
   p.catch(noop) // Throws a REQUEST_CANCELLED error during teardown
 
   await eventFlush()
+
   t.ok(!!(await c.get(2)), 'got block #2')
   t.ok(!!(await c.get(3)), 'got block #3')
 })
@@ -2641,6 +2721,77 @@ test('non active disables push mode', async function (t) {
 
   await b.get(2) // just to wait for an rt
   t.ok(a.peers[0].remoteAllowPush)
+})
+
+test('one missing block, big core (slow)', async function (t) {
+  t.timeout(120_000)
+
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 1_000_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+  await a.clear(42)
+
+  const [s1] = replicate(a, b, t)
+  let traffic = 0
+
+  s1.on('data', function (data) {
+    traffic += data.byteLength
+  })
+
+  await b.get(49)
+  t.comment('traffic used: ' + traffic + ' bytes')
+  t.pass('works')
+})
+
+test('seek gossip with oob batch', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 10_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  await b.get(4999)
+
+  const res = await c.seek(4999)
+  t.alike(res, [4999, 0])
+})
+
+test('fork gossip with oob batch', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+
+  const batch = []
+  while (batch.length < 10_000) {
+    batch.push('.')
+  }
+
+  await a.append(batch)
+
+  replicate(a, b, t)
+  replicate(b, c, t)
+
+  const forked = new Promise((resolve) => c.once('truncate', resolve))
+
+  await b.get(9984)
+  await a.truncate(a.length - 1)
+
+  await forked
+  t.is(c.fork, 1)
 })
 
 async function createAndDownload(t, core) {
