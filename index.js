@@ -318,6 +318,11 @@ class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
+    // one session sets for pushOnly for all
+    if (opts.pushOnly === true) {
+      this.core.replicator.setPushOnly(true)
+    }
+
     if (parent) {
       if (parent._stateIndex === -1) await parent.ready()
       if (!this.keyPair) this.keyPair = parent.keyPair
