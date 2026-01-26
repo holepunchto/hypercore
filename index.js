@@ -980,6 +980,7 @@ class Hypercore extends EventEmitter {
   async treeHash(length = -1) {
     if (this.opened === false) await this.opening
     if (length === -1) length = this.length
+    if (length > 0 && !(await this.has(length - 1))) await this.get(length - 1)
 
     const roots = await MerkleTree.getRoots(this.state, length)
     return crypto.tree(roots)
