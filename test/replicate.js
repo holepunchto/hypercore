@@ -1800,6 +1800,19 @@ test('replication updates on core copy', async function (t) {
   await t.execution(promise)
 })
 
+test('treeHash gets the last block if not yet available', async function (t) {
+  const a = await create(t)
+
+  await a.append('block1')
+  await a.append('block2')
+
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+
+  t.execution(await b.treeHash(1)) // threw before, so we just verify it returns now
+})
+
 test('can define default max-inflight blocks for replicator peers', async function (t) {
   const a = await create(t, { inflightRange: [123, 123] })
   await a.append('some block')
