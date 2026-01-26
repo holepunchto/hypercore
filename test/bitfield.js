@@ -100,7 +100,7 @@ test('bitfield - want', async function (t) {
     [
       {
         start: 0,
-        bitfield: new Uint32Array(1024 /* 4 KiB */)
+        bitfield: new Uint32Array(1)
       }
     ]
   )
@@ -120,7 +120,7 @@ test('bitfield - want', async function (t) {
     [
       {
         start: 0,
-        bitfield: new Uint32Array((1024 * 16) / 4 /* 16 KiB */)
+        bitfield: new Uint32Array((1024 * 13) / 4 /* 13 KiB */)
       }
     ]
   )
