@@ -855,9 +855,9 @@ class Hypercore extends EventEmitter {
 
     if (!this._shouldWait(opts, this.wait)) return null
 
+    this.waits++
     if (opts && opts.onwait) opts.onwait(index, this)
     if (this.onwait) this.onwait(index, this)
-    this.waits++
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 

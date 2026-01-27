@@ -290,14 +290,26 @@ test('downloading local range', async function (t) {
 })
 
 test('read ahead', async function (t) {
-  t.plan(3)
+  t.plan(7)
 
-  const core = new Hypercore(await createStorage(t), { valueEncoding: 'utf-8' })
+  const core = new Hypercore(await createStorage(t), {
+    valueEncoding: 'utf-8',
+    onwait: () => {
+      t.is(core.waits, 1, 'waits correct in onwait on core')
+      t.pass('onwait on core called')
+    }
+  })
 
   await core.append('a')
 
   t.is(core.waits, 0, 'no waits yet')
-  const blk = core.get(1, { wait: true }) // readahead
+  const blk = core.get(1, {
+    wait: true,
+    onwait: () => {
+      t.is(core.waits, 1, 'waits correct in onwait on get')
+      t.pass('onwait on get called')
+    }
+  }) // readahead
 
   await eventFlush()
 
