@@ -290,17 +290,19 @@ test('downloading local range', async function (t) {
 })
 
 test('read ahead', async function (t) {
-  t.plan(1)
+  t.plan(3)
 
   const core = new Hypercore(await createStorage(t), { valueEncoding: 'utf-8' })
 
   await core.append('a')
 
+  t.is(core.waits, 0, 'no waits yet')
   const blk = core.get(1, { wait: true }) // readahead
 
   await eventFlush()
 
   await core.append('b')
+  t.is(core.waits, 1, 'waiting for block')
 
   t.alike(await blk, 'b')
 
@@ -308,7 +310,7 @@ test('read ahead', async function (t) {
 })
 
 test('defaults for wait', async function (t) {
-  t.plan(5)
+  t.plan(10)
 
   const core = new Hypercore(await createStorage(t), b4a.alloc(32), { valueEncoding: 'utf-8' })
 
@@ -322,17 +324,22 @@ test('defaults for wait', async function (t) {
 
   const s = core.session({ wait: false })
 
+  t.is(s.waits, 0, 'no waits yet')
   const b = s.get(1, { wait: true })
 
   b.catch(function (err) {
+    t.is(s.waits, 1, 'waits increment')
     t.ok(err, 'b failed')
   })
 
   t.is(await s.get(1), null)
+  t.is(s.waits, 1, 'waits stays the same when no waiting')
 
   const s2 = s.session() // check if wait is inherited
 
+  t.is(s2.waits, 0, 'sessions have unique waits')
   t.is(await s2.get(1), null)
+  t.is(s2.waits, 0, 'session didnt wait')
 
   await s.close()
   await s2.close()
