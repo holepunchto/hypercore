@@ -52,7 +52,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   t.teardown(() => core.close())
 
   // Add content
-  const num = 32
+  const num = 30
   for (let i = 0; i < num; i++) {
     await core.append('i' + i)
   }
@@ -88,18 +88,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   t.alike(hash, initialHash, 'still can construct the hash')
 
   // Verify remote proof & patch with it's proof
-  {
-    const result = await verify(storage, p)
-    t.ok(result)
-
-    // Patch
-    const tx = core2.core.storage.write()
-    for (const node of result.proof.upgrade.nodes) {
-      tx.putTreeNode(node)
-    }
-    await tx.flush()
-  }
-
+  t.ok(await core2.recoverFromRemoteProof(p), 'recovery verified correctly')
   t.ok(await MerkleTree.get(core2.core, rootIndex))
 
   async function open() {

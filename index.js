@@ -20,6 +20,7 @@ const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
+const { verify } = require('./lib/fully-remote-proof')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -1013,6 +1014,19 @@ class Hypercore extends EventEmitter {
     const batch = await MerkleTree.verifyFullyRemote(this.state, proof)
     await this.core._verifyBatchUpgrade(batch, proof.manifest)
     return batch
+  }
+
+  async recoverFromRemoteProof(remoteProof) {
+    const p = await verify(this.core.db, remoteProof)
+    if (!p) return false
+
+    const tx = this.core.storage.write()
+    for (const node of p.proof.upgrade.nodes) {
+      tx.putTreeNode(node)
+    }
+    await tx.flush()
+
+    return p.proof.upgrade.nodes.length !== 0
   }
 
   registerExtension(name, handlers = {}) {
