@@ -1,7 +1,9 @@
 const test = require('brittle')
 const flat = require('flat-tree')
+const { MerkleTree } = require('../lib/merkle-tree.js')
 const Hypercore = require('../index.js')
 const { createStorage } = require('./helpers/index.js')
+const { proof, verify } = require('../lib/fully-remote-proof.js')
 
 test('recover - bad merkle root core can still ready', async (t) => {
   const dir = await t.tmp()
@@ -33,6 +35,77 @@ test('recover - bad merkle root core can still ready', async (t) => {
   await t.execution(() => core2.ready())
 
   await core2.close()
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    return storage
+  }
+})
+
+test('recover - bad merkle root - fix via fully remote proof', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  // Add content
+  const num = 32
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+
+  const initialHash = await core.treeHash(rootIndex) // store for later check
+  let p
+  // Get proof from good core, before deleting
+  {
+    const blockProofIndex = flat.rightSpan(rootIndex) / 2 + 1
+    const rx = core.state.storage.read()
+    const blockPromise = rx.getBlock(blockProofIndex)
+    rx.tryFlush()
+    const block = await blockPromise
+    p = await proof(core, { block, index: blockProofIndex })
+  }
+  t.ok(await MerkleTree.get(core.core, rootIndex))
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(core.core, rootIndex), 'removed tree node')
+
+  await core.close()
+
+  const core2 = new Hypercore(await open(), { writable: false })
+  await t.execution(() => core2.ready())
+
+  // Still no tree node
+  const treeNode2 = await MerkleTree.get(core2.core, rootIndex)
+  t.absent(treeNode2)
+
+  t.is(core2.length, num, 'still has length')
+
+  const hash = await core2.treeHash(rootIndex)
+  t.alike(hash, initialHash, 'still can construct the hash')
+
+  // Verify remote proof & patch with it's proof
+  {
+    const result = await verify(storage, p)
+    t.ok(result)
+
+    // Patch
+    const tx = core2.core.storage.write()
+    tx.putTreeNode(result.proof.upgrade.nodes[0])
+    await tx.flush()
+  }
+
+  t.ok(await MerkleTree.get(core2.core, rootIndex))
 
   async function open() {
     if (storage) await storage.close()
