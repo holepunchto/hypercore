@@ -9,6 +9,7 @@ const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
+const flat = require('flat-tree')
 
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
@@ -20,7 +21,7 @@ const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
-const { verify } = require('./lib/fully-remote-proof')
+const { proof, verify } = require('./lib/fully-remote-proof')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -1014,6 +1015,11 @@ class Hypercore extends EventEmitter {
     const batch = await MerkleTree.verifyFullyRemote(this.state, proof)
     await this.core._verifyBatchUpgrade(batch, proof.manifest)
     return batch
+  }
+
+  generateRemoteProofForTreeNode(treeNodeIndex) {
+    const blockProofIndex = flat.rightSpan(treeNodeIndex) / 2
+    return proof(this, { index: blockProofIndex })
   }
 
   async recoverFromRemoteProof(remoteProof) {

@@ -64,8 +64,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   const initialHash = await core.treeHash(rootIndex) // store for later check
 
   // Get proof from good core, before deleting
-  const blockProofIndex = flat.rightSpan(rootIndex) / 2
-  const p = await proof(core, { index: blockProofIndex })
+  const p = await core.generateRemoteProofForTreeNode(rootIndex)
   t.ok(await MerkleTree.get(core.core, rootIndex))
 
   tx.deleteTreeNode(rootIndex)
