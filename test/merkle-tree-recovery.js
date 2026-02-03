@@ -62,16 +62,10 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   const [rootIndex] = flat.fullRoots(2 * num)
 
   const initialHash = await core.treeHash(rootIndex) // store for later check
-  let p
+
   // Get proof from good core, before deleting
-  {
-    const blockProofIndex = flat.rightSpan(rootIndex) / 2 + 1
-    const rx = core.state.storage.read()
-    const blockPromise = rx.getBlock(blockProofIndex)
-    rx.tryFlush()
-    const block = await blockPromise
-    p = await proof(core, { block, index: blockProofIndex })
-  }
+  const blockProofIndex = flat.rightSpan(rootIndex) / 2
+  const p = await proof(core, { index: blockProofIndex })
   t.ok(await MerkleTree.get(core.core, rootIndex))
 
   tx.deleteTreeNode(rootIndex)
@@ -86,8 +80,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   await t.execution(() => core2.ready())
 
   // Still no tree node
-  const treeNode2 = await MerkleTree.get(core2.core, rootIndex)
-  t.absent(treeNode2)
+  t.absent(await MerkleTree.get(core2.core, rootIndex))
 
   t.is(core2.length, num, 'still has length')
 
@@ -101,7 +94,9 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
 
     // Patch
     const tx = core2.core.storage.write()
-    tx.putTreeNode(result.proof.upgrade.nodes[0])
+    for (const node of result.proof.upgrade.nodes) {
+      tx.putTreeNode(node)
+    }
     await tx.flush()
   }
 
