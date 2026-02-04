@@ -93,6 +93,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   async function open() {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
     return storage
   }
 })
@@ -151,6 +152,7 @@ test('recover - bad merkle sub root - fix via fully remote proof', async (t) => 
   async function open() {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
     return storage
   }
 })
