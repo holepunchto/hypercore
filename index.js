@@ -1019,7 +1019,11 @@ class Hypercore extends EventEmitter {
 
   generateRemoteProofForTreeNode(treeNodeIndex) {
     const blockProofIndex = flat.rightSpan(treeNodeIndex) / 2
-    return proof(this, { index: blockProofIndex })
+    return proof(this, {
+      index: blockProofIndex,
+      // + 1 to length so the block is included
+      upgrade: { start: 0, length: blockProofIndex + 1 }
+    })
   }
 
   async recoverFromRemoteProof(remoteProof) {
