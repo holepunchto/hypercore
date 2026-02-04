@@ -209,7 +209,7 @@ test('recover - bad merkle root - fix via range request to include roots', async
   t.teardown(() => core2.close())
   await t.execution(() => core2.ready())
 
-  const streams2 = replicate(core2, clone, t)
+  replicate(core2, clone, t)
 
   // Still no tree node
   t.absent(await MerkleTree.get(core2.core, rootIndex))
