@@ -75,6 +75,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   await core.close()
 
   const core2 = new Hypercore(await open(), { writable: false })
+  t.teardown(() => core2.close())
   await t.execution(() => core2.ready())
 
   // Still no tree node
