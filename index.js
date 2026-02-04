@@ -1039,6 +1039,20 @@ class Hypercore extends EventEmitter {
     return p.proof.upgrade.nodes.length !== 0
   }
 
+  recoverTreeNodeFromPeers() {
+    for (const peer of this.core.replicator.peers) {
+      const req = {
+        id: 0,
+        fork: this.fork,
+        upgrade: {
+          start: 0,
+          length: this.length
+        }
+      }
+      peer.wireRequest.send(req)
+    }
+  }
+
   registerExtension(name, handlers = {}) {
     if (this.extensions.has(name)) {
       const ext = this.extensions.get(name)

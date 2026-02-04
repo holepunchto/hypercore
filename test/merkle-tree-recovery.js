@@ -2,7 +2,7 @@ const test = require('brittle')
 const flat = require('flat-tree')
 const { MerkleTree } = require('../lib/merkle-tree.js')
 const Hypercore = require('../index.js')
-const { createStorage } = require('./helpers/index.js')
+const { create, createStorage, replicate, unreplicate } = require('./helpers/index.js')
 
 test('recover - bad merkle root core can still ready', async (t) => {
   const dir = await t.tmp()
@@ -149,6 +149,82 @@ test('recover - bad merkle sub root - fix via fully remote proof', async (t) => 
 
   const hash = await core2.treeHash(targetBlockIndex)
   t.alike(hash, initialHash, 'still can construct the hash')
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
+
+test('recover - bad merkle root - fix via range request to include roots', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  const clone = await create(t, core.key)
+  await clone.ready()
+
+  const cloneSync = new Promise((resolve) =>
+    clone.on('append', () => {
+      if (clone.length === num) resolve()
+    })
+  )
+  const streams = replicate(core, clone, t)
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+
+  const initialHash = await core.treeHash(rootIndex) // store for later check
+
+  // Get proof from good core, before deleting
+  t.ok(await MerkleTree.get(core.core, rootIndex))
+
+  await cloneSync
+  t.comment('cloneSynced')
+  await unreplicate(streams)
+  t.comment('unreplicate')
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(core.core, rootIndex), 'removed tree node')
+  t.ok(await MerkleTree.get(clone.core, rootIndex), 'tree node still in clone')
+
+  await core.close()
+
+  const core2 = new Hypercore(await open(), { writable: false })
+  t.teardown(() => core2.close())
+  await t.execution(() => core2.ready())
+
+  const streams2 = replicate(core2, clone, t)
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(core2.core, rootIndex))
+
+  t.is(core2.length, num, 'still has length')
+
+  const hash = await core2.treeHash(rootIndex)
+  t.alike(hash, initialHash, 'still can construct the hash')
+
+  // Request proof
+  core2.recoverTreeNodeFromPeers()
+
+  await new Promise((resolve) => setTimeout(resolve, 200))
+
+  t.ok(await MerkleTree.get(core2.core, rootIndex))
 
   async function open() {
     if (storage) await storage.close()
