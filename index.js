@@ -863,7 +863,7 @@ class Hypercore extends EventEmitter {
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-    const force = opts && opts.force === true
+    const force = opts ? opts.force === true : false
     const req = this.core.replicator.addBlock(activeRequests, index, force)
     req.snapshot = index < this.length
 
