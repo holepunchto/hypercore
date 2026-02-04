@@ -3,7 +3,6 @@ const flat = require('flat-tree')
 const { MerkleTree } = require('../lib/merkle-tree.js')
 const Hypercore = require('../index.js')
 const { createStorage } = require('./helpers/index.js')
-const { proof, verify } = require('../lib/fully-remote-proof.js')
 
 test('recover - bad merkle root core can still ready', async (t) => {
   const dir = await t.tmp()
