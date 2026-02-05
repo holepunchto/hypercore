@@ -210,6 +210,8 @@ test('recover - bad merkle root - fix via range request to include roots', async
   t.teardown(() => core2.close())
   await t.execution(() => core2.ready())
 
+  t.ok(core2.core._repairMode, 'repair mode set')
+
   replicate(core2, clone, t)
 
   // Still no tree node
@@ -240,23 +242,13 @@ test('recover - bad merkle root - fix via range request to include roots', async
   }
 })
 
-test('recover - bad merkle root - w/ race condition truncating', async (t) => {
+test('recover - bad merkle root - fail appends & truncates when in repair mode', async (t) => {
   const dir = await t.tmp()
   let storage = null
 
   const core = new Hypercore(await open())
   await core.ready()
   t.teardown(() => core.close())
-
-  const clone = await create(t, core.key)
-  await clone.ready()
-
-  const cloneSync = new Promise((resolve) =>
-    clone.on('append', () => {
-      if (clone.length === num) resolve()
-    })
-  )
-  const streams = replicate(core, clone, t)
 
   // Add content
   const num = 30
@@ -267,18 +259,8 @@ test('recover - bad merkle root - w/ race condition truncating', async (t) => {
   // Delete tree nodes
   const tx = core.core.storage.write()
   const [rootIndex] = flat.fullRoots(2 * num)
-
-  await cloneSync
-  t.comment('cloneSynced')
-  await unreplicate(streams)
-  t.comment('unreplicate')
-
   tx.deleteTreeNode(rootIndex)
   await tx.flush()
-
-  // Verify tree node removed
-  t.absent(await MerkleTree.get(core.core, rootIndex), 'removed tree node')
-  t.ok(await MerkleTree.get(clone.core, rootIndex), 'tree node still in clone')
 
   await core.close()
 
@@ -286,38 +268,10 @@ test('recover - bad merkle root - w/ race condition truncating', async (t) => {
   t.teardown(() => core2.close())
   await t.execution(() => core2.ready())
 
-  const streams2 = replicate(core2, clone, t)
+  t.ok(core2.core._repairMode, 'repair mode set')
 
-  t.absent(await MerkleTree.get(core2.core, rootIndex), 'still no tree node')
-  t.is(core2.length, num, 'still has length')
-
-  // Request proof
-  const repairing = once(core2, 'repairing')
-  const repairAttempted = Promise.race([once(core2, 'repair-failed'), once(core2, 'repaired')])
-  core2.on('repaired', () => {
-    t.fail('completed repairing')
-  })
-  core2.recoverTreeNodeFromPeers()
-  // Pick length to invalidate root so don't hit bad root
-  await core2.truncate(num / 2 - 1)
-
-  const [repairingProof] = await repairing
-  t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
-
-  await repairAttempted
-
-  const treeFromRepair = await MerkleTree.get(core2.core, rootIndex)
-  t.ok(treeFromRepair, 'still repaired with old node')
-
-  for (let i = core2.length; i < num; i++) {
-    await core2.append('new' + i)
-  }
-  t.is(core2.length, num, 'back to same length')
-  const newTree = await MerkleTree.get(core2.core, rootIndex)
-  t.unlike(newTree, treeFromRepair, 'new tree node')
-
-  // Tidy up replication streams so no errors commented when closing
-  await unreplicate(streams2)
+  await t.exception(() => core2.truncate(num / 2 - 1), 'Cannot commit while repair mode is on', 'truncating fails while in repair mode')
+  await t.exception(() => core2.append('cant do'), 'Cannot commit while repair mode is on', 'appending fails while in repair mode')
 
   async function open() {
     if (storage) await storage.close()
