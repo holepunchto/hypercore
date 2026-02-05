@@ -1,5 +1,6 @@
 const test = require('brittle')
 const flat = require('flat-tree')
+const { once } = require('events')
 const { MerkleTree } = require('../lib/merkle-tree.js')
 const Hypercore = require('../index.js')
 const { create, createStorage, replicate, unreplicate } = require('./helpers/index.js')
@@ -220,9 +221,14 @@ test('recover - bad merkle root - fix via range request to include roots', async
   t.alike(hash, initialHash, 'still can construct the hash')
 
   // Request proof
+  const repairing = once(core2, 'repairing')
+  const repaired = once(core2, 'repaired')
   core2.recoverTreeNodeFromPeers()
 
-  await new Promise((resolve) => setTimeout(resolve, 200))
+  const [repairingProof] = await repairing
+  t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
+  const [repairedProof] = await repaired
+  t.is(repairedProof, repairingProof, 'repaired emitted')
 
   t.ok(await MerkleTree.get(core2.core, rootIndex))
 
