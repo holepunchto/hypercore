@@ -293,7 +293,7 @@ test('recover - bad merkle root - w/ race condition truncating', async (t) => {
 
   // Request proof
   const repairing = once(core2, 'repairing')
-  const repairFailed = once(core2, 'repair-failed')
+  const repairAttempted = Promise.race([once(core2, 'repair-failed'), once(core2, 'repaired')])
   core2.on('repaired', () => {
     t.fail('completed repairing')
   })
@@ -304,7 +304,7 @@ test('recover - bad merkle root - w/ race condition truncating', async (t) => {
   const [repairingProof] = await repairing
   t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
 
-  await repairFailed
+  await repairAttempted
 
   const treeFromRepair = await MerkleTree.get(core2.core, rootIndex)
   t.ok(treeFromRepair, 'still repaired with old node')
