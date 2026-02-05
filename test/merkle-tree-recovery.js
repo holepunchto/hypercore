@@ -272,12 +272,12 @@ test('recover - bad merkle root - fail appends & truncates when in repair mode',
 
   await t.exception(
     () => core2.truncate(num / 2 - 1),
-    'Cannot commit while repair mode is on',
+    /Cannot commit while repair mode is on/,
     'truncating fails while in repair mode'
   )
   await t.exception(
     () => core2.append('cant do'),
-    'Cannot commit while repair mode is on',
+    /Cannot commit while repair mode is on/,
     'appending fails while in repair mode'
   )
 
