@@ -270,8 +270,16 @@ test('recover - bad merkle root - fail appends & truncates when in repair mode',
 
   t.ok(core2.core._repairMode, 'repair mode set')
 
-  await t.exception(() => core2.truncate(num / 2 - 1), 'Cannot commit while repair mode is on', 'truncating fails while in repair mode')
-  await t.exception(() => core2.append('cant do'), 'Cannot commit while repair mode is on', 'appending fails while in repair mode')
+  await t.exception(
+    () => core2.truncate(num / 2 - 1),
+    'Cannot commit while repair mode is on',
+    'truncating fails while in repair mode'
+  )
+  await t.exception(
+    () => core2.append('cant do'),
+    'Cannot commit while repair mode is on',
+    'appending fails while in repair mode'
+  )
 
   async function open() {
     if (storage) await storage.close()
