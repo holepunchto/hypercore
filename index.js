@@ -320,6 +320,11 @@ class Hypercore extends EventEmitter {
       this.encodeBatch = opts.encodeBatch
     }
 
+    // one session sets for pushOnly for all
+    if (opts.pushOnly === true) {
+      this.core.replicator.setPushOnly(true)
+    }
+
     if (parent) {
       if (parent._stateIndex === -1) await parent.ready()
       if (!this.keyPair) this.keyPair = parent.keyPair
@@ -860,7 +865,8 @@ class Hypercore extends EventEmitter {
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
 
-    const req = this.core.replicator.addBlock(activeRequests, index)
+    const force = opts ? opts.force === true : false
+    const req = this.core.replicator.addBlock(activeRequests, index, force)
     req.snapshot = index < this.length
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
@@ -1191,6 +1197,7 @@ function initOnce(session, storage, key, opts) {
     notDownloadingLinger: opts.notDownloadingLinger,
     allowFork: opts.allowFork !== false,
     allowPush: !!opts.allowPush,
+    pushOnly: !!opts.pushOnly,
     alwaysLatestBlock: !!opts.allowLatestBlock,
     inflightRange: opts.inflightRange,
     compat: opts.compat === true,
