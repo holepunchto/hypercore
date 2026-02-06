@@ -1048,6 +1048,8 @@ class Hypercore extends EventEmitter {
   }
 
   recoverTreeNodeFromPeers() {
+    this.core.replicator.setPushOnly(true)
+
     for (const peer of this.core.replicator.peers) {
       const req = {
         id: 0,
