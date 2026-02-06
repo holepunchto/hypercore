@@ -22,6 +22,7 @@ async function runTests() {
   await import('./fully-remote-proof.js')
   await import('./manifest.js')
   await import('./merkle-tree.js')
+  await import('./merkle-tree-recovery.js')
   await import('./move-to.js')
   await import('./mutex.js')
   await import('./preload.js')

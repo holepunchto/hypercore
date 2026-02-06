@@ -910,7 +910,10 @@ function createSession(storage) {
     roots: [],
     length: 0,
     byteLength: 0,
-    signature: null
+    signature: null,
+    core: {
+      _repairMode: false
+    }
   }
 }
 
