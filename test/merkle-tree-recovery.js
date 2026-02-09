@@ -288,3 +288,101 @@ test('recover - bad merkle root - fail appends & truncates when in repair mode',
     return storage
   }
 })
+
+test('recover - bad merkle root - while repairing ignore requests', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = await create(t)
+  await core.ready()
+  t.teardown(() => core.close())
+
+  const clone = new Hypercore(await open(), core.key)
+  await clone.ready()
+
+  const cloneSync = new Promise((resolve) =>
+    clone.on('append', () => {
+      if (clone.length === num) resolve()
+    })
+  )
+  const streams = replicate(core, clone, t)
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  await cloneSync
+  t.comment('cloneSynced')
+
+  // Delete tree nodes from clone
+  const tx = clone.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+
+  // Get proof from good core, before deleting
+  t.ok(await MerkleTree.get(clone.core, rootIndex))
+
+  await unreplicate(streams)
+  t.comment('unreplicate')
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(clone.core, rootIndex), 'removed tree node')
+  t.ok(await MerkleTree.get(core.core, rootIndex), 'tree node still in original')
+
+  const clone2 = new Hypercore(await open(), core.key)
+  t.teardown(() => clone2.close())
+  await t.execution(() => clone2.ready())
+
+  t.ok(clone2.core._repairMode, 'repair mode set')
+
+  // Create core to request from malformed core
+  const requestCore = await create(t, core.key)
+  await requestCore.ready()
+  t.teardown(() => requestCore.close())
+
+  const streamsWRequest = replicate(core, clone2, t)
+  await once(clone2, 'peer-add')
+  t.pass('original core added')
+  replicate(clone2, requestCore, t)
+  await once(clone2, 'peer-add')
+  t.pass('requestCore added')
+
+  // trigger request doomed to fail
+  requestCore.get(num - 2).catch(() => {
+    t.pass('request threw')
+  })
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(clone2.core, rootIndex))
+  t.is(clone2.length, num, 'still has length')
+
+  // Request proof
+  const repairing = once(clone2, 'repairing')
+  const repaired = once(clone2, 'repaired')
+
+  t.comment('signaling recover')
+  clone2.recoverTreeNodeFromPeers()
+
+  const [repairingProof] = await repairing
+  t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
+
+  const [repairedProof] = await repaired
+  t.is(repairedProof, repairingProof, 'repaired emitted')
+
+  t.ok(await MerkleTree.get(clone2.core, rootIndex))
+
+  await unreplicate(streamsWRequest)
+
+  await requestCore.close()
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
