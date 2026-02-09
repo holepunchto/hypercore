@@ -1033,6 +1033,8 @@ class Hypercore extends EventEmitter {
   }
 
   async recoverFromRemoteProof(remoteProof) {
+    this.core.replicator.setPushOnly(true)
+    this.core._repairMode = true
     await this.core.state.mutex.lock()
     const p = await verify(this.core.db, remoteProof)
     if (!p) return false
@@ -1044,7 +1046,11 @@ class Hypercore extends EventEmitter {
     await tx.flush()
 
     this.core.state.mutex.unlock()
-    return p.proof.upgrade.nodes.length !== 0
+    const succeed = p.proof.upgrade.nodes.length !== 0
+    if (succeed) {
+      this.core.replicator.setPushOnly(false)
+    }
+    return succeed
   }
 
   recoverTreeNodeFromPeers() {
