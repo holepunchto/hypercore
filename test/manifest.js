@@ -369,7 +369,7 @@ test('multisig - batch failed', async function (t) {
 
   t.is(len, 1)
 
-  const batch = await core.session({ name: 'batch' })
+  const batch = core.session({ name: 'batch' })
   batch.keyPair = null
 
   await batch.append(b4a.from('0'))

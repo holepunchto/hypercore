@@ -51,6 +51,7 @@ test('append to core during batch', async function (t) {
   await core.append(['a', 'b', 'c'])
 
   const b = core.session({ name: 'batch' })
+  await b.ready()
   await core.append('d')
   await b.append('e')
   t.is(await core.commit(b), null)
@@ -718,6 +719,7 @@ test('compact all batches', async function (t) {
   const a = new Hypercore(await createStorage(t))
 
   const a1 = a.session({ name: 's1' })
+  await a1.ready()
 
   for (let i = 0; i < 50; i++) {
     await a.append('data ' + i)
@@ -725,6 +727,7 @@ test('compact all batches', async function (t) {
   }
 
   const a2 = a.session({ name: 's2' })
+  await a2.ready()
 
   for (let i = 50; i < 100; i++) {
     await a.append('data ' + i)
@@ -732,6 +735,7 @@ test('compact all batches', async function (t) {
   }
 
   const a3 = a.session({ name: 's3' })
+  await a3.ready()
   for (let i = 100; i < 150; i++) {
     await a.append('data ' + i)
     await a3.append('s3 data ' + i)
