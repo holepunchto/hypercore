@@ -60,8 +60,9 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
   // Delete tree nodes
   const tx = core.core.storage.write()
   const [rootIndex] = flat.fullRoots(2 * num)
+  const targetBlockIndex = flat.rightSpan(rootIndex) / 2 + 1
 
-  const initialHash = await core.treeHash(rootIndex) // store for later check
+  const initialHash = await core.treeHash(targetBlockIndex) // store for later check
 
   // Get proof from good core, before deleting
   const p = await core.generateRemoteProofForTreeNode(rootIndex)
@@ -84,8 +85,7 @@ test('recover - bad merkle root - fix via fully remote proof', async (t) => {
 
   t.is(core2.length, num, 'still has length')
 
-  const hash = await core2.treeHash(rootIndex)
-  t.alike(hash, initialHash, 'still can construct the hash')
+  await t.exception(core2.treeHash(targetBlockIndex), 'INVALID_OPERATION', 'cant create tree hash')
 
   // Verify remote proof & patch with it's proof
   t.ok(await core2.recoverFromRemoteProof(p), 'recovery verified correctly')
@@ -186,8 +186,9 @@ test('recover - bad merkle root - fix via range request to include roots automat
   // Delete tree nodes
   const tx = core.core.storage.write()
   const [rootIndex] = flat.fullRoots(2 * num)
+  const targetBlockIndex = flat.rightSpan(rootIndex) / 2 + 1
 
-  const initialHash = await core.treeHash(rootIndex) // store for later check
+  const initialHash = await core.treeHash(targetBlockIndex) // store for later check
 
   // Get proof from good core, before deleting
   t.ok(await MerkleTree.get(core.core, rootIndex))
@@ -223,8 +224,7 @@ test('recover - bad merkle root - fix via range request to include roots automat
 
   t.is(core2.length, num, 'still has length')
 
-  const hash = await core2.treeHash(rootIndex)
-  t.alike(hash, initialHash, 'still can construct the hash')
+  await t.exception(core2.treeHash(targetBlockIndex), 'INVALID_OPERATION', 'cant create tree hash')
 
   const [repairingProof] = await repairing
   t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
