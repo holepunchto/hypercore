@@ -159,7 +159,7 @@ test('recover - bad merkle sub root - fix via fully remote proof', async (t) => 
   }
 })
 
-test('recover - bad merkle root - fix via range request to include roots', async (t) => {
+test('recover - bad merkle root - fix via range request to include roots automatically', async (t) => {
   const dir = await t.tmp()
   let storage = null
 
@@ -212,6 +212,10 @@ test('recover - bad merkle root - fix via range request to include roots', async
 
   t.ok(core2.core._repairMode, 'repair mode set')
 
+  // Request proof
+  const repairing = once(core2, 'repairing')
+  const repaired = once(core2, 'repaired')
+
   replicate(core2, clone, t)
 
   // Still no tree node
@@ -221,11 +225,6 @@ test('recover - bad merkle root - fix via range request to include roots', async
 
   const hash = await core2.treeHash(rootIndex)
   t.alike(hash, initialHash, 'still can construct the hash')
-
-  // Request proof
-  const repairing = once(core2, 'repairing')
-  const repaired = once(core2, 'repaired')
-  core2.recoverTreeNodeFromPeers()
 
   const [repairingProof] = await repairing
   t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
