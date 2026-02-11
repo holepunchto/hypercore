@@ -9,6 +9,7 @@ const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
+const rrp = require('resolve-reject-promise')
 
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
@@ -674,6 +675,7 @@ class Hypercore extends EventEmitter {
 
     if (this.writable && (!opts || opts.force !== true)) return false
 
+    const minLength = opts?.length || 0
     const remoteWait = this._shouldWait(opts, this.core.replicator.findingPeers > 0)
 
     let upgraded = false
@@ -692,6 +694,25 @@ class Hypercore extends EventEmitter {
         if (isSessionMoved(err)) return this.update(opts)
         throw err
       }
+    }
+
+    if (this.length < minLength) {
+      const { promise, resolve, reject } = rrp()
+      const onclose = () => {
+        reject(SESSION_CLOSED('Hypercore closed while waiting for length update'))
+      }
+      const onappend = () => {
+        if (this.length >= minLength) resolve()
+      }
+      this.on('close', onclose)
+      this.on('append', onappend)
+      try {
+        await promise
+      } finally {
+        this.off('close', onclose)
+        this.off('append', onappend)
+      }
+      upgraded = true
     }
 
     if (!upgraded) return false

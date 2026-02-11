@@ -182,6 +182,7 @@ console.log('core was updated?', updated, 'length is', core.length)
 ```js
 {
   wait: false,
+  length: 0 // minimum length (will hang until core.length is greater than or equal)
   activeRequests: undefined, // Advanced option. Pass requests for replicating blocks
   force: false, // Force an update even if core is writable.
 }
