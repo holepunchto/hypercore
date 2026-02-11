@@ -16,6 +16,7 @@ const Info = require('./lib/info')
 const Download = require('./lib/download')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
+const ReadBatch = require('./lib/read-batch')
 const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
@@ -84,6 +85,8 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.weak ? !!opts.active : opts.active !== false
+
+    this._readBatches = []
 
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
@@ -455,6 +458,10 @@ class Hypercore extends EventEmitter {
 
     if (this.closed === true) return
 
+    for (const batch of this._readBatches.slice()) {
+      batch.destroy()
+    }
+
     this.core.removeMonitor(this)
     this.state.removeSession(this)
     this._removeSession()
@@ -770,6 +777,20 @@ class Hypercore extends EventEmitter {
     return count === end - start
   }
 
+  read() {
+    const read = new ReadBatch(this)
+    read.index = this._readBatches.push(read) - 1
+
+    return read
+  }
+
+  _removeReadBatch(batch) {
+    const last = this._readBatches.pop()
+    if (last === batch) return
+    this._readBatches[batch.index] = last
+    last.index = batch.index
+  }
+
   async get(index, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
@@ -778,17 +799,22 @@ class Hypercore extends EventEmitter {
       throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
     }
 
-    const encoding =
-      (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
-
     if (this.onseq !== null) this.onseq(index, this)
 
     const req = this._get(index, opts)
 
     let block = await req
+
+    return this._handleBlock(index, block, opts)
+  }
+
+  async _handleBlock(index, block, opts) {
     if (!block) return null
 
     if (opts && opts.raw) return block
+
+    const encoding =
+      (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     if (this.encryption && (!opts || opts.decrypt !== false)) {
       // Copy the block as it might be shared with other sessions.
