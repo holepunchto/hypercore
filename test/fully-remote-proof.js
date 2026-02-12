@@ -27,4 +27,10 @@ test('fully remote proof - proof and verify', async function (t) {
     const p = await remote.verify(core.state.storage.store, proof, { referrer: b4a.alloc(32) })
     t.is(p, null)
   }
+
+  {
+    const proof = await remote.proof(core, { index: 0, upgrade: { start: 0, length: 1 } })
+    const p = await remote.verify(core.state.storage.store, proof)
+    t.is(p.proof.upgrade.length, 1, 'reflects upgrade arg')
+  }
 })

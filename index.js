@@ -9,6 +9,7 @@ const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
+const flat = require('flat-tree')
 
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
@@ -20,6 +21,7 @@ const Replicator = require('./lib/replicator')
 const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
+const { proof, verify } = require('./lib/fully-remote-proof')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -284,6 +286,15 @@ class Hypercore extends EventEmitter {
       this.closed = true
       this.emit('close')
       throw err
+    }
+
+    // Setup automatic recovery if in repair mode
+    if (this.core._repairMode) {
+      const recoverTreeNodeFromPeersBound = this.recoverTreeNodeFromPeers.bind(this)
+      this.once('repaired', () => {
+        this.off('peer-add', recoverTreeNodeFromPeersBound)
+      })
+      this.on('peer-add', recoverTreeNodeFromPeersBound)
     }
 
     this.emit('ready')
@@ -1022,6 +1033,52 @@ class Hypercore extends EventEmitter {
     const batch = await MerkleTree.verifyFullyRemote(this.state, proof)
     await this.core._verifyBatchUpgrade(batch, proof.manifest)
     return batch
+  }
+
+  generateRemoteProofForTreeNode(treeNodeIndex) {
+    const blockProofIndex = flat.rightSpan(treeNodeIndex) / 2
+    return proof(this, {
+      index: blockProofIndex,
+      // + 1 to length so the block is included
+      upgrade: { start: 0, length: blockProofIndex + 1 }
+    })
+  }
+
+  async recoverFromRemoteProof(remoteProof) {
+    this.core.replicator.setPushOnly(true)
+    this.core._repairMode = true
+    await this.core.state.mutex.lock()
+    const p = await verify(this.core.db, remoteProof)
+    if (!p) return false
+
+    const tx = this.core.storage.write()
+    for (const node of p.proof.upgrade.nodes) {
+      tx.putTreeNode(node)
+    }
+    await tx.flush()
+
+    this.core.state.mutex.unlock()
+    const succeed = p.proof.upgrade.nodes.length !== 0
+    if (succeed) {
+      this.core.replicator.setPushOnly(false)
+    }
+    return succeed
+  }
+
+  recoverTreeNodeFromPeers() {
+    this.core.replicator.setPushOnly(true)
+
+    for (const peer of this.core.replicator.peers) {
+      const req = {
+        id: 0,
+        fork: this.fork,
+        upgrade: {
+          start: 0,
+          length: this.length
+        }
+      }
+      peer.wireRequest.send(req)
+    }
   }
 
   registerExtension(name, handlers = {}) {

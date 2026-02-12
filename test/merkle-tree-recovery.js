@@ -1,0 +1,387 @@
+const test = require('brittle')
+const flat = require('flat-tree')
+const { once } = require('events')
+const { MerkleTree } = require('../lib/merkle-tree.js')
+const Hypercore = require('../index.js')
+const { create, createStorage, replicate, unreplicate } = require('./helpers/index.js')
+
+test('recover - bad merkle root core can still ready', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  // Add content
+  const num = 32
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const roots = flat.fullRoots(2 * num)
+  for (const root of roots) {
+    tx.deleteTreeNode(root)
+  }
+  await tx.flush()
+
+  await core.close()
+
+  t.comment('closed initial')
+
+  const core2 = new Hypercore(await open())
+  await t.execution(() => core2.ready())
+
+  await core2.close()
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    return storage
+  }
+})
+
+test('recover - bad merkle root - fix via fully remote proof', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+  const targetBlockIndex = flat.rightSpan(rootIndex) / 2 + 1
+
+  const initialHash = await core.treeHash(targetBlockIndex) // store for later check
+
+  // Get proof from good core, before deleting
+  const p = await core.generateRemoteProofForTreeNode(rootIndex)
+  t.ok(await MerkleTree.get(core.core, rootIndex))
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(core.core, rootIndex), 'removed tree node')
+
+  await core.close()
+
+  const core2 = new Hypercore(await open(), { writable: false })
+  t.teardown(() => core2.close())
+  await t.execution(() => core2.ready())
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(core2.core, rootIndex))
+
+  t.is(core2.length, num, 'still has length')
+
+  await t.exception(core2.treeHash(targetBlockIndex), 'INVALID_OPERATION', 'cant create tree hash')
+
+  // Verify remote proof & patch with it's proof
+  t.ok(await core2.recoverFromRemoteProof(p), 'recovery verified correctly')
+  t.ok(await MerkleTree.get(core2.core, rootIndex))
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
+
+test('recover - bad merkle sub root - fix via fully remote proof', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  // Add content
+  const num = 64
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const indexes = flat.fullRoots(2 * num)
+  let leftChild = indexes[0]
+  for (let i = 0; i < 2; i++) {
+    ;[leftChild, _] = flat.children(leftChild)
+  }
+  const targetBlockIndex = flat.rightSpan(leftChild) / 2 + 1
+
+  const initialHash = await core.treeHash(targetBlockIndex) // store for later check
+  // Get proof from good core, before deleting
+  const p = await core.generateRemoteProofForTreeNode(leftChild)
+  t.ok(await MerkleTree.get(core.core, leftChild))
+
+  tx.deleteTreeNode(leftChild)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(core.core, leftChild), 'removed tree node')
+
+  await core.close()
+
+  const core2 = new Hypercore(await open(), { writable: false })
+  t.teardown(() => core2.close())
+  await t.execution(() => core2.ready())
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(core2.core, leftChild))
+
+  t.is(core2.length, num, 'still has length')
+
+  // Verify remote proof & patch with it's proof
+  t.ok(await core2.recoverFromRemoteProof(p), 'recovery verified correctly')
+  t.ok(await MerkleTree.get(core2.core, leftChild))
+
+  const hash = await core2.treeHash(targetBlockIndex)
+  t.alike(hash, initialHash, 'still can construct the hash')
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
+
+test('recover - bad merkle root - fix via range request to include roots automatically', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  const clone = await create(t, core.key)
+  await clone.ready()
+
+  const cloneSync = new Promise((resolve) =>
+    clone.on('append', () => {
+      if (clone.length === num) resolve()
+    })
+  )
+  const streams = replicate(core, clone, t)
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+  const targetBlockIndex = flat.rightSpan(rootIndex) / 2 + 1
+
+  const initialHash = await core.treeHash(targetBlockIndex) // store for later check
+
+  // Get proof from good core, before deleting
+  t.ok(await MerkleTree.get(core.core, rootIndex))
+
+  await cloneSync
+  t.comment('cloneSynced')
+  await unreplicate(streams)
+  t.comment('unreplicate')
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(core.core, rootIndex), 'removed tree node')
+  t.ok(await MerkleTree.get(clone.core, rootIndex), 'tree node still in clone')
+
+  await core.close()
+
+  const core2 = new Hypercore(await open(), { writable: false })
+  t.teardown(() => core2.close())
+  await t.execution(() => core2.ready())
+
+  t.ok(core2.core._repairMode, 'repair mode set')
+
+  // Request proof
+  const repairing = once(core2, 'repairing')
+  const repaired = once(core2, 'repaired')
+
+  replicate(core2, clone, t)
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(core2.core, rootIndex))
+
+  t.is(core2.length, num, 'still has length')
+
+  await t.exception(core2.treeHash(targetBlockIndex), 'INVALID_OPERATION', 'cant create tree hash')
+
+  const [repairingProof] = await repairing
+  t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
+  const [repairedProof] = await repaired
+  t.is(repairedProof, repairingProof, 'repaired emitted')
+
+  t.ok(await MerkleTree.get(core2.core, rootIndex))
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
+
+test('recover - bad merkle root - fail appends & truncates when in repair mode', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = new Hypercore(await open())
+  await core.ready()
+  t.teardown(() => core.close())
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  // Delete tree nodes
+  const tx = core.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  await core.close()
+
+  const core2 = new Hypercore(await open())
+  t.teardown(() => core2.close())
+  await t.execution(() => core2.ready())
+
+  t.ok(core2.core._repairMode, 'repair mode set')
+
+  await t.exception(
+    () => core2.truncate(num / 2 - 1),
+    /Cannot commit while repair mode is on/,
+    'truncating fails while in repair mode'
+  )
+  await t.exception(
+    () => core2.append('cant do'),
+    /Cannot commit while repair mode is on/,
+    'appending fails while in repair mode'
+  )
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
+
+test('recover - bad merkle root - while repairing ignore requests', async (t) => {
+  const dir = await t.tmp()
+  let storage = null
+
+  const core = await create(t)
+  await core.ready()
+  t.teardown(() => core.close())
+
+  const clone = new Hypercore(await open(), core.key)
+  await clone.ready()
+
+  const cloneSync = new Promise((resolve) =>
+    clone.on('append', () => {
+      if (clone.length === num) resolve()
+    })
+  )
+  const streams = replicate(core, clone, t)
+
+  // Add content
+  const num = 30
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  await cloneSync
+  t.comment('cloneSynced')
+
+  // Delete tree nodes from clone
+  const tx = clone.core.storage.write()
+  const [rootIndex] = flat.fullRoots(2 * num)
+
+  // Get proof from good core, before deleting
+  t.ok(await MerkleTree.get(clone.core, rootIndex))
+
+  await unreplicate(streams)
+  t.comment('unreplicate')
+
+  tx.deleteTreeNode(rootIndex)
+  await tx.flush()
+
+  // Verify tree node removed
+  t.absent(await MerkleTree.get(clone.core, rootIndex), 'removed tree node')
+  t.ok(await MerkleTree.get(core.core, rootIndex), 'tree node still in original')
+
+  const clone2 = new Hypercore(await open(), core.key)
+  t.teardown(() => clone2.close())
+  await t.execution(() => clone2.ready())
+
+  t.ok(clone2.core._repairMode, 'repair mode set')
+
+  // Create core to request from malformed core
+  const requestCore = await create(t, core.key)
+  await requestCore.ready()
+  t.teardown(() => requestCore.close())
+
+  const streamsWRequest = replicate(core, clone2, t)
+  await once(clone2, 'peer-add')
+  t.pass('original core added')
+  replicate(clone2, requestCore, t)
+  await once(clone2, 'peer-add')
+  t.pass('requestCore added')
+
+  // trigger request doomed to fail
+  requestCore.get(num - 2).catch(() => {
+    t.pass('request threw')
+  })
+
+  // Still no tree node
+  t.absent(await MerkleTree.get(clone2.core, rootIndex))
+  t.is(clone2.length, num, 'still has length')
+
+  // Request proof
+  const repairing = once(clone2, 'repairing')
+  const repaired = once(clone2, 'repaired')
+
+  t.comment('signaling recover')
+  clone2.recoverTreeNodeFromPeers()
+
+  const [repairingProof] = await repairing
+  t.is(repairingProof.upgrade.length, 30, 'repairing emitted')
+
+  const [repairedProof] = await repaired
+  t.is(repairedProof, repairingProof, 'repaired emitted')
+
+  t.ok(await MerkleTree.get(clone2.core, rootIndex))
+
+  await unreplicate(streamsWRequest)
+
+  await requestCore.close()
+
+  async function open() {
+    if (storage) await storage.close()
+    storage = await createStorage(t, dir)
+    t.teardown(() => storage.close())
+    return storage
+  }
+})
