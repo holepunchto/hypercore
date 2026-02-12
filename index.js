@@ -85,6 +85,8 @@ class Hypercore extends EventEmitter {
     this._findingPeers = 0
     this._active = opts.weak ? !!opts.active : opts.active !== false
 
+    this.waits = 0
+
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
     this._monitorIndex = -1 // maintained by replication state
@@ -858,6 +860,7 @@ class Hypercore extends EventEmitter {
 
     if (!this._shouldWait(opts, this.wait)) return null
 
+    this.waits++
     if (opts && opts.onwait) opts.onwait(index, this)
     if (this.onwait) this.onwait(index, this)
 
