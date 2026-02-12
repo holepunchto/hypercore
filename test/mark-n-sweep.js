@@ -12,12 +12,16 @@ test('startMarking - basic', async (t) => {
   }
 
   await core.get(42)
-  t.alike(core._marks, new Set(), 'gets dont store markings when marking is disable')
+  for await (const mark of core.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
 
   t.absent(core._marking, 'not enabled by default')
   await core.startMarking()
   t.ok(core._marking, 'enabled after startMarking')
-  t.alike(core._marks, new Set(), 'starts empty (temp)')
+  for await (const mark of core.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
 
   // Get 2^n
   let getI = 0
