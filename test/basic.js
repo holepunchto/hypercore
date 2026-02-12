@@ -338,7 +338,9 @@ test('defaults for wait', async function (t) {
 
   t.is(s.waits, 0, 'no waits yet')
   let _resolveWait
-  const waited = new Promise((resolve) => { _resolveWait = resolve })
+  const waited = new Promise((resolve) => {
+    _resolveWait = resolve
+  })
   const b = s.get(1, { wait: true, onwait: () => _resolveWait() })
 
   b.catch(function (err) {
