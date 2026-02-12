@@ -337,12 +337,18 @@ test('defaults for wait', async function (t) {
   const s = core.session({ wait: false })
 
   t.is(s.waits, 0, 'no waits yet')
-  const b = s.get(1, { wait: true })
+  let _resolveWait
+  const waited = new Promise((resolve) => {
+    _resolveWait = resolve
+  })
+  const b = s.get(1, { wait: true, onwait: () => _resolveWait() })
 
   b.catch(function (err) {
     t.is(s.waits, 1, 'waits increment')
     t.ok(err, 'b failed')
   })
+
+  await waited // Ensure that the request has started waiting
 
   t.is(await s.get(1), null)
   t.is(s.waits, 1, 'waits stays the same when no waiting')
