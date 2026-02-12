@@ -21,6 +21,7 @@ async function runTests() {
   await import('./extension.js')
   await import('./fully-remote-proof.js')
   await import('./manifest.js')
+  await import('./mark-n-sweep.js')
   await import('./merkle-tree.js')
   await import('./move-to.js')
   await import('./mutex.js')

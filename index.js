@@ -87,6 +87,10 @@ class Hypercore extends EventEmitter {
 
     this.waits = 0
 
+    // Mark & Sweep GC
+    this._marking = false // TODO Decide if needs to be public...
+    this._marks = new Set() // TODO Replace with storage w/ unique key. Only temp for sketching out idea
+
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
     this._monitorIndex = -1 // maintained by replication state
@@ -784,6 +788,7 @@ class Hypercore extends EventEmitter {
       (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     if (this.onseq !== null) this.onseq(index, this)
+    if (this._marking) await this._markBlock(index)
 
     const req = this._get(index, opts)
 
@@ -892,6 +897,32 @@ class Hypercore extends EventEmitter {
       if (opts.wait === true) return true
     }
     return defaultValue
+  }
+
+  async _markBlock (blockIndex) {
+    this._marks.add(blockIndex)
+  }
+
+  async clearMarkings () {
+    this._marks = new Set()
+  }
+
+  async startMarking () {
+    await this.clearMarkings()
+    this._marking = true
+  }
+
+  async sweep () {
+    // Temp version
+    const clearing = []
+    for (let i = 0; i < this.length; i++) {
+      if (this._marks.has(i)) continue
+      clearing.push(this.clear(i))
+    }
+    await Promise.all(clearing)
+
+    this._marking = false
+    await this.clearMarkings()
   }
 
   createReadStream(opts) {
