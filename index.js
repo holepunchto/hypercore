@@ -900,25 +900,50 @@ class Hypercore extends EventEmitter {
   }
 
   async _markBlock (blockIndex) {
-    this._marks.add(blockIndex)
+    if (this.opened === false) await this.opening
+
+    // // TODO if sharing tx is okay in this usecase
+    // if (!this._marksTx) this._marksTx = this.state.storage.write()
+
+    const tx = this.state.storage.write()
+    tx.putMark(blockIndex)
+    await tx.flush()
   }
 
   async clearMarkings () {
-    this._marks = new Set()
+    if (this.opened === false) await this.opening
+    const tx = this.state.storage.write()
+    tx.deleteMarkRange(0, -1)
+    await tx.flush()
   }
 
   async startMarking () {
+    if (this.opened === false) await this.opening
     await this.clearMarkings()
+
+    // // TODO Decide if this is a good idea
+    // if (!this._marksTx) this._marksTx = this.state.storage.write()
+
     this._marking = true
   }
 
   async sweep () {
-    // Temp version
+    if (this.opened === false) await this.opening
+
+    // TODO flush marks if batching them
+
     const clearing = []
-    for (let i = 0; i < this.length; i++) {
-      if (this._marks.has(i)) continue
-      clearing.push(this.clear(i))
+    let prevIndex = this.length
+    for await (const { index } of this.state.storage.createMarkStream({ reverse: true })) {
+      if (index + 1 === prevIndex) {
+        prevIndex = index
+        continue
+      }
+      clearing.push(this.clear(index + 1, prevIndex))
+      prevIndex = index
     }
+    // Clear range from the very start if not marked
+    if (prevIndex > 0) clearing.push(this.clear(0, prevIndex))
     await Promise.all(clearing)
 
     this._marking = false
