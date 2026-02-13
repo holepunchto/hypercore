@@ -900,7 +900,7 @@ class Hypercore extends EventEmitter {
     return defaultValue
   }
 
-  async _markBlock (blockIndex) {
+  async _markBlock(blockIndex) {
     if (this.opened === false) await this.opening
 
     // // TODO if sharing tx is okay in this usecase
@@ -913,7 +913,7 @@ class Hypercore extends EventEmitter {
     return this._marks.set(blockIndex, true)
   }
 
-  async clearMarkings () {
+  async clearMarkings() {
     if (this.opened === false) await this.opening
     if (this._marks === null) {
       this._marks = new MarkBitfield(this.state.storage)
@@ -923,7 +923,7 @@ class Hypercore extends EventEmitter {
     return
   }
 
-  async startMarking () {
+  async startMarking() {
     if (this.opened === false) await this.opening
     await this.clearMarkings()
 
@@ -933,7 +933,7 @@ class Hypercore extends EventEmitter {
     this._marking = true
   }
 
-  async sweep ({ batchSize = 1000 } = {}) {
+  async sweep({ batchSize = 1000 } = {}) {
     if (this.opened === false) await this.opening
 
     // TODO flush marks if batching them
