@@ -9,6 +9,7 @@ const Protomux = require('protomux')
 const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
+const MarkBitfield = require('./lib/mark-bitfield')
 
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
@@ -89,7 +90,7 @@ class Hypercore extends EventEmitter {
 
     // Mark & Sweep GC
     this._marking = false // TODO Decide if needs to be public...
-    this._marks = new Set() // TODO Replace with storage w/ unique key. Only temp for sketching out idea
+    this._marks = null
 
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
@@ -905,16 +906,21 @@ class Hypercore extends EventEmitter {
     // // TODO if sharing tx is okay in this usecase
     // if (!this._marksTx) this._marksTx = this.state.storage.write()
 
-    const tx = this.state.storage.write()
-    tx.putMark(blockIndex)
-    await tx.flush()
+    if (this._marks === null) {
+      this._marks = new MarkBitfield(this.state.storage)
+    }
+
+    return this._marks.set(blockIndex, true)
   }
 
   async clearMarkings () {
     if (this.opened === false) await this.opening
-    const tx = this.state.storage.write()
-    tx.deleteMarkRange(0, -1)
-    await tx.flush()
+    if (this._marks === null) {
+      this._marks = new MarkBitfield(this.state.storage)
+    }
+    await this._marks.clear()
+    this._marks = null
+    return
   }
 
   async startMarking () {
@@ -927,19 +933,23 @@ class Hypercore extends EventEmitter {
     this._marking = true
   }
 
-  async sweep () {
+  async sweep ({ batchSize = 1000 } = {}) {
     if (this.opened === false) await this.opening
 
     // TODO flush marks if batching them
 
-    const clearing = []
+    let clearing = []
     let prevIndex = this.length
-    for await (const { index } of this.state.storage.createMarkStream({ reverse: true })) {
+    for await (const index of this._marks.createMarkStream({ reverse: true })) {
       if (index + 1 === prevIndex) {
         prevIndex = index
         continue
       }
       clearing.push(this.clear(index + 1, prevIndex))
+      if (clearing.length >= batchSize) {
+        await Promise.all(clearing)
+        clearing = []
+      }
       prevIndex = index
     }
     // Clear range from the very start if not marked
