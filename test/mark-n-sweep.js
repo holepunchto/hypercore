@@ -50,7 +50,10 @@ test('startMarking - basic', async (t) => {
   }
 
   const markedGets = await Promise.all(gets)
-  t.absent(markedGets.some((v) => v === null), 'marked all exist')
+  t.absent(
+    markedGets.some((v) => v === null),
+    'marked all exist'
+  )
 
   // Other indexes fail
   getI = 3
@@ -62,7 +65,10 @@ test('startMarking - basic', async (t) => {
   }
 
   const clearedGets = await Promise.all(gets)
-  t.absent(clearedGets.some((v) => v !== null), 'non-marked are cleared')
+  t.absent(
+    clearedGets.some((v) => v !== null),
+    'non-marked are cleared'
+  )
 })
 
 test.skip('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
@@ -115,7 +121,10 @@ test.skip('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) =>
   }
 
   const markedGets = await Promise.all(gets)
-  t.absent(markedGets.some((v) => v === null), 'marked all exist')
+  t.absent(
+    markedGets.some((v) => v === null),
+    'marked all exist'
+  )
 
   // Other indexes fail
   for (let i = 0; i < core.length; i++) {
