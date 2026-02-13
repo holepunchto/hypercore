@@ -6,7 +6,7 @@ const Hypercore = require('../')
 test('startMarking - basic', async (t) => {
   const core = await create(t)
 
-  const num = 10_000
+  const num = 50_000
   for (let i = 0; i < num; i++) {
     await core.append('i' + i)
   }
