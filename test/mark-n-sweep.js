@@ -117,6 +117,15 @@ test.skip('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) =>
   const markedGets = await Promise.all(gets)
   t.absent(markedGets.some((v) => v === null), 'marked all exist')
 
+  // Other indexes fail
+  for (let i = 0; i < core.length; i++) {
+    if (getIndexes.has(i)) continue
+
+    if (await core.get(i, { wait: false })) {
+      t.fail('found block at ${i}')
+    }
+  }
+
   async function open() {
     if (storage) await storage.close()
     storage = await createStorage(t, dir)
