@@ -2849,17 +2849,21 @@ test('push and pull concurrently', async function (t) {
     await a.append(i.toString())
   }
 
+  const bHasLength = new Promise((resolve) => b.on('append', () => {
+    if (b.length === 30) resolve()
+  }))
   const appends = []
   for (let i = 20; i < 30; i++) {
     appends.push(a.append(i.toString()).then(() => a.replicator.push(i)))
   }
 
-  await b.get(10, { force: true, timeout: 200 })
+  await b.get(10, { force: true })
 
   await Promise.all(appends)
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await bHasLength
 
-  t.is(b.length, 30)
+  t.pass('b synced length')
+  t.ok(await b.has(29))
 })
 
 async function createAndDownload(t, core) {
