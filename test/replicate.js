@@ -2840,8 +2840,6 @@ test('push and pull concurrently', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key, { allowPush: true, pushOnly: true })
 
-  b.replicator.setPushOnly(true)
-
   t.is(b.replicator.pushOnly, true)
 
   replicate(a, b, t)
@@ -2856,7 +2854,6 @@ test('push and pull concurrently', async function (t) {
     appends.push(a.append(i.toString()).then(() => a.replicator.push(i)))
   }
 
-  await 1
   await b.get(10, { force: true, timeout: 200 })
 
   await Promise.all(appends)
