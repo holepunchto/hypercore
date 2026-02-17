@@ -2849,9 +2849,11 @@ test('push and pull concurrently', async function (t) {
     await a.append(i.toString())
   }
 
-  const bHasLength = new Promise((resolve) => b.on('append', () => {
-    if (b.length === 30) resolve()
-  }))
+  const bHasLength = new Promise((resolve) =>
+    b.on('append', () => {
+      if (b.length === 30) resolve()
+    })
+  )
   const appends = []
   for (let i = 20; i < 30; i++) {
     appends.push(a.append(i.toString()).then(() => a.replicator.push(i)))
