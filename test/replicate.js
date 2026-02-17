@@ -2835,6 +2835,39 @@ test('no requests in pushOnly mode', async function (t) {
   await t.execution(b.get(1, { timeout: 500 }))
   await t.execution(b.get(2, { timeout: 500 }))
 })
+
+test('push and pull concurrently', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key, { allowPush: true, pushOnly: true })
+
+  t.is(b.replicator.pushOnly, true)
+
+  replicate(a, b, t)
+
+  await new Promise((resolve) => a.on('peer-add', resolve))
+  for (let i = 0; i < 20; i++) {
+    await a.append(i.toString())
+  }
+
+  const bHasLength = new Promise((resolve) =>
+    b.on('append', () => {
+      if (b.length === 30) resolve()
+    })
+  )
+  const appends = []
+  for (let i = 20; i < 30; i++) {
+    appends.push(a.append(i.toString()).then(() => a.replicator.push(i)))
+  }
+
+  await b.get(10, { force: true })
+
+  await Promise.all(appends)
+  await bHasLength
+
+  t.pass('b synced length')
+  t.ok(await b.has(29))
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
