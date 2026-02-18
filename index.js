@@ -11,6 +11,9 @@ const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 const flat = require('flat-tree')
 
+const { SMALL_WANTS } = require('./lib/feature-flags')
+const { UPDATE_COMPAT } = require('./lib/wants')
+
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
 const Info = require('./lib/info')
@@ -106,6 +109,13 @@ class Hypercore extends EventEmitter {
   static MAX_SUGGESTED_BLOCK_SIZE = MAX_SUGGESTED_BLOCK_SIZE
 
   static DefaultEncryption = DefaultEncryption
+
+  static SMALL_WANTS = SMALL_WANTS
+
+  static enable(flag) {
+    const enableCompat = (flag & SMALL_WANTS) === 0
+    UPDATE_COMPAT(enableCompat)
+  }
 
   static key(manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) {
