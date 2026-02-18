@@ -112,7 +112,7 @@ class Hypercore extends EventEmitter {
 
   static SMALL_WANTS = SMALL_WANTS
 
-  static enable (flag) {
+  static enable(flag) {
     const enableCompat = (flag & SMALL_WANTS) === 0
     UPDATE_COMPAT(enableCompat)
   }
