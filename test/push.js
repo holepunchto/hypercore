@@ -62,7 +62,7 @@ test('push and pull concurrently', async function (t) {
   t.ok(await b.has(29))
 })
 
-test.solo('push before append', async function (t) {
+test('push before append', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key, { allowPush: true })
 
