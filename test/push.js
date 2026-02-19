@@ -63,6 +63,7 @@ test('push and pull concurrently', async function (t) {
 })
 
 test('push before append', async function (t) {
+  t.plan(2)
   const a = await create(t)
   const b = await create(t, a.key, { allowPush: true })
 
@@ -74,14 +75,21 @@ test('push before append', async function (t) {
   await new Promise((resolve) => setTimeout(resolve, 1000))
 
   const recv = new Promise((resolve) => b.on('append', resolve))
+
+  // To recreate the scenario where a block is flushed to storage but the length
+  // hasn't been updated yet, this monkey patch allows executing code directly
+  // after the SessionState flushes.
+  const originalFlush = a.core.state.flush.bind(a.core.state)
+  a.core.state.flush = async () => {
+    const result = await originalFlush()
+    await t.execution(a.replicator.push(0))
+    a.core.state.flush = originalFlush
+    return result
+  }
+
   const send = a.append('hello world')
-
-  // block needs to be written to storage before
-  await new Promise((resolve) => setTimeout(resolve, 2))
-
-  await t.execution(a.replicator.push(0))
 
   await Promise.all([send, recv])
 
-  t.comment(b.length ? 'b synced length' : 'b did not sync length')
+  t.ok(b.length, 'b synced length')
 })
