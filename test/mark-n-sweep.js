@@ -139,6 +139,9 @@ test('startMarking - on session', async (t) => {
     clearedGets.some((v) => v !== null),
     'non-marked are cleared on parent'
   )
+
+  await s.close()
+  await core.close()
 })
 
 // SKIP because of issue with clearing named sessions
@@ -237,6 +240,9 @@ test.skip('startMarking - on named session', async (t) => {
     clearedGets.some((v) => v !== null),
     'non-marked are cleared on session'
   )
+
+  await s.close()
+  await core.close()
 })
 
 test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
