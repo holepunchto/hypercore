@@ -71,7 +71,175 @@ test('startMarking - basic', async (t) => {
   )
 })
 
-test.skip('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
+test('startMarking - on session', async (t) => {
+  const core = await create(t)
+
+  const num = 50_000
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+
+  await core.get(42)
+  for await (const mark of core.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
+
+  const s = core.session()
+
+  t.absent(s._marking, 'not enabled by default')
+  await s.startMarking()
+  t.ok(s._marking, 'enabled after startMarking')
+  for await (const mark of s.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
+
+  // Get 2^n
+  let getI = 0
+  let gets = []
+  while (getI < num) {
+    const index = s.length - getI - 1
+    gets.push(s.get(index))
+    getI = getI === 0 ? 1 : getI * 2
+  }
+
+  await Promise.all(gets)
+  t.comment('gets made')
+
+  t.is(s.contiguousLength, num, 'contiguous before sweep')
+  await s.sweep()
+  t.is(s.contiguousLength, 0, 'non-contig')
+  t.absent(s._marking, 'auto disables marking')
+
+  // Re-get w/ wait false to ensure exists
+  getI = 0
+  gets = []
+  while (getI < num) {
+    const index = s.length - getI - 1
+    gets.push(s.get(index, { wait: false }))
+    getI = getI === 0 ? 1 : getI * 2
+  }
+
+  const markedGets = await Promise.all(gets)
+  t.absent(
+    markedGets.some((v) => v === null),
+    'marked all exist'
+  )
+
+  // Other indexes fail
+  getI = 3
+  gets = []
+  while (getI < num) {
+    const index = s.length - getI - 1
+    gets.push(core.get(index, { wait: false }))
+    getI *= 3
+  }
+
+  const clearedGets = await Promise.all(gets)
+  t.absent(
+    clearedGets.some((v) => v !== null),
+    'non-marked are cleared on parent'
+  )
+})
+
+// SKIP because of issue with clearing named sessions
+test.skip('startMarking - on named session', async (t) => {
+  const core = await create(t)
+
+  const num = 50_000
+  for (let i = 0; i < num; i++) {
+    await core.append('i' + i)
+  }
+  await core.truncate(num - 1)
+  await core.append('i beep')
+
+  await core.get(42)
+  for await (const mark of core.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
+
+  // To emphasize that it wasn't cleared despite current bug
+  t.ok(await core.get(49999), 'core has end block')
+
+  const s = core.session({ name: 'batch' })
+
+  // To emphasize that it wasn't cleared before running sweep
+  t.ok(await s.get(49999, { wait: false }), 'session has end block')
+
+  t.absent(s._marking, 'not enabled by default')
+  await s.startMarking()
+  t.ok(s._marking, 'enabled after startMarking')
+  for await (const mark of s.state.storage.createMarkStream()) {
+    t.fail('found a mark!')
+  }
+
+  // Get 2^n
+  let getI = 0
+  let gets = []
+  let getIndexes = new Set()
+  while (getI < num) {
+    const index = s.length - getI - 1
+    getIndexes.add(index)
+    gets.push(s.get(index))
+    getI = getI === 0 ? 1 : getI * 2
+  }
+
+  await Promise.all(gets)
+  t.comment('gets made')
+
+  await s.sweep()
+  t.absent(s._marking, 'auto disables marking')
+
+  // Re-get w/ wait false to ensure exists
+  getI = 0
+  gets = []
+  let getIndexesCheck = new Set()
+  while (getI < num) {
+    const index = s.length - getI - 1
+    getIndexesCheck.add(index)
+    gets.push(s.get(index, { wait: false }))
+    getI = getI === 0 ? 1 : getI * 2
+  }
+
+  const markedGets = await Promise.all(gets)
+  // console.log('markedGets', markedGets) // Will return null for everything
+  t.absent(
+    markedGets.some((v) => v === null),
+    'marked all exist'
+  )
+  t.alike(getIndexesCheck, getIndexes, 'checked the correct indexes')
+
+  // Re-get w/ wait false to ensure exists
+  getI = 0
+  gets = []
+  while (getI < num) {
+    const index = s.length - getI - 1
+    gets.push(core.get(index, { wait: false }))
+    getI = getI === 0 ? 1 : getI * 2
+  }
+
+  const markedGets2 = await Promise.all(gets)
+  t.absent(
+    markedGets2.some((v) => v === null),
+    'marked all exist'
+  )
+
+  // Other indexes fail
+  getI = 3
+  gets = []
+  while (getI < num) {
+    const index = s.length - getI - 1
+    gets.push(s.get(index, { wait: false }))
+    getI *= 3
+  }
+
+  const clearedGets = await Promise.all(gets)
+  t.absent(
+    clearedGets.some((v) => v !== null),
+    'non-marked are cleared on session'
+  )
+})
+
+test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
   const dir = await t.tmp()
   let storage = null
 
