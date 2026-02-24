@@ -941,7 +941,6 @@ class Hypercore extends EventEmitter {
     }
     await this._marks.clear()
     this._marks = null
-    return
   }
 
   async startMarking() {
