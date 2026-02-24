@@ -522,6 +522,40 @@ Info {
 }
 ```
 
+#### `await core.startMarking()`
+
+This enables marking mode for the "mark & sweep" approach to clear hypercore storage. When called the current markings are cleared.
+
+##### Mark & Sweep
+
+This technique allows for marking blocks that should be kept and assuming all other blocks should be cleared. This can be achieved in the following steps:
+
+1. Enable marking mode via `await core.startMarking()`.
+2. Get all blocks that should be kept.  
+   While the marking mode is enabled, all blocks retrieved (via `.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
+3. Sweep to clear unmarked blocks via `await core.sweep()`.  
+   Once complete, all blocks that were not marked will be cleared.
+
+#### `await core.markBlock(index)`
+
+Manually mark a block to be retained when sweeping. Useful to mark blocks without loading them into memory.
+
+#### `await core.clearMarkings()`
+
+Manually remove all markings. Automatically called when calling `core.startMarking()`.
+
+#### `await core.sweep(opts)`
+
+Clear all unmarked blocks from storage.
+
+`opts` can include:
+
+```
+{
+  batchSize: 1000 // How frequently to flush clears to storage.
+}
+```
+
 #### `await core.close([{ error }])`
 
 Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.
