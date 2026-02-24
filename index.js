@@ -94,7 +94,7 @@ class Hypercore extends EventEmitter {
     this.waits = 0
 
     // Mark & Sweep GC
-    this._marking = false // TODO Decide if needs to be public...
+    this._marking = false
     this._marks = null
 
     this._sessionIndex = -1
@@ -924,9 +924,6 @@ class Hypercore extends EventEmitter {
   async markBlock(blockIndex) {
     if (this.opened === false) await this.opening
 
-    // // TODO if sharing tx is okay in this usecase
-    // if (!this._marksTx) this._marksTx = this.state.storage.write()
-
     if (this._marks === null) {
       this._marks = new MarkBitfield(this.state.storage)
     }
@@ -947,16 +944,11 @@ class Hypercore extends EventEmitter {
     if (this.opened === false) await this.opening
     await this.clearMarkings()
 
-    // // TODO Decide if this is a good idea
-    // if (!this._marksTx) this._marksTx = this.state.storage.write()
-
     this._marking = true
   }
 
   async sweep({ batchSize = 1000 } = {}) {
     if (this.opened === false) await this.opening
-
-    // TODO flush marks if batching them
 
     let clearing = []
     let prevIndex = this.length
