@@ -810,7 +810,7 @@ class Hypercore extends EventEmitter {
       (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     if (this.onseq !== null) this.onseq(index, this)
-    if (this._marking) await this._markBlock(index)
+    if (this._marking) await this.markBlock(index)
 
     const req = this._get(index, opts)
 
@@ -921,7 +921,7 @@ class Hypercore extends EventEmitter {
     return defaultValue
   }
 
-  async _markBlock(blockIndex) {
+  async markBlock(blockIndex) {
     if (this.opened === false) await this.opening
 
     // // TODO if sharing tx is okay in this usecase
