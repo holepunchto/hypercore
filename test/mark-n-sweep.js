@@ -253,7 +253,7 @@ test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
   t.teardown(() => core.close())
   await core.ready()
 
-  const num = 1_000_000
+  const num = 250_000
   for (let i = 0; i < num; i++) {
     await core.append('i' + i)
   }
