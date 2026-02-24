@@ -13,14 +13,14 @@ test('startMarking - basic', async (t) => {
 
   await core.get(42)
   for await (const mark of core.state.storage.createMarkStream()) {
-    t.fail('found a mark!')
+    t.fail(`found a mark at ${mark}!`)
   }
 
   t.absent(core._marking, 'not enabled by default')
   await core.startMarking()
   t.ok(core._marking, 'enabled after startMarking')
   for await (const mark of core.state.storage.createMarkStream()) {
-    t.fail('found a mark!')
+    t.fail(`found a mark at ${mark}!`)
   }
 
   // Get 2^n
@@ -81,7 +81,7 @@ test('startMarking - on session', async (t) => {
 
   await core.get(42)
   for await (const mark of core.state.storage.createMarkStream()) {
-    t.fail('found a mark!')
+    t.fail(`found a mark at ${mark}!`)
   }
 
   const s = core.session()
@@ -90,7 +90,7 @@ test('startMarking - on session', async (t) => {
   await s.startMarking()
   t.ok(s._marking, 'enabled after startMarking')
   for await (const mark of s.state.storage.createMarkStream()) {
-    t.fail('found a mark!')
+    t.fail(`found a mark at ${mark}!`)
   }
 
   // Get 2^n
@@ -175,7 +175,7 @@ test.skip('startMarking - on named session', async (t) => {
   // Get 2^n
   let getI = 0
   let gets = []
-  let getIndexes = new Set()
+  const getIndexes = new Set()
   while (getI < num) {
     const index = s.length - getI - 1
     getIndexes.add(index)
@@ -192,7 +192,7 @@ test.skip('startMarking - on named session', async (t) => {
   // Re-get w/ wait false to ensure exists
   getI = 0
   gets = []
-  let getIndexesCheck = new Set()
+  const getIndexesCheck = new Set()
   while (getI < num) {
     const index = s.length - getI - 1
     getIndexesCheck.add(index)
@@ -267,7 +267,7 @@ test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
   // Get random
   let getI = 0
   let gets = []
-  let getIndexes = new Set()
+  const getIndexes = new Set()
   while (getI < totalGets) {
     const index = Math.floor(Math.random() * core.length)
     gets.push(core.get(index))

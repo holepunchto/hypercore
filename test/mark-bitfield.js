@@ -1,6 +1,5 @@
 const test = require('brittle')
 const MarkBitfield = require('../lib/mark-bitfield')
-const { once } = require('events')
 const { createStorage } = require('./helpers')
 
 test('MarkBitfield - basic', async (t) => {
@@ -36,7 +35,12 @@ test('MarkBitfield - load from storage', async (t) => {
   {
     const marks = new MarkBitfield(storage)
 
-    const expected = [0, MarkBitfield.BITS_PER_PAGE - 1, MarkBitfield.BITS_PER_PAGE, MarkBitfield.BITS_PER_PAGE * 2]
+    const expected = [
+      0,
+      MarkBitfield.BITS_PER_PAGE - 1,
+      MarkBitfield.BITS_PER_PAGE,
+      MarkBitfield.BITS_PER_PAGE * 2
+    ]
     for (const i of expected) {
       await marks.set(i, true)
     }
