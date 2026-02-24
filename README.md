@@ -528,13 +528,22 @@ This enables marking mode for the "mark & sweep" approach to clear hypercore sto
 
 ##### Mark & Sweep
 
-This technique allows for marking blocks that should be kept and assuming all other blocks should be cleared. This can be achieved in the following steps:
+This technique allows for marking blocks that should be kept and assuming all other blocks should be cleared. It can be achieved using the following steps:
 
 1. Enable marking mode via `await core.startMarking()`.
 2. Get all blocks that should be kept.  
    While the marking mode is enabled, all blocks retrieved (via `.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
 3. Sweep to clear unmarked blocks via `await core.sweep()`.  
    Once complete, all blocks that were not marked will be cleared.
+
+Example:
+
+```js
+await core.startMarking()
+await core.get(2)
+await core.get(4)
+await core.sweep() // All blocks but blocks 2 & 4 are cleared
+```
 
 #### `await core.markBlock(index)`
 
