@@ -17,7 +17,7 @@ test('startMarking - basic', async (t) => {
   }
 
   t.absent(core._marking, 'not enabled by default')
-  await core.startMarking()
+  const gc = await core.gc()
   t.ok(core._marking, 'enabled after startMarking')
   for await (const mark of core.state.storage.createMarkStream()) {
     t.fail(`found a mark at ${mark}!`)
@@ -36,7 +36,7 @@ test('startMarking - basic', async (t) => {
   t.comment('gets made')
 
   t.is(core.contiguousLength, num, 'contiguous before sweep')
-  await core.sweep()
+  await gc.sweep()
   t.is(core.contiguousLength, 0, 'non-contig')
   t.absent(core._marking, 'auto disables marking')
 
@@ -87,7 +87,7 @@ test('startMarking - on session', async (t) => {
   const s = core.session()
 
   t.absent(s._marking, 'not enabled by default')
-  await s.startMarking()
+  const gc = await s.gc()
   t.ok(s._marking, 'enabled after startMarking')
   for await (const mark of s.state.storage.createMarkStream()) {
     t.fail(`found a mark at ${mark}!`)
@@ -106,7 +106,7 @@ test('startMarking - on session', async (t) => {
   t.comment('gets made')
 
   t.is(s.contiguousLength, num, 'contiguous before sweep')
-  await s.sweep()
+  await gc.sweep()
   t.is(s.contiguousLength, 0, 'non-contig')
   t.absent(s._marking, 'auto disables marking')
 
@@ -267,7 +267,7 @@ test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
 
   t.absent(core._marking, 'not enabled by default')
 
-  await core.startMarking()
+  const gc = await core.gc()
 
   const totalGets = 1000
   // Get random
@@ -285,7 +285,7 @@ test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
   t.comment('gets made')
 
   t.is(core.contiguousLength, num, 'contiguous before sweep')
-  await core.sweep()
+  await gc.sweep()
   t.absent(core._marking, 'auto disables marking')
 
   // Re-get w/ wait false to ensure exists
