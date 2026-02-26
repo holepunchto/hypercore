@@ -71,6 +71,15 @@ test('startMarking - basic', async (t) => {
   )
 })
 
+test('startMarking - cant have 2x gc', async (t) => {
+  const core = await create(t)
+
+  await core.append('i0')
+
+  await t.execution(() => core.gc(), '1st run works')
+  await t.exception(() => core.gc(), /ASSERTION/, '2nd run throws')
+})
+
 test('startMarking - on session', async (t) => {
   const core = await create(t)
 
