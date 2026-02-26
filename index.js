@@ -922,7 +922,8 @@ class Hypercore extends EventEmitter {
 
   async gc() {
     if (this.opened === false) await this.opening
-    if (this._marking) throw ASSERTION('Hypercore cannot be gc\'ed when already in gc mode', this.discoveryKey)
+    if (this._marking)
+      throw ASSERTION("Hypercore cannot be gc'ed when already in gc mode", this.discoveryKey)
 
     this._marking = new MarkNSweep(this)
     await this._marking.clear()
