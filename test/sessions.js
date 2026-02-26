@@ -127,7 +127,7 @@ test('sessions - error includes discovery key', async function (t) {
 
   const discKey = IdEnc.normalize(core.discoveryKey)
   try {
-    await core.session({ checkout: 0 })
+    core.session({ checkout: 0 })
     t.fail('Should throw')
   } catch (e) {
     t.is(e.message.includes(discKey), true)
