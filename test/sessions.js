@@ -193,11 +193,26 @@ test('named session doesnt clear wrong blocks', async (t) => {
   await t.execution(() => named.clear(1, clearEnd), 'clear runs')
   t.absent(await named.has(1), 'named cleared start of range')
   t.absent(await named.has(clearEnd), 'named cleared end of range')
+  t.ok(await named.has(clearEnd + 1), 'named didnt clear beyond end')
   t.ok(await named.has(num - 1), 'named ends w/ block')
 
   t.ok(await core.has(1), 'core has start of cleared range')
   t.ok(await core.has(clearEnd), 'core has end of cleared range')
   t.ok(await core.has(num - 1), 'core ends w/ block')
+
+  t.comment('clearing to end')
+  const namedToEnd = core.session({ name: 'batch-to-end' })
+  await namedToEnd.ready()
+
+  t.ok(await namedToEnd.has(num - 1), 'starts w/ end block')
+  await t.execution(() => namedToEnd.clear(1, num - 1), 'clear runs')
+
+  {
+    const rx = namedToEnd.state.storage.read()
+    const b = rx.getBlock(num - 1)
+    rx.tryFlush()
+    t.absent(await b, 'didnt put blocks beyond end in storage only')
+  }
 })
 
 function noop() {}
