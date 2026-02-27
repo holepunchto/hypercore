@@ -213,6 +213,9 @@ test('named session doesnt clear wrong blocks', async (t) => {
     rx.tryFlush()
     t.absent(await b, 'didnt put blocks beyond end in storage only')
   }
+
+  await named.close()
+  await namedToEnd.close()
 })
 
 function noop() {}
