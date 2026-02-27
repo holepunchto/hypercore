@@ -522,38 +522,38 @@ Info {
 }
 ```
 
-#### `const gc = await core.gc()`
+#### `await core.startMarking()`
 
-This enables a mark & sweep gc mode to make clearing hypercore storage easier. When a new `gc` object is created the current markings are cleared.
+This enables marking mode for the "mark & sweep" approach to clear hypercore storage. When called the current markings are cleared.
 
 ##### Mark & Sweep
 
 This technique allows for marking blocks that should be kept and assuming all other blocks should be cleared. It can be achieved using the following steps:
 
-1. Create a `gc` object via `await core.gc()` putting the core into a marking mode.
+1. Enable marking mode via `await core.startMarking()`.
 2. Get all blocks that should be kept.  
-   While the marking mode is enabled, all blocks retrieved (via `core.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
-3. Sweep to clear unmarked blocks via `await gc.sweep()`.  
+   While the marking mode is enabled, all blocks retrieved (via `.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
+3. Sweep to clear unmarked blocks via `await core.sweep()`.  
    Once complete, all blocks that were not marked will be cleared.
 
 Example:
 
 ```js
-const gc = await core.gc()
+await core.startMarking()
 await core.get(2)
 await core.get(4)
-await gc.sweep() // All blocks but blocks 2 & 4 are cleared
+await core.sweep() // All blocks but blocks 2 & 4 are cleared
 ```
 
-#### `await gc.mark(index)`
+#### `await core.markBlock(index)`
 
 Manually mark a block to be retained when sweeping. Useful to mark blocks without loading them into memory.
 
-#### `await gc.clear()`
+#### `await core.clearMarkings()`
 
-Manually remove all markings. Automatically called when calling `core.gc()`.
+Manually remove all markings. Automatically called when calling `core.startMarking()`.
 
-#### `await gc.sweep(opts)`
+#### `await core.sweep(opts)`
 
 Clear all unmarked blocks from storage.
 
