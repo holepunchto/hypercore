@@ -175,4 +175,29 @@ test('sessions - checkout breaks prologue', async function (t) {
   uncaughts.off(noop)
 })
 
+test('named session doesnt clear wrong blocks', async (t) => {
+  const core = await create(t)
+
+  const num = 10
+  for (let i = 0; i < num; i++) {
+    await core.append('block' + i)
+  }
+
+  t.ok(await core.has(num - 1), 'parent has block')
+  const named = core.session({ name: 'batch' })
+  await named.ready()
+
+  const clearEnd = num - 2
+
+  t.ok(await named.has(num - 1), 'named starts w/ block')
+  await t.execution(() => named.clear(1, clearEnd), 'clear runs')
+  t.absent(await named.has(1), 'named cleared start of range')
+  t.absent(await named.has(clearEnd), 'named cleared end of range')
+  t.ok(await named.has(num - 1), 'named ends w/ block')
+
+  t.ok(await core.has(1), 'core has start of cleared range')
+  t.ok(await core.has(clearEnd), 'core has end of cleared range')
+  t.ok(await core.has(num - 1), 'core ends w/ block')
+})
+
 function noop() {}
