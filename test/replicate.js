@@ -2887,7 +2887,7 @@ test('local writable caught up by remote', async function (t) {
   t.is(b.length, a.length)
 })
 
-test('local recovering from remote', async function (t) {
+test.solo('local recovering from remote', async function (t) {
   const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
@@ -2903,7 +2903,7 @@ test('local recovering from remote', async function (t) {
   try {
     await b.append(['a'])
     t.fail('must not append')
-  } catch {
+  } catch (e) {
     t.pass('refused to append')
   }
 

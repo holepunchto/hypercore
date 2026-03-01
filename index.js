@@ -117,6 +117,10 @@ class Hypercore extends EventEmitter {
     UPDATE_COMPAT(enableCompat)
   }
 
+  static setRecoveryPeers(peers) {
+    Core.setRecoveryPeers(peers)
+  }
+
   static key(manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) {
       manifest = { version, signers: [{ publicKey: manifest, namespace }] }
