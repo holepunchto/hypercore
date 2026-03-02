@@ -2,7 +2,8 @@ const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
 const Hypercore = require('..')
-const { create, createStorage, replicate } = require('./helpers')
+const Verifier = require('../lib/verifier')
+const { create, createStorage, createStored, replicate } = require('./helpers')
 
 const fixturesRaw = require('./fixtures/encryption/v11.0.48.cjs')
 
@@ -371,6 +372,46 @@ test('encryption backwards compatibility', async function (t) {
   for (let i = 0; i < block.length; i++) {
     t.alike(await block.get(i, { raw: true }), fixtures[3][i])
   }
+})
+
+test('encryption reloads keys when manifest flips compat mode at runtime', async function (t) {
+  const keyPair = crypto.keyPair()
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const open = await createStored(t)
+
+  // Create storage with a key-only core so manifest is absent on disk.
+  const bootstrap = await open(key, { compat: false })
+  await bootstrap.ready()
+  await bootstrap.close()
+
+  const core = await open(key, { compat: true })
+  await core.ready()
+
+  await core.setEncryptionKey(encryptionKey)
+  t.is(core.core.compat, true, 'starts in compat mode before manifest is known')
+
+  // This sets the manifest on the shared core during session open.
+  const s = core.session({ manifest })
+  await s.ready()
+
+  t.is(core.core.compat, false, 'compat mode flips after manifest is set')
+
+  await core.encryption.decrypt(0, b4a.alloc(core.padding), core)
+  t.ok(core.encryption.blockKey, 'reload keeps a valid block key')
+  t.ok(core.encryption.blindingKey, 'reload keeps a valid blinding key')
+
+  await s.close()
+  await core.close()
 })
 
 function getBlock(core, index) {
