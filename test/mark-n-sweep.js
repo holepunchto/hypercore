@@ -324,3 +324,24 @@ test('startMarking - large cores', { timeout: 5 * 60 * 1000 }, async (t) => {
     return storage
   }
 })
+
+test('markBlock - range', async (t) => {
+  const core = await create(t)
+
+  for (let i = 0; i < 10; i++) {
+    await core.append('i' + i)
+  }
+
+  await core.startMarking()
+
+  await core.markBlock(2, 7)
+
+  t.ok(await core.has(2), 'has start')
+  t.ok(await core.has(7), 'has end index')
+
+  await core.sweep()
+
+  t.absent(await core.has(0, 2), 'cleared start')
+  t.ok(await core.has(2, 7), 'kept range')
+  t.absent(await core.has(7, core.length), 'end index (non inclusive)')
+})

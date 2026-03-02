@@ -545,9 +545,9 @@ await core.get(4)
 await core.sweep() // All blocks but blocks 2 & 4 are cleared
 ```
 
-#### `await core.markBlock(index)`
+#### `await core.markBlock(start, end = start + 1)`
 
-Manually mark a block to be retained when sweeping. Useful to mark blocks without loading them into memory.
+Manually mark a block or range of blocks to be retained when sweeping. Useful to mark blocks without loading them into memory. `end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.
 
 #### `await core.clearMarkings()`
 

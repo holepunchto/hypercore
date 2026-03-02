@@ -921,14 +921,20 @@ class Hypercore extends EventEmitter {
     return defaultValue
   }
 
-  async markBlock(blockIndex) {
+  async markBlock(start, end = start + 1) {
     if (this.opened === false) await this.opening
 
     if (this._marks === null) {
       this._marks = new MarkBitfield(this.state.storage)
     }
 
-    return this._marks.set(blockIndex, true)
+    // TODO support as single rocks batch
+    const setPromises = []
+    for (let i = start; i < end; i++) {
+      setPromises.push(this._marks.set(i, true))
+    }
+
+    return Promise.all(setPromises)
   }
 
   async clearMarkings() {
