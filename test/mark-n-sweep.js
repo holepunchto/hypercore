@@ -80,6 +80,16 @@ test('startMarking - cant run 2x', async (t) => {
   await t.exception(() => core.startMarking(), /ASSERTION/, '2nd run throws')
 })
 
+test('startMarking then immediate sweep', async (t) => {
+  const core = await create(t)
+
+  await core.append('i0')
+
+  await core.startMarking()
+  await t.execution(core.sweep(), 'sweep can run')
+  t.absent(await core.has(0, core.length), 'cleared all blocks')
+})
+
 test('startMarking - on session', async (t) => {
   const core = await create(t)
 

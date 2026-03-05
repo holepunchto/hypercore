@@ -959,6 +959,11 @@ class Hypercore extends EventEmitter {
   async sweep({ batchSize = 1000 } = {}) {
     if (this.opened === false) await this.opening
 
+    // No marks - load from storage
+    if (this._marks === null) {
+      this._marks = new MarkBitfield(this.state.storage)
+    }
+
     let clearing = []
     let prevIndex = this.length
     for await (const index of this._marks.createMarkStream({ reverse: true })) {
