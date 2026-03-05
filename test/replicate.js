@@ -2887,7 +2887,7 @@ test('local writable caught up by remote', async function (t) {
   t.is(b.length, a.length)
 })
 
-test.solo('local recovering from remote', async function (t) {
+test('local recovering from remote', async function (t) {
   const a = await create(t)
 
   await a.append(['a', 'b', 'c', 'd', 'e'])
