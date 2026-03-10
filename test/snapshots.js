@@ -262,3 +262,19 @@ test('error when using inconsistent snapshot', async function (t) {
   await snapshot.close()
   await core.close()
 })
+
+test('snapshot works with an active atomized session without persisted dependency state', async function (t) {
+  const core = await create(t)
+  const atom = core.state.storage.createAtom()
+  const atomic = core.session({ atom })
+
+  await atomic.ready()
+
+  const snap = core.snapshot()
+  await snap.ready()
+
+  t.is(snap.length, 0, 'snapshot opened successfully')
+
+  await snap.close()
+  await atomic.close()
+})
