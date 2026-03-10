@@ -376,16 +376,12 @@ class Hypercore extends EventEmitter {
     const state = this.state
 
     if (opts.atom) {
-      await parentState.mutex.lock()
       this.state = await parentState.createSession(null, false, opts.atom)
-      parentState.mutex.unlock()
       if (state) state.unref()
     } else if (opts.name) {
       // todo: need to make named sessions safe before ready
       // atm we always copy the state in passCapabilities
-      await parentState.mutex.lock()
       this.state = await parentState.createSession(opts.name, !!opts.overwrite, null)
-      parentState.mutex.unlock()
       if (state) state.unref() // ref'ed above in setup session
     }
 
