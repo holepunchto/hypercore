@@ -437,7 +437,7 @@ test.skip('draft truncate then append', async function (t) {
   await core.close()
 })
 
-test.solo('atomic - flush to wrong parent', async function (t) {
+test('atomic - flush to wrong parent', async function (t) {
   const storage = await createStorage(t)
 
   const a = new Hypercore(storage)
