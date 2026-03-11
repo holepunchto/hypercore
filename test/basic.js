@@ -248,6 +248,56 @@ test('treeHash with default length', async function (t) {
   await core2.close()
 })
 
+test('treeHashFromStorage() = treeHash()', async function (t) {
+  const core = await create(t)
+  await core.ready()
+
+  t.alike(await core.treeHash(), await Hypercore.treeHashFromStorage(core))
+
+  await core.append('a')
+
+  t.alike(await core.treeHash(), await Hypercore.treeHashFromStorage(core))
+
+  await core.close()
+})
+
+test('treeHashFromStorage() throws with bad storage', async function (t) {
+  const dir = await t.tmp()
+  const storage = await createStorage(t, dir)
+  const core = new Hypercore(storage)
+  t.teardown(() => core.close(), { order: 1 })
+  await core.ready()
+  await core.append('a')
+
+  const batch = core.session({ name: 'batch' })
+
+  await batch.state.mutex.lock()
+  const tx = batch.state.storage.write()
+  // Set a nonsense dependency to force all tree nodes to fail
+  tx.setDependency({
+    dataPointer: 1337,
+    length: 3
+  })
+  const flushed = await tx.flush()
+  batch.state._unlock()
+  await core.close()
+  await storage.close()
+
+  t.ok(flushed, 'storage corrupted')
+
+  const storage2 = await createStorage(t, dir)
+  const core2 = new Hypercore(storage2)
+  t.teardown(() => core2.close(), { order: 1 })
+  await core2.ready()
+  const batch2 = core2.session({ name: 'batch' })
+  await batch2.ready() // ensure the session is resumed
+
+  t.exception(Hypercore.treeHashFromStorage(batch2), /INVALID_OPERATION: Expected tree node/)
+
+  await core2.close()
+  await storage2.close()
+})
+
 test('snapshot locks the state', async function (t) {
   const core = new Hypercore(await createStorage(t))
   await core.ready()

@@ -188,6 +188,11 @@ class Hypercore extends EventEmitter {
     return Replicator.clearRequests(session, err)
   }
 
+  static async treeHashFromStorage(session, length = session.length) {
+    const roots = await MerkleTree.getRoots(session.state, length)
+    return crypto.tree(roots)
+  }
+
   snapshot(opts) {
     return this.session({ ...opts, snapshot: true })
   }
