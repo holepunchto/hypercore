@@ -280,11 +280,11 @@ test('flush with bg activity', async function (t) {
 
   await b.append('b')
 
-  t.is(await core.commit(b), null) // core is ahead, not flushing
+  t.is(await clone.commit(b), null) // clone is ahead, not flushing
 
   await b.append('c')
 
-  t.ok(await core.commit(b), 'flushed!')
+  t.ok(await clone.commit(b), 'flushed!')
 
   await b.close()
 })
