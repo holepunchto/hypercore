@@ -111,9 +111,11 @@ test('basic replication stats', async function (t) {
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
   t.is(aStats.invalidData, 0, 'invalid data init 0')
   t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
+  t.is(aStats.backoffs, 0, 'backoffs init 0')
+  t.is(aStats.notAvailableBackoffs, 0, 'notAvailableBackoffs init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 13, 'Expected amount of stats')
+  t.is(initStatsLength, 14, 'Expected amount of stats')
 
   replicate(a, b, t)
 
