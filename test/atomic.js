@@ -480,5 +480,4 @@ test('atomic - flush to wrong parent', async function (t) {
 
   await a.close()
   await b.close()
-}
-
+})
