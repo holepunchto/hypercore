@@ -25,6 +25,7 @@ const { manifestHash, createManifest } = require('./lib/verifier')
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
 const { proof, verify } = require('./lib/fully-remote-proof')
+const { assemble, partialSignature } = require('./lib/multisig')
 const {
   ASSERTION,
   BAD_ARGUMENT,
@@ -187,6 +188,10 @@ class Hypercore extends EventEmitter {
   static clearRequests(session, err) {
     return Replicator.clearRequests(session, err)
   }
+
+  static assemble = assemble
+
+  static partialSignature = partialSignature
 
   static async treeHashFromStorage(session, length = session.length) {
     const roots = await MerkleTree.getRoots(session.state, length)
