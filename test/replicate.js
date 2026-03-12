@@ -2926,10 +2926,17 @@ test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bi
 
   replicate(badBitfielder, reader, t)
 
-  await t.exception(async () => reader.get(0, { timeout: 500 }), /REQUEST_TIMEOUT/, 'cannot get the block due to bad bitfield')
+  await t.exception(
+    async () => reader.get(0, { timeout: 500 }),
+    /REQUEST_TIMEOUT/,
+    'cannot get the block due to bad bitfield'
+  )
 
   t.is(reader.replicator.stats.notAvailableBackoffs, 32, 'paused after 32 attempts')
-  t.ok(badBitfielder.replicator.stats.wireRequest.rx < 40, 'did not continue getting spammed (sanity check)')
+  t.ok(
+    badBitfielder.replicator.stats.wireRequest.rx < 40,
+    'did not continue getting spammed (sanity check)'
+  )
   t.ok(reader.replicator.stats.wireRequest.tx < 40, 'did not continue spamming (sanity check)')
 })
 
