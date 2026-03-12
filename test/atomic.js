@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
+const tmpDir = require('test-tmp')
 
 const Hypercore = require('../')
 const { MerkleTree } = require('../lib/merkle-tree.js')
@@ -477,4 +478,89 @@ test('atomic - flush to wrong parent', async function (t) {
   await t.exception(atom.flush())
 
   await t.execution(MerkleTree.getRoots(session.state, session.length))
+})
+
+test.solo('append while borked', async (t) => {
+  const dir = await tmpDir()
+  const core = new Hypercore(dir)
+
+  await core.ready()
+
+  const atom = core.state.storage.createAtom()
+  const batch = core.session({ name: 'batch' })
+  const atomic = batch.session({ atom })
+
+  await atomic.append('hello')
+  await atom.flush()
+
+  await core.commit(atomic)
+
+  t.is(core.length, 1, 'appended')
+
+  {
+    await batch.state.mutex.lock()
+    const batch1 = await core.state.storage.createSession('batch', null)
+
+    const tx = batch1.write()
+    // Set a nonsense dependency to force all tree nodes (from the parent) to fail
+    tx.setDependency({
+      dataPointer: 1337,
+      length: 0
+    })
+    const flushed = await tx.flush()
+    batch.state._unlock()
+    t.ok(flushed)
+  }
+
+  t.comment('verify its borked')
+  {
+    await batch.state.mutex.lock()
+    const rx = batch.state.storage.read()
+    const tree = rx.getTreeNode(1)
+    rx.tryFlush()
+    t.is(await tree, null, 'tree node gone')
+    batch.state._unlock()
+  }
+
+  t.comment('write while you shouldnt induce')
+  await atomic.append('world')
+  await atom.flush()
+
+  await core.commit(atomic)
+  console.log(await core.get(core.length - 1))
+  t.comment('write while you shouldnt done')
+
+  await atomic.close()
+  await batch.close()
+  await core.close()
+
+  const core2 = new Hypercore(dir, core.key)
+
+  await t.execution(core2.ready())
+  const snap2 = core2.snapshot()
+  console.log('pre snap get')
+  console.log(await snap2.get(0))
+  console.log('pre append')
+
+  const atom2 = core2.state.storage.createAtom()
+  const batch2 = core2.session({ name: 'batch' })
+  const atomic2 = batch2.session({ atom })
+
+  await atomic2.append('boop')
+  await atom2.flush()
+
+  console.log(atomic2.length)
+  await core2.commit(atomic2)
+  console.log('post append')
+
+  const snap2a = core2.snapshot()
+  console.log('pre snap 2a get')
+  console.log(await snap2a.get(0))
+  console.log('post snap 2a')
+
+  console.log(await core2.get(0))
+
+  await atomic2.close()
+  await batch2.close()
+  await core2.close()
 })
