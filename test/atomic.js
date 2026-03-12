@@ -478,5 +478,8 @@ for (let i = 0; i < 100; i++) {
     await t.exception(atom.flush())
 
     await t.execution(MerkleTree.getRoots(session.state, session.length))
+
+    await a.close()
+    await b.close()
   })
 }
