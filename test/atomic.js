@@ -437,49 +437,48 @@ test.skip('draft truncate then append', async function (t) {
   await core.close()
 })
 
-for (let i = 0; i < 100; i++) {
-  test.solo('atomic - flush to wrong parent', async function (t) {
-    const storage = await createStorage(t)
+test('atomic - flush to wrong parent', async function (t) {
+  const storage = await createStorage(t)
 
-    const a = new Hypercore(storage)
+  const a = new Hypercore(storage)
 
-    await a.append('hello')
-    await a.append('world')
+  await a.append('hello')
+  await a.append('world')
 
-    const session = a.session({ name: 'session' })
-    await session.ready()
+  const session = a.session({ name: 'session' })
+  await session.ready()
 
-    const atom = a.state.storage.createAtom()
+  const atom = a.state.storage.createAtom()
 
-    const atomic = session.session({ atom })
-    await atomic.append('trigger')
+  const atomic = session.session({ atom })
+  await atomic.append('trigger')
 
-    const keyPair = crypto.keyPair()
-    const manifest = {
-      prologue: {
-        hash: await a.state.hash(),
-        length: a.state.length
-      },
-      signers: [{ publicKey: keyPair.publicKey }]
-    }
+  const keyPair = crypto.keyPair()
+  const manifest = {
+    prologue: {
+      hash: await a.state.hash(),
+      length: a.state.length
+    },
+    signers: [{ publicKey: keyPair.publicKey }]
+  }
 
-    const key = Hypercore.key(manifest)
+  const key = Hypercore.key(manifest)
 
-    const b = new Hypercore(storage, { key, manifest })
-    await b.ready()
+  const b = new Hypercore(storage, { key, manifest })
+  await b.ready()
 
-    await b.core.copyPrologue(a.state)
+  await b.core.copyPrologue(a.state)
 
-    await session.state.moveTo(b, b.length)
+  await session.state.moveTo(b, b.length)
 
-    const signature = b.core.verifier.sign(atomic.state.createTreeBatch(), keyPair)
-    await t.exception(b.state.commit(atomic.state, { signature }), /AssertionError/)
+  const signature = b.core.verifier.sign(atomic.state.createTreeBatch(), keyPair)
+  await t.exception(b.state.commit(atomic.state, { signature }), /AssertionError/)
 
-    await t.exception(atom.flush())
+  await t.exception(atom.flush())
 
-    await t.execution(MerkleTree.getRoots(session.state, session.length))
+  await t.execution(MerkleTree.getRoots(session.state, session.length))
 
-    await a.close()
-    await b.close()
-  })
+  await a.close()
+  await b.close()
 }
+
