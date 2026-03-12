@@ -477,4 +477,7 @@ test('atomic - flush to wrong parent', async function (t) {
   await t.exception(atom.flush())
 
   await t.execution(MerkleTree.getRoots(session.state, session.length))
+
+  await a.close()
+  await b.close()
 })
