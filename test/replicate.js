@@ -111,9 +111,11 @@ test('basic replication stats', async function (t) {
   t.is(aStats.hotswaps, 0, 'hotswaps init 0')
   t.is(aStats.invalidData, 0, 'invalid data init 0')
   t.is(aStats.invalidRequests, 0, 'invalid requests init 0')
+  t.is(aStats.backoffs, 0, 'backoffs init 0')
+  t.is(aStats.notAvailableBackoffs, 0, 'notAvailableBackoffs init 0')
 
   const initStatsLength = [...Object.keys(aStats)].length
-  t.is(initStatsLength, 13, 'Expected amount of stats')
+  t.is(initStatsLength, 14, 'Expected amount of stats')
 
   replicate(a, b, t)
 
@@ -2908,6 +2910,36 @@ test('local recovering from remote', async function (t) {
   }
 
   t.is(b.length, a.length)
+})
+
+test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bitfield)', async function (t) {
+  const writer = await create(t)
+
+  await writer.append(['a', 'b', 'c', 'd', 'e'])
+
+  const badBitfielder = await create(t, writer.key)
+  const reader = await create(t, writer.key)
+
+  replicate(badBitfielder, writer, t)
+  await badBitfielder.get(0)
+
+  t.is(badBitfielder.core.bitfield.get(0), true, 'sanity check')
+  await badBitfielder.core.bitfield.set(0, false) // put incorrect bitfield
+
+  replicate(badBitfielder, reader, t)
+
+  await t.exception(
+    async () => reader.get(0, { timeout: 500 }),
+    /REQUEST_TIMEOUT/,
+    'cannot get the block due to bad bitfield'
+  )
+
+  t.is(reader.replicator.stats.notAvailableBackoffs, 32, 'paused after 32 attempts')
+  t.ok(
+    badBitfielder.replicator.stats.wireRequest.rx < 40,
+    'did not continue getting spammed (sanity check)'
+  )
+  t.ok(reader.replicator.stats.wireRequest.tx < 40, 'did not continue spamming (sanity check)')
 })
 
 async function createAndDownload(t, core) {
