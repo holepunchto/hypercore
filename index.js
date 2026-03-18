@@ -926,7 +926,7 @@ class Hypercore extends EventEmitter {
     return defaultValue
   }
 
-  _setupMarks () {
+  _setupMarks() {
     if (this._marks === null) {
       const storage = this.snapshotted ? this.core.state.storage : this.state.storage
       this._marks = new MarkBitfield(storage)

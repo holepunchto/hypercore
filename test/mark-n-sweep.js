@@ -390,7 +390,11 @@ test('marking doesnt work on named sessions', async (t) => {
   const s = core.session({ name: 'beep' })
   await s.ready()
 
-  await t.exception(s.startMarking(), /Hypercore cannot be gc'ed when a named session/, 'throws trying to start marking')
+  await t.exception(
+    s.startMarking(),
+    /Hypercore cannot be gc'ed when a named session/,
+    'throws trying to start marking'
+  )
 })
 
 test('markBlock - works on snap but sweep on non-snap', async (t) => {
