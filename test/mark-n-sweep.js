@@ -356,6 +356,43 @@ test('markBlock - range', async (t) => {
   t.absent(await core.has(7, core.length), 'end index (non inclusive)')
 })
 
+test('marking works on simple sessions', async (t) => {
+  const core = await create(t)
+
+  for (let i = 0; i < 10; i++) {
+    await core.append('i' + i)
+  }
+
+  const s = core.session()
+  await s.ready()
+
+  await s.startMarking()
+
+  await s.markBlock(2, 7)
+
+  t.ok(await s.has(2), 'has start')
+  t.ok(await s.has(7), 'has end index')
+
+  await t.execution(s.sweep(), 'calling sweep works')
+
+  t.absent(await core.has(0, 2), 'checking parent cleared start')
+  t.ok(await core.has(2, 7), 'checking parent kept range')
+  t.absent(await core.has(7, core.length), 'checking parent end index (non inclusive)')
+})
+
+test('marking doesnt work on named sessions', async (t) => {
+  const core = await create(t)
+
+  for (let i = 0; i < 10; i++) {
+    await core.append('i' + i)
+  }
+
+  const s = core.session({ name: 'beep' })
+  await s.ready()
+
+  await t.exception(s.startMarking(), /Hypercore cannot be gc'ed when a named session/, 'throws trying to start marking')
+})
+
 test('markBlock - works on snap but sweep on non-snap', async (t) => {
   const core = await create(t)
 
