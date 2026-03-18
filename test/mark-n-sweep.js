@@ -355,3 +355,29 @@ test('markBlock - range', async (t) => {
   t.ok(await core.has(2, 7), 'kept range')
   t.absent(await core.has(7, core.length), 'end index (non inclusive)')
 })
+
+test('markBlock - works on snap but sweep on non-snap', async (t) => {
+  const core = await create(t)
+
+  for (let i = 0; i < 10; i++) {
+    await core.append('i' + i)
+  }
+
+  const snap = core.snapshot()
+  await snap.ready()
+
+  await snap.startMarking()
+
+  await snap.markBlock(2, 7)
+
+  t.ok(await snap.has(2), 'has start')
+  t.ok(await snap.has(7), 'has end index')
+
+  await t.exception(snap.sweep(), /Cannot sweep a snapshot/, 'throws if calling sweep on snap')
+
+  await t.execution(core.sweep(), 'sweep can be run on parent core')
+
+  t.absent(await core.has(0, 2), 'cleared start')
+  t.ok(await core.has(2, 7), 'kept range')
+  t.absent(await core.has(7, core.length), 'end index (non inclusive)')
+})

@@ -10,6 +10,7 @@ const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 const flat = require('flat-tree')
+const assert = require('nanoassert')
 
 const { SMALL_WANTS } = require('./lib/feature-flags')
 const { UPDATE_COMPAT } = require('./lib/wants')
@@ -213,6 +214,8 @@ class Hypercore extends EventEmitter {
     const onseq = opts.onseq === undefined ? this.onseq : opts.onseq
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
+    const marking = this._marking
+    const marks = this._marks
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
@@ -224,6 +227,8 @@ class Hypercore extends EventEmitter {
       weak,
       parent: this
     })
+    s._marking = marking
+    s._marks = marks
 
     return s
   }
@@ -921,12 +926,17 @@ class Hypercore extends EventEmitter {
     return defaultValue
   }
 
+  _setupMarks () {
+    if (this._marks === null) {
+      const storage = this.snapshotted ? this.core.state.storage : this.state.storage
+      this._marks = new MarkBitfield(storage)
+    }
+  }
+
   async markBlock(start, end = start + 1) {
     if (this.opened === false) await this.opening
 
-    if (this._marks === null) {
-      this._marks = new MarkBitfield(this.state.storage)
-    }
+    this._setupMarks()
 
     // TODO support as single rocks batch
     const setPromises = []
@@ -939,9 +949,9 @@ class Hypercore extends EventEmitter {
 
   async clearMarkings() {
     if (this.opened === false) await this.opening
-    if (this._marks === null) {
-      this._marks = new MarkBitfield(this.state.storage)
-    }
+
+    this._setupMarks()
+
     await this._marks.clear()
     this._marks = null
   }
@@ -959,10 +969,10 @@ class Hypercore extends EventEmitter {
   async sweep({ batchSize = 1000 } = {}) {
     if (this.opened === false) await this.opening
 
+    assert(!this.snapshotted, 'Cannot sweep a snapshot')
+
     // No marks - load from storage
-    if (this._marks === null) {
-      this._marks = new MarkBitfield(this.state.storage)
-    }
+    this._setupMarks()
 
     let clearing = []
     let prevIndex = this.length
