@@ -963,6 +963,9 @@ class Hypercore extends EventEmitter {
     if (this.state && this.state.name) {
       throw ASSERTION("Hypercore cannot be gc'ed when a named session", this.discoveryKey)
     }
+    if (this.state && this.state.storage.atom) {
+      throw ASSERTION("Hypercore cannot be gc'ed when an atomic session", this.discoveryKey)
+    }
     if (this.opened === false) await this.opening
     await this.clearMarkings()
 

@@ -382,7 +382,7 @@ test('marking works on simple sessions', async (t) => {
   await s.close()
 })
 
-test('marking doesnt work on named sessions', async (t) => {
+test('marking doesnt work on named or atomic sessions', async (t) => {
   const core = await create(t)
 
   for (let i = 0; i < 10; i++) {
@@ -399,6 +399,18 @@ test('marking doesnt work on named sessions', async (t) => {
   )
 
   await s.close()
+
+  const atom = core.state.storage.createAtom()
+
+  const atomic = core.session({ atom })
+  await atomic.ready()
+
+  await t.exception(
+    atomic.startMarking(),
+    /Hypercore cannot be gc'ed when an atomic session/,
+    'throws trying to start marking an atomic session'
+  )
+  await atomic.close()
 })
 
 test('markBlock - works on snap but sweep on non-snap', async (t) => {
