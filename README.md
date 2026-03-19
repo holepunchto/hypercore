@@ -533,6 +533,10 @@ This technique allows for marking blocks that should be kept and assuming all ot
 1. Enable marking mode via `await core.startMarking()`.
 2. Get all blocks that should be kept.  
    While the marking mode is enabled, all blocks retrieved (via `.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
+   > [!CAUTION]
+   > Be careful that caching does not skip a call to `.get()`.
+   > For example, `hyperbee` has caches for looking up the b-tree nodes that
+   > needs to be cleared before using mark & sweep.
 3. Sweep to clear unmarked blocks via `await core.sweep()`.  
    Once complete, all blocks that were not marked will be cleared.
 
