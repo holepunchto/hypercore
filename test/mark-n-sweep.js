@@ -378,6 +378,8 @@ test('marking works on simple sessions', async (t) => {
   t.absent(await core.has(0, 2), 'checking parent cleared start')
   t.ok(await core.has(2, 7), 'checking parent kept range')
   t.absent(await core.has(7, core.length), 'checking parent end index (non inclusive)')
+
+  await s.close()
 })
 
 test('marking doesnt work on named sessions', async (t) => {
@@ -395,6 +397,8 @@ test('marking doesnt work on named sessions', async (t) => {
     /Hypercore cannot be gc'ed when a named session/,
     'throws trying to start marking'
   )
+
+  await s.close()
 })
 
 test('markBlock - works on snap but sweep on non-snap', async (t) => {
@@ -421,4 +425,6 @@ test('markBlock - works on snap but sweep on non-snap', async (t) => {
   t.absent(await core.has(0, 2), 'cleared start')
   t.ok(await core.has(2, 7), 'kept range')
   t.absent(await core.has(7, core.length), 'end index (non inclusive)')
+
+  await snap.close()
 })
