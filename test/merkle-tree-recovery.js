@@ -432,7 +432,7 @@ test('recover - bad merkle root - atomically updates storage', async (t) => {
 
   await clone.close()
 
-  const clone2 = new Hypercore(await open(), core.key, { writable: false },)
+  const clone2 = new Hypercore(await open(), core.key, { writable: false })
   t.teardown(() => clone2.close())
   await t.execution(() => clone2.ready())
 
