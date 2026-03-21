@@ -171,7 +171,8 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.ondiscoverykey) {
-      noiseStream.userData.pair({ protocol: 'hypercore/alpha' }, opts.ondiscoverykey)
+      const ondiscoverykey = createDiscoveryKeyHandler(opts.ondiscoverykey)
+      noiseStream.userData.pair({ protocol: 'hypercore/alpha' }, ondiscoverykey)
     }
 
     return outerStream
@@ -1294,4 +1295,12 @@ function isEncryptionProvider(e) {
 
 function isFunction(fn) {
   return !!fn && typeof fn === 'function'
+}
+
+function createDiscoveryKeyHandler(fn) {
+  return ondiscoverykey
+  function ondiscoverykey(id) {
+    if (!id || id.byteLength !== 32) return
+    return fn(id)
+  }
 }
