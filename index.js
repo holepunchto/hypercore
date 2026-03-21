@@ -1300,7 +1300,7 @@ function isFunction(fn) {
 function createDiscoveryKeyHandler(fn) {
   return ondiscoverykey
   function ondiscoverykey(id) {
-    if (!id || id.byteLength !== 32) return
+    if (!id || id.byteLength !== 32) throw BAD_ARGUMENT('Invalid discovery key')
     return fn(id)
   }
 }
