@@ -522,6 +522,54 @@ Info {
 }
 ```
 
+#### `await core.startMarking()`
+
+This enables marking mode for the "mark & sweep" approach to clear hypercore storage. When called the current markings are cleared.
+
+##### Mark & Sweep
+
+This technique allows for marking blocks that should be kept and assuming all other blocks should be cleared. It can be achieved using the following steps:
+
+1. Enable marking mode via `await core.startMarking()`.
+2. Get all blocks that should be kept.  
+   While the marking mode is enabled, all blocks retrieved (via `.get()`, etc) will be "marked". Marked blocks will not be cleared when sweeping.
+3. Sweep to clear unmarked blocks via `await core.sweep()`.  
+   Once complete, all blocks that were not marked will be cleared.
+
+> [!CAUTION]
+> Be careful that caching does not skip a call to `.get()`.  
+> For example, `hyperbee` has caches for looking up the b-tree nodes that
+> needs to be cleared before using mark & sweep.
+
+Example:
+
+```js
+await core.startMarking()
+await core.get(2)
+await core.get(4)
+await core.sweep() // All blocks but blocks 2 & 4 are cleared
+```
+
+#### `await core.markBlock(start, end = start + 1)`
+
+Manually mark a block or range of blocks to be retained when sweeping. Useful to mark blocks without loading them into memory. `end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.
+
+#### `await core.clearMarkings()`
+
+Manually remove all markings. Automatically called when calling `core.startMarking()`.
+
+#### `await core.sweep(opts)`
+
+Clear all unmarked blocks from storage.
+
+`opts` can include:
+
+```
+{
+  batchSize: 1000 // How frequently to flush clears to storage.
+}
+```
+
 #### `await core.close([{ error }])`
 
 Fully close this core. Passing an error via `{ error }` is optional and all pending replicator requests will be rejected with the error.
