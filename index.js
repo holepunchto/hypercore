@@ -962,6 +962,7 @@ class Hypercore extends EventEmitter {
 
   async truncate(newLength = 0, opts = {}) {
     if (this.opened === false) await this.opening
+    if (this.closing) throw SESSION_CLOSED('Cannot append to a closed session', this.discoveryKey)
 
     const {
       fork = this.state.fork + 1,
@@ -983,6 +984,7 @@ class Hypercore extends EventEmitter {
 
   async append(blocks, opts = {}) {
     if (this.opened === false) await this.opening
+    if (this.closing) throw SESSION_CLOSED('Cannot append to a closed session', this.discoveryKey)
 
     const isDefault = this.state === this.core.state
     const defaultKeyPair = this.state.name === null ? this.keyPair : null
