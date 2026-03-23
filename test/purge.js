@@ -19,6 +19,7 @@ test('basic purge', async function (t) {
 
   const reopenedStorage = await createStorage(t, dir)
   const coreStorage = await reopenedStorage.resumeCore(discoveryKey)
+  t.teardown(() => reopenedStorage.close())
 
   const allBlocks = await toArray(coreStorage.createBlockStream())
   t.is(allBlocks.length, 0)
