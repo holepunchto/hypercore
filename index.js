@@ -10,9 +10,11 @@ const id = require('hypercore-id-encoding')
 const safetyCatch = require('safety-catch')
 const unslab = require('unslab')
 const flat = require('flat-tree')
+const assert = require('nanoassert')
 
 const { SMALL_WANTS } = require('./lib/feature-flags')
 const { UPDATE_COMPAT } = require('./lib/wants')
+const MarkBitfield = require('./lib/mark-bitfield')
 
 const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
@@ -91,6 +93,10 @@ class Hypercore extends EventEmitter {
     this._active = opts.weak ? !!opts.active : opts.active !== false
 
     this.waits = 0
+
+    // Mark & Sweep GC
+    this._marking = false
+    this._marks = null
 
     this._sessionIndex = -1
     this._stateIndex = -1 // maintained by session state
@@ -218,6 +224,8 @@ class Hypercore extends EventEmitter {
     const onseq = opts.onseq === undefined ? this.onseq : opts.onseq
     const timeout = opts.timeout === undefined ? this.timeout : opts.timeout
     const weak = opts.weak === undefined ? this.weak : opts.weak
+    const marking = this._marking
+    const marks = this._marks
     const Clz = opts.class || Hypercore
     const s = new Clz(null, this.key, {
       ...opts,
@@ -229,6 +237,8 @@ class Hypercore extends EventEmitter {
       weak,
       parent: this
     })
+    s._marking = marking
+    s._marks = marks
 
     return s
   }
@@ -824,6 +834,7 @@ class Hypercore extends EventEmitter {
       (opts && opts.valueEncoding && c.from(opts.valueEncoding)) || this.valueEncoding
 
     if (this.onseq !== null) this.onseq(index, this)
+    if (this._marking) await this.markBlock(index)
 
     const req = this._get(index, opts)
 
@@ -932,6 +943,82 @@ class Hypercore extends EventEmitter {
       if (opts.wait === true) return true
     }
     return defaultValue
+  }
+
+  _setupMarks() {
+    if (this._marks === null) {
+      const storage = this.snapshotted ? this.core.state.storage : this.state.storage
+      this._marks = new MarkBitfield(storage)
+    }
+  }
+
+  async markBlock(start, end = start + 1) {
+    if (this.opened === false) await this.opening
+
+    this._setupMarks()
+
+    // TODO support as single rocks batch
+    const setPromises = []
+    for (let i = start; i < end; i++) {
+      setPromises.push(this._marks.set(i, true))
+    }
+
+    return Promise.all(setPromises)
+  }
+
+  async clearMarkings() {
+    if (this.opened === false) await this.opening
+
+    this._setupMarks()
+
+    await this._marks.clear()
+    this._marks = null
+  }
+
+  async startMarking() {
+    if (this._marking) {
+      throw ASSERTION("Hypercore cannot be gc'ed when already in gc mode", this.discoveryKey)
+    }
+    if (this.state && this.state.name) {
+      throw ASSERTION("Hypercore cannot be gc'ed when a named session", this.discoveryKey)
+    }
+    if (this.state && this.state.storage.atom) {
+      throw ASSERTION("Hypercore cannot be gc'ed when an atomic session", this.discoveryKey)
+    }
+    if (this.opened === false) await this.opening
+    await this.clearMarkings()
+
+    this._marking = true
+  }
+
+  async sweep({ batchSize = 1000 } = {}) {
+    if (this.opened === false) await this.opening
+
+    assert(!this.snapshotted, 'Cannot sweep a snapshot')
+
+    // No marks - load from storage
+    this._setupMarks()
+
+    let clearing = []
+    let prevIndex = this.length
+    for await (const index of this._marks.createMarkStream({ reverse: true })) {
+      if (index + 1 === prevIndex) {
+        prevIndex = index
+        continue
+      }
+      clearing.push(this.clear(index + 1, prevIndex))
+      if (clearing.length >= batchSize) {
+        await Promise.all(clearing)
+        clearing = []
+      }
+      prevIndex = index
+    }
+    // Clear range from the very start if not marked
+    if (prevIndex > 0) clearing.push(this.clear(0, prevIndex))
+    await Promise.all(clearing)
+
+    this._marking = false
+    await this.clearMarkings()
   }
 
   createReadStream(opts) {
