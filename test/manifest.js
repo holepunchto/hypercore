@@ -1553,6 +1553,17 @@ test('manifest - persist if manifest is updated', async function (t) {
   }
 })
 
+test('manifest - invalid signature fails', async function (t) {
+  const core = await create(t, { compat: false })
+
+  t.ok(core.writable)
+
+  const signature = b4a.alloc(32)
+  await t.exception(core.append('hello', { signature }))
+
+  t.is(core.length, 0)
+})
+
 function createMultiManifest(signers, prologue = null) {
   return {
     hash: 'blake2b',
