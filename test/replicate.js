@@ -436,61 +436,6 @@ test('invalid signature fails', async function (t) {
   replicate(a, b, t)
 })
 
-test('more invalid signatures fails', async function (t) {
-  const a = await create(t, null)
-
-  await a.append(['a', 'b'], { signature: b4a.alloc(64) })
-
-  await t.test('replication fails after bad append', async function (sub) {
-    sub.plan(1)
-
-    const b = await create(t, a.key)
-    replicate(a, b, sub)
-
-    b.on('verification-error', function (err) {
-      sub.is(err.code, 'INVALID_SIGNATURE')
-    })
-
-    b.get(0).then(
-      () => sub.fail('should not get block'),
-      () => {}
-    )
-    sub.teardown(() => b.close())
-  })
-
-  await a.truncate(1, { signature: b4a.alloc(64) })
-
-  await t.test('replication fails after bad truncate', async function (sub) {
-    sub.plan(1)
-
-    const b = await create(t, a.key)
-    replicate(a, b, sub)
-
-    b.on('verification-error', function (err) {
-      sub.is(err.code, 'INVALID_SIGNATURE')
-    })
-
-    b.get(0).then(
-      () => sub.fail('should not get block'),
-      () => {}
-    )
-    sub.teardown(() => b.close())
-  })
-
-  await a.append('good')
-
-  await t.test('replication works again', async function (sub) {
-    const b = await create(t, a.key)
-    replicate(a, b, sub)
-
-    await new Promise((resolve) => setImmediate(resolve))
-
-    sub.alike(await b.get(0), b4a.from('a'), 'got block')
-
-    sub.teardown(() => b.close())
-  })
-})
-
 test('invalid capability fails', async function (t) {
   t.plan(2)
 

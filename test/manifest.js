@@ -384,24 +384,7 @@ test('multisig - batch failed', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(core.append(b4a.from('hello'), { signature: multisig }))
-
-  const core2 = await create(t, { manifest })
-
-  const s1 = core.replicate(true)
-  const s2 = core2.replicate(false)
-
-  const p = new Promise((resolve, reject) => {
-    core2.on('verification-error', reject)
-
-    setTimeout(resolve, 100)
-  })
-
-  s1.pipe(s2).pipe(s1)
-
-  await t.exception(p)
-
-  t.is(core2.length, 0)
+  await t.exception(core.append(b4a.from('hello'), { signature: multisig }))
 
   await batch.close()
 })
@@ -621,29 +604,11 @@ test('multisig - cannot divide batch', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(
+  await t.exception(
     core.append([b4a.from('0'), b4a.from('1')], {
       signature: multisig
     })
   )
-
-  const core2 = await create(t, { manifest })
-
-  const s1 = core.replicate(true)
-  const s2 = core2.replicate(false)
-
-  const p = new Promise((resolve, reject) => {
-    core.once('verification-error', reject)
-    core2.once('verification-error', reject)
-
-    core2.on('append', resolve)
-  })
-
-  s1.pipe(s2).pipe(s1)
-
-  await t.exception(p)
-
-  t.is(core2.length, 0)
 })
 
 test('multisig - multiple appends', async function (t) {
@@ -1602,8 +1567,6 @@ test('manifest - writable', async function (t) {
   await t.exception(imposter.append('hello'))
 
   t.is(imposter.length, 0)
-
-
 })
 
 function createMultiManifest(signers, prologue = null) {
