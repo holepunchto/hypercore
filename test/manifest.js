@@ -1562,6 +1562,12 @@ test('manifest - invalid signature fails', async function (t) {
   await t.exception(core.append('hello', { signature }))
 
   t.is(core.length, 0)
+
+  await core.append(['a', 'b'])
+
+  t.is(core.length, 2)
+
+  await t.exception(core.truncate(1, { signature }))
 })
 
 function createMultiManifest(signers, prologue = null) {
