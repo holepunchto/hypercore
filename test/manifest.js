@@ -1567,17 +1567,43 @@ test('manifest - writable', async function (t) {
   })
 
   const key = Verifier.manifestHash(manifest)
-  const core = await create(t, { compat: false, manifest })
 
-  t.alike(core.key, key)
+  // correct keyPair
+  const writer = await create(t, { compat: false, manifest, keyPair })
+  t.alike(writer.key, key)
 
-  t.absent(core.keyPair)
-  t.absent(core.writable)
+  t.ok(writer.keyPair)
+  t.ok(writer.writable)
 
   const signature = b4a.alloc(32)
-  await t.exception(core.append('hello'))
+  await t.execution(writer.append('hello'))
 
-  t.is(core.length, 0)
+  t.is(writer.length, 1)
+
+  // no keyPair
+  const reader = await create(t, { compat: false, manifest })
+
+  t.alike(reader.key, key)
+
+  t.absent(reader.keyPair)
+  t.absent(reader.writable)
+
+  await t.exception(reader.append('hello'))
+
+  t.is(reader.length, 0)
+
+  // bad keyPair
+  const imposter = await create(t, { compat: false, manifest, keyPair: crypto.keyPair() })
+  t.alike(imposter.key, key)
+
+  t.ok(imposter.keyPair)
+  t.ok(imposter.writable)
+
+  await t.exception(imposter.append('hello'))
+
+  t.is(imposter.length, 0)
+
+
 })
 
 function createMultiManifest(signers, prologue = null) {
