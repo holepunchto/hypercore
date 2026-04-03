@@ -1551,6 +1551,20 @@ test('manifest - specifying quorum higher than signers length throws', async fun
       }),
     /BAD_ARGUMENT: Quorum/
   )
+
+  t.exception(
+    () =>
+      Verifier.createManifest({
+        quorum: -1,
+        signers: [
+          {
+            signature: 'ed25519',
+            publicKey: keyPair.publicKey
+          }
+        ]
+      }),
+    /BAD_ARGUMENT: Quorum/
+  )
 })
 
 function createMultiManifest(signers, prologue = null) {
