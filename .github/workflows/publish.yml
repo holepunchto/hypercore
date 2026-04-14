@@ -1,0 +1,17 @@
+name: Publish
+on:
+  push:
+    tags:
+      - v*
+permissions:
+  id-token: write
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+    name: Publish
+    steps:
+      - uses: holepunchto/actions/node-base@v1
+      - uses: holepunchto/actions/publish@v1
