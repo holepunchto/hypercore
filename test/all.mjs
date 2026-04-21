@@ -7,37 +7,37 @@ async function runTests() {
 
   test.pause()
 
-  await import('./atomic.js')
-  await import('./basic.js') // todo: implement storageInfo API
-  await import('./batch.js')
-  await import('./bit-interlude.js')
-  await import('./bitfield.js')
-  await import('./clear.js') // todo: replace Info.bytesUsed API
-  // await import('./compat.js') // todo: how to test compat?
-  await import('./conflicts.js')
-  await import('./core.js')
-  await import('./encodings.js')
-  await import('./encryption.js')
-  await import('./extension.js')
-  await import('./fully-remote-proof.js')
-  await import('./manifest.js')
-  await import('./mark-n-sweep.js')
-  await import('./merkle-tree.js')
-  await import('./merkle-tree-recovery.js')
-  await import('./move-to.js')
-  await import('./mutex.js')
-  await import('./preload.js')
-  // await import('./purge.js') // todo: implement purge
-  await import('./push.js')
-  await import('./remote-bitfield.js')
-  await import('./remote-length.js')
-  await import('./replicate.js')
-  await import('./sessions.js')
-  await import('./snapshots.js')
-  await import('./streams.js')
-  await import('./timeouts.js')
-  await import('./user-data.js')
-  await import('./wants.js')
+  await test.load(import.meta.resolve('./atomic.js'))
+  await test.load(import.meta.resolve('./basic.js')) // todo: implement storageInfo API
+  await test.load(import.meta.resolve('./batch.js'))
+  await test.load(import.meta.resolve('./bit-interlude.js'))
+  await test.load(import.meta.resolve('./bitfield.js'))
+  await test.load(import.meta.resolve('./clear.js')) // todo: replace Info.bytesUsed API
+  // await test.load(import.meta.resolve('./compat.js')) // todo: how to test compat?
+  await test.load(import.meta.resolve('./conflicts.js'))
+  await test.load(import.meta.resolve('./core.js'))
+  await test.load(import.meta.resolve('./encodings.js'))
+  await test.load(import.meta.resolve('./encryption.js'))
+  await test.load(import.meta.resolve('./extension.js'))
+  await test.load(import.meta.resolve('./fully-remote-proof.js'))
+  await test.load(import.meta.resolve('./manifest.js'))
+  await test.load(import.meta.resolve('./mark-n-sweep.js'))
+  await test.load(import.meta.resolve('./merkle-tree.js'))
+  await test.load(import.meta.resolve('./merkle-tree-recovery.js'))
+  await test.load(import.meta.resolve('./move-to.js'))
+  await test.load(import.meta.resolve('./mutex.js'))
+  await test.load(import.meta.resolve('./preload.js'))
+  // await test.load(import.meta.resolve('./purge.js')) // todo: implement purge
+  await test.load(import.meta.resolve('./push.js'))
+  await test.load(import.meta.resolve('./remote-bitfield.js'))
+  await test.load(import.meta.resolve('./remote-length.js'))
+  await test.load(import.meta.resolve('./replicate.js'))
+  await test.load(import.meta.resolve('./sessions.js'))
+  await test.load(import.meta.resolve('./snapshots.js'))
+  await test.load(import.meta.resolve('./streams.js'))
+  await test.load(import.meta.resolve('./timeouts.js'))
+  await test.load(import.meta.resolve('./user-data.js'))
+  await test.load(import.meta.resolve('./wants.js'))
 
   test.resume()
 }
