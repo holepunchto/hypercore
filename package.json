@@ -6,9 +6,9 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "prettier --check . && lunte",
-    "test": "brittle test/all.js",
-    "test:bare": "bare test/all.js",
-    "test:generate": "brittle -r test/all.js test/*.js"
+    "test": "brittle test/all.mjs",
+    "test:bare": "bare test/all.mjs",
+    "test:generate": "brittle -r test/all.mjs test/*.js"
   },
   "repository": {
     "type": "git",
