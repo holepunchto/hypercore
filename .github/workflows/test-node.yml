@@ -33,7 +33,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm install
       - run: npm test
-      - run: echo "Running on $(nproc) cores"
       - run: npm -g install bare
       - run: npm run test:bare
   trigger_canary:
