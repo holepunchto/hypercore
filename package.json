@@ -7,8 +7,7 @@
     "format": "prettier --write .",
     "lint": "prettier --check . && lunte",
     "test": "brittle-node test/all.mjs",
-    "test:bare": "brittle-bare test/all.mjs",
-    "test:bare:parallel": "brittle-bare -j 4 test/all.mjs",
+    "test:bare": "brittle-bare -j 4 test/all.mjs",
     "test:generate": "brittle-make-test test/all.mjs test/*.js"
   },
   "repository": {
