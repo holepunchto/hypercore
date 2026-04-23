@@ -8,7 +8,7 @@
     "lint": "prettier --check . && lunte",
     "test": "npm run test:node && npm run test:bare",
     "test:node": "brittle-node test/all.mjs",
-    "test:bare": "brittle-bare -j 4 test/all.mjs",
+    "test:bare": "brittle-bare -j 1 test/all.mjs",
     "test:generate": "brittle-make-test test/all.mjs test/*.js"
   },
   "repository": {
