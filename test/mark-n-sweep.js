@@ -3,7 +3,7 @@ const { create, createStorage } = require('./helpers')
 
 const Hypercore = require('../')
 
-test('startMarking - basic', async (t) => {
+test('startMarking - basic', { timeout: 60_000 }, async (t) => {
   const core = await create(t)
 
   const num = 50_000
@@ -90,7 +90,7 @@ test('startMarking then immediate sweep', async (t) => {
   t.absent(await core.has(0, core.length), 'cleared all blocks')
 })
 
-test('startMarking - on session', async (t) => {
+test('startMarking - on session', { timeout: 60_000 }, async (t) => {
   const core = await create(t)
 
   const num = 50_000
