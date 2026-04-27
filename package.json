@@ -6,9 +6,10 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "prettier --check . && lunte",
-    "test": "brittle test/all.js",
-    "test:bare": "bare test/all.js",
-    "test:generate": "brittle -r test/all.js test/*.js"
+    "test": "npm run test:node && npm run test:bare",
+    "test:node": "brittle-node test/all.mjs",
+    "test:bare": "brittle-bare -j 8 test/all.mjs",
+    "test:generate": "brittle-make-test test/all.mjs test/*.js"
   },
   "repository": {
     "type": "git",
@@ -67,7 +68,7 @@
     "z32": "^1.0.0"
   },
   "devDependencies": {
-    "brittle": "^3.0.0",
+    "brittle": "github:holepunchto/brittle#v4-debug",
     "debugging-stream": "^3.1.0",
     "hyperswarm": "^4.3.6",
     "lunte": "^1.3.0",
