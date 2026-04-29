@@ -1,4 +1,4 @@
-name: Test with Node
+name: Test with Bare
 
 on:
   push:
@@ -28,12 +28,7 @@ jobs:
       - uses: holepunchto/actions/node-base@v1
         with:
           allow-git: true
+      - uses: holepunchto/actions/setup-bare@v1
 
       - name: Run tests
-        run: npm run test:node
-
-      - name: Run tests (encrypt all)
-        run: npm run test:node -- --encrypt-all
-
-      - name: Run tests (fixtures)
-        run: npm run test:fixtures
+        run: npm run test:bare
