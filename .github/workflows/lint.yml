@@ -1,0 +1,16 @@
+name: Lint
+
+on:
+  push:
+    branches: [main, rocksdb]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: holepunchto/actions/node-base@v1
+        with:
+          allow-git: true
+      - run: npm run lint
