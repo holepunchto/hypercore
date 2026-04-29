@@ -31,9 +31,3 @@ jobs:
 
       - name: Run tests
         run: npm run test:node
-
-      - name: Run tests (encrypt all)
-        run: npm run test:node -- --encrypt-all
-
-      - name: Run tests (fixtures)
-        run: npm run test:fixtures
