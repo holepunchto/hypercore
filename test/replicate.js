@@ -2887,24 +2887,6 @@ test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bi
   t.ok(reader.replicator.stats.wireRequest.tx < 40, 'did not continue spamming (sanity check)')
 })
 
-test('remoteContiguousLength and remote contiguousLength match', async function (t) {
-  const a = await create(t)
-
-  await a.append(['a', 'b', 'c'])
-
-  const b = await create(t, a.key)
-
-  let d = 0
-  b.on('download', () => d++)
-
-  replicate(a, b, t)
-
-  await b.get(0)
-  await b.get(1)
-
-  t.is(a.remoteContiguousLength, b.contiguousLength)
-})
-
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })

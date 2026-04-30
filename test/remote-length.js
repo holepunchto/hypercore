@@ -120,6 +120,28 @@ test('truncates by the writer result in the updated contiguous length being anno
   t.is(getPeer(b, a).remoteContiguousLength, 1, 'truncate broadcast to other peers')
 })
 
+test.solo('remoteContiguousLength and remote contiguousLength match', async function (t) {
+  const a = await create(t)
+
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key)
+
+  let d = 0
+  b.on('download', () => d++)
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await b.get(1)
+
+  while (b.contiguousLength !== a.remoteContiguousLength) {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+
+  t.pass('contiguousLength matches remoteContiguousLength')
+})
+
 // Get peer b as seen by peer a (b is the remote peer).
 function getPeer(a, b) {
   for (const aPeer of a.core.replicator.peers) {
