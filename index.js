@@ -193,7 +193,12 @@ class Hypercore extends EventEmitter {
   }
 
   static clearRequests(session, err) {
-    return Replicator.clearRequests(session, err)
+    Replicator.clearRequests(session, err)
+  }
+
+  static destroyRequests(session, err) {
+    Replicator.clearRequests(session, err)
+    session.push(null) // mark as dead
   }
 
   static async treeHashFromStorage(session, length = session.length) {
