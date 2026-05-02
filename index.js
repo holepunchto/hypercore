@@ -34,7 +34,8 @@ const {
   SESSION_MOVED,
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE,
-  DECODING_ERROR
+  DECODING_ERROR,
+  REQUEST_CANCELLED
 } = require('hypercore-errors')
 
 // Hypercore actually does not have any notion of max/min block sizes
@@ -736,6 +737,8 @@ class Hypercore extends EventEmitter {
 
     if (!upgraded && remoteWait) {
       const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+      if (isRequestsDestroyed(activeRequests)) throw REQUEST_CANCELLED()
+
       const req = this.core.replicator.addUpgrade(activeRequests)
 
       try {
@@ -755,6 +758,7 @@ class Hypercore extends EventEmitter {
     if (!isValidIndex(bytes)) throw ASSERTION('seek is invalid', this.discoveryKey)
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+    if (isRequestsDestroyed(activeRequests)) throw REQUEST_CANCELLED()
 
     if (this.encryption && !this.core.manifest) {
       const req = this.replicator.addUpgrade(activeRequests)
@@ -777,6 +781,7 @@ class Hypercore extends EventEmitter {
 
     if (!this._shouldWait(opts, this.wait)) return null
 
+    if (isRequestsDestroyed(activeRequests)) throw REQUEST_CANCELLED()
     const req = this.core.replicator.addSeek(activeRequests, s)
 
     const timeout = opts && opts.timeout !== undefined ? opts.timeout : this.timeout
@@ -916,6 +921,7 @@ class Hypercore extends EventEmitter {
     if (this.onwait) this.onwait(index, this)
 
     const activeRequests = (opts && opts.activeRequests) || this.activeRequests
+    if (isRequestsDestroyed(activeRequests)) throw REQUEST_CANCELLED()
 
     const force = opts ? opts.force === true : false
     const req = this.core.replicator.addBlock(activeRequests, index, force)
@@ -1392,4 +1398,9 @@ function createDiscoveryKeyHandler(fn) {
     if (!id || id.byteLength !== 32) throw BAD_ARGUMENT('Invalid discovery key')
     return fn(id)
   }
+}
+
+function isRequestsDestroyed(activeRequests) {
+  // TODO: move this to an object instead so we can store a property in next major
+  return activeRequests.length > 0 && activeRequests[0] === null
 }
