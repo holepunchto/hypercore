@@ -97,6 +97,23 @@ test('basic byte stream', async function (t) {
   t.is(expected.length, 0)
 })
 
+test('basic byte stream w/ empty buffers', async function (t) {
+  const core = await create(t)
+
+  // 'end' enforces that it attempts to decode the previous blocks even though they dont contribute to byte length
+  const expected = ['hello', 'world', '', b4a.alloc(0), 'end']
+
+  await core.append(expected)
+
+  t.is(core.length, expected.length, 'all blocks appended')
+  for await (const data of core.createByteStream()) {
+    const r = expected.shift()
+    t.alike(b4a.toString(data), typeof r === 'string' ? r : b4a.toString(r))
+  }
+
+  t.is(expected.length, 0)
+})
+
 test('basic byte stream with byteOffset / byteLength', async function (t) {
   const core = await create(t)
 
