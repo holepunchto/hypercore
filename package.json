@@ -54,7 +54,7 @@
     "hypercore-crypto": "^3.2.1",
     "hypercore-errors": "^1.5.0",
     "hypercore-id-encoding": "^1.2.0",
-    "hypercore-storage": "github:holepunchto/hypercore-storage#compact-encoding-v3",
+    "hypercore-storage": "^2.8.0",
     "is-options": "^1.0.1",
     "nanoassert": "^2.0.0",
     "protomux": "^3.5.0",
