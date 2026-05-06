@@ -1535,6 +1535,38 @@ test('manifest - invalid signature fails', async function (t) {
   await t.exception(core.truncate(1, { signature }))
 })
 
+test('manifest - specifying quorum higher than signers length throws', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  t.exception(
+    () =>
+      Verifier.createManifest({
+        quorum: 2,
+        signers: [
+          {
+            signature: 'ed25519',
+            publicKey: keyPair.publicKey
+          }
+        ]
+      }),
+    /BAD_ARGUMENT: Quorum/
+  )
+
+  t.exception(
+    () =>
+      Verifier.createManifest({
+        quorum: -1,
+        signers: [
+          {
+            signature: 'ed25519',
+            publicKey: keyPair.publicKey
+          }
+        ]
+      }),
+    /BAD_ARGUMENT: Quorum/
+  )
+})
+
 function createMultiManifest(signers, prologue = null) {
   return {
     hash: 'blake2b',
