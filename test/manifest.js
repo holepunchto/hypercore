@@ -1627,6 +1627,8 @@ test.solo('multisig - commit w partial blocks', async function (t) {
   await batch.append(b4a.from('1'))
   await batch.append(b4a.from('2'))
   await batch.append(b4a.from('3'))
+
+  t.is(batch.length, 4)
   await core.commit(batch, { signature: multisig })
 
   t.is(core.length, 4)
