@@ -1644,8 +1644,6 @@ test.solo('multisig - commit w partial blocks', async function (t) {
   t.absent(await core2.has(2, 4))
 
   const batch = core2.session({ name: 'batch', overwrite: true })
-  await batch.append(await core.get(2))
-  await batch.append(await core.get(3))
   await core2.commit(batch, { signature: multisig })
 
   t.ok(await core2.has(0, 4))
