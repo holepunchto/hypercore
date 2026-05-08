@@ -1622,11 +1622,12 @@ test.solo('multisig - commit w partial blocks', async function (t) {
 
   multisig = assemble([proof, proof2])
 
-  await t.execution(
-    core.append([b4a.from('0'), b4a.from('1'), b4a.from('2'), b4a.from('3')], {
-      signature: multisig
-    })
-  )
+  const batch = core.session({ name: 'batch', overwrite: true })
+  await batch.append(b4a.from('0'))
+  await batch.append(b4a.from('1'))
+  await batch.append(b4a.from('2'))
+  await batch.append(b4a.from('3'))
+  await core.commit(batch, { signature: multisig })
 
   t.is(core.length, 4)
 
@@ -1643,7 +1644,6 @@ test.solo('multisig - commit w partial blocks', async function (t) {
   t.ok(await core2.has(0, 2))
   t.absent(await core2.has(2, 4))
 
-  const batch = core2.session({ name: 'batch', overwrite: true })
   await core2.commit(batch, { signature: multisig })
 
   t.ok(await core2.has(0, 4))
