@@ -1646,5 +1646,5 @@ test.solo('multisig - commit w partial blocks', async function (t) {
 
   await core2.commit(batch, { signature: multisig })
 
-  t.ok(await core2.has(0, 4))
+  t.ok(await core2.has(0, 4), 'should have all blocks')
 })
