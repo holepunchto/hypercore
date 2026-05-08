@@ -1,3 +1,4 @@
+const { once } = require('events')
 const test = require('brittle')
 const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
@@ -1591,3 +1592,61 @@ async function partialCoreSignature(core, s, len) {
   const proof = await partialSignature(s.core, index, len, s.core.state.length, sig)
   return proof
 }
+
+test.solo('multisig - commit w partial blocks', async function (t) {
+  const signers = []
+  for (let i = 0; i < 3; i++) signers.push(await create(t, { compat: false }))
+  await Promise.all(signers.map((s) => s.ready()))
+
+  const manifest = createMultiManifest(signers)
+
+  let multisig = null
+  const core = await create(t, { manifest })
+
+  await signers[0].append(b4a.from('0'))
+  await signers[0].append(b4a.from('1'))
+  await signers[0].append(b4a.from('2'))
+  await signers[0].append(b4a.from('3'))
+
+  await signers[1].append(b4a.from('0'))
+  await signers[1].append(b4a.from('1'))
+  await signers[1].append(b4a.from('2'))
+  await signers[1].append(b4a.from('3'))
+
+  const len = signableLength([signers[0].length, signers[1].length], 2)
+
+  t.is(len, 4)
+
+  const proof = await partialCoreSignature(core, signers[0], len)
+  const proof2 = await partialCoreSignature(core, signers[1], len)
+
+  multisig = assemble([proof, proof2])
+
+  await t.execution(
+    core.append([b4a.from('0'), b4a.from('1'), b4a.from('2'), b4a.from('3')], {
+      signature: multisig
+    })
+  )
+
+  t.is(core.length, 4)
+
+  const core2 = await create(t, { manifest })
+  await core2.update({ wait: true })
+
+  const p = once(core2, 'append')
+  const streams = replicate(core, core2, t)
+  await p
+
+  await core2.download({ start: 0, end: 2 }).done()
+  t.is(core2.length, 4)
+  t.is(core2.contiguousLength, 2)
+  t.ok(await core2.has(0, 2))
+  t.absent(await core2.has(2, 4))
+
+  const batch = core2.session({ name: 'batch', overwrite: true })
+  await batch.append(await core.get(2))
+  await batch.append(await core.get(3))
+  await core2.commit(batch, { signature: multisig })
+
+  t.ok(await core2.has(0, 4))
+})
