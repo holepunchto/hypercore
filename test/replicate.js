@@ -793,6 +793,67 @@ test('multiplexing multiple times over the same stream', async function (t) {
   s3.destroy()
 })
 
+test('closing idle multiplexed stream does not update all peers', async function (t) {
+  const n1 = new NoiseSecretStream(true)
+  const n2 = new NoiseSecretStream(false)
+
+  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+
+  const cores = []
+  const clones = []
+
+  for (let i = 0; i < 4; i++) {
+    const core = await create(t)
+    await core.append('block-' + i)
+
+    const clone = await create(t, core.key)
+
+    core.replicate(n1, { keepAlive: true })
+    clone.replicate(n2, { keepAlive: true })
+
+    cores.push(core)
+    clones.push(clone)
+  }
+
+  for (const clone of clones) await clone.get(0)
+
+  await eventFlush()
+
+  for (let i = 0; i < cores.length; i++) {
+    t.is(cores[i].peers.length, 1)
+    t.is(clones[i].peers.length, 1)
+  }
+
+  let updates = 0
+  const restore = []
+  for (const core of cores.concat(clones)) {
+    const replicator = core.core.replicator
+    const updateAll = replicator.updateAll
+    restore.push(() => {
+      replicator.updateAll = updateAll
+    })
+
+    replicator.updateAll = function () {
+      updates++
+      return updateAll.apply(this, arguments)
+    }
+  }
+
+  t.teardown(() => {
+    for (const fn of restore) fn()
+  })
+
+  n1.destroy()
+  n2.destroy()
+
+  await Promise.all([
+    new Promise((resolve) => n1.once('close', resolve)),
+    new Promise((resolve) => n2.once('close', resolve))
+  ])
+
+  t.is(updates, 0)
+})
+
 test('destroying a stream and re-replicating works', async function (t) {
   const core = await create(t)
 
