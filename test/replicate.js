@@ -793,6 +793,52 @@ test('multiplexing multiple times over the same stream', async function (t) {
   s3.destroy()
 })
 
+test('closing peer with inflight block reschedules on remaining peer', async function (t) {
+  const writer = await create(t)
+  await writer.append(['block-0', 'block-1', 'block-2'])
+
+  const mirror = await create(t, writer.key)
+  replicate(writer, mirror, t)
+  await mirror.download({ start: 0, end: writer.length }).done()
+
+  const clone = await create(t, writer.key)
+
+  const [slowWriterStream, slowCloneStream] = makeStreamPair(t, { latency: [200, 200] })
+  writer.replicate(slowWriterStream, { keepAlive: true })
+  clone.replicate(slowCloneStream, { keepAlive: true })
+
+  const mirrorStreams = replicate(mirror, clone, t, { keepAlive: true, teardown: false })
+  t.teardown(() => destroyStreams(mirrorStreams))
+
+  await clone.update({ wait: true })
+  await eventFlush()
+
+  const slowPeer = await waitForPeerForStream(clone, slowWriterStream)
+  const mirrorPeer = await waitForPeerForStream(clone, mirrorStreams[0])
+
+  let allowMirror = false
+  const requestBlock = mirrorPeer._requestBlock
+  mirrorPeer._requestBlock = function () {
+    if (!allowMirror) return false
+    return requestBlock.apply(this, arguments)
+  }
+
+  t.teardown(() => {
+    mirrorPeer._requestBlock = requestBlock
+  })
+
+  const block = clone.get(0)
+  await waitForInflightBlockOnPeer(clone, slowPeer)
+
+  allowMirror = true
+  await destroyStreams([slowWriterStream, slowCloneStream])
+
+  t.alike(
+    await withTimeout(block, 1000, 'block did not resume after peer close'),
+    b4a.from('block-0')
+  )
+})
+
 test('closing idle multiplexed stream does not update all peers', async function (t) {
   const n1 = new NoiseSecretStream(true)
   const n2 = new NoiseSecretStream(false)
@@ -852,6 +898,50 @@ test('closing idle multiplexed stream does not update all peers', async function
   ])
 
   t.is(updates, 0)
+})
+
+test('closing idle peer schedules pending range on remaining peer', async function (t) {
+  const writer = await create(t)
+  const batch = []
+  for (let i = 0; i < 32; i++) batch.push('block-' + i)
+  await writer.append(batch)
+
+  const sparse = await create(t, writer.key)
+  const clone = await create(t, writer.key)
+
+  const writerStreams = replicate(writer, clone, t, { teardown: false })
+  const sparseStreams = replicate(sparse, clone, t, { teardown: false })
+
+  t.teardown(() => destroyStreams(writerStreams))
+  t.teardown(() => destroyStreams(sparseStreams))
+
+  await clone.update({ wait: true })
+  await eventFlush()
+
+  const writerPeer = findPeerForStream(clone, writerStreams[0])
+
+  let allowRange = false
+  const requestRange = writerPeer._requestRange
+  writerPeer._requestRange = function () {
+    if (!allowRange) return false
+    return requestRange.apply(this, arguments)
+  }
+
+  t.teardown(() => {
+    writerPeer._requestRange = requestRange
+  })
+
+  const download = clone.download({ start: 0, end: writer.length })
+
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(clone.core.replicator._inflight.idle, true, 'range has no inflight requests yet')
+
+  allowRange = true
+  await destroyStreams(sparseStreams)
+
+  await withTimeout(download.done(), 500, 'download did not resume after peer close')
+
+  t.is(clone.contiguousLength, writer.length)
 })
 
 test('destroying a stream and re-replicating works', async function (t) {
@@ -2953,6 +3043,73 @@ async function createAndDownload(t, core) {
   replicate(core, b, t, { teardown: false })
   await b.download({ start: 0, end: core.length }).done()
   return b
+}
+
+function findPeerForStream(core, remoteStream) {
+  for (const peer of core.core.replicator.peers) {
+    if (b4a.equals(peer.stream.remotePublicKey, remoteStream.publicKey)) return peer
+  }
+
+  throw new Error('peer not found')
+}
+
+async function waitForPeerForStream(core, remoteStream) {
+  const deadline = Date.now() + 5000
+
+  while (Date.now() < deadline) {
+    for (const peer of core.core.replicator.peers) {
+      if (b4a.equals(peer.stream.remotePublicKey, remoteStream.publicKey)) return peer
+    }
+
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+
+  throw new Error('peer not found')
+}
+
+async function waitForInflightBlockOnPeer(core, peer) {
+  const deadline = Date.now() + 1000
+
+  while (Date.now() < deadline) {
+    const req = core.core.replicator._inflight._requests.find((req) => {
+      return req && req.peer === peer && req.block
+    })
+
+    if (req) return req
+
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+
+  throw new Error('block request was not inflight on expected peer')
+}
+
+async function withTimeout(promise, ms, message) {
+  let timeout = null
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), ms)
+      })
+    ])
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function destroyStreams(streams) {
+  return Promise.all(
+    streams.map((s) => {
+      if (s.destroyed) return null
+
+      return new Promise((resolve) => {
+        s.on('error', () => {})
+        s.on('close', resolve)
+        s.destroy()
+      })
+    })
+  )
 }
 
 async function waitForRequestBlock(core) {
