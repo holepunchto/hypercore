@@ -897,7 +897,9 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   replicate(writer, clone, t)
   const writerPeer = await writerPeerWait
 
+  const sparsePeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
   const sparseStreams = replicate(sparse, clone, t)
+  const sparsePeer = await sparsePeerWait
 
   await clone.update({ wait: true })
   await eventFlush()
@@ -913,8 +915,12 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   await new Promise((resolve) => setTimeout(resolve, 100))
   t.is(clone.core.replicator._inflight.idle, true, 'range has no inflight requests yet')
 
+  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
+
   writerPeer.paused = false
   await unreplicate(sparseStreams)
+
+  t.is(await peerRemoved, sparsePeer)
 
   await withTimeout(download.done(), 500, 'download did not resume after peer close')
 
