@@ -803,11 +803,9 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
 
   const clone = await create(t, writer.key)
 
-  const [slowWriterStream, slowCloneStream] = makeStreamPair(t, { latency: [200, 200] })
-  const slowPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
-  writer.replicate(slowWriterStream, { keepAlive: true })
-  clone.replicate(slowCloneStream, { keepAlive: true })
-  const slowPeer = await slowPeerWait
+  const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
+  const writerStreams = replicate(writer, clone, t, { keepAlive: true })
+  const writerPeer = await writerPeerWait
 
   const mirrorPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
   const mirrorStreams = replicate(mirror, clone, t, { keepAlive: true, teardown: false })
@@ -823,11 +821,24 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
     mirrorPeer.paused = false
   })
 
-  const block = clone.get(0)
-  await waitForInflightBlockOnPeer(clone, slowPeer)
+  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
+  const uploaded = new Promise((resolve, reject) => {
+    writer.once('upload', async function (index) {
+      try {
+        t.is(index, 0)
 
-  mirrorPeer.paused = false
-  await unreplicate([slowWriterStream, slowCloneStream])
+        mirrorPeer.paused = false
+        await unreplicate(writerStreams)
+        t.is(await peerRemoved, writerPeer)
+        resolve()
+      } catch (err) {
+        reject(err)
+      }
+    })
+  })
+
+  const block = clone.get(0)
+  await uploaded
 
   t.alike(
     await withTimeout(block, 1000, 'block did not resume after peer close'),
@@ -3026,22 +3037,6 @@ async function createAndDownload(t, core) {
   replicate(core, b, t, { teardown: false })
   await b.download({ start: 0, end: core.length }).done()
   return b
-}
-
-async function waitForInflightBlockOnPeer(core, peer) {
-  const deadline = Date.now() + 1000
-
-  while (Date.now() < deadline) {
-    const req = core.core.replicator._inflight._requests.find((req) => {
-      return req && req.peer === peer && req.block
-    })
-
-    if (req) return req
-
-    await new Promise((resolve) => setImmediate(resolve))
-  }
-
-  throw new Error('block request was not inflight on expected peer')
 }
 
 async function withTimeout(promise, ms, message) {
