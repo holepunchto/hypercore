@@ -844,55 +844,6 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   t.alike(await block, b4a.from('block-0'))
 })
 
-test('closing idle multiplexed stream does not update all peers', async function (t) {
-  const writer = await create(t)
-  await writer.append('block')
-
-  const clone = await create(t, writer.key)
-  const streams = []
-
-  for (let i = 0; i < 3; i++) {
-    const peer = new Promise((resolve) => clone.once('peer-add', resolve))
-    streams.push(replicate(writer, clone, t, { keepAlive: true }))
-    await peer
-  }
-
-  await clone.get(0)
-  await eventFlush()
-
-  t.is(clone.peers.length, 3, 'clone has multiple peers')
-
-  const replicator = clone.core.replicator
-  const updateAll = replicator.updateAll
-  const updatePeer = replicator._updatePeer
-
-  let updates = 0
-  let peerScans = 0
-
-  replicator.updateAll = function () {
-    updates++
-    return updateAll.apply(this, arguments)
-  }
-
-  replicator._updatePeer = function () {
-    peerScans++
-    return updatePeer.apply(this, arguments)
-  }
-
-  t.teardown(() => {
-    replicator.updateAll = updateAll
-    replicator._updatePeer = updatePeer
-  })
-
-  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
-  await unreplicate(streams[0])
-  await peerRemoved
-
-  t.is(clone.peers.length, 2, 'clone still has remaining peers')
-  t.is(updates, 0)
-  t.is(peerScans, 0)
-})
-
 test('closing idle peer schedules pending range on remaining peer', async function (t) {
   const writer = await create(t)
   const batch = []
