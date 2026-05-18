@@ -802,6 +802,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   await mirror.download({ start: 0, end: writer.length }).done()
 
   const clone = await create(t, writer.key)
+  const cloneAppend = new Promise((resolve) => clone.once('append', resolve))
 
   const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
   const writerStreams = replicate(writer, clone, t, { keepAlive: true })
@@ -812,7 +813,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   t.teardown(() => unreplicate(mirrorStreams))
   const mirrorPeer = await mirrorPeerWait
 
-  await clone.update({ wait: true })
+  await cloneAppend
   await eventFlush()
 
   mirrorPeer.paused = true
@@ -903,6 +904,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
 
   const sparse = await create(t, writer.key)
   const clone = await create(t, writer.key)
+  const cloneAppend = new Promise((resolve) => clone.once('append', resolve))
 
   const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
   replicate(writer, clone, t)
@@ -912,7 +914,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   const sparseStreams = replicate(sparse, clone, t)
   const sparsePeer = await sparsePeerWait
 
-  await clone.update({ wait: true })
+  await cloneAppend
   await eventFlush()
 
   writerPeer.paused = true
