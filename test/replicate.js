@@ -817,21 +817,16 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   await clone.update({ wait: true })
   await eventFlush()
 
-  let allowMirror = false
-  const requestBlock = mirrorPeer._requestBlock
-  mirrorPeer._requestBlock = function () {
-    if (!allowMirror) return false
-    return requestBlock.apply(this, arguments)
-  }
+  mirrorPeer.paused = true
 
   t.teardown(() => {
-    mirrorPeer._requestBlock = requestBlock
+    mirrorPeer.paused = false
   })
 
   const block = clone.get(0)
   await waitForInflightBlockOnPeer(clone, slowPeer)
 
-  allowMirror = true
+  mirrorPeer.paused = false
   await unreplicate([slowWriterStream, slowCloneStream])
 
   t.alike(
@@ -907,15 +902,10 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   await clone.update({ wait: true })
   await eventFlush()
 
-  let allowRange = false
-  const requestRange = writerPeer._requestRange
-  writerPeer._requestRange = function () {
-    if (!allowRange) return false
-    return requestRange.apply(this, arguments)
-  }
+  writerPeer.paused = true
 
   t.teardown(() => {
-    writerPeer._requestRange = requestRange
+    writerPeer.paused = false
   })
 
   const download = clone.download({ start: 0, end: writer.length })
@@ -923,7 +913,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   await new Promise((resolve) => setTimeout(resolve, 100))
   t.is(clone.core.replicator._inflight.idle, true, 'range has no inflight requests yet')
 
-  allowRange = true
+  writerPeer.paused = false
   await unreplicate(sparseStreams)
 
   await withTimeout(download.done(), 500, 'download did not resume after peer close')
