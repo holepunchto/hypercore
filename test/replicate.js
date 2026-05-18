@@ -811,7 +811,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
 
   const mirrorPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
   const mirrorStreams = replicate(mirror, clone, t, { keepAlive: true, teardown: false })
-  t.teardown(() => destroyStreams(mirrorStreams))
+  t.teardown(() => unreplicate(mirrorStreams))
   const mirrorPeer = await mirrorPeerWait
 
   await clone.update({ wait: true })
@@ -832,7 +832,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   await waitForInflightBlockOnPeer(clone, slowPeer)
 
   allowMirror = true
-  await destroyStreams([slowWriterStream, slowCloneStream])
+  await unreplicate([slowWriterStream, slowCloneStream])
 
   t.alike(
     await withTimeout(block, 1000, 'block did not resume after peer close'),
@@ -899,7 +899,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   const clone = await create(t, writer.key)
 
   const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
-  const writerStreams = replicate(writer, clone, t)
+  replicate(writer, clone, t)
   const writerPeer = await writerPeerWait
 
   const sparseStreams = replicate(sparse, clone, t)
@@ -924,7 +924,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   t.is(clone.core.replicator._inflight.idle, true, 'range has no inflight requests yet')
 
   allowRange = true
-  await destroyStreams(sparseStreams)
+  await unreplicate(sparseStreams)
 
   await withTimeout(download.done(), 500, 'download did not resume after peer close')
 
@@ -3061,20 +3061,6 @@ async function withTimeout(promise, ms, message) {
   } finally {
     clearTimeout(timeout)
   }
-}
-
-function destroyStreams(streams) {
-  return Promise.all(
-    streams.map((s) => {
-      if (s.destroyed) return null
-
-      return new Promise((resolve) => {
-        s.on('error', () => {})
-        s.on('close', resolve)
-        s.destroy()
-      })
-    })
-  )
 }
 
 async function waitForRequestBlock(core) {
