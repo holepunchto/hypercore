@@ -816,6 +816,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   await cloneAppend
   await eventFlush()
 
+  // Force the initial block request onto the writer so closing it exercises rescheduling.
   mirrorPeer.paused = true
 
   t.teardown(() => {
