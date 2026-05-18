@@ -840,64 +840,52 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
 })
 
 test('closing idle multiplexed stream does not update all peers', async function (t) {
-  const n1 = new NoiseSecretStream(true)
-  const n2 = new NoiseSecretStream(false)
+  const writer = await create(t)
+  await writer.append('block')
 
-  n1.rawStream.pipe(n2.rawStream).pipe(n1.rawStream)
+  const clone = await create(t, writer.key)
+  const streams = []
 
-  const cores = []
-  const clones = []
-
-  for (let i = 0; i < 4; i++) {
-    const core = await create(t)
-    await core.append('block-' + i)
-
-    const clone = await create(t, core.key)
-
-    core.replicate(n1, { keepAlive: true })
-    clone.replicate(n2, { keepAlive: true })
-
-    cores.push(core)
-    clones.push(clone)
+  for (let i = 0; i < 3; i++) {
+    const peer = new Promise((resolve) => clone.once('peer-add', resolve))
+    streams.push(replicate(writer, clone, t, { keepAlive: true }))
+    await peer
   }
 
-  for (const clone of clones) await clone.get(0)
-
+  await clone.get(0)
   await eventFlush()
 
-  for (let i = 0; i < cores.length; i++) {
-    t.is(cores[i].peers.length, 1)
-    t.is(clones[i].peers.length, 1)
-  }
+  t.is(clone.peers.length, 3, 'clone has multiple peers')
+
+  const replicator = clone.core.replicator
+  const updateAll = replicator.updateAll
+  const updatePeer = replicator._updatePeer
 
   let updates = 0
-  const restore = []
-  for (const core of cores.concat(clones)) {
-    const replicator = core.core.replicator
-    const updateAll = replicator.updateAll
-    restore.push(() => {
-      replicator.updateAll = updateAll
-    })
+  let peerScans = 0
 
-    replicator.updateAll = function () {
-      updates++
-      return updateAll.apply(this, arguments)
-    }
+  replicator.updateAll = function () {
+    updates++
+    return updateAll.apply(this, arguments)
+  }
+
+  replicator._updatePeer = function () {
+    peerScans++
+    return updatePeer.apply(this, arguments)
   }
 
   t.teardown(() => {
-    for (const fn of restore) fn()
+    replicator.updateAll = updateAll
+    replicator._updatePeer = updatePeer
   })
 
-  n1.destroy()
-  n2.destroy()
+  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
+  await unreplicate(streams[0])
+  await peerRemoved
 
-  await Promise.all([
-    new Promise((resolve) => n1.once('close', resolve)),
-    new Promise((resolve) => n2.once('close', resolve))
-  ])
-
+  t.is(clone.peers.length, 2, 'clone still has remaining peers')
   t.is(updates, 0)
+  t.is(peerScans, 0)
 })
 
 test('closing idle peer schedules pending range on remaining peer', async function (t) {
