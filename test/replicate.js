@@ -899,13 +899,10 @@ test('closing idle peer schedules pending range on remaining peer', async functi
   const clone = await create(t, writer.key)
 
   const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
-  const writerStreams = replicate(writer, clone, t, { teardown: false })
+  const writerStreams = replicate(writer, clone, t)
   const writerPeer = await writerPeerWait
 
-  const sparseStreams = replicate(sparse, clone, t, { teardown: false })
-
-  t.teardown(() => destroyStreams(writerStreams))
-  t.teardown(() => destroyStreams(sparseStreams))
+  const sparseStreams = replicate(sparse, clone, t)
 
   await clone.update({ wait: true })
   await eventFlush()
