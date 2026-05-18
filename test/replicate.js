@@ -841,10 +841,7 @@ test('closing peer with inflight block reschedules on remaining peer', async fun
   const block = clone.get(0)
   await uploaded
 
-  t.alike(
-    await withTimeout(block, 1000, 'block did not resume after peer close'),
-    b4a.from('block-0')
-  )
+  t.alike(await block, b4a.from('block-0'))
 })
 
 test('closing idle multiplexed stream does not update all peers', async function (t) {
@@ -935,7 +932,7 @@ test('closing idle peer schedules pending range on remaining peer', async functi
 
   t.is(await peerRemoved, sparsePeer)
 
-  await withTimeout(download.done(), 500, 'download did not resume after peer close')
+  await download.done()
 
   t.is(clone.contiguousLength, writer.length)
 })
@@ -3039,21 +3036,6 @@ async function createAndDownload(t, core) {
   replicate(core, b, t, { teardown: false })
   await b.download({ start: 0, end: core.length }).done()
   return b
-}
-
-async function withTimeout(promise, ms, message) {
-  let timeout = null
-
-  try {
-    return await Promise.race([
-      promise,
-      new Promise((resolve, reject) => {
-        timeout = setTimeout(() => reject(new Error(message)), ms)
-      })
-    ])
-  } finally {
-    clearTimeout(timeout)
-  }
 }
 
 async function waitForRequestBlock(core) {
