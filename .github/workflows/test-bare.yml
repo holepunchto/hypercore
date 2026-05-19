@@ -1,4 +1,4 @@
-name: Test with Node
+name: Test with Bare
 
 on:
   push:
@@ -25,9 +25,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.platform }}-${{ matrix.arch }}
     steps:
-      - uses: holepunchto/actions/node-base@v1
+      - uses: holepunchto/actions/bare-base@v1
         with:
           allow-git: true
 
       - name: Run tests
-        run: npm run test:node
+        run: npm run test:bare
