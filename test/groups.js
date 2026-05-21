@@ -1,7 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const Hypercore = require('..')
-const { create, createStorage, replicate } = require('./helpers')
+const { create } = require('./helpers')
 
 test('groups - basic', async function (t) {
   const a = await create(t, { group: b4a.alloc(32, 1) })
