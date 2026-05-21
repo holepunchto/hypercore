@@ -270,6 +270,11 @@ class Hypercore extends EventEmitter {
     this.encryption = encryption
   }
 
+  async setGroup(topic) {
+    if (!this.opened) await this.opening
+    return this.core.setGroup(topic)
+  }
+
   setKeyPair(keyPair) {
     this.keyPair = keyPair
   }
@@ -1363,6 +1368,7 @@ function initOnce(session, storage, key, opts) {
     keyPair: opts.keyPair,
     legacy: opts.legacy,
     manifest: opts.manifest,
+    group: opts.group,
     globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
   })
 }
