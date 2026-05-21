@@ -270,6 +270,11 @@ class Hypercore extends EventEmitter {
     this.encryption = encryption
   }
 
+  async setGroup(topic) {
+    if (!this.opened) await this.opening
+    return this.core.setGroup(topic)
+  }
+
   setKeyPair(keyPair) {
     this.keyPair = keyPair
   }
