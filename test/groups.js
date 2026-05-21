@@ -53,6 +53,8 @@ test('groups - conflict', async function (t) {
 
   const b = new Hypercore(dir, { group: b4a.alloc(32, 2) })
   await t.exception(b.ready())
+
+  await b.close()
 })
 
 test('groups - conflict', async function (t) {
