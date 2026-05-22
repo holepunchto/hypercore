@@ -11,6 +11,7 @@ const {
 } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const crypto = require('hypercore-crypto')
+const { once } = require('events')
 const Hypercore = require('../')
 
 const DEBUG = false
@@ -1156,6 +1157,53 @@ test('download blocks if available, destroy midway', async function (t) {
   await r.done()
 
   t.pass('range resolved')
+})
+
+test('destroying download keeps inflight requests', async (t) => {
+  const core = await create(t)
+  const clone = await create(t, core.key)
+
+  const batch = []
+  for (let i = 0; i < 10; i++) {
+    batch.push('i' + i)
+  }
+  await core.append(batch)
+
+  const onAppend = once(clone, 'append')
+  replicate(core, clone, t)
+  await onAppend
+
+  const d = clone.download({ start: 0, end: core.length })
+  let calledDestroy = false
+  core.on('upload', () => {
+    d.destroy()
+    calledDestroy = true
+  })
+  const done = new Promise((resolve) => {
+    clone.on('download', () => {
+      if (clone.core.replicator._inflight._active <= 0) resolve()
+    })
+  })
+
+  // Wait for download to resolve from destroy
+  await d.done()
+
+  t.ok(clone.core.replicator._inflight._active > 0, 'still active inflight after destroy')
+
+  await done
+
+  t.absent(await clone.has(0, core.length), 'still sparse')
+  let found = false
+  for (let i = 0; i < core.length; i++) {
+    if (await clone.has(i)) {
+      found = true
+      t.pass('found one')
+      break
+    }
+  }
+
+  if (!found) t.fail('none found')
+  t.ok(calledDestroy, 'destroy was called')
 })
 
 test('download blocks available from when only a partial set is available', async function (t) {
