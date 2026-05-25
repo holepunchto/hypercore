@@ -81,4 +81,7 @@ test('groups - emit(group-update)', async function (t) {
   })
 
   await a.append('beep')
+
+  await atomic.close()
+  await batch.close()
 })
