@@ -56,3 +56,29 @@ test('groups - conflict', async function (t) {
 
   await b.close()
 })
+
+test('groups - emit(group-update)', async function (t) {
+  t.plan(2)
+  const a = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  await a.setGroup(groupKey)
+  t.alike(a.core.header.group?.key, b4a.alloc(32, 1))
+
+  a.on('group-update', (key) => {
+    t.alike(key, groupKey, 'got group key in event')
+  })
+
+  const batch = a.session({ name: 'batch' })
+  batch.on('group-update', () => {
+    t.fail('group-update shouldnt trigger in named batch')
+  })
+
+  const atom = a.state.storage.createAtom()
+  const atomic = a.session({ atom })
+  atomic.on('group-update', () => {
+    t.fail('group-update shouldnt trigger in atomic')
+  })
+
+  await a.append('beep')
+})
