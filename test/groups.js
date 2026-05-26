@@ -56,3 +56,19 @@ test('groups - conflict', async function (t) {
 
   await b.close()
 })
+
+test('groups - core hook - ongroupupdate()', async function (t) {
+  t.plan(2)
+  const a = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+
+  a.core.ongroupupdate = (key) => {
+    t.alike(key, groupKey, 'got group key in event')
+  }
+
+  await a.setGroup(groupKey)
+  t.alike(a.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+
+  await a.append('beep')
+})
