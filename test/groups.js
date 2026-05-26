@@ -72,3 +72,161 @@ test('groups - core hook - ongroupupdate()', async function (t) {
 
   await a.append('beep')
 })
+
+test('groups - core hook - ongroupupdate() w/head', async function (t) {
+  t.plan(7)
+  const a = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  const events = []
+
+  a.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  await a.setGroup(groupKey)
+  t.alike(a.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+
+  await a.append('beep')
+
+  t.is(events.length, 1)
+  t.alike(events, [
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 0
+    }
+  ])
+
+  await a.append('beep')
+
+  t.is(events.length, 2)
+  t.alike(events, [
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 0
+    },
+    {
+      key: a.core.key,
+      length: 2,
+      fork: 0
+    }
+  ])
+})
+
+test('groups - core hook - ongroupupdate() w/head multiple', async function (t) {
+  t.plan(7)
+  const a = await create(t)
+  const b = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  const events = []
+
+  a.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  b.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  await a.setGroup(groupKey)
+  await b.setGroup(groupKey)
+  t.alike(a.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+  t.alike(b.core.header.group.key, b4a.alloc(32, 1), 'b has a group')
+
+  await a.append('beep')
+  await b.append('beep')
+  await a.append('beep')
+
+  t.is(events.length, 3)
+  t.alike(events, [
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 0
+    },
+    {
+      key: b.core.key,
+      length: 1,
+      fork: 0
+    },
+    {
+      key: a.core.key,
+      length: 2,
+      fork: 0
+    }
+  ])
+})
+
+test('groups - core hook - ongroupupdate() w/head and fork', async function (t) {
+  t.plan(10)
+  const a = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  const events = []
+
+  a.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  await a.setGroup(groupKey)
+  t.alike(a.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+
+  await a.append('beep')
+
+  t.is(events.length, 1)
+  t.alike(events, [
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 0
+    }
+  ])
+
+  await a.truncate(0)
+
+  t.is(events.length, 2)
+  t.alike(
+    events,
+    [
+      {
+        key: a.core.key,
+        length: 1,
+        fork: 0
+      },
+      {
+        key: a.core.key,
+        length: 0,
+        fork: 1
+      }
+    ],
+    'forked event'
+  )
+
+  await a.append('beep')
+
+  t.is(events.length, 3)
+  t.alike(events, [
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 0
+    },
+    {
+      key: a.core.key,
+      length: 0,
+      fork: 1
+    },
+    {
+      key: a.core.key,
+      length: 1,
+      fork: 1
+    }
+  ])
+})
