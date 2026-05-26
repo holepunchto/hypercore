@@ -956,6 +956,41 @@ test('findingPeers + done makes update return false if no peers', async function
   t.is(await u, false)
 })
 
+test('update wait resolves when unsynced peer closes without inflight', async function (t) {
+  t.plan(2)
+
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  let streams = null
+  let update = null
+
+  const peerAdded = new Promise((resolve) => {
+    b.once('peer-add', () => {
+      update = b.update({ wait: true })
+
+      Promise.resolve().then(() => {
+        resolve(unreplicate(streams))
+      })
+    })
+  })
+
+  streams = replicate(a, b, t, { teardown: false })
+
+  await peerAdded
+
+  let timer = null
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(resolve, 250, null)
+  })
+
+  const result = await Promise.race([update, timeout])
+  clearTimeout(timer)
+
+  t.not(result, null, 'update resolved')
+  t.is(result, false, 'no upgrade was available')
+})
+
 test.skip('can disable downloading from a peer', async function (t) {
   const a = await create(t)
 
