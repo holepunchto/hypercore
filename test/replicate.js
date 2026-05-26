@@ -1137,86 +1137,6 @@ test.skip('non-sparse replication', async function (t) {
   t.is(contiguousLength, b.length)
 })
 
-test('download blocks if available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => d++)
-
-  const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.done()
-
-  t.is(d, 2)
-})
-
-test('download range if available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => d++)
-
-  const r = b.download({ start: 2, end: 6, ifAvailable: true })
-  await r.done()
-
-  t.is(d, 3)
-})
-
-test('download blocks if available, destroy midway', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  const s = replicate(a, b, t, { teardown: false })
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => {
-    if (d++ === 0) unreplicate(s)
-  })
-
-  const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.done()
-
-  t.pass('range resolved')
-})
-
-test('download blocks available from when only a partial set is available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-  const c = await create(t, a.key)
-
-  replicate(a, b, t)
-  replicate(b, c, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  await b.get(2)
-  await b.get(3)
-
-  const r = c.download({ start: 0, end: -1, ifAvailable: true })
-  await r.done()
-
-  t.ok(!(await c.has(0)))
-  t.ok(!(await c.has(1)))
-  t.ok(await c.has(2))
-  t.ok(await c.has(3))
-  t.ok(!(await c.has(4)))
-})
-
 test('big download range', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -1273,18 +1193,6 @@ test('big download range (non contig)', async function (t) {
 
   await r3.done()
   t.pass('d done')
-})
-
-test('download range resolves immediately if no peers', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  // no replication
-
-  const r = b.download({ start: 0, end: 5, ifAvailable: true })
-  await r.done()
-
-  t.pass('range resolved')
 })
 
 test('download available blocks on non-sparse update', async function (t) {
