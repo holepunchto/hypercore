@@ -68,7 +68,7 @@ test('groups - core hook - ongroupupdate()', async function (t) {
   }
 
   await a.setGroup(groupKey)
-  t.alike(a.core.header.group?.key, b4a.alloc(32, 1), 'a has a group')
+  t.alike(a.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
 
   await a.append('beep')
 })
