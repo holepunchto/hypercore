@@ -232,4 +232,7 @@ test('groups - core hook - atomic noop trigger', async (t) => {
   t.alike(events.length, 1, 'one event')
   t.alike(core.length, prevLength, 'core length unchanged')
   t.alike(core.fork, prevFork, 'core fork unchanged')
+
+  await atomic.close()
+  await batch.close()
 })
