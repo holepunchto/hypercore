@@ -195,3 +195,41 @@ test('groups - core hook - ongroupupdate() w/head and fork', async function (t) 
   t.is(events[2].fork, 1)
   t.ok(events[2].timestamp)
 })
+
+test('groups - core hook - atomic noop trigger', async (t) => {
+  const core = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  const events = []
+
+  core.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  await core.setGroup(groupKey)
+  t.alike(core.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+
+  const batch = core.session({ name: 'batch' })
+  await batch.ready()
+
+  t.alike(batch.length, core.length, 'named session didnt add length')
+  t.alike(batch.fork, core.fork, 'named session didnt fork')
+  t.alike(events.length, 0, 'still no events yet')
+
+  const atom = core.state.storage.createAtom()
+  const atomic = core.session({ atom })
+
+  await atomic.commit(batch, { treeLength: core.length })
+  t.alike(atomic.length, core.length, 'atomic session didnt add length')
+  t.alike(atomic.fork, core.fork, 'atomic session didnt fork')
+  t.alike(events.length, 0, 'still no events when committing atomic session')
+
+  const prevLength = core.length
+  const prevFork = core.fork
+
+  await atom.flush()
+  t.alike(events.length, 1, 'one event')
+  t.alike(core.length, prevLength, 'core length unchanged')
+  t.alike(core.fork, prevFork, 'core fork unchanged')
+})
