@@ -524,6 +524,9 @@ Info {
 
 #### `await core.setGroup(topic)`
 
+> [!IMPORTANT]
+> This feature is _experimental_. The API is subject to change, and everything may break.
+
 Set the group `topic` that the hypercore belongs to. Useful for grouping hypercores together that need to update a larger data structure (eg. `autobee`) that is comprised of them. See `corestore`'s `store.notifyGroup(topic)` for more details.
 
 `topic` is a 32 byte buffer. A hypercore can only have one `topic`.
