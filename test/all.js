@@ -20,6 +20,7 @@ async function runTests() {
   await import('./encryption.js')
   await import('./extension.js')
   await import('./fully-remote-proof.js')
+  await import('./groups.js')
   await import('./manifest.js')
   await import('./mark-n-sweep.js')
   await import('./merkle-tree.js')
