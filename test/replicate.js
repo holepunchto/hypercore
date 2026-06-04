@@ -2860,7 +2860,7 @@ test('delayed updateAll clears timer after reorg skip', async function (t) {
   r.queueUpdateAll()
 
   // wait minimum amount to clear timeout for full scan (min is 100)
-  await new Promise(resolve => setTimeout(resolve, 120))
+  await new Promise((resolve) => setTimeout(resolve, 120))
 
   t.is(r._updateAllBump, null, 'timer handle should be cleared after firing')
 })
