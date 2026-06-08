@@ -2833,10 +2833,6 @@ test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bi
 test('delayed updateAll clears timer after reorg skip', async function (t) {
   const core = await create(t)
 
-  t.teardown(() => {
-    if (core.replicator._updateAllBump) clearTimeout(core.replicator._updateAllBump)
-  })
-
   const targetPeers = 40
   const gotAllPeers = new Promise((resolve) => {
     core.on('peer-add', () => {
@@ -2863,6 +2859,43 @@ test('delayed updateAll clears timer after reorg skip', async function (t) {
   await new Promise((resolve) => setTimeout(resolve, 120))
 
   t.is(r._updateAllBump, null, 'timer handle should be cleared after firing')
+})
+
+test('delayed updateAll timer doesnt keep event loop alive', async function (t) {
+  const core = await create(t)
+
+  const targetPeers = 40
+  const gotAllPeers = new Promise((resolve) => {
+    core.on('peer-add', () => {
+      if (core.replicator.peers.length === targetPeers) resolve()
+    })
+  })
+  for (let i = 0; i < targetPeers; i++) {
+    const peer = await create(t, core.key)
+    replicate(core, peer, t)
+  }
+
+  await gotAllPeers
+
+  const r = core.replicator
+
+  t.is(r.peers.length, targetPeers, 'has minimum peers to defer full scan')
+
+  // Simulate the delayed full scan firing while a reorg is active
+  // TODO create a more realistic simulation
+  r._applyingReorg = {}
+  r.queueUpdateAll()
+
+  const failCondition = setTimeout(
+    () => {
+      t.fail('event loop is still live')
+    },
+    0.25 * r.getUpdateAllDelay(r.peers)
+  )
+  failCondition.unref() // so it doesnt keep the event loop alive itself
+
+  await core.close()
+  t.ok(core.closed, 'core closed')
 })
 
 async function createAndDownload(t, core) {
