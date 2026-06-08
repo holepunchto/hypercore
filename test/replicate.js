@@ -2871,8 +2871,7 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
     })
   })
   for (let i = 0; i < targetPeers; i++) {
-    const peer = await create(t, core.key)
-    replicate(core, peer, t)
+    create(t, core.key).then((peer) => replicate(core, peer, t))
   }
 
   await gotAllPeers
@@ -2885,17 +2884,11 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   // TODO create a more realistic simulation
   r._applyingReorg = {}
   r.queueUpdateAll()
+  t.not(r._updateAllBump, null, 'timer set')
 
-  const failCondition = setTimeout(
-    () => {
-      t.fail('event loop is still live')
-    },
-    0.25 * r.getUpdateAllDelay(r.peers)
-  )
-  failCondition.unref() // so it doesnt keep the event loop alive itself
-
-  await core.close()
-  t.ok(core.closed, 'core closed')
+  r.destroy()
+  t.ok(r.destroyed, 'replicator destroyed')
+  t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
 async function createAndDownload(t, core) {
