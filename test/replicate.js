@@ -2830,6 +2830,67 @@ test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bi
   t.ok(reader.replicator.stats.wireRequest.tx < 40, 'did not continue spamming (sanity check)')
 })
 
+test('delayed updateAll clears timer after reorg skip', async function (t) {
+  const core = await create(t)
+
+  const targetPeers = 40
+  const gotAllPeers = new Promise((resolve) => {
+    core.on('peer-add', () => {
+      if (core.replicator.peers.length === targetPeers) resolve()
+    })
+  })
+  for (let i = 0; i < targetPeers; i++) {
+    const peer = await create(t, core.key)
+    replicate(core, peer, t)
+  }
+
+  await gotAllPeers
+
+  const r = core.replicator
+
+  t.is(r.peers.length, targetPeers, 'has minimum peers to defer full scan')
+
+  // Simulate the delayed full scan firing while a reorg is active
+  // TODO create a more realistic simulation
+  r._applyingReorg = {}
+  r.queueUpdateAll()
+
+  // wait minimum amount to clear timeout for full scan (min is 100)
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  t.is(r._updateAllBump, null, 'timer handle should be cleared after firing')
+})
+
+test('delayed updateAll timer doesnt keep event loop alive', async function (t) {
+  const core = await create(t)
+
+  const targetPeers = 40
+  const gotAllPeers = new Promise((resolve) => {
+    core.on('peer-add', () => {
+      if (core.replicator.peers.length === targetPeers) resolve()
+    })
+  })
+  for (let i = 0; i < targetPeers; i++) {
+    create(t, core.key).then((peer) => replicate(core, peer, t))
+  }
+
+  await gotAllPeers
+
+  const r = core.replicator
+
+  t.is(r.peers.length, targetPeers, 'has minimum peers to defer full scan')
+
+  // Simulate the delayed full scan firing while a reorg is active
+  // TODO create a more realistic simulation
+  r._applyingReorg = {}
+  r.queueUpdateAll()
+  t.not(r._updateAllBump, null, 'timer set')
+
+  r.destroy()
+  t.ok(r.destroyed, 'replicator destroyed')
+  t.is(r._updateAllBump, null, 'timer reset to null')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })

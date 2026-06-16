@@ -719,7 +719,7 @@ class Hypercore extends EventEmitter {
       once = false
       this._findingPeers--
       if (this.core !== null && --this.core.replicator.findingPeers === 0) {
-        this.core.replicator.updateAll()
+        this.core.replicator.queueUpdateAll()
       }
     }
   }
