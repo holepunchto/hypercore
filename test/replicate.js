@@ -793,6 +793,102 @@ test('multiplexing multiple times over the same stream', async function (t) {
   s3.destroy()
 })
 
+test('closing peer with inflight block reschedules on remaining peer', async function (t) {
+  const writer = await create(t)
+  await writer.append(['block-0', 'block-1', 'block-2'])
+
+  const mirror = await create(t, writer.key)
+  replicate(writer, mirror, t)
+  await mirror.download({ start: 0, end: writer.length }).done()
+
+  const clone = await create(t, writer.key)
+  const cloneAppend = new Promise((resolve) => clone.once('append', resolve))
+
+  const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
+  const writerStreams = replicate(writer, clone, t, { keepAlive: true })
+  const writerPeer = await writerPeerWait
+
+  const mirrorPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
+  const mirrorStreams = replicate(mirror, clone, t, { keepAlive: true, teardown: false })
+  t.teardown(() => unreplicate(mirrorStreams))
+  const mirrorPeer = await mirrorPeerWait
+
+  await cloneAppend
+  await eventFlush()
+
+  // Force the initial block request onto the writer so closing it exercises rescheduling.
+  mirrorPeer.paused = true
+
+  t.teardown(() => {
+    mirrorPeer.paused = false
+  })
+
+  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
+  const uploaded = new Promise((resolve, reject) => {
+    writer.once('upload', async function (index) {
+      try {
+        t.is(index, 0)
+
+        mirrorPeer.paused = false
+        await unreplicate(writerStreams)
+        t.is(await peerRemoved, writerPeer)
+        resolve()
+      } catch (err) {
+        reject(err)
+      }
+    })
+  })
+
+  const block = clone.get(0)
+  await uploaded
+
+  t.alike(await block, b4a.from('block-0'))
+})
+
+test('closing idle peer schedules pending range on remaining peer', async function (t) {
+  const writer = await create(t)
+  const batch = []
+  for (let i = 0; i < 32; i++) batch.push('block-' + i)
+  await writer.append(batch)
+
+  const sparse = await create(t, writer.key)
+  const clone = await create(t, writer.key)
+  const cloneAppend = new Promise((resolve) => clone.once('append', resolve))
+
+  const writerPeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
+  replicate(writer, clone, t)
+  const writerPeer = await writerPeerWait
+
+  const sparsePeerWait = new Promise((resolve) => clone.once('peer-add', resolve))
+  const sparseStreams = replicate(sparse, clone, t)
+  const sparsePeer = await sparsePeerWait
+
+  await cloneAppend
+  await eventFlush()
+
+  writerPeer.paused = true
+
+  t.teardown(() => {
+    writerPeer.paused = false
+  })
+
+  const download = clone.download({ start: 0, end: writer.length })
+
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.is(clone.core.replicator._inflight.idle, true, 'range has no inflight requests yet')
+
+  const peerRemoved = new Promise((resolve) => clone.once('peer-remove', resolve))
+
+  writerPeer.paused = false
+  await unreplicate(sparseStreams)
+
+  t.is(await peerRemoved, sparsePeer)
+
+  await download.done()
+
+  t.is(clone.contiguousLength, writer.length)
+})
+
 test('destroying a stream and re-replicating works', async function (t) {
   const core = await create(t)
 
