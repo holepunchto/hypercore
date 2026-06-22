@@ -2891,6 +2891,36 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('idle range completion scans past max range window', async function (t) {
+  const core = await create(t)
+
+  const pending = new Set()
+  const complete = []
+
+  for (let i = 0; i < 650; i++) {
+    pending.add(i)
+
+    const done = core.download({ start: i, end: i + 1 }).done()
+    done.then(() => pending.delete(i), noop)
+
+    if (i >= 300) complete.push(done)
+  }
+
+  t.is(core.core.replicator._ranges.length, 650, 'all ranges are pending')
+
+  core.core._setBitfieldRanges(300, 650, true)
+  await core.core.replicator._updateNonPrimary(false)
+
+  const resolved = await Promise.race([
+    Promise.all(complete).then(() => true),
+    new Promise((resolve) => setTimeout(resolve, 250, false))
+  ])
+
+  t.ok(resolved, 'all locally complete ranges resolved')
+  t.is(pending.size, 300, 'only unavailable ranges remain pending')
+  t.is(core.core.replicator._ranges.length, 300, 'resolved ranges were removed')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
