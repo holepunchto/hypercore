@@ -2891,6 +2891,119 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('idle range completion drains past max range window', async function (t) {
+  const core = await create(t)
+  const clone = await create(t, core.key)
+
+  const pending = new Set()
+  const complete = []
+  const totalLength = 150
+  const availableStart = 100
+
+  for (let i = 0; i < totalLength; i++) {
+    await core.append('' + i)
+  }
+
+  await core.clear(0, availableStart)
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  replicate(core, clone, t)
+
+  for (let i = 0; i < totalLength; i++) {
+    pending.add(i)
+
+    const done = clone.download({ start: i, end: i + 1 }).done()
+    done.then(() => pending.delete(i), noop)
+
+    if (i >= availableStart) complete.push(done)
+  }
+
+  t.is(clone.core.replicator._ranges.length, totalLength, 'all ranges are pending')
+  t.ok(await core.has(availableStart, totalLength), 'source has all available blocks')
+
+  const resolved = await Promise.race([
+    Promise.all(complete).then(() => true),
+    new Promise((resolve) => setTimeout(resolve, 1000, false))
+  ])
+
+  t.ok(resolved, 'all locally complete ranges resolved')
+  t.is(pending.size, availableStart, 'only unavailable ranges remain pending')
+  t.is(clone.core.replicator._ranges.length, availableStart, 'resolved ranges were removed')
+
+  const outliers = []
+  for (const range of clone.core.replicator._ranges) {
+    if (range.userStart >= availableStart) outliers.push(range.userStart)
+  }
+  t.alike(outliers, [], 'no available ranges remain pending')
+})
+
+test('idle range completion keeps draining if update queues during yield', async function (t) {
+  const core = await create(t)
+  const pending = new Set()
+  const complete = []
+
+  const totalLength = 150
+  const availableStart = 100
+  const replicator = core.core.replicator
+
+  for (let i = 0; i < totalLength; i++) {
+    pending.add(i)
+
+    const done = core.download({ start: i, end: i + 1 }).done()
+    done.then(() => pending.delete(i), noop)
+
+    if (i >= availableStart) complete.push(done)
+  }
+
+  t.is(replicator._ranges.length, totalLength, 'all ranges are pending')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setTimeout(() => {
+        this._inflight._active++
+        this._updateNonPrimary(false).catch(noop)
+      }, 0)
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    replicator._inflight._active = 0
+  })
+
+  await replicator._updateNonPrimary(false)
+  replicator._inflight._active = 0
+
+  const resolved = await Promise.race([
+    Promise.all(complete).then(() => true),
+    new Promise((resolve) => setTimeout(resolve, 1000, false))
+  ])
+
+  t.ok(resolved, 'all locally complete ranges resolved')
+  t.is(pending.size, availableStart, 'only unavailable ranges remain pending')
+  t.is(replicator._ranges.length, availableStart, 'resolved ranges were removed')
+
+  const outliers = []
+  for (const range of replicator._ranges) {
+    if (range.userStart >= availableStart) outliers.push(range.userStart)
+  }
+  t.alike(outliers, [], 'no available ranges remain pending')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
