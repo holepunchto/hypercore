@@ -74,7 +74,7 @@ test('groups - core hook - ongroupupdate()', async function (t) {
 })
 
 test('groups - core hook - ongroupupdate() w/head', async function (t) {
-  t.plan(7)
+  t.plan(17)
   const a = await create(t)
 
   const groupKey = b4a.alloc(32, 1)
@@ -91,33 +91,28 @@ test('groups - core hook - ongroupupdate() w/head', async function (t) {
   await a.append('beep')
 
   t.is(events.length, 1)
-  t.alike(events, [
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 0
-    }
-  ])
+  t.is(events[0].key, a.core.key)
+  t.is(events[0].length, 1)
+  t.is(events[0].fork, 0)
+  t.ok(events[0].timestamp)
 
   await a.append('beep')
 
   t.is(events.length, 2)
-  t.alike(events, [
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 0
-    },
-    {
-      key: a.core.key,
-      length: 2,
-      fork: 0
-    }
-  ])
+
+  t.is(events[0].key, a.core.key)
+  t.is(events[0].length, 1)
+  t.is(events[0].fork, 0)
+  t.ok(events[0].timestamp)
+
+  t.is(events[1].key, a.core.key)
+  t.is(events[1].length, 2)
+  t.is(events[1].fork, 0)
+  t.ok(events[1].timestamp)
 })
 
 test('groups - core hook - ongroupupdate() w/head multiple', async function (t) {
-  t.plan(7)
+  t.plan(18)
   const a = await create(t)
   const b = await create(t)
 
@@ -144,27 +139,25 @@ test('groups - core hook - ongroupupdate() w/head multiple', async function (t) 
   await a.append('beep')
 
   t.is(events.length, 3)
-  t.alike(events, [
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 0
-    },
-    {
-      key: b.core.key,
-      length: 1,
-      fork: 0
-    },
-    {
-      key: a.core.key,
-      length: 2,
-      fork: 0
-    }
-  ])
+
+  t.is(events[0].key, a.core.key)
+  t.is(events[0].length, 1)
+  t.is(events[0].fork, 0)
+  t.ok(events[0].timestamp)
+
+  t.is(events[1].key, b.core.key)
+  t.is(events[1].length, 1)
+  t.is(events[1].fork, 0)
+  t.ok(events[1].timestamp)
+
+  t.is(events[2].key, a.core.key)
+  t.is(events[2].length, 2)
+  t.is(events[2].fork, 0)
+  t.ok(events[2].timestamp)
 })
 
 test('groups - core hook - ongroupupdate() w/head and fork', async function (t) {
-  t.plan(10)
+  t.plan(19)
   const a = await create(t)
 
   const groupKey = b4a.alloc(32, 1)
@@ -181,52 +174,65 @@ test('groups - core hook - ongroupupdate() w/head and fork', async function (t) 
   await a.append('beep')
 
   t.is(events.length, 1)
-  t.alike(events, [
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 0
-    }
-  ])
+  t.is(events[0].key, a.core.key)
+  t.is(events[0].length, 1)
+  t.is(events[0].fork, 0)
+  t.ok(events[0].timestamp)
 
   await a.truncate(0)
 
   t.is(events.length, 2)
-  t.alike(
-    events,
-    [
-      {
-        key: a.core.key,
-        length: 1,
-        fork: 0
-      },
-      {
-        key: a.core.key,
-        length: 0,
-        fork: 1
-      }
-    ],
-    'forked event'
-  )
+  t.is(events[1].key, a.core.key)
+  t.is(events[1].length, 0)
+  t.is(events[1].fork, 1, 'forked event')
+  t.ok(events[1].timestamp)
 
   await a.append('beep')
 
   t.is(events.length, 3)
-  t.alike(events, [
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 0
-    },
-    {
-      key: a.core.key,
-      length: 0,
-      fork: 1
-    },
-    {
-      key: a.core.key,
-      length: 1,
-      fork: 1
-    }
-  ])
+  t.is(events[2].key, a.core.key)
+  t.is(events[2].length, 1)
+  t.is(events[2].fork, 1)
+  t.ok(events[2].timestamp)
+})
+
+test('groups - core hook - atomic noop trigger', async (t) => {
+  const core = await create(t)
+
+  const groupKey = b4a.alloc(32, 1)
+  const events = []
+
+  core.core.ongroupupdate = (key, head) => {
+    t.alike(key, groupKey, 'got group key in event')
+    events.push(head)
+  }
+
+  await core.setGroup(groupKey)
+  t.alike(core.core.header.group.key, b4a.alloc(32, 1), 'a has a group')
+
+  const batch = core.session({ name: 'batch' })
+  await batch.ready()
+
+  t.alike(batch.length, core.length, 'named session didnt add length')
+  t.alike(batch.fork, core.fork, 'named session didnt fork')
+  t.alike(events.length, 0, 'still no events yet')
+
+  const atom = core.state.storage.createAtom()
+  const atomic = core.session({ atom })
+
+  await atomic.commit(batch, { treeLength: core.length })
+  t.alike(atomic.length, core.length, 'atomic session didnt add length')
+  t.alike(atomic.fork, core.fork, 'atomic session didnt fork')
+  t.alike(events.length, 0, 'still no events when committing atomic session')
+
+  const prevLength = core.length
+  const prevFork = core.fork
+
+  await atom.flush()
+  t.alike(events.length, 1, 'one event')
+  t.alike(core.length, prevLength, 'core length unchanged')
+  t.alike(core.fork, prevFork, 'core fork unchanged')
+
+  await atomic.close()
+  await batch.close()
 })
