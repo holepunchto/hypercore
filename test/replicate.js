@@ -2908,7 +2908,10 @@ test('processing ranges doesnt block seeks', async function (t) {
 
   // Populate ranges
   for (let i = 0; i < totalLength; i++) {
-    clone.download({ start: i, end: i + 1 }).done().catch(noop)
+    clone
+      .download({ start: i, end: i + 1 })
+      .done()
+      .catch(noop)
   }
 
   t.is(clone.core.replicator._ranges.length, totalLength, 'large range backlog is pending')
