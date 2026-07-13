@@ -2891,6 +2891,74 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('completed range exposes capped range to existing peer', async function (t) {
+  const writer = await create(t)
+  const totalLength = 65
+
+  await writer.append(new Array(totalLength).fill('a'))
+
+  const firstPeer = await create(t, writer.key)
+  let streams = replicate(writer, firstPeer, t, { teardown: false })
+  await firstPeer.get(0)
+  await unreplicate(streams)
+
+  const cappedPeer = await create(t, writer.key)
+  streams = replicate(writer, cappedPeer, t, { teardown: false })
+  await cappedPeer.get(totalLength - 1)
+  await unreplicate(streams)
+
+  const downloader = await create(t, writer.key)
+
+  t.absent(await firstPeer.has(totalLength - 1), 'first peer does not have capped block')
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  const cappedDone = downloader
+    .download({ start: totalLength - 1, end: totalLength })
+    .done()
+    .then(() => true, noop)
+  const firstDone = downloader.download({ start: 0, end: 1 }).done()
+
+  for (let i = 1; i < totalLength - 1; i++) {
+    downloader.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = downloader.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'one range is outside the scan window')
+
+  // Model unrelated inflight work so the idle fallback cannot trigger the peer update.
+  replicator._inflight._active++
+  t.teardown(() => {
+    replicator._inflight._active--
+  })
+
+  const cappedPeerAdded = new Promise((resolve) => downloader.once('peer-add', resolve))
+  replicate(cappedPeer, downloader, t)
+
+  const remoteCappedPeer = await cappedPeerAdded
+  while (!remoteCappedPeer.remoteBitfield.get(totalLength - 1)) await eventFlush()
+
+  t.absent(await downloader.has(totalLength - 1), 'capped range was skipped initially')
+
+  replicate(firstPeer, downloader, t)
+  await firstDone
+
+  let timer = null
+  const downloaded = await Promise.race([
+    cappedDone,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
+  ])
+  clearTimeout(timer)
+
+  t.ok(downloaded, 'existing peer is revisited for the newly exposed range')
+})
+
 test('idle range completion drains past max range window', async function (t) {
   const core = await create(t)
   const clone = await create(t, core.key)
