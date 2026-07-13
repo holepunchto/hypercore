@@ -1229,8 +1229,10 @@ test('downloaded blocks are unslabbed if small', async function (t) {
 test('downloaded blocks are not unslabbed if bigger than half of slab size', async function (t) {
   const a = await create(t)
 
-  await a.append(Buffer.alloc(5000))
-  t.is(Buffer.poolSize < 5000 * 2, true, 'Sanity check (adapt test if fails)')
+  // as of Node v26.3.0 Buffer.poolSize = 65536 so should be bigger than half, hence 33k
+  const bufferSize = 33_000
+  await a.append(Buffer.alloc(bufferSize))
+  t.is(Buffer.poolSize < bufferSize * 2, true, 'Sanity check (adapt test if fails)')
 
   const b = await create(t, a.key)
 
