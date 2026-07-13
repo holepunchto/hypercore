@@ -1148,7 +1148,7 @@ class Hypercore extends EventEmitter {
 
   async proof(opts) {
     if (this.opened === false) await this.opening
-    const rx = this.state.storage.read(this.state.fork)
+    const rx = this.state.storage.read()
     const proofPromise = MerkleTree.proof(this.state, rx, opts)
     const blockPromise = opts && opts.block ? rx.getBlock(opts.block.index) : null
     rx.tryFlush()
