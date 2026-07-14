@@ -3134,6 +3134,56 @@ test('idle range completion keeps draining if update queues during yield', async
   t.alike(outliers, [], 'no available ranges remain pending')
 })
 
+test('idle range completion restarts if ranges cancel during yield', async function (t) {
+  const core = await create(t)
+  const downloads = []
+
+  const totalLength = 100
+  const availableStart = 80
+  const cancelLength = totalLength - availableStart
+  let completed = 0
+
+  for (let i = 0; i < totalLength; i++) {
+    const download = core.download({ start: i, end: i + 1 })
+    const done = download.done()
+
+    if (i >= availableStart) done.then(() => completed++, noop)
+    else done.catch(noop)
+
+    if (i < cancelLength) downloads.push(download)
+  }
+
+  const replicator = core.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        // Swap complete ranges behind the saved cursor while the drain is suspended.
+        for (const download of downloads) download.destroy()
+      })
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+  })
+
+  await replicator._updateNonPrimary(false)
+  await eventFlush()
+
+  t.is(completed, cancelLength, 'all complete ranges resolved')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
