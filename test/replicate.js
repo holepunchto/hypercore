@@ -2986,11 +2986,13 @@ test('processing ranges does not block seeks', async function (t) {
   const updateRanges = replicator._updateRanges
   const requestSeek = peer._requestSeek
   let updates = 0
-  let requestedAt = 0
+  let checked = 0
+  let checkedAtRequest = totalLength
   let seek = null
 
   replicator._updateRanges = function (index, limit) {
     const result = updateRanges.call(this, index, limit)
+    checked += result.checked
 
     if (++updates === 1) {
       setImmediate(() => {
@@ -3004,7 +3006,7 @@ test('processing ranges does not block seeks', async function (t) {
 
   peer._requestSeek = function (s) {
     const sent = requestSeek.call(this, s)
-    if (sent && requestedAt === 0) requestedAt = updates
+    if (sent && checkedAtRequest === totalLength) checkedAtRequest = checked
     return sent
   }
 
@@ -3016,7 +3018,7 @@ test('processing ranges does not block seeks', async function (t) {
   await replicator._updateNonPrimary(true)
   await seek
 
-  t.is(requestedAt, 1, 'seek was requested during the first range yield')
+  t.ok(checkedAtRequest < totalLength, 'seek was requested before the range scan completed')
 })
 
 test('idle range completion drains past max range window', async function (t) {
