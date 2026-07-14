@@ -2959,6 +2959,66 @@ test('completed range exposes capped range to existing peer', async function (t)
   t.ok(downloaded, 'existing peer is revisited for the newly exposed range')
 })
 
+test('processing ranges does not block seeks', async function (t) {
+  const core = await create(t)
+  const totalLength = 129
+
+  await core.append(new Array(totalLength).fill('a'))
+
+  const clone = await create(t, core.key, { eagerUpgrade: false })
+  const peerAdded = new Promise((resolve) => clone.once('peer-add', resolve))
+  replicate(core, clone, t)
+
+  const peer = await peerAdded
+  peer.paused = true
+  while (!peer.remoteSynced) await eventFlush()
+
+  for (let i = 0; i < totalLength; i++) {
+    clone
+      .download({ start: i, end: i + 1 })
+      .done()
+      .catch(noop)
+  }
+
+  const replicator = clone.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  const updateRanges = replicator._updateRanges
+  const requestSeek = peer._requestSeek
+  let updates = 0
+  let requestedAt = 0
+  let seek = null
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        peer.paused = false
+        seek = clone.seek(Math.floor(core.byteLength / 2))
+      })
+    }
+
+    return result
+  }
+
+  peer._requestSeek = function (s) {
+    const sent = requestSeek.call(this, s)
+    if (sent && requestedAt === 0) requestedAt = updates
+    return sent
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    peer._requestSeek = requestSeek
+  })
+
+  await replicator._updateNonPrimary(true)
+  await seek
+
+  t.is(requestedAt, 1, 'seek was requested during the first range yield')
+})
+
 test('idle range completion drains past max range window', async function (t) {
   const core = await create(t)
   const clone = await create(t, core.key)
