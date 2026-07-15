@@ -763,6 +763,10 @@ Emitted when a new connection has been established with a peer.
 
 Emitted when a peer's connection has been closed.
 
+#### `core.on('peer-synchronize', peer)`
+
+Emitted when a synchronize message from a peer has been processed, meaning the peer's remote state (`peer.remoteLength`, `peer.remoteFork`, etc) has been updated. The first emission for a peer means its handshake has completed: `peer-add` fires before the peer has sent anything, so this is the earliest point at which the peer's remote state can be read.
+
 #### `core.on('upload', index, byteLength, peer)`
 
 Emitted when a block is uploaded to a peer.
