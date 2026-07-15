@@ -2867,6 +2867,8 @@ test('delayed updateAll clears timer after reorg skip', async function (t) {
 test('small wants - range request stall', async function (t) {
   t.plan(3)
   Hypercore.enable(Hypercore.SMALL_WANTS)
+  t.teardown(() => Hypercore.enable(0))
+
   const core = await create(t)
   const blockLength = 20_000
   await core.append(Array(blockLength).fill('a'))
@@ -2885,7 +2887,7 @@ test('small wants - range request stall', async function (t) {
   peer.download({ start: 0, end: blockLength }).done()
   await uploaded
 
-  let tries = 100 // Usually < ~10 tries but padding for slow CI machines
+  let tries = 100 // Usually < ~10-20 tries but padding for slow CI machines
 
   const targetBlock = blockLength - 1
   while (tries-- > 0) {
