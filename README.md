@@ -763,6 +763,10 @@ Emitted when a new connection has been established with a peer.
 
 Emitted when a peer's connection has been closed.
 
+#### `core.on('peer-bitfield', peer)`
+
+Emitted when a bitfield or range message from a peer has been processed, meaning the peer's remote bitfield (which blocks it has, `peer.remoteBitfield` and `peer.remoteContiguousLength`) may have been updated.
+
 #### `core.on('upload', index, byteLength, peer)`
 
 Emitted when a block is uploaded to a peer.

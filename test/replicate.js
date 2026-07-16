@@ -2937,6 +2937,54 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('peer-bitfield is emitted when a range message is processed', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key)
+
+  // The contiguous range broadcast when the channel opens is the first (and,
+  // with no wants sent, only) message that updates the peer's remote
+  // bitfield state, so this exercises the onrange path.
+  // Read the state inside the listener: reading it off the peer after the
+  // await would resolve a tick late, by which point onrange has updated it
+  // regardless of when the event fired.
+  const bUpdated = new Promise((resolve) => {
+    b.once('peer-bitfield', (peer) => resolve(peer.remoteContiguousLength))
+  })
+
+  replicate(a, b, t)
+
+  t.is(await bUpdated, 3, 'remote bitfield state is updated when emitted')
+})
+
+test('peer-bitfield is emitted when a bitfield message is processed', async function (t) {
+  const writer = await create(t)
+  await writer.append(['a', 'b', 'c'])
+
+  // a holds only block 2: its haves are non-contiguous (contiguous length
+  // 0), so it broadcasts no contiguous range at channel open and replies to
+  // wants with bitfield pages — this exercises the onbitfield path
+  const a = await create(t, writer.key)
+  replicate(writer, a, t)
+  await a.download({ blocks: [2] }).done()
+
+  const b = await create(t, writer.key)
+  replicate(a, b, t)
+
+  // Learning that the peer has block 2 can only come from a bitfield message
+  const haves = await new Promise((resolve) => {
+    b.on('peer-bitfield', function onUpdate(peer) {
+      if (!peer.remoteBitfield.get(2)) return
+      b.off('peer-bitfield', onUpdate)
+      resolve([0, 1, 2].map((i) => peer.remoteBitfield.get(i)))
+    })
+    b.download({ blocks: [2] })
+  })
+
+  t.alike(haves, [false, false, true], 'remote has only block 2 when emitted')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
