@@ -197,6 +197,7 @@ class Hypercore extends EventEmitter {
   }
 
   static destroyRequests(session, err) {
+    if (isRequestsDestroyed(session)) return
     Replicator.clearRequests(session, err)
     session.push(null) // mark as dead
   }

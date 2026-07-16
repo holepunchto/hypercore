@@ -11,6 +11,7 @@ const {
 } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const crypto = require('hypercore-crypto')
+const { once } = require('events')
 const Hypercore = require('../')
 
 const DEBUG = false
@@ -1229,8 +1230,10 @@ test('downloaded blocks are unslabbed if small', async function (t) {
 test('downloaded blocks are not unslabbed if bigger than half of slab size', async function (t) {
   const a = await create(t)
 
-  await a.append(Buffer.alloc(5000))
-  t.is(Buffer.poolSize < 5000 * 2, true, 'Sanity check (adapt test if fails)')
+  // as of Node v26.3.0 Buffer.poolSize = 65536 so should be bigger than half, hence 33k
+  const bufferSize = 33_000
+  await a.append(Buffer.alloc(bufferSize))
+  t.is(Buffer.poolSize < bufferSize * 2, true, 'Sanity check (adapt test if fails)')
 
   const b = await create(t, a.key)
 
@@ -2859,6 +2862,49 @@ test('delayed updateAll clears timer after reorg skip', async function (t) {
   await new Promise((resolve) => setTimeout(resolve, 120))
 
   t.is(r._updateAllBump, null, 'timer handle should be cleared after firing')
+})
+
+test('small wants - range request stall', async function (t) {
+  t.plan(3)
+  Hypercore.enable(Hypercore.SMALL_WANTS)
+  t.teardown(() => Hypercore.enable(0))
+
+  const core = await create(t)
+  const blockLength = 20_000
+  await core.append(Array(blockLength).fill('a'))
+  t.is(core.length, blockLength, 'length is set')
+
+  let i = 0
+  while (i < blockLength) {
+    await core.clear(i, i + 1)
+    i += 2
+  }
+
+  const peer = await create(t, core.key)
+  const uploaded = once(core, 'upload')
+  replicate(core, peer, t)
+
+  peer.download({ start: 0, end: blockLength }).done()
+  await uploaded
+
+  let tries = 100 // Usually < ~10-20 tries but padding for slow CI machines
+
+  const targetBlock = blockLength - 1
+  while (tries-- > 0) {
+    const h = await peer.has(blockLength - 1)
+
+    if (h) {
+      t.pass('got block near end')
+      break
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+
+  t.comment('tries', tries)
+
+  const value = await peer.get(targetBlock)
+  t.alike(value, b4a.from('a'), 'got nth - 1 block')
 })
 
 test('delayed updateAll timer doesnt keep event loop alive', async function (t) {
