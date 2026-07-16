@@ -755,6 +755,10 @@ Emitted when the core has been appended to (i.e. has a new length / byteLength),
 
 Emitted when the core has been truncated, either locally or remotely.
 
+#### `core.on('clear', start, end)`
+
+Emitted when a range of blocks has been cleared from local storage with `core.clear()`.
+
 #### `core.on('peer-add')`
 
 Emitted when a new connection has been established with a peer.
