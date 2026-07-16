@@ -3171,10 +3171,14 @@ test('idle range completion drains past max range window', async function (t) {
 
   t.is(clone.core.replicator._ranges.length, totalLength, 'all ranges are pending')
 
+  let timer = null
   const resolved = await Promise.race([
     Promise.all(complete).then(() => true),
-    new Promise((resolve) => setTimeout(resolve, 1000, false))
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
   ])
+  clearTimeout(timer)
 
   t.ok(resolved, 'all locally complete ranges resolved')
 })
