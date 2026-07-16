@@ -3067,6 +3067,83 @@ test('processing ranges does not block seeks', async function (t) {
   t.ok(checkedAtRequest < totalLength, 'seek was requested before the range scan completed')
 })
 
+test('range drain checks unresolved seeks once', async function (t) {
+  const core = await create(t)
+  const totalRanges = 129
+
+  for (let i = 0; i < totalRanges; i++) {
+    core.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = core.core.replicator
+  let seekUpdates = 0
+  const seek = replicator.addSeek([], {
+    update() {
+      seekUpdates++
+      return null
+    }
+  })
+  seek.promise.catch(noop)
+
+  const queueUpdateAll = replicator.queueUpdateAll
+  let peerUpdates = 0
+  replicator.queueUpdateAll = function () {
+    peerUpdates++
+  }
+
+  t.teardown(() => {
+    replicator.queueUpdateAll = queueUpdateAll
+    if (seek.context) replicator.cancel(seek)
+  })
+
+  await replicator._updateNonPrimary(true)
+
+  t.is(seekUpdates, 1, 'seek was checked once across all range chunks')
+  t.is(peerUpdates, 2, 'peers were updated before and after the range drain')
+})
+
+test('cancelling seek during local update preserves other seeks', async function (t) {
+  const core = await create(t)
+  const replicator = core.core.replicator
+
+  let release = null
+  let startedResolve = null
+  const started = new Promise((resolve) => {
+    startedResolve = resolve
+  })
+
+  const first = replicator.addSeek([], {
+    update() {
+      startedResolve()
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    }
+  })
+  first.promise.catch(noop)
+
+  const second = replicator.addSeek([], {
+    update() {
+      return [1, 0]
+    }
+  })
+
+  t.teardown(() => {
+    if (first.context) replicator.cancel(first)
+    if (second.context) replicator.cancel(second)
+  })
+
+  const updating = replicator._updateNonPrimary(true)
+  await started
+
+  replicator.cancel(first)
+  release([0, 0])
+  await updating
+
+  const result = await Promise.race([second.promise, eventFlush()])
+  t.alike(result, [1, 0], 'remaining seek resolved')
+})
+
 test('idle range completion drains past max range window', async function (t) {
   const core = await create(t)
   const clone = await create(t, core.key)
