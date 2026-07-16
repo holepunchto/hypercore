@@ -2937,6 +2937,25 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('peer-synchronize is emitted when a synchronize message is processed', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key)
+
+  const aSynchronized = new Promise((resolve) => a.once('peer-synchronize', resolve))
+  const bSynchronized = new Promise((resolve) => b.once('peer-synchronize', resolve))
+
+  replicate(a, b, t)
+
+  const peerOnA = await aSynchronized
+  t.is(peerOnA.remoteSynced, true, 'peer remote state is set when emitted')
+
+  const peerOnB = await bSynchronized
+  t.is(peerOnB.remoteSynced, true, 'peer remote state is set when emitted')
+  t.is(peerOnB.remoteLength, 3, 'peer remote length is known when emitted')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
