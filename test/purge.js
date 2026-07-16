@@ -1,33 +1,34 @@
 const test = require('brittle')
-const fs = require('fs')
-const Path = require('path')
 
-const Hypercore = require('..')
+const Hypercore = require('../')
+const { createStorage, toArray } = require('./helpers')
 
 test('basic purge', async function (t) {
   const dir = await t.tmp()
-  const core = new Hypercore(dir)
+  const storage = await createStorage(t, dir)
+  const core = new Hypercore(storage)
+
   await core.append(['a', 'b', 'c'])
 
-  const oplogLoc = Path.join(dir, 'oplog')
-  const treeLoc = Path.join(dir, 'tree')
-  const bitfieldLoc = Path.join(dir, 'bitfield')
-  const dataLoc = Path.join(dir, 'data')
+  // Sanity check for core having data
+  t.is(core.length, 3)
 
-  t.is(fs.existsSync(oplogLoc), true)
-  t.is(fs.existsSync(treeLoc), true)
-  t.is(fs.existsSync(bitfieldLoc), true)
-  t.is(fs.existsSync(dataLoc), true)
-  t.is(fs.readdirSync(dir).length, 4) // Sanity check
+  const discoveryKey = core.discoveryKey
 
   await core.purge()
 
-  t.is(core.closed, true)
-  t.is(fs.existsSync(oplogLoc), false)
-  t.is(fs.existsSync(treeLoc), false)
-  t.is(fs.existsSync(bitfieldLoc), false)
-  t.is(fs.existsSync(dataLoc), false)
-  t.is(fs.readdirSync(dir).length, 0) // Nothing remains
+  const reopenedStorage = await createStorage(t, dir)
+  const coreStorage = await reopenedStorage.resumeCore(discoveryKey)
+  t.teardown(() => reopenedStorage.close())
+
+  const allBlocks = await toArray(coreStorage.createBlockStream())
+  t.is(allBlocks.length, 0)
+
+  const allTreeNodes = await toArray(coreStorage.createTreeNodeStream())
+  t.is(allTreeNodes.length, 0)
+
+  const allBitfieldPages = await toArray(coreStorage.createBitfieldStream())
+  t.is(allBitfieldPages.length, 0)
 })
 
 test('purge closes all sessions', async function (t) {
