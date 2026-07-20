@@ -151,7 +151,7 @@ test('core opened while the signal is suspended is born suspended', async functi
 test('core push while suspending', async function (t) {
   const controller = new Hypercore.SuspendController()
 
-  const a = await create(t, null, { suspendSignal: controller.signal  })
+  const a = await create(t, null, { suspendSignal: controller.signal })
   const b = await create(t, a.key, { allowPush: true, pushOnly: true })
 
   b.replicator.setPushOnly(true)
