@@ -104,7 +104,7 @@ test('core opened while the signal is suspended is born suspended', async functi
 })
 
 async function drainReplication(core) {
-  while (core.core.replicator._replicationBusy()) await sleep(10)
+  while (core.core.replicator.busy) await sleep(10)
 }
 
 function sleep(ms) {
