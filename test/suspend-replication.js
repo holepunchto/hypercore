@@ -103,6 +103,42 @@ test('core opened while the signal is suspended is born suspended', async functi
   t.alike(await get, Buffer.from('b'), 'served after the shared signal resumed')
 })
 
+test('core push while suspending', async function (t) {
+  const controller = new Hypercore.SuspendController()
+
+  const a = await create(t, null, { suspendSignal: controller.signal  })
+  const b = await create(t, a.key, { allowPush: true, pushOnly: true })
+
+  b.replicator.setPushOnly(true)
+  t.is(b.replicator.pushOnly, true, 'b is push only')
+
+  replicate(a, b, t)
+
+  await a.append(['a', 'b', 'c'])
+
+  t.ok(a.peers[0].remoteAllowPush, 'a sees b as push only')
+  t.is(a.peers[0].pushProcessing, 0, 'a sees b w/ no pushes initially')
+  t.absent(a.replicator.busy, 'isnt busy initially')
+
+  const wireDataTxBefore = a.replicator.stats.wireData.tx
+
+  const pushP = a.replicator.push(0)
+  t.absent(a.replicator.suspended, 'isnt suspended yet')
+  controller.suspend()
+
+  await eventFlush()
+  t.ok(a.replicator.busy, 'pushing makes replicator busy')
+  t.ok(a.replicator.suspended, 'now suspended')
+  t.is(a.peers[0].pushProcessing, 1, 'a sees b w/ a push')
+  await pushP
+
+  t.absent(await b.has(0), 'b doesnt have block')
+  controller.resume()
+
+  t.absent(await b.has(0), 'block still absent')
+  t.is(a.replicator.stats.wireData.tx, wireDataTxBefore, 'block not sent because !isActive()')
+})
+
 async function drainReplication(core) {
   while (core.core.replicator.busy) await sleep(10)
 }
