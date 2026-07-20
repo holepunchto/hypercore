@@ -2,6 +2,7 @@ const test = require('brittle')
 const CoreStorage = require('hypercore-storage')
 const { create, replicate, eventFlush } = require('./helpers')
 const Hypercore = require('../')
+const { once } = require('events')
 
 test('suspended replication stops downloading, catches up on resume', async function (t) {
   const controller = new Hypercore.SuspendController()
@@ -47,6 +48,50 @@ test('suspended replication queues incoming requests, serves them on resume', as
   controller.resume()
 
   t.alike(await get, Buffer.from('c'), 'queued request served after resume')
+})
+
+test('suspended replication queues incoming requests, clear receiverBusy after handling w/ error', async function (t) {
+  const controller = new Hypercore.SuspendController()
+
+  const a = await create(t, null, { suspendSignal: controller.signal })
+  const b = await create(t, a.key)
+  await a.append(['a', 'b', 'c'])
+
+  const bAppended = once(b, 'append')
+  replicate(a, b, t)
+  await bAppended
+
+  controller.suspend()
+
+  // Artificial setup to right max invalid requests to force error when handling an invalid request
+  a.peers[0].stats.invalidRequests = 63
+
+  const peerForB = b.replicator.peers[0]
+  const invalidReq = {
+    peer: peerForB,
+    rt: 0,
+    id: 1,
+    fork: 0,
+    block: { index: 0, nodes: 2 },
+    hash: null,
+    seek: { bytes: 1, padding: 1 }, // invalid to both seek and block when upgrading
+    upgrade: { start: 0, length: 2 },
+    manifest: false,
+    priority: 1,
+    timestamp: 1754412092523,
+    elapsed: 0
+  }
+
+  b.replicator._inflight.add(invalidReq)
+  peerForB.wireRequest.send(invalidReq)
+
+  await eventFlush() // allow it to be sent
+
+  controller.resume()
+  t.ok(a.peers[0].receiverBusy, 'set to busy')
+  await eventFlush()
+
+  t.absent(a.peers[0].receiverBusy, 'no longer set to busy')
 })
 
 test('no storage io while replication and storage are suspended', async function (t) {
