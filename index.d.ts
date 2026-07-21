@@ -321,7 +321,7 @@ export class Hypercore {
 
   static destroyRequests(session: any, err: any): any
 
-  static treeHashFromStorage(session: any, length?: any): Promise<void>
+  static treeHashFromStorage(session: any, length?: any): Promise<any>
 
   /**
    * Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
@@ -340,18 +340,18 @@ export class Hypercore {
    * Set the encryption key.
    * @param opts - `opts`
    */
-  setEncryptionKey(key: any, opts?: HypercoreSetEncryptionKeyOptions): Promise<void>
+  setEncryptionKey(key: any, opts?: HypercoreSetEncryptionKeyOptions): Promise<any>
 
   /**
    * Set the encryption, which should satisfy the [HypercoreEncryption](https://github.com/holepunchto/hypercore-encryption) interface.
    */
-  setEncryption(encryption: any): Promise<void>
+  setEncryption(encryption: any): Promise<any>
 
   /**
    * Set the group `topic` that the hypercore belongs to. Useful for grouping hypercores together that need to update a larger data structure (eg. `autobee`) that is comprised of them. See `corestore`'s `store.notifyGroup(topic)` for more details.
    * @param topic - `topic` is a 32 byte buffer.
    */
-  setGroup(topic: any): Promise<void>
+  setGroup(topic: any): Promise<any>
 
   /**
    * Update the core's `keyPair`. Advanced as the `keyPair` is used throughout Hypercore, e.g. verifying blocks, identifying the core, etc.
@@ -377,7 +377,7 @@ export class Hypercore {
    * @param opts - `opts`
    * @returns Returns `null` if committing failed.
    */
-  commit(session: any, opts?: HypercoreCommitOptions): Promise<void>
+  commit(session: any, opts?: HypercoreCommitOptions): Promise<any>
 
   /**
    * Create a replication stream. You should pipe this to another Hypercore instance.
@@ -453,20 +453,20 @@ export class Hypercore {
    */
   ready(): any
 
-  recover(): Promise<void>
+  recover(): Promise<any>
 
   /**
    * Set a key in the User Data key-value store.
    * @param key - `key` is a string and
    */
-  setUserData(key: any, value: any): Promise<void>
+  setUserData(key: any, value: any): Promise<any>
 
   /**
    * `key` is a string.
    * @param key - `key` is a string.
    * @returns Return the value for a key in the User Data key-value store.
    */
-  getUserData(key: any): Promise<void>
+  getUserData(key: any): Promise<any>
 
   transferSession(core: any): any
 
@@ -479,60 +479,60 @@ export class Hypercore {
    * Get information about this core, such as its total size in bytes.
    * @param opts - `options`
    */
-  info(opts?: HypercoreInfoOptions): Promise<void>
+  info(opts?: HypercoreInfoOptions): Promise<any>
 
   /**
    * Waits for initial proof of the new core length until all `findingPeers` calls have finished.
    * @param opts - `options`
    */
-  update(opts?: HypercoreUpdateOptions): Promise<void>
+  update(opts?: HypercoreUpdateOptions): Promise<any>
 
   /**
    * Seek to a byte offset.
    * @returns Returns `[index, relativeOffset]`, where `index` is the data block the `byteOffset` is contained in and `relativeOffset` is the relative byte offset in the data block.
    */
-  seek(bytes: any, opts?: HypercoreSeekOptions): Promise<void>
+  seek(bytes: any, opts?: HypercoreSeekOptions): Promise<any>
 
   /**
    * Check if the core has all blocks between `start` and `end`.
    */
-  has(start: any, end?: any): Promise<void>
+  has(start: any, end?: any): Promise<any>
 
   /**
    * Get a block of data. If the data is not available locally this method will prioritize and wait for the data to be downloaded.
    * @param opts - `options`
    */
-  get(index: any, opts?: HypercoreGetOptions): Promise<void>
+  get(index: any, opts?: HypercoreGetOptions): Promise<any>
 
   /**
    * Clear stored blocks between `start` and `end`, reclaiming storage when possible.
    * @param opts - `options`
    */
-  clear(start: any, end?: any, opts?: HypercoreClearOptions): Promise<void>
+  clear(start: any, end?: any, opts?: HypercoreClearOptions): Promise<any>
 
-  purge(): Promise<void>
+  purge(): Promise<any>
 
   /**
    * Manually mark a block or range of blocks to be retained when sweeping. Useful to mark blocks without loading them into memory. `end` is non-inclusive and defaults to `start + 1` so `core.markBlock(index)` only marks the block at `index`.
    * @param end - `end` is non-inclusive and defaults to
    */
-  markBlock(start: any, end?: any): Promise<void>
+  markBlock(start: any, end?: any): Promise<any>
 
   /**
    * Manually remove all markings. Automatically called when calling `core.startMarking()`.
    */
-  clearMarkings(): Promise<void>
+  clearMarkings(): Promise<any>
 
   /**
    * This enables marking mode for the "mark & sweep" approach to clear hypercore storage. When called the current markings are cleared.
    */
-  startMarking(): Promise<void>
+  startMarking(): Promise<any>
 
   /**
    * Clear all unmarked blocks from storage.
    * @param options - `opts`
    */
-  sweep(options?: HypercoreSweepOptions): Promise<void>
+  sweep(options?: HypercoreSweepOptions): Promise<any>
 
   /**
    * Make a read stream to read a range of data out at once.
@@ -564,43 +564,43 @@ export class Hypercore {
    * Truncate the core to a smaller length.
    * @param opts - `options`
    */
-  truncate(newLength?: any, opts?: HypercoreTruncateOptions): Promise<void>
+  truncate(newLength?: any, opts?: HypercoreTruncateOptions): Promise<any>
 
   /**
    * Append a block of data (or an array of blocks) to the core. Returns the new length and byte length of the core.
    * @param opts - `options`
    */
-  append(blocks: any, opts?: HypercoreAppendOptions): Promise<void>
+  append(blocks: any, opts?: HypercoreAppendOptions): Promise<any>
 
   /**
    * @returns Return a buffer which encodes the core's `key`, tree hash (`core.treeHash()`), `length`, & `fork`.
    */
-  signable(length?: any, fork?: any): Promise<void>
+  signable(length?: any, fork?: any): Promise<any>
 
   /**
    * Get the Merkle Tree hash of the core at a given length, defaulting to the current length of the core.
    */
-  treeHash(length?: any): Promise<void>
+  treeHash(length?: any): Promise<any>
 
-  missingNodes(index: any): Promise<void>
+  missingNodes(index: any): Promise<any>
 
   /**
    * Generate a proof (a `TreeProof` instance) for the request `opts`.
    * @param opts - `opts`
    */
-  proof(opts: HypercoreProofOptions): Promise<void>
+  proof(opts: HypercoreProofOptions): Promise<any>
 
-  applyProof(proof: any, from: any): Promise<void>
+  applyProof(proof: any, from: any): Promise<any>
 
   /**
    * Note that you cannot seek & provide a block / hash request when upgrading.
    * @returns Return the merkle tree batch from the proof.
    */
-  verifyFullyRemote(proof: any): Promise<void>
+  verifyFullyRemote(proof: any): Promise<any>
 
   generateRemoteProofForTreeNode(treeNodeIndex: any): any
 
-  recoverFromRemoteProof(remoteProof: any): Promise<void>
+  recoverFromRemoteProof(remoteProof: any): Promise<any>
 
   recoverTreeNodeFromPeers(): any
 
@@ -672,21 +672,6 @@ export class Hypercore {
   waits: any
 
   /**
-   * Sends the `message` to a specific `peer`.
-   */
-  send(message: any, peer: any): any
-
-  /**
-   * Sends the `message` to all peers.
-   */
-  broadcast(message: any): any
-
-  /**
-   * Unregister and remove extension from the hypercore.
-   */
-  destroy(): any
-
-  /**
    * Emitted when the core has been fully closed.
    */
   on(event: 'close', listener: () => void): this
@@ -725,7 +710,7 @@ export class Hypercore {
   on(event: 'remote-contiguous-length', listener: (...args: any[]) => void): this
 }
 
-export class ReadStream {
+declare class ReadStream {
   constructor(core: any, opts?: any)
 
   push(data: any): any
@@ -757,7 +742,7 @@ export class ReadStream {
   on(event: 'error', listener: () => void): this
 }
 
-export class WriteStream {
+declare class WriteStream {
   constructor(core: any)
 
   write(data: any): any
@@ -778,7 +763,7 @@ export class WriteStream {
   on(event: 'error', listener: () => void): this
 }
 
-export class ByteStream {
+declare class ByteStream {
   constructor(core: any, opts?: any)
 
   push(data: any): any
