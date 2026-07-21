@@ -50,6 +50,67 @@ test('suspended replication queues incoming requests, serves them on resume', as
   t.alike(await get, Buffer.from('c'), 'queued request served after resume')
 })
 
+test('suspended replication doesnt deadlock when suspended again mid-flight after resume', async function (t) {
+  const controller = new Hypercore.SuspendController()
+
+  const a = await create(t, null, { suspendSignal: controller.signal })
+  const b = await create(t, a.key)
+  await a.append(['a', 'b', 'c'])
+
+  const bAppended = once(b, 'append')
+  replicate(a, b, t)
+  await bAppended
+
+  controller.suspend()
+  const get = b.get(0)
+  const early = await Promise.race([get.then(() => 'served'), sleep(300).then(() => 'pending')])
+  t.is(early, 'pending', 'request not served while suspended')
+
+  // land the flutter suspend deterministically inside _fulfillRequest's one
+  // pending await, instead of guessing how many ticks req.fulfill() takes
+  const fired = fulfillMidflightSuspend(a.peers[0], controller)
+
+  controller.resume()
+  await fired
+  await eventFlush()
+  controller.resume()
+
+  t.alike(await get, Buffer.from('a'), 'queued request served after resume, not dropped')
+})
+
+test('suspended-again request is served exactly once, not duplicated', async function (t) {
+  const controller = new Hypercore.SuspendController()
+
+  const a = await create(t, null, { suspendSignal: controller.signal })
+  const b = await create(t, a.key)
+  await a.append(['a'])
+
+  const bAppended = once(b, 'append')
+  replicate(a, b, t)
+  await bAppended
+
+  controller.suspend()
+  const get = b.get(0)
+  await eventFlush()
+
+  const fired = fulfillMidflightSuspend(a.peers[0], controller)
+
+  controller.resume()
+  await fired
+  await eventFlush()
+
+  const wireDataTxBefore = a.replicator.stats.wireData.tx
+  controller.resume()
+
+  t.alike(await get, Buffer.from('a'))
+  await eventFlush()
+  t.is(
+    a.replicator.stats.wireData.tx,
+    wireDataTxBefore + 1,
+    'served exactly once, no duplicate send'
+  )
+})
+
 test('suspended replication queues incoming requests, clear receiverBusy after handling w/ error', async function (t) {
   const controller = new Hypercore.SuspendController()
 
@@ -183,6 +244,27 @@ test('core push while suspending', async function (t) {
   t.absent(await b.has(0), 'block still absent')
   t.is(a.replicator.stats.wireData.tx, wireDataTxBefore, 'block not sent because !isActive()')
 })
+
+// patches peer._fulfillRequest for exactly one call, firing controller.suspend()
+// synchronously right after it starts (while its one internal await is pending)
+// so the flutter lands inside the race window instead of at a guessed tick count
+function fulfillMidflightSuspend(peer, controller) {
+  const orig = peer._fulfillRequest.bind(peer)
+  let resolve
+  const fired = new Promise((r) => {
+    resolve = r
+  })
+
+  peer._fulfillRequest = function (req, pushing) {
+    peer._fulfillRequest = orig
+    const p = orig(req, pushing)
+    controller.suspend()
+    resolve()
+    return p
+  }
+
+  return fired
+}
 
 async function drainReplication(core) {
   while (core.core.replicator.busy) await sleep(10)
