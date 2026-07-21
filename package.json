@@ -81,5 +81,6 @@
     "tiny-byte-size": "^1.1.0",
     "udx-native": "^1.6.1",
     "uncaughts": "^1.1.0"
-  }
+  },
+  "types": "index.d.ts"
 }
