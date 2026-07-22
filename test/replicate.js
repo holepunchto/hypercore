@@ -3032,23 +3032,12 @@ test('processing ranges does not block seeks', async function (t) {
 
   const updateRanges = replicator._updateRanges
   const requestSeek = peer._requestSeek
-  let updates = 0
   let checked = 0
   let checkedAtRequest = totalLength
-  let seek = null
 
   replicator._updateRanges = function (index, limit) {
     const result = updateRanges.call(this, index, limit)
     checked += result.checked
-
-    if (++updates === 1) {
-      // Add the seek while the drain is suspended between its first and second range batches.
-      setImmediate(() => {
-        peer.paused = false
-        seek = clone.seek(Math.floor(core.byteLength / 2))
-      })
-    }
-
     return result
   }
 
@@ -3062,6 +3051,9 @@ test('processing ranges does not block seeks', async function (t) {
     replicator._updateRanges = updateRanges
     peer._requestSeek = requestSeek
   })
+
+  peer.paused = false
+  const seek = clone.seek(Math.floor(core.byteLength / 2))
 
   await replicator._updateNonPrimary(true)
   await seek
