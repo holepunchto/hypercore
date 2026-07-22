@@ -32,18 +32,22 @@ test('suspended replication stops downloading, catches up on resume', async func
 
 test('suspended replication queues incoming requests, serves them on resume', async function (t) {
   const controller = new Hypercore.SuspendController()
-  controller.suspend()
 
   const a = await create(t, null, { suspendSignal: controller.signal })
+  const b = await create(t, a.key)
   await a.append(['a', 'b', 'c'])
 
-  const b = await create(t, a.key)
-
+  // sync before suspending
+  const bAppended = once(b, 'append')
   replicate(a, b, t)
+  await bAppended
+
+  controller.suspend()
 
   const get = b.get(2)
   const early = await Promise.race([get.then(() => 'served'), sleep(300).then(() => 'pending')])
   t.is(early, 'pending', 'request not served while suspended')
+  t.is(a.peers[0].receiverQueue.length, 1, 'request queued while suspended')
 
   controller.resume()
 
