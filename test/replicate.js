@@ -2937,7 +2937,7 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
-test('completed range exposes capped range to existing peer', async function (t) {
+test('crossing max range boundary reschedules existing peers', async function (t) {
   const writer = await create(t)
   const totalLength = 65
 
@@ -2990,6 +2990,7 @@ test('completed range exposes capped range to existing peer', async function (t)
 
   t.absent(await downloader.has(totalLength - 1), 'capped range was skipped initially')
 
+  // Completing the block-0 range crosses the 65 -> 64 boundary and must rescan existing peers.
   replicate(firstPeer, downloader, t)
   await firstDone
 
@@ -3041,6 +3042,7 @@ test('processing ranges does not block seeks', async function (t) {
     checked += result.checked
 
     if (++updates === 1) {
+      // Add the seek while the drain is suspended between its first and second range batches.
       setImmediate(() => {
         peer.paused = false
         seek = clone.seek(Math.floor(core.byteLength / 2))
