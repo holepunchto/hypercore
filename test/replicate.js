@@ -2944,12 +2944,12 @@ test('completed range exposes capped range to existing peer', async function (t)
   await writer.append(new Array(totalLength).fill('a'))
 
   const firstPeer = await create(t, writer.key)
-  let streams = replicate(writer, firstPeer, t, { teardown: false })
+  let streams = replicate(writer, firstPeer, t)
   await firstPeer.get(0)
   await unreplicate(streams)
 
   const cappedPeer = await create(t, writer.key)
-  streams = replicate(writer, cappedPeer, t, { teardown: false })
+  streams = replicate(writer, cappedPeer, t)
   await cappedPeer.get(totalLength - 1)
   await unreplicate(streams)
 
