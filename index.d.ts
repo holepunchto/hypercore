@@ -326,7 +326,7 @@ export class Hypercore {
   /**
    * Same as [`core.session(options)`](#const-session--coresessionoptions), but backed by a storage snapshot so will not truncate nor append.
    */
-  snapshot(opts?: any): any
+  snapshot(opts?: any): Hypercore
 
   compact(): any
 
@@ -334,7 +334,7 @@ export class Hypercore {
    * Creates a new Hypercore instance that shares the same underlying core.
    * @param opts - Options are inherited from the parent instance, unless they are re-set.
    */
-  session(opts?: HypercoreSessionOptions): any
+  session(opts?: HypercoreSessionOptions): Hypercore
 
   /**
    * Set the encryption key.
@@ -538,18 +538,18 @@ export class Hypercore {
    * Make a read stream to read a range of data out at once.
    * @param opts - `options`
    */
-  createReadStream(opts?: HypercoreCreateReadStreamOptions): any
+  createReadStream(opts?: HypercoreCreateReadStreamOptions): ReadStream
 
   /**
    * Make a write stream to append chunks as blocks.
    */
-  createWriteStream(): any
+  createWriteStream(): WriteStream
 
   /**
    * Make a byte stream to read a range of bytes.
    * @param opts - `options`
    */
-  createByteStream(opts?: HypercoreCreateByteStreamOptions): any
+  createByteStream(opts?: HypercoreCreateByteStreamOptions): ByteStream
 
   /**
    * Download a range of data.
@@ -608,7 +608,7 @@ export class Hypercore {
    * Register a custom protocol extension. This is a legacy implementation and is no longer recommended. Creating a [`Protomux`](https://github.com/holepunchto/protomux) protocol is recommended instead.
    * @param handlers - `handlers`
    */
-  registerExtension(name: any, handlers?: HypercoreRegisterExtensionOptions): any
+  registerExtension(name: any, handlers?: HypercoreRegisterExtensionOptions): Extension
 
   emit(event: any, arg1?: any): any
 
@@ -779,6 +779,23 @@ declare class ByteStream {
   on(event: 'end', listener: () => void): this
   on(event: 'close', listener: () => void): this
   on(event: 'error', listener: () => void): this
+}
+
+declare class Extension {
+  /**
+   * Sends the `message` to a specific `peer`.
+   */
+  send(message: any, peer: any): any
+
+  /**
+   * Sends the `message` to all peers.
+   */
+  broadcast(message: any): any
+
+  /**
+   * Unregister and remove extension from the hypercore.
+   */
+  destroy(): any
 }
 
 export default Hypercore
