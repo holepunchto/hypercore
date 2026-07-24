@@ -3206,7 +3206,7 @@ test('idle range completion keeps draining if update queues during yield', async
         // Simulate an update arriving with new inflight work. The nested call only sets
         // _updatesQueued; the original idle drain must still reach the complete tail ranges.
         this._inflight._active++
-        this._updateNonPrimary(false).catch(noop)
+        this._updateNonPrimary(false)
       })
     }
 
