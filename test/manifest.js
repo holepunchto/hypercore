@@ -1548,6 +1548,7 @@ test('manifest - getManifest returns null if no manifest', async function (t) {
   const create = await createStored(t)
 
   const core = await create(key, { compat: false })
+  t.teardown(() => core.close())
   await core.ready()
 
   t.is(core.getManifest(), null)
