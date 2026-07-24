@@ -1619,6 +1619,7 @@ test('manifest - core.setManifest accepts a raw encoded buffer directly', async 
   const create = await createStored(t)
 
   const core = await create(key, { compat: false })
+  t.teardown(() => core.close())
   await core.ready()
 
   t.is(core.core.header.manifest, null)
