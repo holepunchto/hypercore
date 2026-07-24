@@ -1518,6 +1518,207 @@ test('manifest - persist if manifest is updated', async function (t) {
   }
 })
 
+test('manifest - getManifest raw option returns encoded buffer', async function (t) {
+  const core = await create(t, { compat: false })
+  await core.ready()
+
+  const manifest = core.getManifest()
+  const raw = core.getManifest({ raw: true })
+
+  t.alike(manifest, core.manifest)
+  t.ok(b4a.isBuffer(raw))
+  t.alike(raw, Verifier.encodeManifest(core.manifest))
+  t.alike(Verifier.decodeManifest(raw), core.manifest)
+})
+
+test('manifest - getManifest returns null if no manifest', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const create = await createStored(t)
+
+  const core = await create(key, { compat: false })
+  t.teardown(() => core.close())
+  await core.ready()
+
+  t.is(core.getManifest(), null)
+  t.is(core.getManifest({ raw: true }), null)
+})
+
+test('manifest - setManifest accepts a raw encoded buffer', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const create = await createStored(t)
+
+  const rawManifest = Verifier.encodeManifest(manifest)
+
+  {
+    const core = await create(key, { compat: false })
+    await core.ready()
+
+    t.is(core.manifest, null)
+
+    await core.close()
+  }
+
+  {
+    const core = await create(key, { manifest: rawManifest, compat: false })
+    await core.ready()
+
+    t.alike(core.manifest, manifest)
+    t.alike(core.key, key)
+
+    await core.close()
+  }
+
+  {
+    const core = await create(key, { compat: false })
+    await core.ready()
+
+    t.alike(core.manifest, manifest)
+
+    await core.close()
+  }
+})
+
+test('manifest - core.setManifest accepts a raw encoded buffer directly', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const create = await createStored(t)
+
+  const core = await create(key, { compat: false })
+  t.teardown(() => core.close())
+  await core.ready()
+
+  t.is(core.core.header.manifest, null)
+
+  await core.core.setManifest(Verifier.encodeManifest(manifest))
+
+  t.alike(core.core.header.manifest, manifest)
+  t.alike(core.manifest, manifest)
+})
+
+test('manifest - Hypercore.parseManifest decodes a raw buffer', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const raw = Verifier.encodeManifest(manifest)
+
+  t.alike(Hypercore.parseManifest(raw), manifest)
+  t.alike(Hypercore.parseManifest(manifest), manifest)
+  t.is(Hypercore.parseManifest(null), null)
+
+  const key = Verifier.manifestHash(manifest)
+
+  t.alike(Hypercore.parseManifest(raw, key), manifest)
+  t.alike(Hypercore.parseManifest(manifest, key), manifest)
+})
+
+test('manifest - Hypercore.parseManifest throws if manifest does not hash to key', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const wrongKey = b4a.alloc(32, 1)
+
+  t.exception(() => Hypercore.parseManifest(manifest, wrongKey))
+  t.exception(() => Hypercore.parseManifest(Verifier.encodeManifest(manifest), wrongKey))
+})
+
+test('manifest - Hypercore.parseManifest throws on an invalid manifest', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  t.exception(() =>
+    Hypercore.parseManifest({
+      quorum: 2,
+      signers: [
+        {
+          signature: 'ed25519',
+          publicKey: keyPair.publicKey
+        }
+      ]
+    })
+  )
+
+  t.exception(() =>
+    Hypercore.parseManifest({
+      quorum: 1,
+      signers: [{ signature: 'ed25519' }]
+    })
+  )
+})
+
+test('manifest - Hypercore.key accepts a raw encoded manifest buffer', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: keyPair.publicKey
+      }
+    ]
+  })
+
+  const raw = Verifier.encodeManifest(manifest)
+
+  t.alike(Hypercore.key(raw), Hypercore.key(manifest))
+  t.alike(Hypercore.key(raw), Verifier.manifestHash(manifest))
+
+  // a bare 32 byte buffer is still treated as a single signer public key
+  t.alike(Hypercore.key(keyPair.publicKey, { compat: true }), keyPair.publicKey)
+})
+
 test('manifest - invalid signature fails', async function (t) {
   const core = await create(t, { compat: false })
 

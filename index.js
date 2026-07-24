@@ -23,7 +23,8 @@ const Download = require('./lib/download')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
 const Replicator = require('./lib/replicator')
-const { manifestHash, createManifest } = require('./lib/verifier')
+const Verifier = require('./lib/verifier')
+const { manifestHash, createManifest, encodeManifest } = Verifier
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
 const { proof, verify } = require('./lib/fully-remote-proof')
@@ -35,7 +36,8 @@ const {
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE,
   DECODING_ERROR,
-  REQUEST_CANCELLED
+  REQUEST_CANCELLED,
+  INVALID_CHECKSUM
 } = require('hypercore-errors')
 
 // Hypercore actually does not have any notion of max/min block sizes
@@ -130,9 +132,29 @@ class Hypercore extends EventEmitter {
 
   static key(manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) {
-      manifest = { version, signers: [{ publicKey: manifest, namespace }] }
+      manifest =
+        manifest.byteLength === 32
+          ? { version, signers: [{ publicKey: manifest, namespace }] }
+          : this.parseManifest(manifest)
     }
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
+  }
+
+  static parseManifest(manifest, key) {
+    const parsed = createManifest(manifest)
+    if (parsed === null) return null
+
+    if (parsed.quorum > parsed.signers.length) {
+      throw BAD_ARGUMENT('Quorum should not be higher than the number of signers')
+    }
+
+    new Verifier(manifestHash(parsed), parsed)
+
+    if (key && !Verifier.isValidManifest(key, parsed)) {
+      throw INVALID_CHECKSUM('Manifest does not hash to provided key')
+    }
+
+    return parsed
   }
 
   static discoveryKey(key) {
@@ -453,7 +475,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.manifest && !this.core.header.manifest) {
-      await this.core.setManifest(createManifest(opts.manifest))
+      await this.core.setManifest(opts.manifest)
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
@@ -604,6 +626,11 @@ class Hypercore extends EventEmitter {
 
   get manifest() {
     return this.core === null ? null : this.core.manifest
+  }
+
+  getManifest({ raw = false } = {}) {
+    if (this.manifest === null) return null
+    return raw ? encodeManifest(this.manifest) : this.manifest
   }
 
   get length() {
