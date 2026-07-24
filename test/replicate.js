@@ -2937,6 +2937,344 @@ test('delayed updateAll timer doesnt keep event loop alive', async function (t) 
   t.is(r._updateAllBump, null, 'timer reset to null')
 })
 
+test('crossing max range boundary reschedules existing peers', async function (t) {
+  const writer = await create(t)
+  const totalLength = 65
+
+  await writer.append(new Array(totalLength).fill('a'))
+
+  const firstPeer = await create(t, writer.key)
+  let streams = replicate(writer, firstPeer, t)
+  await firstPeer.get(0)
+  await unreplicate(streams)
+
+  const cappedPeer = await create(t, writer.key)
+  streams = replicate(writer, cappedPeer, t)
+  await cappedPeer.get(totalLength - 1)
+  await unreplicate(streams)
+
+  const downloader = await create(t, writer.key)
+
+  t.absent(await firstPeer.has(totalLength - 1), 'first peer does not have capped block')
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  const cappedDone = downloader
+    .download({ start: totalLength - 1, end: totalLength })
+    .done()
+    .then(() => true, noop)
+  const firstDone = downloader.download({ start: 0, end: 1 }).done()
+
+  for (let i = 1; i < totalLength - 1; i++) {
+    downloader.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = downloader.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'one range is outside the scan window')
+
+  // Model unrelated inflight work so the idle fallback cannot trigger the peer update.
+  replicator._inflight._active++
+  t.teardown(() => {
+    replicator._inflight._active--
+  })
+
+  const cappedPeerAdded = new Promise((resolve) => downloader.once('peer-add', resolve))
+  replicate(cappedPeer, downloader, t)
+
+  const remoteCappedPeer = await cappedPeerAdded
+  while (!remoteCappedPeer.remoteBitfield.get(totalLength - 1)) await eventFlush()
+
+  t.absent(await downloader.has(totalLength - 1), 'capped range was skipped initially')
+
+  // Completing the block-0 range crosses the 65 -> 64 boundary and must rescan existing peers.
+  replicate(firstPeer, downloader, t)
+  await firstDone
+
+  let timer = null
+  const downloaded = await Promise.race([
+    cappedDone,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
+  ])
+  clearTimeout(timer)
+
+  t.ok(downloaded, 'existing peer is revisited for the newly exposed range')
+})
+
+test('processing ranges does not block seeks', async function (t) {
+  const core = await create(t)
+  const totalLength = 129
+
+  await core.append(new Array(totalLength).fill('a'))
+
+  const clone = await create(t, core.key, { eagerUpgrade: false })
+  const peerAdded = new Promise((resolve) => clone.once('peer-add', resolve))
+  replicate(core, clone, t)
+
+  const peer = await peerAdded
+  peer.paused = true
+  while (!peer.remoteSynced) await eventFlush()
+
+  for (let i = 0; i < totalLength; i++) {
+    clone
+      .download({ start: i, end: i + 1 })
+      .done()
+      .catch(noop)
+  }
+
+  const replicator = clone.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  const updateRanges = replicator._updateRanges
+  const requestSeek = peer._requestSeek
+  let checked = 0
+  let checkedAtRequest = totalLength
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+    checked += result.checked
+    return result
+  }
+
+  peer._requestSeek = function (s) {
+    const sent = requestSeek.call(this, s)
+    if (sent && checkedAtRequest === totalLength) checkedAtRequest = checked
+    return sent
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    peer._requestSeek = requestSeek
+  })
+
+  peer.paused = false
+  const seek = clone.seek(Math.floor(core.byteLength / 2))
+
+  await replicator._updateNonPrimary(true)
+  await seek
+
+  t.ok(checkedAtRequest < totalLength, 'seek was requested before the range scan completed')
+})
+
+test('range drain checks unresolved seeks once', async function (t) {
+  const core = await create(t)
+  const totalRanges = 129
+
+  for (let i = 0; i < totalRanges; i++) {
+    core.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = core.core.replicator
+  let seekUpdates = 0
+  const seek = replicator.addSeek([], {
+    update() {
+      seekUpdates++
+      return null
+    }
+  })
+  seek.promise.catch(noop)
+
+  const queueUpdateAll = replicator.queueUpdateAll
+  let peerUpdates = 0
+  replicator.queueUpdateAll = function () {
+    peerUpdates++
+  }
+
+  t.teardown(() => {
+    replicator.queueUpdateAll = queueUpdateAll
+    if (seek.context) replicator.cancel(seek)
+  })
+
+  await replicator._updateNonPrimary(true)
+
+  t.is(seekUpdates, 1, 'seek was checked once across all range chunks')
+  t.is(peerUpdates, 2, 'peers were updated before and after the range drain')
+})
+
+test('cancelling seek during local update preserves other seeks', async function (t) {
+  const core = await create(t)
+  const replicator = core.core.replicator
+
+  let release = null
+  let startedResolve = null
+  const started = new Promise((resolve) => {
+    startedResolve = resolve
+  })
+
+  const first = replicator.addSeek([], {
+    update() {
+      startedResolve()
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    }
+  })
+  first.promise.catch(noop)
+
+  const second = replicator.addSeek([], {
+    update() {
+      return [1, 0]
+    }
+  })
+
+  t.teardown(() => {
+    if (first.context) replicator.cancel(first)
+    if (second.context) replicator.cancel(second)
+  })
+
+  const updating = replicator._updateNonPrimary(true)
+  await started
+
+  replicator.cancel(first)
+  release([0, 0])
+  await updating
+
+  const result = await Promise.race([second.promise, eventFlush()])
+  t.alike(result, [1, 0], 'remaining seek resolved')
+})
+
+test('idle range completion drains past max range window', async function (t) {
+  const core = await create(t)
+  const clone = await create(t, core.key)
+
+  const complete = []
+  const totalLength = 150
+  const availableStart = 100
+
+  await core.append(new Array(totalLength).fill('a'))
+  await core.clear(0, availableStart)
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  replicate(core, clone, t)
+
+  for (let i = 0; i < totalLength; i++) {
+    const done = clone.download({ start: i, end: i + 1 }).done()
+    if (i >= availableStart) complete.push(done)
+    else done.catch(noop)
+  }
+
+  t.is(clone.core.replicator._ranges.length, totalLength, 'all ranges are pending')
+
+  let timer = null
+  const resolved = await Promise.race([
+    Promise.all(complete).then(() => true),
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
+  ])
+  clearTimeout(timer)
+
+  t.ok(resolved, 'all locally complete ranges resolved')
+})
+
+test('idle range completion keeps draining if update queues during yield', async function (t) {
+  const core = await create(t)
+
+  const totalLength = 150
+  const availableStart = 100
+  const replicator = core.core.replicator
+  let completed = 0
+
+  for (let i = 0; i < totalLength; i++) {
+    const done = core.download({ start: i, end: i + 1 }).done()
+    if (i >= availableStart) done.then(() => completed++, noop)
+    else done.catch(noop)
+  }
+
+  t.is(replicator._ranges.length, totalLength, 'all ranges are pending')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        // Simulate an update arriving with new inflight work. The nested call only sets
+        // _updatesQueued; the original idle drain must still reach the complete tail ranges.
+        this._inflight._active++
+        this._updateNonPrimary(false)
+      })
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    replicator._inflight._active = 0
+  })
+
+  await replicator._updateNonPrimary(false)
+  replicator._inflight._active = 0
+  await eventFlush()
+
+  t.is(completed, totalLength - availableStart, 'all locally complete ranges resolved')
+})
+
+test('idle range completion restarts if ranges cancel during yield', async function (t) {
+  const core = await create(t)
+  const downloads = []
+
+  const totalLength = 100
+  const availableStart = 80
+  const cancelLength = totalLength - availableStart
+  let completed = 0
+
+  for (let i = 0; i < totalLength; i++) {
+    const download = core.download({ start: i, end: i + 1 })
+    const done = download.done()
+
+    if (i >= availableStart) done.then(() => completed++, noop)
+    else done.catch(noop)
+
+    if (i < cancelLength) downloads.push(download)
+  }
+
+  const replicator = core.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        // Swap complete ranges behind the saved cursor while the drain is suspended.
+        for (const download of downloads) download.destroy()
+      })
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+  })
+
+  await replicator._updateNonPrimary(false)
+  await eventFlush()
+
+  t.is(completed, cancelLength, 'all complete ranges resolved')
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
