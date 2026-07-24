@@ -148,8 +148,6 @@ class Hypercore extends EventEmitter {
       throw BAD_ARGUMENT('Quorum should not be higher than the number of signers')
     }
 
-    new Verifier(manifestHash(parsed), parsed)
-
     if (key && !Verifier.isValidManifest(key, parsed)) {
       throw INVALID_CHECKSUM('Manifest does not hash to provided key')
     }
