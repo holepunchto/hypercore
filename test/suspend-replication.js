@@ -76,10 +76,8 @@ test('suspended replication doesnt deadlock when suspended again mid-flight afte
 
   controller.resume()
   await fired
-  await eventFlush()
-  controller.resume()
 
-  t.alike(await get, Buffer.from('a'), 'queued request served after resume, not dropped')
+  t.alike(await get, Buffer.from('a'), 'served once its in-flight read completed')
 })
 
 test('suspended-again request is served exactly once, not duplicated', async function (t) {
@@ -97,17 +95,20 @@ test('suspended-again request is served exactly once, not duplicated', async fun
   const get = b.get(0)
   await eventFlush()
 
+  const wireDataTxBefore = a.replicator.stats.wireData.tx
   const fired = fulfillMidflightSuspend(a.peers[0], controller)
 
   controller.resume()
   await fired
-  await eventFlush()
 
-  const wireDataTxBefore = a.replicator.stats.wireData.tx
+  t.alike(await get, Buffer.from('a'), 'served once its in-flight read completed')
+
+  // suspending again after it was sent
+  controller.suspend()
+  // resume to check for duplicate sends
   controller.resume()
-
-  t.alike(await get, Buffer.from('a'))
   await eventFlush()
+
   t.is(
     a.replicator.stats.wireData.tx,
     wireDataTxBefore + 1,
@@ -217,14 +218,18 @@ test('core push while suspending', async function (t) {
   const controller = new Hypercore.SuspendController()
 
   const a = await create(t, null, { suspendSignal: controller.signal })
-  const b = await create(t, a.key, { allowPush: true, pushOnly: true })
+  const b = await create(t, a.key, { allowPush: true })
+
+  await a.append(['a', 'b', 'c'])
+
+  replicate(a, b, t)
+  await b.get(2) // fully synced before switching to push-only
 
   b.replicator.setPushOnly(true)
   t.is(b.replicator.pushOnly, true, 'b is push only')
 
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c'])
+  await a.append(['d'])
+  await eventFlush()
 
   t.ok(a.peers[0].remoteAllowPush, 'a sees b as push only')
   t.is(a.peers[0].pushProcessing, 0, 'a sees b w/ no pushes initially')
@@ -232,21 +237,44 @@ test('core push while suspending', async function (t) {
 
   const wireDataTxBefore = a.replicator.stats.wireData.tx
 
-  const pushP = a.replicator.push(0)
+  const fired = fulfillMidflightSuspend(a.peers[0], controller)
+  const pushP = a.replicator.push(3)
   t.absent(a.replicator.suspended, 'isnt suspended yet')
-  controller.suspend()
 
-  await eventFlush()
+  await fired
   t.ok(a.replicator.busy, 'pushing makes replicator busy')
-  t.ok(a.replicator.suspended, 'now suspended')
+  t.ok(a.replicator.suspended, 'now suspended mid push')
   t.is(a.peers[0].pushProcessing, 1, 'a sees b w/ a push')
   await pushP
 
-  t.absent(await b.has(0), 'b doesnt have block')
-  controller.resume()
+  await waitForBlock(b, 3)
+  t.ok(await b.has(3), 'block sent despite suspend, its read was already in flight')
+  t.is(
+    a.replicator.stats.wireData.tx,
+    wireDataTxBefore + 1,
+    'in-flight push send goes through once its read completes'
+  )
 
-  t.absent(await b.has(0), 'block still absent')
-  t.is(a.replicator.stats.wireData.tx, wireDataTxBefore, 'block not sent because !isActive()')
+  // post-suspend so pushes should not read or send
+  await a.append(['e'])
+  await eventFlush()
+
+  const wireDataTxAfterFirst = a.replicator.stats.wireData.tx
+  await a.replicator.push(4)
+
+  t.is(a.peers[0].pushProcessing, 0, 'push started while suspended never begins reading')
+  t.absent(await b.has(4), 'no push while suspended')
+  t.is(
+    a.replicator.stats.wireData.tx,
+    wireDataTxAfterFirst,
+    'no send for a push that started while suspended'
+  )
+
+  controller.resume()
+  await a.replicator.push(4)
+
+  await waitForBlock(b, 4)
+  t.ok(await b.has(4), 'push works again after resume')
 })
 
 // patches peer._fulfillRequest for exactly one call, firing controller.suspend()
@@ -272,6 +300,10 @@ function fulfillMidflightSuspend(peer, controller) {
 
 async function drainReplication(core) {
   while (core.core.replicator.busy) await sleep(10)
+}
+
+async function waitForBlock(core, index) {
+  while (!(await core.has(index))) await sleep(10)
 }
 
 function sleep(ms) {
