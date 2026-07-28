@@ -3227,7 +3227,11 @@ test('idle range completion keeps draining if update queues during yield', async
   const singlePass = Math.ceil(totalLength / 64)
   const repassBecauseOfResolving = Math.ceil(availableStart / 64)
   const firstPassBatches = singlePass + repassBecauseOfResolving
-  t.is(updates, firstPassBatches + 1, 'does a second pass because _updateNonPrimary called mid update')
+  t.is(
+    updates,
+    firstPassBatches + 1,
+    'does a second pass because _updateNonPrimary called mid update'
+  )
 })
 
 test('idle range completion restarts if ranges cancel during yield', async function (t) {
