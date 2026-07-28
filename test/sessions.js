@@ -187,7 +187,11 @@ test('core.activeSessions', async (t) => {
   const weakSession = core.session({ weak: true })
   t.is(core.core.activeSessions, 2, 'weak doesnt change activeSessions')
 
-  t.alike(core.core.allSessions(), [core, s, weakSession], 'core.allSessions() includes weak as well')
+  t.alike(
+    core.core.allSessions(),
+    [core, s, weakSession],
+    'core.allSessions() includes weak as well'
+  )
 })
 
 function noop() {}
