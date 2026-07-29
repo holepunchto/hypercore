@@ -362,7 +362,6 @@ class Hypercore extends EventEmitter {
   _autoRecover() {
     const recoverTreeNodeFromPeersBound = this.recoverTreeNodeFromPeers.bind(this)
     this.once('repaired', () => {
-      console.log('repaired')
       this.off('peer-add', recoverTreeNodeFromPeersBound)
     })
     this.on('peer-add', recoverTreeNodeFromPeersBound)
