@@ -20,6 +20,7 @@ const inspect = require('./lib/inspect')
 const Core = require('./lib/core')
 const Info = require('./lib/info')
 const Download = require('./lib/download')
+const SuspendController = require('./lib/suspend-controller')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
 const Replicator = require('./lib/replicator')
@@ -1334,6 +1335,7 @@ class Hypercore extends EventEmitter {
 }
 
 module.exports = Hypercore
+module.exports.SuspendController = SuspendController
 
 function isStream(s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'
@@ -1385,6 +1387,7 @@ function initOnce(session, storage, key, opts) {
     pushOnly: !!opts.pushOnly,
     alwaysLatestBlock: !!opts.allowLatestBlock,
     inflightRange: opts.inflightRange,
+    suspendSignal: opts.suspendSignal || null,
     compat: opts.compat === true,
     force: opts.force,
     createIfMissing: opts.createIfMissing,
