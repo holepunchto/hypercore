@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const quickbit = require('../lib/compat').quickbit
 const RemoteBitfield = require('../lib/remote-bitfield')
 const { create, replicate } = require('./helpers')
 
@@ -25,6 +26,47 @@ test('remote bitfield - set range to false', function (t) {
   b.setRange(0, 5000, false)
 
   t.is(b.findFirst(true, 0), -1)
+})
+
+test('remote bitfield - batch refreshes insert indexes once per segment', function (t) {
+  const from = quickbit.Index.from
+  let sparseIndexes = 0
+
+  quickbit.Index.from = function (fieldOrChunks, byteLength) {
+    if (Array.isArray(fieldOrChunks)) sparseIndexes++
+    return from.call(this, fieldOrChunks, byteLength)
+  }
+
+  t.teardown(function () {
+    quickbit.Index.from = from
+  })
+
+  const b = new RemoteBitfield()
+  const bitfield = new Uint32Array(RemoteBitfield.BITS_PER_SEGMENT / 32)
+  bitfield.fill(0xffffffff)
+
+  b.insert(0, bitfield)
+
+  t.is(sparseIndexes, 2) // one segment init, one refresh
+  t.is(b.findFirst(true, 0), 0)
+  t.is(b.findFirst(false, 0), RemoteBitfield.BITS_PER_SEGMENT)
+})
+
+test('remote bitfield - clear refreshes indexes for firstUnset', function (t) {
+  const b = new RemoteBitfield()
+  const bitfield = new Uint32Array(RemoteBitfield.BITS_PER_PAGE / 32)
+  bitfield.fill(0xffffffff)
+
+  b.insert(0, bitfield)
+
+  const half = new Uint32Array(RemoteBitfield.BITS_PER_PAGE / 32)
+  half.fill(0xffffffff, 0, half.length / 2)
+
+  b.clear(0, half)
+
+  t.is(b.get(0), false)
+  t.is(b.findFirst(false, 0), 0)
+  t.is(b.findFirst(true, 0), RemoteBitfield.BITS_PER_PAGE / 2)
 })
 
 test('set last bits in segment and findFirst', function (t) {
