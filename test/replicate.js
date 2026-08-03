@@ -2387,7 +2387,7 @@ test('remote contiguous length', async function (t) {
   t.is(a.remoteContiguousLength, 1)
 })
 
-test.solo('remote contiguous length', async function (t) {
+test.solo('remote contiguous length when partially downloaded', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
