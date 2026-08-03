@@ -2387,7 +2387,7 @@ test('remote contiguous length', async function (t) {
   t.is(a.remoteContiguousLength, 1)
 })
 
-test.solo('remote contiguous length when partially downloaded', async function (t) {
+test('remote contiguous length when partially downloaded', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
@@ -2398,19 +2398,21 @@ test.solo('remote contiguous length when partially downloaded', async function (
 
   replicate(a, b, t)
 
+  const bBlock0 = once(a, 'remote-contiguous-length')
   await b.get(0)
-  await new Promise(resolve =>setTimeout(resolve, 250))
+  await bBlock0
 
   t.is(b.contiguousLength, 1, 'sanity check')
-  t.is(a.remoteContiguousLength, 1)
-  t.is(a.peers[0].remoteContiguousLength, 1)
+  t.is(a.remoteContiguousLength, 1, 'session remote contig')
+  t.is(a.peers[0].remoteContiguousLength, 1, 'peer remote contig')
 
+  const bBlock1 = once(a, 'remote-contiguous-length')
   await b.get(1)
-  await new Promise(resolve =>setTimeout(resolve, 250))
+  await bBlock1
 
   t.is(b.contiguousLength, 2, 'sanity check')
-  t.is(a.remoteContiguousLength, 2)
-  t.is(a.peers[0].remoteContiguousLength, 2)
+  t.is(a.remoteContiguousLength, 2, 'session remote contig')
+  t.is(a.peers[0].remoteContiguousLength, 2, 'peer remote contig')
 })
 
 test('remote contiguous length - fully contiguous only', async function (t) {
