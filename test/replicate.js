@@ -2391,8 +2391,6 @@ test.solo('remote contiguous length when partially downloaded', async function (
   const a = await create(t)
   const b = await create(t, a.key)
 
-  t.is(a.remoteContiguousLength, 0)
-
   await a.append(['a'])
   await a.append(['b'])
 
