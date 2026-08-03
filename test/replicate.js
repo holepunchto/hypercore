@@ -2387,6 +2387,32 @@ test('remote contiguous length', async function (t) {
   t.is(a.remoteContiguousLength, 1)
 })
 
+test.solo('remote contiguous length when partially downloaded', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a'])
+  await a.append(['b'])
+
+  t.is(a.remoteContiguousLength, 0, 'sanity check')
+
+  replicate(a, b, t)
+
+  await b.get(0)
+  await new Promise(resolve =>setTimeout(resolve, 250))
+
+  t.is(b.contiguousLength, 1, 'sanity check')
+  t.is(a.remoteContiguousLength, 1)
+  t.is(a.peers[0].remoteContiguousLength, 1)
+
+  await b.get(1)
+  await new Promise(resolve =>setTimeout(resolve, 250))
+
+  t.is(b.contiguousLength, 2, 'sanity check')
+  t.is(a.remoteContiguousLength, 2)
+  t.is(a.peers[0].remoteContiguousLength, 2)
+})
+
 test('remote contiguous length - fully contiguous only', async function (t) {
   t.plan(7)
   const a = await create(t)
