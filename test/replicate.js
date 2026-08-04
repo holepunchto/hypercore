@@ -3284,10 +3284,8 @@ test('idle range completion restarts if ranges cancel during yield', async funct
   t.is(completed, cancelLength, 'all complete ranges resolved')
 })
 
-test('repairMode enabled with one bad tree node', async (t) => {
-  const createStore = await createStored(t)
-  const core = await createStore()
-  await core.ready()
+test('send nodata with bad tree node', async (t) => {
+  const core = await create(t)
 
   await core.append('0')
   await core.append('1')
@@ -3295,7 +3293,6 @@ test('repairMode enabled with one bad tree node', async (t) => {
   await core.append('3')
 
   const core2 = await create(t, core.key)
-  await core2.ready()
 
   const core2Updated = once(core2, 'append')
   const streams = replicate(core, core2, t)
