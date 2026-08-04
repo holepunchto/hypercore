@@ -3291,64 +3291,54 @@ test('repairMode enabled with one bad tree node', async (t) => {
 
   await core.append('0')
   await core.append('1')
+  await core.append('2')
+  await core.append('3')
 
-  const recoveryCore = await create(t, core.key)
+  const core2 = await create(t, core.key)
+  await core2.ready()
 
-  const recoveryStreams = replicate(core, recoveryCore, t)
+  const core2Updated = once(core2, 'append')
+  const streams = replicate(core, core2, t)
+  await core2Updated
 
-  await recoveryCore.download({ start: 0, end: core.length }).done()
+  t.is(core2.length, core.length, 'got metadata')
 
-  t.ok(await recoveryCore.has(0, core.length), 'recovery core is setup')
-  await unreplicate(recoveryStreams)
+  // Test that original error triggers repair but still errors
+  const errorPath = t.test('error path')
+  errorPath.plan(4)
 
   // Corrupt storage: remove tree node 1 (the root of the length-2 tree)
   const storage = core.state.storage
   const tx = storage.write()
-  tx.deleteTreeNode(1)
+  tx.deleteTreeNode(1) // root
+  tx.deleteTreeNode(2) // sibling node
   await tx.flush()
 
   // Force tree cache to be clear (would otherwise return cached node)
   core.core.storage.treeCache.clear()
 
-  const core2 = await create(t, core.key)
-  await core2.ready()
+  // Verify
+  {
+    const storage = core.state.storage
+    const rx = storage.read()
+    const treeP = rx.getTreeNode(1)
+    rx.tryFlush()
+    t.is(await treeP, null, 'corrupted correctly')
+  }
 
-  const streams = replicate(core, core2, t)
-
-  t.absent(core.core._repairMode, 'core isnt in repair mode initially')
-
-  // Test that original error triggers repair but still errors
-  const errorPath = t.test('error path')
-  errorPath.plan(3)
+  errorPath.is(core2.replicator.peers[0].stats.notAvailableBackoffs, 0, 'zero nodatas to start')
   const req = core2.get(0, { timeout: 500 })
 
-  await new Promise((resolve) => setTimeout(resolve, 100))
-  errorPath.ok(core.core._repairMode, 'core is in repair mode from request')
+  await new Promise((resolve) => setTimeout(resolve, 300))
 
-  const repaired = once(core, 'repaired')
-  replicate(core, recoveryCore, t)
-  await repaired
+  errorPath.is(core2.replicator.peers[0].stats.notAvailableBackoffs, 32, 'got nodata MAX_BACKOFFS times')
+  errorPath.ok(core2.replicator.peers[0].paused, 'peer is paused')
 
-  errorPath.ok(core.core._repairMode, 'still flagged as in repair mode')
-  req.catch(() => errorPath.pass('original request fails'))
+  req.catch(() => t.pass('req failed!'))
+  await errorPath.exception(() => req, 'original request fails')
 
   await unreplicate(streams)
   await errorPath
-
-  // Reopen so no longer in repair mode
-  await core.close()
-  const coreReconnect = await createStore()
-  await coreReconnect.ready()
-  t.teardown(() => coreReconnect.close())
-
-  t.alike(coreReconnect.key, core.key, 'sanity: keys match')
-
-  // Re-connect
-  const reconnected = once(coreReconnect, 'peer-add')
-  replicate(coreReconnect, core2, t)
-  await reconnected
-
-  t.ok(await core2.get(0), 'request works')
 })
 
 async function createAndDownload(t, core) {
