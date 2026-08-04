@@ -3331,7 +3331,11 @@ test('repairMode enabled with one bad tree node', async (t) => {
 
   await new Promise((resolve) => setTimeout(resolve, 300))
 
-  errorPath.is(core2.replicator.peers[0].stats.notAvailableBackoffs, 32, 'got nodata MAX_BACKOFFS times')
+  errorPath.is(
+    core2.replicator.peers[0].stats.notAvailableBackoffs,
+    32,
+    'got nodata MAX_BACKOFFS times'
+  )
   errorPath.ok(core2.replicator.peers[0].paused, 'peer is paused')
 
   req.catch(() => t.pass('req failed!'))
