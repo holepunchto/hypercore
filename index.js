@@ -351,18 +351,20 @@ class Hypercore extends EventEmitter {
     }
 
     // Setup automatic recovery if in repair mode
-    if (this.core._repairMode) {
-      const recoverTreeNodeFromPeersBound = this.recoverTreeNodeFromPeers.bind(this)
-      this.once('repaired', () => {
-        this.off('peer-add', recoverTreeNodeFromPeersBound)
-      })
-      this.on('peer-add', recoverTreeNodeFromPeersBound)
-    }
+    if (this.core._repairMode) this._autoRecover()
 
     this.emit('ready')
 
     // if we are a weak session the core might have closed...
     if (this.core.closing) this.close().catch(safetyCatch)
+  }
+
+  _autoRecover() {
+    const recoverTreeNodeFromPeersBound = this.recoverTreeNodeFromPeers.bind(this)
+    this.once('repaired', () => {
+      this.off('peer-add', recoverTreeNodeFromPeersBound)
+    })
+    this.on('peer-add', recoverTreeNodeFromPeersBound)
   }
 
   _removeSession() {

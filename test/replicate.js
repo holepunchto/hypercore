@@ -3284,6 +3284,64 @@ test('idle range completion restarts if ranges cancel during yield', async funct
   t.is(completed, cancelLength, 'all complete ranges resolved')
 })
 
+test('send nodata with bad tree node', async (t) => {
+  const core = await create(t)
+
+  await core.append('0')
+  await core.append('1')
+  await core.append('2')
+  await core.append('3')
+
+  const core2 = await create(t, core.key)
+
+  const core2Updated = once(core2, 'append')
+  const streams = replicate(core, core2, t)
+  await core2Updated
+
+  t.is(core2.length, core.length, 'got metadata')
+
+  // Test that original error triggers repair but still errors
+  const errorPath = t.test('error path')
+  errorPath.plan(4)
+
+  // Corrupt storage: remove tree node 1 (the root of the length-2 tree)
+  const storage = core.state.storage
+  const tx = storage.write()
+  tx.deleteTreeNode(1) // root
+  tx.deleteTreeNode(2) // sibling node
+  await tx.flush()
+
+  // Force tree cache to be clear (would otherwise return cached node)
+  core.core.storage.treeCache.clear()
+
+  // Verify
+  {
+    const storage = core.state.storage
+    const rx = storage.read()
+    const treeP = rx.getTreeNode(1)
+    rx.tryFlush()
+    t.is(await treeP, null, 'corrupted correctly')
+  }
+
+  errorPath.is(core2.replicator.peers[0].stats.notAvailableBackoffs, 0, 'zero nodatas to start')
+  const req = core2.get(0, { timeout: 500 })
+
+  await new Promise((resolve) => setTimeout(resolve, 300))
+
+  errorPath.is(
+    core2.replicator.peers[0].stats.notAvailableBackoffs,
+    32,
+    'got nodata MAX_BACKOFFS times'
+  )
+  errorPath.ok(core2.replicator.peers[0].paused, 'peer is paused')
+
+  req.catch(() => t.pass('req failed!'))
+  await errorPath.exception(() => req, 'original request fails')
+
+  await unreplicate(streams)
+  await errorPath
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
