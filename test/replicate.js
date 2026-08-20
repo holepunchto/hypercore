@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const {
   create,
+  createStorage,
   createStored,
   replicate,
   unreplicate,
@@ -3301,3 +3302,45 @@ async function waitForRequestBlock(core) {
 }
 
 function noop() {}
+
+test('wire messages arriving after a core closes do not destroy the stream', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 200; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+
+  // closing a downloader while ranges are still streaming is a race, so we
+  // give it a few rounds
+  for (let round = 0; round < 6; round++) {
+    const db = await createStorage(t)
+    const b = new Hypercore(db, a.key)
+    await b.ready()
+
+    const streams = replicate(a, b, t, { teardown: false })
+    for (const s of streams) s.on('error', (err) => errors.push(err.message))
+
+    let appending = true
+    const appends = (async function () {
+      while (appending) await a.append(Buffer.from('more ' + round))
+    })()
+
+    b.download({ start: 0, end: 200 })
+    await b.get(0)
+
+    await b.close()
+    await db.close()
+
+    appending = false
+    await appends
+
+    for (const s of streams) s.destroy()
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 200))
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /session is closed/i.test(e)),
+    'no replication stream was destroyed by a post-close message'
+  )
+})
