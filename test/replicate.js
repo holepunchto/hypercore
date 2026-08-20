@@ -3313,6 +3313,7 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
   // give it a few rounds
   for (let round = 0; round < 6; round++) {
     const db = await createStorage(t)
+    t.teardown(() => db.close())
     const b = new Hypercore(db, a.key)
     await b.ready()
 
@@ -3328,7 +3329,6 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
     await b.get(0)
 
     await b.close()
-    await db.close()
 
     appending = false
     await appends
