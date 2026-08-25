@@ -3290,6 +3290,7 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
   for (let i = 0; i < 200; i++) await a.append(Buffer.from('block ' + i))
 
   const errors = []
+  const warnings = []
 
   // closing a downloader while ranges are still streaming is a race, so we
   // give it a few rounds
@@ -3304,6 +3305,7 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
     const streams = replicate(a, b, t, { teardown: false })
     for (const s of streams) {
       s.on('error', (err) => errors.push(err.message))
+      s.on('warning', (err) => warnings.push(err.message))
       s.on('destroy', () => { destroyed = true })
     }
 
@@ -3330,9 +3332,14 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
   await new Promise((resolve) => setTimeout(resolve, 200))
 
   t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (errors.join(' | ') || 'none'))
   t.absent(
     errors.some((e) => /session is closed/i.test(e)),
     'no replication stream emitted errors by a post-close message'
+  )
+  t.ok(
+    warnings.some((e) => /session is closed/i.test(e)),
+    'replication stream emitted warnings by a post-close message'
   )
 })
 
