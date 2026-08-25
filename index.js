@@ -897,7 +897,7 @@ class Hypercore extends EventEmitter {
 
     const req = this._get(index, opts)
 
-    let block = await req
+    const block = await req
 
     return this._handleBlock(index, block, opts)
   }

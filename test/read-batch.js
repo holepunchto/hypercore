@@ -1,10 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
-const HypercoreStorage = require('hypercore-storage')
-const crypto = require('hypercore-crypto')
 
-const Hypercore = require('../')
-const { create, replicate, eventFlush } = require('./helpers')
+const { create, replicate } = require('./helpers')
 
 test('basic', async function (t) {
   const core = await create(t)
