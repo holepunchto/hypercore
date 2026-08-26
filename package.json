@@ -3,6 +3,7 @@
   "version": "11.35.2",
   "description": "Hypercore is a secure, distributed append-only log",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "format": "prettier --write .",
     "lint": "prettier --check . && lunte",
@@ -35,7 +36,8 @@
     "index.js",
     "errors.js",
     "messages.js",
-    "lib/**.js"
+    "lib/**.js",
+    "index.d.ts"
   ],
   "imports": {
     "events": {
