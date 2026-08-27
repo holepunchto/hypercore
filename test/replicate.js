@@ -2208,12 +2208,20 @@ test('range is broadcast when a core is fully available', async function (t) {
   replicate(writer, reader, t)
   await reader.get(0)
   t.is(writer.replicator.stats.wireRange.tx, 1, 'transmitted range when connection opened')
-  t.is(reader.replicator.stats.wireRange.tx, 0, 'reader did not transmit range yet')
+  t.is(
+    reader.replicator.stats.wireRange.tx,
+    1,
+    'reader transmitted range as its contiguous length grew'
+  )
 
   await reader.get(1)
   await reader.get(2)
   t.is(reader.contiguousLength, 3, 'fully downloaded core (sanity check)')
-  t.is(reader.replicator.stats.wireRange.tx, 1, 'reader transmitted range when fully downloaded')
+  t.is(
+    reader.replicator.stats.wireRange.tx,
+    3,
+    'reader transmitted range for each contiguous length increase'
+  )
   t.is(writer.replicator.stats.wireRange.tx, 1, 'writer sent no new messages')
 
   await writer.append(['d', 'e'])
@@ -2225,14 +2233,18 @@ test('range is broadcast when a core is fully available', async function (t) {
 
   await reader.get(3)
   t.is(reader.contiguousLength, 4, 'not fully downloaded (sanity check)')
-  t.is(reader.replicator.stats.wireRange.tx, 1, 'no new broadcast range since not fully downloaded')
+  t.is(
+    reader.replicator.stats.wireRange.tx,
+    4,
+    'broadcast sent since contiguous length increased, even though not fully downloaded'
+  )
 
   await reader.get(4)
   t.is(reader.contiguousLength, 5, 'fully downloaded (sanity check)')
   t.is(
     reader.replicator.stats.wireRange.tx,
-    2,
-    'new broadcast range since it is again fully downloaded'
+    5,
+    'new broadcast range since contiguous length increased again'
   )
 
   await writer.clear(1, 2)
@@ -2287,13 +2299,13 @@ test('range is broadcast when a core is fully available (multiple peers)', async
 
   t.is(
     writerToReader1.remoteContiguousLength,
-    0,
-    'reader1 skipped range update to writer (not contig yet)'
+    1,
+    'reader1 sent range update to writer for its partial contiguous length'
   )
   t.is(
     writerToReader2.remoteContiguousLength,
-    0,
-    'reader2 skipped range update to writer (not contig yet)'
+    1,
+    'reader2 sent range update to writer for its partial contiguous length'
   )
   t.is(reader1ToWriter.remoteContiguousLength, 3, 'writer updated for reader1')
   t.is(reader2ToWriter.remoteContiguousLength, 3, 'writer updated for reader2')
@@ -2388,8 +2400,36 @@ test('remote contiguous length', async function (t) {
   t.is(a.remoteContiguousLength, 1)
 })
 
-test('remote contiguous length - fully contiguous only', async function (t) {
-  t.plan(7)
+test('remote contiguous length when partially downloaded', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a'])
+  await a.append(['b'])
+
+  t.is(a.remoteContiguousLength, 0, 'sanity check')
+
+  replicate(a, b, t)
+
+  const bBlock0 = once(a, 'remote-contiguous-length')
+  await b.get(0)
+  await bBlock0
+
+  t.is(b.contiguousLength, 1, 'sanity check')
+  t.is(a.remoteContiguousLength, 1, 'session remote contig')
+  t.is(a.peers[0].remoteContiguousLength, 1, 'peer remote contig')
+
+  const bBlock1 = once(a, 'remote-contiguous-length')
+  await b.get(1)
+  await bBlock1
+
+  t.is(b.contiguousLength, 2, 'sanity check')
+  t.is(a.remoteContiguousLength, 2, 'session remote contig')
+  t.is(a.peers[0].remoteContiguousLength, 2, 'peer remote contig')
+})
+
+test('remote contiguous length - updates incrementally, not just when fully contiguous', async function (t) {
+  t.plan(8)
   const a = await create(t)
   const b = await create(t, a.key)
 
@@ -2400,8 +2440,9 @@ test('remote contiguous length - fully contiguous only', async function (t) {
 
   t.is(a.remoteContiguousLength, 0)
 
+  let expected = 1
   a.on('remote-contiguous-length', (length) => {
-    t.is(length, 2, '`remote-contiguous-length` event fired')
+    t.is(length, expected++, '`remote-contiguous-length` event fired')
   })
 
   replicate(a, b, t)
@@ -2410,7 +2451,7 @@ test('remote contiguous length - fully contiguous only', async function (t) {
 
   await eventFlush()
 
-  t.is(a.remoteContiguousLength, 0, 'remoteContiguousLength didnt update')
+  t.is(a.remoteContiguousLength, 1, 'remoteContiguousLength updates on partial download')
   t.is(b.contiguousLength, 1, 'b has 1st block')
 
   await b.get(1)
