@@ -1,8 +1,9 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const remote = require('../lib/fully-remote-proof.js')
+const { MerkleTree } = require('../lib/merkle-tree.js')
 
-const { create } = require('./helpers')
+const { create, replicate, unreplicate } = require('./helpers')
 
 test('fully remote proof - proof and verify', async function (t) {
   const core = await create(t)
@@ -33,4 +34,44 @@ test('fully remote proof - proof and verify', async function (t) {
     const p = await remote.verify(core.state.storage.store, proof)
     t.is(p.proof.upgrade.length, 1, 'reflects upgrade arg')
   }
+})
+
+test('fully remote proof - stale length check during concurrent update', async function (t) {
+  const writer = await create(t)
+  await writer.append('hello')
+
+  const reader = await create(t, writer.key)
+  const streams = replicate(writer, reader, t, { teardown: false })
+  await reader.get(0)
+  await unreplicate(streams)
+  await writer.append('world')
+
+  const proofBuf = await remote.proof(writer)
+
+  // monkey-patch to simulate a concurrent storage update
+  const origFn = MerkleTree.verifyFullyRemote
+  t.teardown(() => {
+    MerkleTree.verifyFullyRemote = origFn
+  })
+
+  MerkleTree.verifyFullyRemote = function (...args) {
+    const result = origFn.apply(this, args)
+    return (async () => {
+      const s = replicate(writer, reader, t, { teardown: false })
+      await reader.get(1)
+      await unreplicate(s)
+      return result
+    })()
+  }
+
+  const verifyResult = await remote.verify(reader.state.storage.store, proofBuf)
+  MerkleTree.verifyFullyRemote = origFn
+
+  t.is(reader.length, 2, 'reader was updated during verification')
+
+  t.is(
+    verifyResult.newer,
+    false,
+    'should not be newer since storage head was updated during verification'
+  )
 })
