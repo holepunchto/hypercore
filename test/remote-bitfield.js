@@ -1,7 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const RemoteBitfield = require('../lib/remote-bitfield')
-const { create, replicate } = require('./helpers')
+const { create, replicate, eventFlush } = require('./helpers')
 
 test('remote bitfield - findFirst', function (t) {
   const b = new RemoteBitfield()
@@ -64,6 +64,43 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
     true,
     'invariant holds: remoteContiguousLength at least _remoteContiguousLength'
   )
+})
+
+test('remote contiguous length caches verified bitfield extent', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await eventFlush()
+
+  const peer = getPeer(b, a)
+
+  peer.remoteBitfield.setRange(0, 1024, true)
+  peer._remoteContiguousLength = 0
+
+  t.is(peer.remoteContiguousLength, 1024)
+  t.is(peer._remoteContiguousLength, 1024)
+})
+
+test('range updates core remote contiguous length after getter advances peer cache', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await eventFlush()
+
+  const peer = getPeer(b, a)
+
+  peer.remoteFork = b.core.state.fork
+  peer.remoteBitfield.setRange(0, 1024, true)
+  peer._remoteContiguousLength = 0
+
+  t.is(peer.remoteContiguousLength, 1024)
+  t.is(b.core.header.hints.remoteContiguousLength, 0)
+
+  await peer.onrange({ start: 0, length: 1024, drop: false })
+
+  t.is(b.core.header.hints.remoteContiguousLength, 1024)
 })
 
 test('bitfield messages sent on cache miss', async function (t) {
