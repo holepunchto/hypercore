@@ -308,7 +308,15 @@ The core will also gossip to peers it is connected to, that is no longer has the
 
 ```js
 {
-  diff: false // Returned `cleared` bytes object is null unless you enable this
+  diff: false // Returned `cleared` object is null unless you enable this
+}
+```
+
+`cleared` object when `diff` is `true` will look like:
+
+```
+{
+  blocks: Number // The number of blocks cleared
 }
 ```
 
