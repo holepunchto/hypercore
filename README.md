@@ -14,8 +14,8 @@ Built for sharing large datasets and streams of real time data
 - **Secure.** Uses signed merkle trees to verify log integrity in real time.
 - **Modular.** Hypercore aims to do one thing and one thing well - distributing a stream of data.
 
-Note that the latest release is Hypercore 10, which adds support for truncate and many other things.
-Version 10 is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning the storage format and wire protocol is forward compatible with future versions.
+Hypercore 10 added support for truncate and many other things. It is not compatible with earlier versions (9 and earlier), but is considered LTS, meaning its storage format and wire protocol are forward compatible with future versions.
+See [UPGRADE.md](UPGRADE.md) for version-specific upgrade notes.
 
 ## Install
 
@@ -302,7 +302,7 @@ await core.clear(4) // clear block 4 from your local cache
 await core.clear(0, 10) // clear block 0-10 from your local cache
 ```
 
-The core will also gossip to peers it is connected to, that is no longer has these blocks.
+The core also tells connected peers that it no longer has these blocks.
 
 `options` include:
 
@@ -317,7 +317,7 @@ The core will also gossip to peers it is connected to, that is no longer has the
 Truncate the core to a smaller length.
 
 Per default this will update the fork id of the core to `+ 1`, but you can set the fork id you prefer with the option `fork`.
-Note that the fork id should be monotonely incrementing.
+Note that the fork id should increase monotonically.
 
 `options` include:
 
