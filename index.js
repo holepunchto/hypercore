@@ -333,10 +333,6 @@ class Hypercore extends EventEmitter {
     if (this.core === null) initOnce(this, storage, key, opts)
     if (this._monitorIndex === -2) this.core.addMonitor(this)
 
-    if (opts.group && !this.core.header.group) {
-      await this.core.setGroup(opts.group)
-    }
-
     try {
       await this._openSession(opts)
     } catch (err) {
@@ -379,6 +375,10 @@ class Hypercore extends EventEmitter {
 
   async _openSession(opts) {
     if (this.core.opened === false) await this.core.ready()
+
+    if (opts.group && !this.core.header.group) {
+      await this.core.setGroup(opts.group)
+    }
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
