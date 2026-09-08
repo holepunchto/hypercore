@@ -1,5 +1,6 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const crypto = require('hypercore-crypto')
 const CoreStorage = require('hypercore-storage')
 const { MerkleTree } = require('../lib/merkle-tree')
 const Core = require('../lib/core')
@@ -407,6 +408,37 @@ test('core - copyPrologue many', async function (t) {
 
   t.alike(await getBlock(copy4, 0), b4a.from('a'))
   t.alike(await getBlock(copy4, 1), b4a.from('b'))
+})
+
+test('core - an empty non writable core signals downloading', async function (t) {
+  const keyPair = crypto.keyPair()
+
+  {
+    const { core, reopen } = await create(t, { key: keyPair.publicKey })
+    t.is(core.state.length, 0)
+    t.ok(core.replicator.downloading, 'empty non writable core is downloading')
+
+    // still empty on reopen, so we still have nothing to go on
+    const resumed = await reopen()
+    t.ok(resumed.replicator.downloading, 'still downloading while empty')
+  }
+
+  {
+    // we authored it, there is nothing to learn from a peer
+    const { core } = await create(t)
+    t.absent(core.replicator.downloading, 'writable core is not downloading')
+  }
+
+  {
+    // an ordinary core with data on disk is left alone
+    const { core, reopen } = await create(t)
+    await core.state.append([b4a.from('hello')])
+    await core.close()
+
+    const resumed = await reopen()
+    t.is(resumed.state.length, 1)
+    t.absent(resumed.replicator.downloading, 'resumed core with data is not downloading')
+  }
 })
 
 async function create(t, opts = {}) {
