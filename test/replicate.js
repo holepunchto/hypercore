@@ -3343,6 +3343,58 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
   )
 })
 
+test('throwing after channel closes processing msgs emits warning not error', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 10; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+  const warnings = []
+  const db = await createStorage(t)
+  t.teardown(() => db.close())
+  const b = new Hypercore(db, a.key)
+  await b.ready()
+
+  b.on('download', () => {
+    const peerA = b.replicator.peers[0]
+    peerA.channel.close()
+
+    // Throw during ondata due to developer error
+    throw Error('beep')
+  })
+
+  let destroyed = false
+
+  const streams = makeStreamPair(t, { latency: [0, 0] })
+  const [n1, n2] = streams
+
+  a.replicate(n1)
+  b.replicate(n2)
+
+  for (const s of streams) {
+    s.on('error', (err) => errors.push(err.message))
+    s.on('warning', (err) => warnings.push(err.message))
+    s.on('destroy', () => {
+      destroyed = true
+    })
+  }
+
+  await b.get(0) // trigger error on b
+
+  t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
+  for (const s of streams) s.destroy()
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /beep/i.test(e)),
+    'no replication stream emitted errors by a post-close message'
+  )
+  t.ok(
+    warnings.some((e) => /beep/i.test(e)),
+    'replication stream emitted warnings by a post-close message'
+  )
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
