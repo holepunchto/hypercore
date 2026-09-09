@@ -3302,11 +3302,18 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
 
     let destroyed = false
 
-    const streams = replicate(a, b, t, { teardown: false })
+    const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+    const streams = [n1, n2]
+
+    a.replicate(n1)
+    b.replicate(n2)
+
     for (const s of streams) {
       s.on('error', (err) => errors.push(err.message))
       s.on('warning', (err) => warnings.push(err.message))
-      s.on('destroy', () => { destroyed = true })
+      s.on('destroy', () => {
+        destroyed = true
+      })
     }
 
     let appending = true
@@ -3322,17 +3329,14 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
     appending = false
     await appends
 
-    t.absent(
-      destroyed,
-      'no replication stream was destroyed by a post-close message'
-    )
+    t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
     for (const s of streams) s.destroy()
   }
 
   await new Promise((resolve) => setTimeout(resolve, 200))
 
   t.comment('errors: ' + (errors.join(' | ') || 'none'))
-  t.comment('warnings: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
   t.absent(
     errors.some((e) => /session is closed/i.test(e)),
     'no replication stream emitted errors by a post-close message'
