@@ -3341,9 +3341,9 @@ test('wire messages arriving after a core closes do not destroy the stream', asy
     errors.some((e) => /session is closed/i.test(e)),
     'no replication stream emitted errors by a post-close message'
   )
-  t.ok(
+  t.absent(
     warnings.some((e) => /session is closed/i.test(e)),
-    'replication stream emitted warnings by a post-close message'
+    'no replication stream emitted warnings by a post-close message'
   )
 })
 
