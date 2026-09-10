@@ -854,6 +854,56 @@ test('setKeyPair', async function (t) {
   await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
+test('setAlwaysLatestBlock()', async (t) => {
+  const core = await create(t)
+
+  t.is(core.replicator._alwaysLatestBlock, 0, 'default is disabled')
+
+  await core.setAlwaysLatestBlock(true)
+
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true enables')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true while enabled noop')
+
+  await core.setAlwaysLatestBlock(1)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing 1 doesnt circumvent noop test')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false can disable')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false while disabled noop')
+
+  // With end = -1 range request
+  const range = core.download({ start: 0, end: -1 })
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range req (end = -1) incremented')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true increments when 1 from range')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true doesnt over increment')
+
+  range.destroy()
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range done/cancelled dec')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false disables again')
+
+  const db = await createStorage(t)
+  // Create core w/ microtask in opening so `.core` isn't set
+  const notReady = new Hypercore(db, { preload: () => Promise.resolve({}) })
+  t.teardown(() => notReady.close())
+
+  await t.execution(
+    () => notReady.setAlwaysLatestBlock(true),
+    'calling on not ready core doesnt throw'
+  )
+  await notReady.ready()
+  t.is(notReady.replicator._alwaysLatestBlock, 1, 'call still took affect')
+})
+
 function getBitfields(hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
