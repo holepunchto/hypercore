@@ -890,6 +890,15 @@ test('setAlwaysLatestBlock()', async (t) => {
 
   core.setAlwaysLatestBlock(false)
   t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) disables again')
+
+  const db = await createStorage(t)
+  // Create core w/ microtask in opening so `.core` isn't set
+  const notReady = new Hypercore(db, { preload: () => Promise.resolve({}) })
+  t.teardown(() => notReady.close())
+
+  t.execution(() => notReady.setAlwaysLatestBlock(true), 'calling on not ready core doesnt throw')
+  await notReady.ready()
+  t.is(notReady.replicator._alwaysLatestBlock, 0, 'call was a noop')
 })
 
 function getBitfields(hypercore, start = 0, end = null) {
