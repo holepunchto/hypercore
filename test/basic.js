@@ -861,35 +861,35 @@ test('setAlwaysLatestBlock()', async (t) => {
 
   core.setAlwaysLatestBlock(true)
 
-  t.is(core.replicator._alwaysLatestBlock, 1, 'setAlwaysLatestBlock(true) enables')
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true enables')
 
   core.setAlwaysLatestBlock(true)
-  t.is(core.replicator._alwaysLatestBlock, 1, 'setAlwaysLatestBlock(true) while enabled noop')
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true while enabled noop')
 
   core.setAlwaysLatestBlock(1)
   t.is(core.replicator._alwaysLatestBlock, 1, 'passing 1 doesnt circumvent noop test')
 
   core.setAlwaysLatestBlock(false)
-  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) can disable')
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false can disable')
 
   core.setAlwaysLatestBlock(false)
-  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) while disabled noop')
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false while disabled noop')
 
   // With end = -1 range request
   const range = core.download({ start: 0, end: -1 })
   t.is(core.replicator._alwaysLatestBlock, 1, 'range req (end = -1) incremented')
 
   core.setAlwaysLatestBlock(true)
-  t.is(core.replicator._alwaysLatestBlock, 2, 'setAlwaysLatestBlock(true) increments when 1')
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true increments when 1 from range')
 
   core.setAlwaysLatestBlock(true)
-  t.is(core.replicator._alwaysLatestBlock, 2, 'setAlwaysLatestBlock(true) doesnt over increment')
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true doesnt over increment')
 
   range.destroy()
   t.is(core.replicator._alwaysLatestBlock, 1, 'range done/cancelled dec')
 
   core.setAlwaysLatestBlock(false)
-  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) disables again')
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false disables again')
 
   const db = await createStorage(t)
   // Create core w/ microtask in opening so `.core` isn't set
