@@ -859,36 +859,36 @@ test('setAlwaysLatestBlock()', async (t) => {
 
   t.is(core.replicator._alwaysLatestBlock, 0, 'default is disabled')
 
-  core.setAlwaysLatestBlock(true)
+  await core.setAlwaysLatestBlock(true)
 
   t.is(core.replicator._alwaysLatestBlock, 1, 'passing true enables')
 
-  core.setAlwaysLatestBlock(true)
+  await core.setAlwaysLatestBlock(true)
   t.is(core.replicator._alwaysLatestBlock, 1, 'passing true while enabled noop')
 
-  core.setAlwaysLatestBlock(1)
+  await core.setAlwaysLatestBlock(1)
   t.is(core.replicator._alwaysLatestBlock, 1, 'passing 1 doesnt circumvent noop test')
 
-  core.setAlwaysLatestBlock(false)
+  await core.setAlwaysLatestBlock(false)
   t.is(core.replicator._alwaysLatestBlock, 0, 'passing false can disable')
 
-  core.setAlwaysLatestBlock(false)
+  await core.setAlwaysLatestBlock(false)
   t.is(core.replicator._alwaysLatestBlock, 0, 'passing false while disabled noop')
 
   // With end = -1 range request
   const range = core.download({ start: 0, end: -1 })
   t.is(core.replicator._alwaysLatestBlock, 1, 'range req (end = -1) incremented')
 
-  core.setAlwaysLatestBlock(true)
+  await core.setAlwaysLatestBlock(true)
   t.is(core.replicator._alwaysLatestBlock, 2, 'passing true increments when 1 from range')
 
-  core.setAlwaysLatestBlock(true)
+  await core.setAlwaysLatestBlock(true)
   t.is(core.replicator._alwaysLatestBlock, 2, 'passing true doesnt over increment')
 
   range.destroy()
   t.is(core.replicator._alwaysLatestBlock, 1, 'range done/cancelled dec')
 
-  core.setAlwaysLatestBlock(false)
+  await core.setAlwaysLatestBlock(false)
   t.is(core.replicator._alwaysLatestBlock, 0, 'passing false disables again')
 
   const db = await createStorage(t)
@@ -896,9 +896,9 @@ test('setAlwaysLatestBlock()', async (t) => {
   const notReady = new Hypercore(db, { preload: () => Promise.resolve({}) })
   t.teardown(() => notReady.close())
 
-  t.execution(() => notReady.setAlwaysLatestBlock(true), 'calling on not ready core doesnt throw')
+  await t.execution(() => notReady.setAlwaysLatestBlock(true), 'calling on not ready core doesnt throw')
   await notReady.ready()
-  t.is(notReady.replicator._alwaysLatestBlock, 0, 'call was a noop')
+  t.is(notReady.replicator._alwaysLatestBlock, 1, 'call still took affect')
 })
 
 function getBitfields(hypercore, start = 0, end = null) {

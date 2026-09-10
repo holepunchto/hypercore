@@ -308,8 +308,8 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
-  setAlwaysLatestBlock(bool) {
-    if (!this.opened) return
+  async setAlwaysLatestBlock(bool) {
+    if (!this.opened) await this.opening
 
     const enabled = !!bool
     if (enabled === this.core.replicator._alwaysLatestBlockEnabled) return
