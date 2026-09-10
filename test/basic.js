@@ -854,6 +854,41 @@ test('setKeyPair', async function (t) {
   await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
+test('setAlwaysLatestBlock()', async (t) => {
+  const core = await create(t)
+
+  t.is(core.replicator._alwaysLatestBlock, 0, 'default is disabled')
+
+  core.setAlwaysLatestBlock(true)
+
+  t.is(core.replicator._alwaysLatestBlock, 1, 'setAlwaysLatestBlock(true) enables')
+
+  core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'setAlwaysLatestBlock(true) while enabled noop')
+
+  core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) can disable')
+
+  core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) while disabled noop')
+
+  // With end = -1 range request
+  const range = core.download({ start: 0, end: -1 })
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range req (end = -1) incremented')
+
+  core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'setAlwaysLatestBlock(true) increments when 1')
+
+  core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'setAlwaysLatestBlock(true) doesnt over increment')
+
+  range.destroy()
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range done/cancelled dec')
+
+  core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) disables again')
+})
+
 function getBitfields(hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
