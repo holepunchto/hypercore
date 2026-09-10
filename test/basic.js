@@ -866,6 +866,9 @@ test('setAlwaysLatestBlock()', async (t) => {
   core.setAlwaysLatestBlock(true)
   t.is(core.replicator._alwaysLatestBlock, 1, 'setAlwaysLatestBlock(true) while enabled noop')
 
+  core.setAlwaysLatestBlock(1)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing 1 doesnt circumvent noop test')
+
   core.setAlwaysLatestBlock(false)
   t.is(core.replicator._alwaysLatestBlock, 0, 'setAlwaysLatestBlock(false) can disable')
 
