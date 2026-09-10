@@ -3285,6 +3285,120 @@ test('idle range completion restarts if ranges cancel during yield', async funct
   t.is(completed, cancelLength, 'all complete ranges resolved')
 })
 
+test('wire messages arriving after a core closes do not destroy the stream', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 200; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+  const warnings = []
+
+  // closing a downloader while ranges are still streaming is a race, so we
+  // give it a few rounds
+  for (let round = 0; round < 6; round++) {
+    const db = await createStorage(t)
+    t.teardown(() => db.close())
+    const b = new Hypercore(db, a.key)
+    await b.ready()
+
+    let destroyed = false
+
+    const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+    const streams = [n1, n2]
+
+    a.replicate(n1)
+    b.replicate(n2)
+
+    for (const s of streams) {
+      s.on('error', (err) => errors.push(err.message))
+      s.on('warning', (err) => warnings.push(err.message))
+      s.on('destroy', () => {
+        destroyed = true
+      })
+    }
+
+    let appending = true
+    const appends = (async function () {
+      while (appending) await a.append(Buffer.from('more ' + round))
+    })()
+
+    b.download({ start: 0, end: 200 })
+    await b.get(0)
+
+    await b.close()
+
+    appending = false
+    await appends
+
+    t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
+    for (const s of streams) s.destroy()
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 200))
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /session is closed/i.test(e)),
+    'no replication stream emitted errors by a post-close message'
+  )
+  t.absent(
+    warnings.some((e) => /session is closed/i.test(e)),
+    'no replication stream emitted warnings by a post-close message'
+  )
+})
+
+test('throwing after channel closes processing msgs emits warning not error', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 10; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+  const warnings = []
+  const db = await createStorage(t)
+  t.teardown(() => db.close())
+  const b = new Hypercore(db, a.key)
+  await b.ready()
+
+  b.on('download', () => {
+    const peerA = b.replicator.peers[0]
+    peerA.channel.close()
+
+    // Throw during ondata due to developer error
+    throw Error('beep')
+  })
+
+  let destroyed = false
+
+  const streams = makeStreamPair(t, { latency: [0, 0] })
+  const [n1, n2] = streams
+
+  a.replicate(n1)
+  b.replicate(n2)
+
+  for (const s of streams) {
+    s.on('error', (err) => errors.push(err.message))
+    s.on('warning', (err) => warnings.push(err.message))
+    s.on('destroy', () => {
+      destroyed = true
+    })
+  }
+
+  await b.get(0) // trigger error on b
+
+  t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
+  for (const s of streams) s.destroy()
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /beep/i.test(e)),
+    'no replication stream emitted errors by a post-close message'
+  )
+  t.ok(
+    warnings.some((e) => /beep/i.test(e)),
+    'replication stream emitted warnings by a post-close message'
+  )
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
@@ -3302,45 +3416,3 @@ async function waitForRequestBlock(core) {
 }
 
 function noop() {}
-
-test('wire messages arriving after a core closes do not destroy the stream', async function (t) {
-  const a = await create(t)
-  for (let i = 0; i < 200; i++) await a.append(Buffer.from('block ' + i))
-
-  const errors = []
-
-  // closing a downloader while ranges are still streaming is a race, so we
-  // give it a few rounds
-  for (let round = 0; round < 6; round++) {
-    const db = await createStorage(t)
-    const b = new Hypercore(db, a.key)
-    await b.ready()
-
-    const streams = replicate(a, b, t, { teardown: false })
-    for (const s of streams) s.on('error', (err) => errors.push(err.message))
-
-    let appending = true
-    const appends = (async function () {
-      while (appending) await a.append(Buffer.from('more ' + round))
-    })()
-
-    b.download({ start: 0, end: 200 })
-    await b.get(0)
-
-    await b.close()
-    await db.close()
-
-    appending = false
-    await appends
-
-    for (const s of streams) s.destroy()
-  }
-
-  await new Promise((resolve) => setTimeout(resolve, 200))
-
-  t.comment('errors: ' + (errors.join(' | ') || 'none'))
-  t.absent(
-    errors.some((e) => /session is closed/i.test(e)),
-    'no replication stream was destroyed by a post-close message'
-  )
-})
