@@ -704,7 +704,7 @@ When calling `core.setActive(true)` make sure to later call `core.setActive(fals
 
 #### `core.setAlwaysLatestBlock(enabled)`
 
-Set whether the replicator should always include a request for the latest block in an upgrade request (aka the peer has a length update). A runtime method for updating the `allowLatestBlock` option
+Set whether the replicator should always include a request for the latest block in an upgrade request (aka the peer has a length update). A runtime method for updating the `allowLatestBlock` option.
 
 #### `await core.setUserData(key, value)`
 
