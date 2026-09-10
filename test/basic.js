@@ -896,7 +896,10 @@ test('setAlwaysLatestBlock()', async (t) => {
   const notReady = new Hypercore(db, { preload: () => Promise.resolve({}) })
   t.teardown(() => notReady.close())
 
-  await t.execution(() => notReady.setAlwaysLatestBlock(true), 'calling on not ready core doesnt throw')
+  await t.execution(
+    () => notReady.setAlwaysLatestBlock(true),
+    'calling on not ready core doesnt throw'
+  )
   await notReady.ready()
   t.is(notReady.replicator._alwaysLatestBlock, 1, 'call still took affect')
 })
