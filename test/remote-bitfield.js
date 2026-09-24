@@ -30,6 +30,16 @@ test('remote bitfield - set range to false', function (t) {
   t.is(b.findFirst(true, 0), 5001, 'cleared bit in range')
 })
 
+test('remote bitfield - findLast', function (t) {
+  const b = new RemoteBitfield()
+
+  const start = Date.now()
+  t.is(b.findLast(true, 2 ** 53), -1, 'cant find last starting large index in empty bitfield')
+  const delta = Date.now() - start
+  t.comment('delta for findLast w/ large start', delta)
+  t.ok(delta < 100, 'was "fast" (< 100ms)')
+})
+
 test('set last bits in segment and findFirst', function (t) {
   const b = new RemoteBitfield()
 
