@@ -38,6 +38,23 @@ test('set last bits in segment and findFirst', function (t) {
   t.is(b.findFirst(false, 32767), 32768)
 })
 
+test('setRange w/ false doesnt make new pages', function (t) {
+  const b = new RemoteBitfield()
+
+  t.is(b._maxSegments, 0, 'max seen page starts as 0')
+  const start = Date.now()
+  b.setRange(1, 2 ** 42 - 1, false)
+  t.is(b._maxSegments, 0, 'max seen page still zero')
+  const delta = Date.now() - start
+  t.comment('delta for setRange w/ false beyond bitfield', delta)
+  t.ok(delta < 100, 'was "fast" (< 100ms)')
+
+  b.setRange(0, 10, true)
+  t.is(b._maxSegments, 1, '_maxSegments increments when adding a page')
+  b.setRange(2097152, 2097153, true)
+  t.is(b._maxSegments, 2, '_maxSegments increments when adding a page')
+})
+
 test('remote congituous length consistency (remote-bitfield findFirst edge case)', async function (t) {
   // Indirectly tests the findFirst method for the case where
   // a position > 0 is passed in, while _maxSegments is still 0
