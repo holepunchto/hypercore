@@ -38,6 +38,25 @@ test('set last bits in segment and findFirst', function (t) {
   t.is(b.findFirst(false, 32767), 32768)
 })
 
+test('clear', function (t) {
+  const b = new RemoteBitfield()
+
+  t.is(b._maxSegments, 0, 'starts empty')
+  b.clear(0, b4a.alloc(32768 / 8).fill(255))
+  t.is(b._maxSegments, 0, 'doesnt allocate page/segment if not there')
+
+  // Clears range
+  t.absent(b.get(7), 'no bit')
+  b.setRange(0, 16, true)
+  t.ok(b.get(7), 'set range')
+
+  const clearBuffer = b4a.alloc(4, 0)
+  clearBuffer[0] = 255
+  b.clear(0, clearBuffer) // clear first byte
+  t.absent(b.get(7), 'cleared bit')
+  t.ok(b.get(10), 'cleared only first byte')
+})
+
 test('remote congituous length consistency (remote-bitfield findFirst edge case)', async function (t) {
   // Indirectly tests the findFirst method for the case where
   // a position > 0 is passed in, while _maxSegments is still 0
