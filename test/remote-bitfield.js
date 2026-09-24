@@ -22,9 +22,12 @@ test('remote bitfield - set range on page boundary', function (t) {
 test('remote bitfield - set range to false', function (t) {
   const b = new RemoteBitfield()
 
+  b.set(1000, true) // Something to overwrite
+  b.set(5001, true) // Something to remain
+
   b.setRange(0, 5000, false)
 
-  t.is(b.findFirst(true, 0), -1)
+  t.is(b.findFirst(true, 0), 5001, 'cleared bit in range')
 })
 
 test('set last bits in segment and findFirst', function (t) {
