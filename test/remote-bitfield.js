@@ -22,9 +22,22 @@ test('remote bitfield - set range on page boundary', function (t) {
 test('remote bitfield - set range to false', function (t) {
   const b = new RemoteBitfield()
 
+  b.set(1000, true) // Something to overwrite
+  b.set(5001, true) // Something to remain
+
   b.setRange(0, 5000, false)
 
-  t.is(b.findFirst(true, 0), -1)
+  t.is(b.findFirst(true, 0), 5001, 'cleared bit in range')
+})
+
+test('remote bitfield - findLast', function (t) {
+  const b = new RemoteBitfield()
+
+  const start = Date.now()
+  t.is(b.findLast(true, 2 ** 53), -1, 'cant find last starting large index in empty bitfield')
+  const delta = Date.now() - start
+  t.comment('delta for findLast w/ large start', delta)
+  t.ok(delta < 100, 'was "fast" (< 100ms)')
 })
 
 test('set last bits in segment and findFirst', function (t) {
@@ -55,6 +68,23 @@ test('clear', function (t) {
   b.clear(0, clearBuffer) // clear first byte
   t.absent(b.get(7), 'cleared bit')
   t.ok(b.get(10), 'cleared only first byte')
+})
+
+test('setRange w/ false doesnt make new pages', function (t) {
+  const b = new RemoteBitfield()
+
+  t.is(b._maxSegments, 0, 'max seen page starts as 0')
+  const start = Date.now()
+  b.setRange(1, 2 ** 42 - 1, false)
+  t.is(b._maxSegments, 0, 'max seen page still zero')
+  const delta = Date.now() - start
+  t.comment('delta for setRange w/ false beyond bitfield', delta)
+  t.ok(delta < 100, 'was "fast" (< 100ms)')
+
+  b.setRange(0, 10, true)
+  t.is(b._maxSegments, 1, '_maxSegments increments when adding a page')
+  b.setRange(2097152, 2097153, true)
+  t.is(b._maxSegments, 2, '_maxSegments increments when adding a page')
 })
 
 test('remote congituous length consistency (remote-bitfield findFirst edge case)', async function (t) {
