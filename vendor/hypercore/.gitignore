@@ -1,0 +1,15 @@
+node_modules/
+coverage/
+tmp/
+dist/
+npm-debug.log*
+.DS_Store
+.nyc_output
+target/
+Cargo.lock
+package-lock.json
+
+my-first-dataset/
+feed.db/
+.vscode
+tests/js/work

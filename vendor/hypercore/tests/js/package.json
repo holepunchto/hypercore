@@ -1,0 +1,10 @@
+{
+    "name": "hypercore-js-interop-tests",
+    "version": "0.0.1",
+    "scripts": {
+        "step": "node interop.js"
+    },
+    "dependencies": {
+        "hypercore": "10.31.12"
+    }
+}

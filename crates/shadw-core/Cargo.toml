@@ -1,0 +1,21 @@
+[package]
+name = "shadw-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Native append-only SHADW log with pinned-key verified proof transfer"
+
+[dependencies]
+hypercore.workspace = true
+hypercore_schema.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+hex.workspace = true
+fs2.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+tempfile.workspace = true

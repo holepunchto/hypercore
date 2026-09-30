@@ -1,0 +1,85 @@
+[package]
+name = "hypercore"
+version = "0.16.0"
+license = "MIT OR Apache-2.0"
+description = "Secure, distributed, append-only log"
+documentation = "https://docs.rs/hypercore"
+repository = "https://github.com/datrs/hypercore"
+readme = "README.md"
+authors = [
+  "Yoshua Wuyts <yoshuawuyts@gmail.com>",
+  "Timo Tiuraniemi <timo.tiuraniemi@iki.fi>"
+]
+keywords = ["dat", "p2p", "stream", "feed", "merkle"]
+categories = [
+  "asynchronous",
+  "concurrency",
+  "cryptography",
+  "data-structures",
+  "encoding",
+]
+edition = "2024"
+
+[dependencies]
+blake2 = "0.10"
+byteorder = "1"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+getrandom = { version = "0.2", features = ["js"] }
+thiserror = "1"
+tracing = "0.1"
+compact-encoding = "2"
+flat-tree = "6"
+merkle-tree-stream =  "0.12"
+pretty-hash = "0.4"
+rand = "0.8"
+random-access-memory = "3"
+random-access-storage = "5"
+sha2 = "0.10"
+futures = "0.3"
+crc32fast = "1"
+intmap = "2"
+moka = { version = "0.12", optional = true, features = ["sync"] }
+async-broadcast = { version = "0.7.1", optional = true }
+async-lock = {version = "3.4.0", optional = true }
+
+[dependencies.hypercore_schema]
+version = "0.2.0"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+random-access-disk = { version = "3", default-features = false }
+
+[dev-dependencies]
+anyhow = "1.0.70"
+proptest = "1.6.0"
+proptest-derive = "0.5.1"
+data-encoding = "2.2.0"
+remove_dir_all = "0.7.0"
+tempfile = "3.1.0"
+async-std = { version = "1.12.0", features = ["attributes"] }
+tokio = { version = "1.27.0", default-features = false, features = ["macros", "rt", "rt-multi-thread"] }
+tokio-test = "0.4"
+sha2 = "0.10"
+criterion = { version = "0.4", features = ["async_std", "async_tokio"] }
+test-log = { version = "0.2.11", default-features = false, features = ["trace"] }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter", "fmt"] }
+
+[features]
+default = ["tokio", "sparse", "replication", "cache"]
+replication = ["dep:async-broadcast"]
+shared-core = ["replication", "dep:async-lock"]
+sparse = ["random-access-disk/sparse"]
+tokio = ["random-access-disk/tokio"]
+async-std = ["random-access-disk/async-std"]
+cache = ["moka"]
+# Used only in interoperability tests under tests/js-interop which use the javascript version of hypercore
+# to verify that this crate works. To run them, use:
+# cargo test --features js-interop-tests
+js_interop_tests = []
+
+[[bench]]
+name = "memory"
+harness = false
+
+[[bench]]
+name = "disk"
+harness = false

@@ -6,3 +6,14 @@ coverage
 sandbox.js
 tmp
 *.log
+
+# Rust targets, local log stores and generated QA outputs
+/target/
+/artifacts/
+/data/
+/local-data/
+
+__pycache__/
+
+*.pyc
+/campus-example/

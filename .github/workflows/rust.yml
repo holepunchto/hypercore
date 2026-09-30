@@ -1,0 +1,27 @@
+name: Native Rust
+on:
+  push:
+    paths: ['Cargo.toml', 'Cargo.lock', 'crates/**', 'apps/**', 'fixtures/rust/**', 'tests/rust/**', 'vendor/hypercore/**', '.github/workflows/rust.yml']
+  pull_request:
+    paths: ['Cargo.toml', 'Cargo.lock', 'crates/**', 'apps/**', 'fixtures/rust/**', 'tests/rust/**', 'vendor/hypercore/**', '.github/workflows/rust.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust tools
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Format
+        run: cargo +stable fmt --all --check
+      - name: Lint
+        run: cargo +stable clippy --locked --workspace --all-targets -- -D warnings
+      - name: Native tests and compatibility fixture
+        run: cargo +stable test --locked --workspace
+      - name: Vendored persistence regressions
+        run: cargo +stable test --locked --manifest-path vendor/hypercore/Cargo.toml --no-default-features --features tokio,sparse --lib shadw_regression_tests
+      - name: Build local example
+        run: cargo +stable build --locked -p university-demo
+      - name: Process, API, restart and replica checks
+        run: python3 tests/rust/api-smoke.py --binary target/debug/university-demo --output artifacts/api-ci

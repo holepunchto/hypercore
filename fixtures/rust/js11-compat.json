@@ -1,0 +1,328 @@
+{
+  "format": "shadw-js11-compat-fixture-v1",
+  "provenance": {
+    "source": "https://github.com/SolutionsAsService/shadw-core",
+    "source_revision": "db1c818c92fd3882da02b1f190058f4f9dfc5d94",
+    "hypercore": "11.37.1",
+    "hypercore_crypto": "3.7.0",
+    "hypercore_storage": "3.3.1",
+    "sodium_universal": "5.0.1",
+    "node": "v24.19.0",
+    "scope": "Actual JS11 native runtime; explicit compat single signer; fork zero; plaintext bytes. Not JS11 wire or storage parity."
+  },
+  "test_only_seed": "0707070707070707070707070707070707070707070707070707070707070707",
+  "warning": "PUBLIC DETERMINISTIC TEST-ONLY SEED. NEVER USE FOR REAL DATA.",
+  "public_key": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+  "discovery_key": "e3ac68a2145739cf48b8c0c43ad54595216b4bcbd5914c35dab942fb8c0c571b",
+  "namespaces": {
+    "tree": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9c",
+    "manifest": "e64b7108eacce47cfc61ac850568f55f8b15b82ec5ed78c4ec597b036e2a1498",
+    "default_namespace": "4144eea531e483d54e0c14f4ca68e0644f355343ff6fcb0f005200e12cd747cb"
+  },
+  "blocks": [
+    "",
+    "68656c6c6f",
+    "556e69766572736974793a20cf80202f20e5ada6e7949f",
+    "00017f80ff",
+    "666966746820626c6f636b3a206e6f6e2d706f7765722d6f662d74776f20666f72657374"
+  ],
+  "leaves": [
+    {
+      "index": 0,
+      "hash": "5187b7a8021bf4f2c004ea3a54cfece1754f11c7624d2363c7f4cf4fddd1441e",
+      "length": 0
+    },
+    {
+      "index": 2,
+      "hash": "f2391083cfaa8043205fed76cdff843902146ca92aebcd7a196814ec45d8c8f8",
+      "length": 5
+    },
+    {
+      "index": 4,
+      "hash": "8cd4c7dbd7ae0b937fa78231ceceeb358a66dea028cb6d97b8e2dfeb27195057",
+      "length": 23
+    },
+    {
+      "index": 6,
+      "hash": "f3cbf25ae51457e26d007aa8f26afaec2e8c95ad50738b4fdec7c2d59a0c6c31",
+      "length": 5
+    },
+    {
+      "index": 8,
+      "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+      "length": 36
+    }
+  ],
+  "parent": {
+    "index": 1,
+    "hash": "dab76dac2279985bc9def49d792d084965693c7979794d1523647f756e1e850b",
+    "length": 5
+  },
+  "heads": [
+    {
+      "length": 0,
+      "byte_length": 0,
+      "fork": 0,
+      "roots": [],
+      "tree_hash": "bb30a42c1e62f0afda5f0a4e8a562f7a13a24cea00ee81917b86b89e801314aa",
+      "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9cbb30a42c1e62f0afda5f0a4e8a562f7a13a24cea00ee81917b86b89e801314aa00000000000000000000000000000000",
+      "signature": null
+    },
+    {
+      "length": 1,
+      "byte_length": 0,
+      "fork": 0,
+      "roots": [
+        {
+          "index": 0,
+          "hash": "5187b7a8021bf4f2c004ea3a54cfece1754f11c7624d2363c7f4cf4fddd1441e",
+          "length": 0
+        }
+      ],
+      "tree_hash": "61471abb31324244026bc68a3e4551b32e7058188e95b976f741fe574f033fe0",
+      "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9c61471abb31324244026bc68a3e4551b32e7058188e95b976f741fe574f033fe001000000000000000000000000000000",
+      "signature": "e891cf23210a892440d5f42595c9dd313e7c45511b34dbfdc7395ea49b174b5108b35440023fbe283ede869d76c87a483d4b4285122b2c63a1286a935cb96b04"
+    },
+    {
+      "length": 2,
+      "byte_length": 5,
+      "fork": 0,
+      "roots": [
+        {
+          "index": 1,
+          "hash": "dab76dac2279985bc9def49d792d084965693c7979794d1523647f756e1e850b",
+          "length": 5
+        }
+      ],
+      "tree_hash": "940968d50712b5b978bf4f3e27268b60d374f84e7365a2c714f288df6e4c4a75",
+      "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9c940968d50712b5b978bf4f3e27268b60d374f84e7365a2c714f288df6e4c4a7502000000000000000000000000000000",
+      "signature": "dbf64183cd1122b1cd12261586faafafd367315c0d6e29f70d43ff584f021c61e58c9ca76ccb08e91dc3556df5eeb1454ecb16457f2d33def6269bec40bcd704"
+    },
+    {
+      "length": 3,
+      "byte_length": 28,
+      "fork": 0,
+      "roots": [
+        {
+          "index": 1,
+          "hash": "dab76dac2279985bc9def49d792d084965693c7979794d1523647f756e1e850b",
+          "length": 5
+        },
+        {
+          "index": 4,
+          "hash": "8cd4c7dbd7ae0b937fa78231ceceeb358a66dea028cb6d97b8e2dfeb27195057",
+          "length": 23
+        }
+      ],
+      "tree_hash": "ee2fb14888876264894efa1865d66beb52d74292a406259c3784d3083fa0d04b",
+      "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9cee2fb14888876264894efa1865d66beb52d74292a406259c3784d3083fa0d04b03000000000000000000000000000000",
+      "signature": "dba284754678a6c70d20a5c540b56c24a41fd24822b711642b4fdeaff813712915781c4e07834c17edaa9546733f48dcd5bea5bb09a91db696e6554c48a84306"
+    },
+    {
+      "length": 5,
+      "byte_length": 69,
+      "fork": 0,
+      "roots": [
+        {
+          "index": 3,
+          "hash": "b3c1c2a7a863ab08af593dcef7f65d8b3341e6bb63a96444d2ddf261b2e4534e",
+          "length": 33
+        },
+        {
+          "index": 8,
+          "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+          "length": 36
+        }
+      ],
+      "tree_hash": "a52e1efa4f41aebbb70643169a4562ec7ab7befaec4d402d755a507af8d0b706",
+      "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9ca52e1efa4f41aebbb70643169a4562ec7ab7befaec4d402d755a507af8d0b70605000000000000000000000000000000",
+      "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+    }
+  ],
+  "bundle": {
+    "format": "shadw-proof-bundle-v1",
+    "public_key": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+    "length": 5,
+    "head": {
+      "fork": 0,
+      "block": null,
+      "upgrade": {
+        "start": 0,
+        "length": 5,
+        "nodes": [
+          {
+            "index": 3,
+            "hash": "b3c1c2a7a863ab08af593dcef7f65d8b3341e6bb63a96444d2ddf261b2e4534e",
+            "length": 33
+          },
+          {
+            "index": 8,
+            "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+            "length": 36
+          }
+        ],
+        "additional_nodes": [],
+        "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+      }
+    },
+    "blocks": [
+      {
+        "fork": 0,
+        "block": {
+          "index": 0,
+          "value": "",
+          "nodes": [
+            {
+              "index": 2,
+              "hash": "f2391083cfaa8043205fed76cdff843902146ca92aebcd7a196814ec45d8c8f8",
+              "length": 5
+            },
+            {
+              "index": 5,
+              "hash": "53ea9969272dc9a1726a3ea1b413d3a6b722103267eb81266500f97228d2f0d0",
+              "length": 28
+            }
+          ]
+        },
+        "upgrade": {
+          "start": 0,
+          "length": 5,
+          "nodes": [
+            {
+              "index": 8,
+              "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+              "length": 36
+            }
+          ],
+          "additional_nodes": [],
+          "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+        }
+      },
+      {
+        "fork": 0,
+        "block": {
+          "index": 1,
+          "value": "68656c6c6f",
+          "nodes": [
+            {
+              "index": 0,
+              "hash": "5187b7a8021bf4f2c004ea3a54cfece1754f11c7624d2363c7f4cf4fddd1441e",
+              "length": 0
+            },
+            {
+              "index": 5,
+              "hash": "53ea9969272dc9a1726a3ea1b413d3a6b722103267eb81266500f97228d2f0d0",
+              "length": 28
+            }
+          ]
+        },
+        "upgrade": {
+          "start": 0,
+          "length": 5,
+          "nodes": [
+            {
+              "index": 8,
+              "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+              "length": 36
+            }
+          ],
+          "additional_nodes": [],
+          "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+        }
+      },
+      {
+        "fork": 0,
+        "block": {
+          "index": 2,
+          "value": "556e69766572736974793a20cf80202f20e5ada6e7949f",
+          "nodes": [
+            {
+              "index": 6,
+              "hash": "f3cbf25ae51457e26d007aa8f26afaec2e8c95ad50738b4fdec7c2d59a0c6c31",
+              "length": 5
+            },
+            {
+              "index": 1,
+              "hash": "dab76dac2279985bc9def49d792d084965693c7979794d1523647f756e1e850b",
+              "length": 5
+            }
+          ]
+        },
+        "upgrade": {
+          "start": 0,
+          "length": 5,
+          "nodes": [
+            {
+              "index": 8,
+              "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+              "length": 36
+            }
+          ],
+          "additional_nodes": [],
+          "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+        }
+      },
+      {
+        "fork": 0,
+        "block": {
+          "index": 3,
+          "value": "00017f80ff",
+          "nodes": [
+            {
+              "index": 4,
+              "hash": "8cd4c7dbd7ae0b937fa78231ceceeb358a66dea028cb6d97b8e2dfeb27195057",
+              "length": 23
+            },
+            {
+              "index": 1,
+              "hash": "dab76dac2279985bc9def49d792d084965693c7979794d1523647f756e1e850b",
+              "length": 5
+            }
+          ]
+        },
+        "upgrade": {
+          "start": 0,
+          "length": 5,
+          "nodes": [
+            {
+              "index": 8,
+              "hash": "a558502b356bc3507c6470618d45ba2cbd0b96b4ee70d8ed5a3e2c8019568fde",
+              "length": 36
+            }
+          ],
+          "additional_nodes": [],
+          "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+        }
+      },
+      {
+        "fork": 0,
+        "block": {
+          "index": 4,
+          "value": "666966746820626c6f636b3a206e6f6e2d706f7765722d6f662d74776f20666f72657374",
+          "nodes": []
+        },
+        "upgrade": {
+          "start": 0,
+          "length": 5,
+          "nodes": [
+            {
+              "index": 3,
+              "hash": "b3c1c2a7a863ab08af593dcef7f65d8b3341e6bb63a96444d2ddf261b2e4534e",
+              "length": 33
+            }
+          ],
+          "additional_nodes": [],
+          "signature": "483d8f88300e485aaacbe783d2d1101befaeb31c23599426a8fad9e4e97666863b2add35fc99eb4e49b905a888024283ff477227a82ea0d96c1092c34b5d1806"
+        }
+      }
+    ]
+  },
+  "unsupported_manifest_v1": {
+    "key": "04dc2c70d9b3954c86f4d0ffeae59b601b9739d285d5bb1849a9f93f45d95c18",
+    "encoded_manifest": "0100000101004144eea531e483d54e0c14f4ca68e0644f355343ff6fcb0f005200e12cd747cbea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+    "tree_hash": "b63bcd157c3725b402f0689f84ae3d04734d14fd2ebef2e10101447142e73305",
+    "signable": "9fac70b50ca14efc4e91c833b204e75b8b5aad8b5881bfc0adb5ef38a3275b9c04dc2c70d9b3954c86f4d0ffeae59b601b9739d285d5bb1849a9f93f45d95c18b63bcd157c3725b402f0689f84ae3d04734d14fd2ebef2e10101447142e7330501000000000000000000000000000000",
+    "signature_envelope": "01008e386bd94321720fdbe3f37a9a9151b4d5b6f66f401af58a8c8d35d805ad1a38ee70181f6f92c9b119f585cccd0af6ea84579e119d9b00cbdc7940663f89820a0000",
+    "scope": "Reference only: not evidence that the Rust compatibility subset supports non-compat manifests."
+  }
+}

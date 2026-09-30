@@ -1,0 +1,152 @@
+name: 'CI'
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+  RUSTDOCFLAGS: "-Dwarnings"
+
+jobs:
+  ci-pass:
+    name: CI is green
+    runs-on: ubuntu-latest
+    needs:
+      - test-linux
+      - test-windows
+      - test-macos
+      - build-extra
+      - lint
+    steps:
+      - run: exit 0
+
+  test-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt
+    - name: Run tests
+      run: |
+        cargo check --all-targets --no-default-features --features tokio
+        cargo check --all-targets --no-default-features --features tokio,sparse
+        cargo check --all-targets --no-default-features --features tokio,sparse,cache
+        cargo check --all-targets --no-default-features --features async-std
+        cargo check --all-targets --no-default-features --features async-std,sparse
+        cargo check --all-targets --no-default-features --features async-std,sparse,cache
+        cargo test --no-default-features --features js_interop_tests,tokio
+        cargo test --no-default-features --features js_interop_tests,tokio,shared-core
+        cargo test --no-default-features --features js_interop_tests,tokio,sparse
+        cargo test --no-default-features --features js_interop_tests,tokio,sparse,cache
+        cargo test --no-default-features --features js_interop_tests,async-std
+        cargo test --no-default-features --features js_interop_tests,async-std,shared-core
+        cargo test --no-default-features --features js_interop_tests,async-std,sparse
+        cargo test --no-default-features --features js_interop_tests,async-std,sparse,cache
+        cargo test --benches --no-default-features --features tokio
+        cargo test --benches --no-default-features --features async-std
+
+  test-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run tests
+        run: |
+          cargo check --all-targets --no-default-features --features tokio
+          cargo check --all-targets --no-default-features --features tokio,sparse
+          cargo check --all-targets --no-default-features --features tokio,sparse,cache
+          cargo check --all-targets --no-default-features --features async-std
+          cargo check --all-targets --no-default-features --features async-std,sparse
+          cargo check --all-targets --no-default-features --features async-std,sparse,cache
+          cargo test --no-default-features --features tokio
+          cargo test --no-default-features --features tokio,shared-core
+          cargo test --no-default-features --features tokio,sparse
+          cargo test --no-default-features --features tokio,sparse,cache
+          cargo test --no-default-features --features async-std
+          cargo test --no-default-features --features async-std,shared-core
+          cargo test --no-default-features --features async-std,sparse
+          cargo test --no-default-features --features async-std,sparse,cache
+          cargo test --benches --no-default-features --features tokio
+          cargo test --benches --no-default-features --features async-std
+
+  test-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run tests
+        run: |
+          cargo check --all-targets --no-default-features --features tokio
+          cargo check --all-targets --no-default-features --features tokio,sparse
+          cargo check --all-targets --no-default-features --features tokio,sparse,cache
+          cargo check --all-targets --no-default-features --features async-std
+          cargo check --all-targets --no-default-features --features async-std,sparse
+          cargo check --all-targets --no-default-features --features async-std,sparse,cache
+          cargo test --no-default-features --features js_interop_tests,tokio
+          cargo test --no-default-features --features js_interop_tests,tokio,shared-core
+          cargo test --no-default-features --features js_interop_tests,tokio,sparse
+          cargo test --no-default-features --features js_interop_tests,tokio,sparse,cache
+          cargo test --no-default-features --features js_interop_tests,async-std
+          cargo test --no-default-features --features js_interop_tests,async-std,shared-core
+          cargo test --no-default-features --features js_interop_tests,async-std,sparse
+          cargo test --no-default-features --features js_interop_tests,async-std,sparse,cache
+          cargo test --benches --no-default-features --features tokio
+          cargo test --benches --no-default-features --features async-std
+
+  build-extra:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Build WASM
+        run: |
+          cargo build --target=wasm32-unknown-unknown --no-default-features --features tokio
+          cargo build --target=wasm32-unknown-unknown --no-default-features --features async-std
+      - name: Build release
+        run: |
+          cargo build --release --no-default-features --features tokio
+          cargo build --release --no-default-features --features tokio,sparse
+          cargo build --release --no-default-features --features tokio,sparse,cache
+          cargo build --release --no-default-features --features async-std
+          cargo build --release --no-default-features --features async-std,sparse
+          cargo build --release --no-default-features --features async-std,sparse,cache
+      - name: Run examples
+        run: |
+          cargo run --no-default-features --features tokio --example disk 
+          cargo run --no-default-features --features async-std --example disk 
+          cargo run --no-default-features --features tokio --example memory 
+          cargo run --no-default-features --features async-std --example memory 
+          cargo run --no-default-features --features tokio --example replication 
+          cargo run --no-default-features --features async-std --example replication 
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Format check
+      run: |
+        cargo doc
+        cargo fmt -- --check
+        cargo clippy --all-targets
