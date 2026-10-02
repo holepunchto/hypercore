@@ -42,6 +42,25 @@ test('clear + replication', async function (t) {
   await b.close()
 })
 
+test('clear + replication, remaining blocks can still be served', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+
+  await a.clear(1)
+  await a.clear(7)
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  t.alike(await b.get(0, { timeout: 5000 }), b4a.from('a'), 'block before a cleared one')
+  t.alike(await b.get(6, { timeout: 5000 }), b4a.from('g'), 'block before the cleared tail')
+  t.alike(
+    await b.get(3, { timeout: 5000 }),
+    b4a.from('d'),
+    'block in a subtree left of a cleared one'
+  )
+})
+
 test('clear + replication, gossip', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
