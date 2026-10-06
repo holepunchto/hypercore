@@ -937,7 +937,7 @@ class Hypercore extends EventEmitter {
   }
 
   async purge() {
-    await this._closeAllSessions(null)
+    if (this.opened === false) await this.opening
     await this.core.purge()
   }
 

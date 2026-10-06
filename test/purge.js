@@ -1,38 +1,32 @@
 const test = require('brittle')
-const fs = require('fs')
-const Path = require('path')
+const crypto = require('hypercore-crypto')
 
 const Hypercore = require('..')
+const { createStorage } = require('./helpers')
 
 test('basic purge', async function (t) {
   const dir = await t.tmp()
-  const core = new Hypercore(dir)
+
+  const keyPair = crypto.keyPair()
+  const core = new Hypercore(await createStorage(t, dir), { keyPair })
   await core.append(['a', 'b', 'c'])
-
-  const oplogLoc = Path.join(dir, 'oplog')
-  const treeLoc = Path.join(dir, 'tree')
-  const bitfieldLoc = Path.join(dir, 'bitfield')
-  const dataLoc = Path.join(dir, 'data')
-
-  t.is(fs.existsSync(oplogLoc), true)
-  t.is(fs.existsSync(treeLoc), true)
-  t.is(fs.existsSync(bitfieldLoc), true)
-  t.is(fs.existsSync(dataLoc), true)
-  t.is(fs.readdirSync(dir).length, 4) // Sanity check
 
   await core.purge()
 
   t.is(core.closed, true)
-  t.is(fs.existsSync(oplogLoc), false)
-  t.is(fs.existsSync(treeLoc), false)
-  t.is(fs.existsSync(bitfieldLoc), false)
-  t.is(fs.existsSync(dataLoc), false)
-  t.is(fs.readdirSync(dir).length, 0) // Nothing remains
+
+  const reopened = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey })
+  await reopened.ready()
+
+  t.is(reopened.length, 0, 'nothing remains')
+  t.is(reopened.writable, false, 'auth is gone with it')
+
+  await reopened.close()
 })
 
 test('purge closes all sessions', async function (t) {
   const dir = await t.tmp()
-  const core = new Hypercore(dir)
+  const core = new Hypercore(await createStorage(t, dir))
   await core.append(['a', 'b', 'c'])
   const otherSession = core.session()
   await otherSession.ready()
@@ -41,4 +35,44 @@ test('purge closes all sessions', async function (t) {
 
   t.is(core.closed, true)
   t.is(otherSession.closed, true)
+})
+
+test('purge from another session', async function (t) {
+  const dir = await t.tmp()
+  const core = new Hypercore(await createStorage(t, dir))
+  await core.append(['a', 'b', 'c'])
+  const otherSession = core.session()
+
+  await otherSession.purge()
+
+  t.is(core.closed, true)
+  t.is(otherSession.closed, true)
+})
+
+test('purge leaves other cores in the storage alone', async function (t) {
+  const dir = await t.tmp()
+
+  const keyPair = crypto.keyPair()
+  const manifest = { signers: [{ publicKey: keyPair.publicKey }] }
+  const key = Hypercore.key(manifest)
+
+  const kept = new Hypercore(await createStorage(t, dir))
+  await kept.append(['x', 'y'])
+  const keptKey = kept.key
+  await kept.close()
+
+  const purged = new Hypercore(await createStorage(t, dir), { key, manifest, keyPair })
+  await purged.append(['a', 'b', 'c'])
+  await purged.purge()
+
+  const a = new Hypercore(await createStorage(t, dir), { key: keptKey })
+  await a.ready()
+  t.is(a.length, 2, 'other core intact')
+  t.alike(await a.get(1), Buffer.from('y'))
+  await a.close()
+
+  const b = new Hypercore(await createStorage(t, dir), { key })
+  await b.ready()
+  t.is(b.length, 0, 'purged core gone')
+  await b.close()
 })
