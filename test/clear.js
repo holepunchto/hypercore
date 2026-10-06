@@ -22,6 +22,19 @@ test('clear', async function (t) {
   await a.close()
 })
 
+test('clear emits a clear event with the cleared range', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c'])
+
+  const cleared = new Promise((resolve) => a.once('clear', (start, end) => resolve({ start, end })))
+
+  await a.clear(1, 3)
+
+  t.alike(await cleared, { start: 1, end: 3 }, 'clear event fired with the cleared range')
+
+  await a.close()
+})
+
 test('clear + replication', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
