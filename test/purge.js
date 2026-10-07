@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
+const { core: keys } = require('hypercore-storage/lib/keys.js')
 
 const Hypercore = require('..')
 const { createStorage } = require('./helpers')
@@ -78,6 +79,52 @@ test('purge leaves other cores in the storage alone', async function (t) {
   await b.close()
 })
 
+test('purge deletes the rows, not just the record', async function (t) {
+  const dir = await t.tmp()
+
+  // a keyless core opens the storage's default core, so key both explicitly
+  const keptPair = crypto.keyPair()
+  const kept = new Hypercore(await createStorage(t, dir), {
+    key: keptPair.publicKey,
+    keyPair: keptPair
+  })
+  await kept.append(['x', 'y'])
+  const keptPtr = kept.core.storage.core
+  await kept.close()
+
+  const keyPair = crypto.keyPair()
+  const core = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey, keyPair })
+  await core.append(['a', 'b', 'c'])
+  await core.setUserData('hello', b4a.from('world'))
+  const ptr = core.core.storage.core
+  t.not(ptr.corePointer, keptPtr.corePointer)
+
+  await core.purge()
+
+  const storage = await createStorage(t, dir)
+  t.is(
+    await count(storage, keys.core(ptr.corePointer), keys.core(ptr.corePointer + 1)),
+    0,
+    'core rows'
+  )
+  t.is(
+    await count(storage, keys.data(ptr.dataPointer), keys.data(ptr.dataPointer + 1)),
+    0,
+    'blocks, tree, bitfield and user data'
+  )
+  t.not(
+    await count(storage, keys.core(keptPtr.corePointer), keys.core(keptPtr.corePointer + 1)),
+    0,
+    'other core rows untouched'
+  )
+  t.not(
+    await count(storage, keys.data(keptPtr.dataPointer), keys.data(keptPtr.dataPointer + 1)),
+    0,
+    'other core data untouched'
+  )
+  await storage.close()
+})
+
 test('purge on a closed core fails clearly', async function (t) {
   const dir = await t.tmp()
   const core = new Hypercore(await createStorage(t, dir))
@@ -112,3 +159,9 @@ test('a session that will not close aborts the purge and leaves the core intact'
   t.is(reopened.length, 2, 'nothing was deleted')
   await reopened.close()
 })
+
+async function count(storage, gte, lt) {
+  let n = 0
+  for await (const _ of storage.db.iterator({ gte, lt })) n++
+  return n
+}
