@@ -1,4 +1,5 @@
 const test = require('brittle')
+const b4a = require('b4a')
 const crypto = require('hypercore-crypto')
 
 const Hypercore = require('..')
@@ -75,4 +76,39 @@ test('purge leaves other cores in the storage alone', async function (t) {
   await b.ready()
   t.is(b.length, 0, 'purged core gone')
   await b.close()
+})
+
+test('purge on a closed core fails clearly', async function (t) {
+  const dir = await t.tmp()
+  const core = new Hypercore(await createStorage(t, dir))
+  await core.append(['a'])
+  await core.close()
+
+  await t.exception(core.purge(), /closed/)
+})
+
+test('a session that will not close aborts the purge and leaves the core intact', async function (t) {
+  const dir = await t.tmp()
+  const core = new Hypercore(await createStorage(t, dir))
+  await core.append(['a', 'b'])
+  const key = core.key
+
+  const stuck = core.session()
+  await stuck.ready()
+  stuck.close = () => Promise.reject(new Error('busy'))
+
+  await t.exception(core.purge(), /sessions are open/)
+
+  t.is(core.core.closed, false, 'the core stays open for the session that refused')
+  t.is(core.core.autoClose, true, 'autoClose restored')
+  t.alike(await stuck.get(1), b4a.from('b'), 'still readable')
+
+  delete stuck.close
+  await stuck.close()
+  t.is(core.core.closed, true, 'closing the last session closes the core again')
+
+  const reopened = new Hypercore(await createStorage(t, dir), { key })
+  await reopened.ready()
+  t.is(reopened.length, 2, 'nothing was deleted')
+  await reopened.close()
 })
