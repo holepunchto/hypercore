@@ -880,6 +880,24 @@ class Hypercore extends EventEmitter {
     return count === end - start
   }
 
+  async count(start, end) {
+    if (this.opened === false) await this.opening
+    if (!isValidIndex(start) || !isValidIndex(end)) {
+      throw ASSERTION('count range is invalid', this.discoveryKey)
+    }
+
+    if (this.state.isDefault()) return this.core.bitfield.countSet(start, end - start)
+
+    let count = 0
+
+    const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
+    for await (const block of stream) {
+      if (block !== null) count++
+    }
+
+    return count
+  }
+
   async get(index, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)

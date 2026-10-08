@@ -168,6 +168,10 @@ const blockLocal = await core.get(44, { wait: false })
 
 Check if the core has all blocks between `start` and `end`.
 
+#### `const count = await core.count(start, end)`
+
+Count how many blocks between `start` and `end` the core has stored locally.
+
 #### `const updated = await core.update([options])`
 
 Waits for initial proof of the new core length until all `findingPeers` calls have finished.

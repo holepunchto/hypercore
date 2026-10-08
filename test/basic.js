@@ -4,7 +4,7 @@ const HypercoreStorage = require('hypercore-storage')
 const crypto = require('hypercore-crypto')
 
 const Hypercore = require('../')
-const { create, createStorage, eventFlush } = require('./helpers')
+const { create, createStorage, replicate, eventFlush } = require('./helpers')
 
 test('basic', async function (t) {
   const core = await create(t)
@@ -449,6 +449,74 @@ test('has range', async function (t) {
   t.ok(await core.has(0, 2), 'has 0 to 1')
   t.ok(await core.has(3, 5), 'has 3 to 4')
 
+  await core.close()
+})
+
+test('count', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  t.is(await core.count(0, 6), 6)
+
+  await core.clear(2, 4)
+  t.comment('2 to 3 cleared')
+
+  t.is(await core.count(0, 6), 4)
+  t.is(await core.count(0, 2), 2)
+  t.is(await core.count(2, 4), 0)
+
+  await core.close()
+})
+
+test('count past length', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  t.is(await core.count(0, 10), 3)
+  t.is(await core.count(5, 10), 0)
+
+  await core.close()
+})
+
+test('count invalid range', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  await t.exception(core.count(-1, 2), /count range is invalid/)
+  t.is(await core.count(1, 1), 0)
+
+  await core.close()
+})
+
+test('count sparse replica', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.download({ start: 1, end: 4 }).done()
+
+  t.is(await b.count(0, 6), 3)
+  t.is(await b.count(1, 4), 3)
+  t.is(await b.count(4, 6), 0)
+
+  await a.close()
+  await b.close()
+})
+
+test('count named session', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c', 'd'])
+
+  const named = core.session({ name: 'named' })
+  await named.ready()
+  await named.append(['e', 'f'])
+
+  t.is(await named.count(0, 6), 6)
+  t.is(await core.count(0, 6), 4)
+
+  await named.close()
   await core.close()
 })
 
