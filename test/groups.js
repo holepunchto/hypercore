@@ -230,3 +230,46 @@ test('groups - core hook - ongroupupdate() w/head and fork', async function (t) 
     }
   ])
 })
+
+test('groups - ongroupupdate() fires after append event & length updating', async function (t) {
+  t.plan(2)
+  const a = await create(t)
+  const groupKey = b4a.alloc(32, 1)
+
+  let appendFired = false
+
+  a.on('append', function () {
+    appendFired = true
+  })
+
+  a.core.ongroupupdate = (key, head) => {
+    t.ok(appendFired, 'append event fired before ongroupupdate')
+    t.is(head.length, a.length, 'ongroupupdate head.length matches core.length')
+  }
+
+  await a.setGroup(groupKey)
+  await a.append('beep')
+})
+
+test('groups - ongroupupdate() fires after truncate event & length updating', async function (t) {
+  t.plan(3)
+  const a = await create(t)
+  const groupKey = b4a.alloc(32, 1)
+
+  await a.setGroup(groupKey)
+  await a.append('beep')
+
+  let truncateFired = false
+
+  a.on('truncate', function () {
+    truncateFired = true
+  })
+
+  a.core.ongroupupdate = (key, head) => {
+    t.ok(truncateFired, 'truncate event fired before ongroupupdate')
+    t.is(head.length, a.length, 'ongroupupdate head.length matches core.length after truncate')
+    t.is(head.fork, a.fork, 'ongroupupdate head.fork matches core.fork after truncate')
+  }
+
+  await a.truncate(0, { fork: 3 })
+})
