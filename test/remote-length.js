@@ -43,8 +43,8 @@ test('contiguous-length announce-on-update flow', async function (t) {
   )
   t.is(
     getPeer(a, b).remoteContiguousLength,
-    0,
-    'b did not notify peers he already knows own that block'
+    1,
+    'b notifies peers of its new contiguous length even if they already have that data'
   )
 })
 
