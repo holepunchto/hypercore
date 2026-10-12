@@ -109,3 +109,9 @@ exports.replicateDebugStream = function replicate(a, b, t, opts = {}) {
 exports.eventFlush = async function eventFlush() {
   await new Promise((resolve) => setImmediate(resolve))
 }
+
+exports.toArray = async function toArray(stream) {
+  const all = []
+  for await (const data of stream) all.push(data)
+  return all
+}
