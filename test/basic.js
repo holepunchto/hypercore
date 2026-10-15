@@ -988,3 +988,32 @@ async function getContiguousLengthInStorage(hypercore) {
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
   return res === null ? null : res.contiguousLength
 }
+
+test('concurrent gets of a local block share one storage read', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  const reads = []
+  for (let i = 0; i < 10; i++) reads.push(core.get(1))
+
+  // get() yields once before it reads, so the reads are in flight after a tick
+  await new Promise((resolve) => setImmediate(resolve))
+  t.is(core.state.reads.size, 1, 'one read in flight for the block')
+
+  const blocks = await Promise.all(reads)
+  for (const b of blocks) t.alike(b, b4a.from('b'))
+
+  t.is(core.state.reads.size, 0, 'nothing in flight once settled')
+})
+
+test('a read of a missing block is not cached beyond its settle', async function (t) {
+  const core = await create(t)
+  await core.append('a')
+
+  const missing = await core.get(5, { wait: false })
+  t.is(missing, null)
+  t.is(core.state.reads.size, 0)
+
+  await core.append(['b', 'c', 'd', 'e', 'f'])
+  t.alike(await core.get(5), b4a.from('f'))
+})
