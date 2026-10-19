@@ -988,3 +988,61 @@ async function getContiguousLengthInStorage(hypercore) {
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
   return res === null ? null : res.contiguousLength
 }
+
+test('apply full proofs per block, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+
+    t.ok(await b.applyProof(proof), 'applied proof for block ' + i)
+    t.is(b.length, i + 1)
+  }
+
+  t.is(b.length, a.length)
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
+
+test('apply full proofs per block in reverse order, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const proofs = []
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+    proofs.push(proof)
+  }
+
+  for (let i = 19; i >= 0; i--) {
+    t.ok(await b.applyProof(proofs[i]), 'applied proof for block ' + i)
+    t.is(b.length, 20)
+  }
+
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
