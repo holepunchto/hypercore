@@ -149,3 +149,18 @@ test('block request gets cancelled before timeout', async function (t) {
 
   await close
 })
+
+test('timed out block request is removed from the queue', async function (t) {
+  const core = await create(t)
+
+  for (let i = 0; i < 10; i++) {
+    try {
+      await core.get(0, { timeout: 1 })
+      t.fail('should have failed')
+    } catch (err) {
+      t.is(err.code, 'REQUEST_TIMEOUT')
+    }
+  }
+
+  t.is(core.core.replicator._queued.length, 0)
+})
