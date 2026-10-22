@@ -4,11 +4,13 @@ on:
     tags:
       - v*
 permissions:
-  id-token: write
-  contents: write
+  contents: read
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     environment:
       name: npm
     name: Publish
