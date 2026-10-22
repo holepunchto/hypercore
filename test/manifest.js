@@ -1707,6 +1707,19 @@ test('manifest - Hypercore.parseManifest throws on an invalid manifest', async f
   )
 })
 
+test('manifest - proof with a manifest that does not match the key is rejected', async function (t) {
+  const writer = await create(t, { compat: false })
+  const other = await create(t, { compat: false })
+  await writer.append(b4a.from('a'))
+
+  const reader = await create(t, writer.key)
+
+  const proof = await writer.proof({ upgrade: { start: 0, length: 1 } })
+  proof.manifest = other.manifest
+
+  await t.exception(reader.applyProof(proof), /INVALID_CHECKSUM/)
+})
+
 test('manifest - Hypercore.key accepts a raw encoded manifest buffer', async function (t) {
   const keyPair = crypto.keyPair()
 
