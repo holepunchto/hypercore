@@ -30,6 +30,7 @@ async function runTests() {
   await import('./preload.js')
   await import('./purge.js')
   await import('./push.js')
+  await import('./recovery.js')
   await import('./remote-bitfield.js')
   await import('./remote-length.js')
   await import('./replicate.js')
