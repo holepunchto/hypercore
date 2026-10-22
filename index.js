@@ -711,7 +711,7 @@ class Hypercore extends EventEmitter {
 
   async recover() {
     if (this.opened === false) await this.opening
-    return this.state.waitForRecovery(this)
+    return this.state.waitForRecovery(this, false)
   }
 
   async setUserData(key, value) {

@@ -13,14 +13,14 @@ test('recover - resolves once a peer has nothing more for us', async function (t
   t.is(b.length, 3)
 })
 
-test('recover - rejects when the peer had more', async function (t) {
+test('recover - resolves when the peer had more', async function (t) {
   const a = await create(t)
   await a.append(['a', 'b', 'c'])
 
   const b = await create(t, a.key)
   replicate(a, b, t)
 
-  await t.exception(b.recover(), /SESSION_NOT_WRITABLE/)
+  await b.recover()
   t.is(b.length, 3, 'caught up meanwhile')
 })
 
