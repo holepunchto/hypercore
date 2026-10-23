@@ -988,3 +988,112 @@ async function getContiguousLengthInStorage(hypercore) {
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
   return res === null ? null : res.contiguousLength
 }
+
+test('apply full proofs per block, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+
+    t.ok(await b.applyProof(proof), 'applied proof for block ' + i)
+    t.is(b.length, i + 1)
+  }
+
+  t.is(b.length, a.length)
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
+
+test('apply full proofs per block in reverse order, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const proofs = []
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+    proofs.push(proof)
+  }
+
+  for (let i = 19; i >= 0; i--) {
+    t.ok(await b.applyProof(proofs[i]), 'applied proof for block ' + i)
+    t.is(b.length, 20)
+  }
+
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
+
+test('stateless batch proofs apply in any order', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 18; i++) await a.append('block-' + i)
+
+  const base = await a.proof({ upgrade: { start: 0, length: 18 } })
+  base.manifest = a.manifest
+
+  await a.append(['block-18', 'block-19', 'block-20', 'block-21'])
+
+  const proofs = []
+  for (let i = 18; i < 22; i++) {
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: 18 }
+    })
+    proof.manifest = a.manifest
+    proofs.push(proof)
+  }
+
+  for (const order of permutations([0, 1, 2, 3])) {
+    const b = await create(t, a.key)
+    await b.applyProof(base)
+    t.is(b.length, 18)
+
+    for (const i of order) {
+      t.ok(await b.applyProof(proofs[i]), 'applied ' + (18 + i) + ' in ' + order)
+    }
+
+    t.is(b.length, 22)
+    for (let i = 18; i < 22; i++) t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+    await b.close()
+  }
+
+  for (let n = 0; n < 2; n++) {
+    const empty = await create(t, a.key)
+    t.ok(await empty.applyProof(proofs[2]), 'same proof applied to empty receiver ' + n)
+    t.is(empty.length, 22)
+    t.alike(await empty.get(20, { wait: false }), b4a.from('block-20'))
+  }
+})
+
+function permutations(items) {
+  if (items.length <= 1) return [items]
+  const result = []
+  for (let i = 0; i < items.length; i++) {
+    const rest = items.slice(0, i).concat(items.slice(i + 1))
+    for (const perm of permutations(rest)) result.push([items[i], ...perm])
+  }
+  return result
+}
