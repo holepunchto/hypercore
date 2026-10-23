@@ -3399,6 +3399,28 @@ test('throwing after channel closes processing msgs emits warning not error', as
   )
 })
 
+test('closing storage while an upgrade is being verified', async function (t) {
+  const a = await create(t)
+  await a.append('a')
+
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await b.get(0)
+  b.get(1).catch(noop)
+
+  const flush = b.core.state.flush.bind(b.core.state)
+  b.core.state.flush = async () => {
+    const flushed = await flush()
+    await b.core.storage.store.close()
+    return flushed
+  }
+
+  await a.append('b')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  t.pass()
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
