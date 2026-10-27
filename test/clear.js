@@ -102,7 +102,7 @@ test('clear + replication, peer still requests blocks after the cleared range', 
   await b.get(12, { timeout: 300 }).catch(() => {})
 
   await a.clear(5)
-  await eventFlush()
+  while (b.peers[0].remoteContiguousLength !== 5) await eventFlush()
 
   const block = await b.get(7, { timeout: 5000 }).catch((err) => err.code)
   t.alike(block, b4a.from('h'), 'block after the cleared one')
