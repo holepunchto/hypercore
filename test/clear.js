@@ -90,6 +90,24 @@ test('clear + replication, gossip', async function (t) {
   t.alike(await req, b4a.from('b'), 'c downloaded from b')
 })
 
+test('clear + replication, peer still requests blocks after the cleared range', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  // a want sent before the clear: a block a doesn't have yet
+  await b.get(12, { timeout: 300 }).catch(() => {})
+
+  await a.clear(5)
+  while (b.peers[0].remoteContiguousLength !== 5) await eventFlush()
+
+  const block = await b.get(7, { timeout: 5000 }).catch((err) => err.code)
+  t.alike(block, b4a.from('h'), 'block after the cleared one')
+})
+
 test('incorrect clear', async function (t) {
   const core = await create(t)
 
