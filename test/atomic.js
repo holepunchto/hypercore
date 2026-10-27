@@ -5,6 +5,7 @@ const crypto = require('hypercore-crypto')
 const Hypercore = require('../')
 const { MerkleTree } = require('../lib/merkle-tree.js')
 const { create, createStorage } = require('./helpers')
+const { COPY_BATCH_SIZE } = require('../lib/session-state.js')
 
 test('atomic - session', async function (t) {
   const core = await create(t)
@@ -480,4 +481,65 @@ test('atomic - flush to wrong parent', async function (t) {
 
   await a.close()
   await b.close()
+})
+
+test('atomic - large overwrite', async function (t) {
+  const core = await create(t)
+  const blockCount = 2 * COPY_BATCH_SIZE + 1
+  const boundaries = [
+    0,
+    COPY_BATCH_SIZE - 1,
+    COPY_BATCH_SIZE,
+    2 * COPY_BATCH_SIZE - 1,
+    blockCount - 1
+  ]
+
+  await core.append('prefix')
+
+  const prefixLength = core.length
+  const oldHash = await core.treeHash()
+
+  const draft = core.session({ name: 'batch' })
+  await draft.ready()
+
+  const atom = core.state.storage.createAtom()
+
+  const batch = draft.session({ atom })
+  const atomic = core.session({ atom })
+  const blocks = []
+  for (let i = 0; i < blockCount; i++) blocks.push('block ' + i)
+
+  await batch.append(blocks)
+
+  const hash = await batch.treeHash()
+
+  await atomic.commit(batch)
+
+  t.is(atomic.length, prefixLength + blocks.length)
+  t.alike(await atomic.treeHash(), hash)
+  t.is(core.length, prefixLength)
+  t.alike(await core.treeHash(), oldHash)
+
+  for (const i of boundaries) {
+    t.alike(await atomic.get(prefixLength + i, { wait: false }), b4a.from(blocks[i]))
+    t.absent(await core.has(prefixLength + i))
+    t.is(await core.get(prefixLength + i, { wait: false }), null, 'not flushed')
+  }
+
+  await atom.flush()
+
+  t.is(core.length, prefixLength + blocks.length)
+  t.is(batch.signedLength, core.length)
+  t.alike(await core.treeHash(), hash)
+  t.ok(await core.has(0, core.length))
+  t.alike(await core.get(0, { wait: false }), b4a.from('prefix'))
+
+  for (const i of boundaries) {
+    t.alike(await core.get(prefixLength + i, { wait: false }), b4a.from(blocks[i]))
+  }
+
+  await batch.close()
+  await atomic.close()
+  await draft.close()
+  await core.close()
 })

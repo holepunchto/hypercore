@@ -1,8 +1,10 @@
 const test = require('brittle')
 const b4a = require('b4a')
+const flat = require('flat-tree')
 
 const Hypercore = require('../')
-const { create, createStorage, replicate } = require('./helpers')
+const { create, createStorage, replicate, eventFlush } = require('./helpers')
+const { COPY_BATCH_SIZE } = require('../lib/session-state.js')
 
 test('batch append', async function (t) {
   const core = await create(t)
@@ -757,4 +759,238 @@ test('compact all batches', async function (t) {
   await a1.close()
   await a2.close()
   await a3.close()
+})
+
+test('batch commit in chunks', async function (t) {
+  const core = await create(t)
+  const prefixLength = 17
+  const blockCount = 2 * COPY_BATCH_SIZE + 1
+  const boundaries = [
+    0,
+    COPY_BATCH_SIZE - 1,
+    COPY_BATCH_SIZE,
+    2 * COPY_BATCH_SIZE - 1,
+    blockCount - 1
+  ]
+
+  const prefix = []
+  for (let i = 0; i < prefixLength; i++) prefix.push('prefix ' + i)
+
+  await core.append(prefix)
+
+  const b = core.session({ name: 'batch' })
+  const blocks = []
+  for (let i = 0; i < blockCount; i++) blocks.push('block ' + i)
+
+  await b.append(blocks)
+
+  const hash = await b.treeHash()
+  const byteLength = b.byteLength
+
+  await core.commit(b)
+
+  t.is(core.length, prefix.length + blocks.length)
+  t.is(core.byteLength, byteLength)
+  t.is(b.signedLength, core.length)
+  t.alike(await core.treeHash(), hash)
+  t.ok(await core.has(0, core.length))
+  t.alike(await core.get(0, { wait: false }), b4a.from(prefix[0]))
+  t.alike(await core.get(prefix.length - 1, { wait: false }), b4a.from(prefix[prefix.length - 1]))
+
+  for (const i of boundaries) {
+    t.alike(await core.get(prefix.length + i, { wait: false }), b4a.from(blocks[i]))
+    t.alike(await b.get(prefix.length + i, { wait: false }), b4a.from(blocks[i]))
+  }
+
+  await b.close()
+})
+
+test('batch commit with bounded reads', async function (t) {
+  const core = await create(t)
+  const blockCount = 2 * COPY_BATCH_SIZE + 1
+
+  await core.append('prefix')
+
+  const prefixLength = core.length
+  const b = core.session({ name: 'batch' })
+  const blocks = []
+  for (let i = 0; i < blockCount; i++) blocks.push('block ' + i)
+
+  await b.append(blocks)
+
+  const blockReads = COPY_BATCH_SIZE
+  const treeReads = 2 * COPY_BATCH_SIZE
+  const rootReads = flat.fullRoots(b.length * 2).length
+  const patchReads = flat.patch(prefixLength * 2, b.length * 2).length
+  const readLimit = blockReads + treeReads + rootReads + patchReads
+
+  const source = b.state.storage
+  const target = core.state.storage
+  const read = source.read
+  const write = target.write
+
+  let readsSinceWrite = 0
+  let maxReads = 0
+  let writing = false
+  let readDuringWrite = false
+  let writes = 0
+  let written = 0
+  let maxWrite = 0
+
+  source.read = function (fork) {
+    const rx = read.call(this, fork)
+    const getBlock = rx.getBlock
+    const getTreeNode = rx.getTreeNode
+
+    rx.getBlock = function (index) {
+      onread()
+      return getBlock.call(this, index)
+    }
+
+    rx.getTreeNode = function (index) {
+      onread()
+      return getTreeNode.call(this, index)
+    }
+
+    return rx
+  }
+
+  target.write = function () {
+    const tx = write.call(this)
+    const putBlock = tx.putBlock
+    const flush = tx.flush
+
+    let count = 0
+
+    tx.putBlock = function (index, value) {
+      count++
+      return putBlock.call(this, index, value)
+    }
+
+    tx.flush = async function () {
+      if (count === 0) return flush.call(this)
+
+      writing = true
+      await eventFlush()
+
+      const result = await flush.call(this)
+
+      writing = false
+      writes++
+      written += count
+      maxWrite = Math.max(maxWrite, count)
+      readsSinceWrite = 0
+
+      return result
+    }
+
+    return tx
+  }
+
+  t.teardown(() => {
+    source.read = read
+    target.write = write
+  })
+
+  await core.commit(b)
+
+  t.ok(maxReads > 0, 'observed source reads')
+  t.ok(maxReads <= readLimit, 'reads between completed writes are bounded')
+  t.absent(readDuringWrite, 'waits for each write before reading more data')
+  t.ok(writes > 1, 'multiple data writes')
+  t.ok(maxWrite <= COPY_BATCH_SIZE, 'data writes are bounded')
+  t.is(written, blocks.length)
+  t.is(core.length, prefixLength + blocks.length)
+
+  await b.close()
+
+  function onread() {
+    maxReads = Math.max(maxReads, ++readsSinceWrite)
+    if (writing) readDuringWrite = true
+  }
+})
+
+test('batch commit after failed copy', async function (t) {
+  const core = await create(t)
+  const blockCount = 2 * COPY_BATCH_SIZE + 1
+  const boundaries = [
+    0,
+    COPY_BATCH_SIZE - 1,
+    COPY_BATCH_SIZE,
+    2 * COPY_BATCH_SIZE - 1,
+    blockCount - 1
+  ]
+
+  await core.append('prefix')
+
+  const prefixLength = core.length
+  const oldHash = await core.treeHash()
+  const b = core.session({ name: 'batch' })
+  const blocks = []
+  for (let i = 0; i < blockCount; i++) blocks.push('block ' + i)
+
+  await b.append(blocks)
+
+  const hash = await b.treeHash()
+
+  const storage = core.state.storage
+  const write = storage.write
+
+  let copied = 0
+
+  storage.write = function () {
+    const tx = write.call(this)
+    const putBlock = tx.putBlock
+    const flush = tx.flush
+
+    let count = 0
+
+    tx.putBlock = function (index, value) {
+      count++
+      return putBlock.call(this, index, value)
+    }
+
+    tx.flush = async function () {
+      const result = await flush.call(this)
+
+      if (count > 0) {
+        copied += count
+        throw new Error('simulated copy failure')
+      }
+
+      return result
+    }
+
+    return tx
+  }
+
+  try {
+    await t.exception(core.commit(b), /simulated copy failure/)
+  } finally {
+    storage.write = write
+  }
+
+  t.ok(copied > 0 && copied < blocks.length, 'interrupted after a partial data write')
+  t.is(core.length, prefixLength)
+  t.alike(await core.treeHash(), oldHash)
+  t.absent(await core.has(prefixLength), 'partial copy is not advertised')
+  t.is(b.length, prefixLength + blocks.length)
+  t.is(b.signedLength, prefixLength, 'source dependency has not advanced')
+  t.ok(await b.has(0, b.length), 'source still contains the entire range')
+  t.alike(await b.get(prefixLength, { wait: false }), b4a.from(blocks[0]))
+  t.alike(await b.get(b.length - 1, { wait: false }), b4a.from(blocks[blocks.length - 1]))
+
+  await core.commit(b)
+
+  t.is(core.length, prefixLength + blocks.length)
+  t.is(b.signedLength, core.length)
+  t.alike(await core.treeHash(), hash)
+  t.ok(await core.has(0, core.length))
+  t.alike(await core.get(0, { wait: false }), b4a.from('prefix'))
+
+  for (const i of boundaries) {
+    t.alike(await core.get(prefixLength + i, { wait: false }), b4a.from(blocks[i]))
+  }
+
+  await b.close()
 })
