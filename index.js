@@ -960,7 +960,7 @@ class Hypercore extends EventEmitter {
   }
 
   async _get(index, opts) {
-    const block = await readBlock(this.state.storage.read(), index)
+    const block = await this.state.readBlock(index)
 
     if (block !== null) return block
 
@@ -971,7 +971,7 @@ class Hypercore extends EventEmitter {
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this, index)
-      const coreBlock = await readBlock(this.core.state.storage.read(), index)
+      const coreBlock = await this.core.state.readBlock(index)
 
       checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
@@ -980,7 +980,7 @@ class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      const coreBlock = await readBlock(this.state.storage.read(), index)
+      const coreBlock = await this.state.readBlock(index)
       // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
       if (coreBlock !== null) return coreBlock
     }
@@ -1399,12 +1399,6 @@ function checkSnapshot(snapshot, index) {
       snapshot.discoveryKey
     )
   }
-}
-
-function readBlock(rx, index) {
-  const promise = rx.getBlock(index)
-  rx.tryFlush()
-  return promise
 }
 
 function initOnce(session, storage, key, opts) {
