@@ -61,6 +61,40 @@ test('clear + replication, remaining blocks can still be served', async function
   )
 })
 
+test('clear + replication, re-downloaded block in a cleared subtree can be served', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 8 }).done()
+
+  await b.clear(0, 8)
+  t.alike(await b.get(4, { timeout: 5000 }), b4a.from('e'), 'b downloaded a cleared block again')
+
+  const c = await create(t, a.key)
+  replicate(b, c, t)
+
+  t.alike(await c.get(4, { timeout: 5000 }), b4a.from('e'), 'c got the block from b')
+})
+
+test('clear + replication, re-downloaded block in a cleared sibling subtree can be served', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 16; i++) await a.append(String.fromCharCode(97 + i))
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 16 }).done()
+
+  await b.clear(4, 8)
+  t.alike(await b.get(6, { timeout: 5000 }), b4a.from('g'), 'b downloaded a cleared block again')
+
+  const c = await create(t, a.key)
+  replicate(b, c, t)
+
+  t.alike(await c.get(6, { timeout: 5000 }), b4a.from('g'), 'c got the block from b')
+})
+
 test('clear + replication, gossip', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
