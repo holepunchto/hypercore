@@ -3415,4 +3415,19 @@ async function waitForRequestBlock(core) {
   }
 }
 
+test('a timed out get does not swallow the next block request', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  // leaves a stale entry in the block queue
+  await b.get(12, { timeout: 300 }).catch(() => {})
+
+  const block = await b.get(7, { timeout: 3000 }).catch((err) => err.code)
+  t.alike(block, b4a.from('h'))
+})
+
 function noop() {}
