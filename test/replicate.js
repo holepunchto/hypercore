@@ -3,6 +3,7 @@ const b4a = require('b4a')
 const NoiseSecretStream = require('@hyperswarm/secret-stream')
 const {
   create,
+  createStorage,
   createStored,
   replicate,
   unreplicate,
@@ -11,6 +12,7 @@ const {
 } = require('./helpers')
 const { makeStreamPair } = require('./helpers/networking.js')
 const crypto = require('hypercore-crypto')
+const { once } = require('events')
 const Hypercore = require('../')
 
 const DEBUG = false
@@ -956,6 +958,41 @@ test('findingPeers + done makes update return false if no peers', async function
   t.is(await u, false)
 })
 
+test('update wait resolves when unsynced peer closes without inflight', async function (t) {
+  t.plan(2)
+
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  let streams = null
+  let update = null
+
+  const peerAdded = new Promise((resolve) => {
+    b.once('peer-add', () => {
+      update = b.update({ wait: true })
+
+      Promise.resolve().then(() => {
+        resolve(unreplicate(streams))
+      })
+    })
+  })
+
+  streams = replicate(a, b, t, { teardown: false })
+
+  await peerAdded
+
+  let timer = null
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(resolve, 250, null)
+  })
+
+  const result = await Promise.race([update, timeout])
+  clearTimeout(timer)
+
+  t.not(result, null, 'update resolved')
+  t.is(result, false, 'no upgrade was available')
+})
+
 test.skip('can disable downloading from a peer', async function (t) {
   const a = await create(t)
 
@@ -1102,86 +1139,6 @@ test.skip('non-sparse replication', async function (t) {
   t.is(contiguousLength, b.length)
 })
 
-test('download blocks if available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => d++)
-
-  const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.done()
-
-  t.is(d, 2)
-})
-
-test('download range if available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  replicate(a, b, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => d++)
-
-  const r = b.download({ start: 2, end: 6, ifAvailable: true })
-  await r.done()
-
-  t.is(d, 3)
-})
-
-test('download blocks if available, destroy midway', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  const s = replicate(a, b, t, { teardown: false })
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  let d = 0
-  b.on('download', () => {
-    if (d++ === 0) unreplicate(s)
-  })
-
-  const r = b.download({ blocks: [1, 3, 6], ifAvailable: true })
-  await r.done()
-
-  t.pass('range resolved')
-})
-
-test('download blocks available from when only a partial set is available', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-  const c = await create(t, a.key)
-
-  replicate(a, b, t)
-  replicate(b, c, t)
-
-  await a.append(['a', 'b', 'c', 'd', 'e'])
-  await eventFlush()
-
-  await b.get(2)
-  await b.get(3)
-
-  const r = c.download({ start: 0, end: -1, ifAvailable: true })
-  await r.done()
-
-  t.ok(!(await c.has(0)))
-  t.ok(!(await c.has(1)))
-  t.ok(await c.has(2))
-  t.ok(await c.has(3))
-  t.ok(!(await c.has(4)))
-})
-
 test('big download range', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -1240,18 +1197,6 @@ test('big download range (non contig)', async function (t) {
   t.pass('d done')
 })
 
-test('download range resolves immediately if no peers', async function (t) {
-  const a = await create(t)
-  const b = await create(t, a.key)
-
-  // no replication
-
-  const r = b.download({ start: 0, end: 5, ifAvailable: true })
-  await r.done()
-
-  t.pass('range resolved')
-})
-
 test('download available blocks on non-sparse update', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -1286,8 +1231,10 @@ test('downloaded blocks are unslabbed if small', async function (t) {
 test('downloaded blocks are not unslabbed if bigger than half of slab size', async function (t) {
   const a = await create(t)
 
-  await a.append(Buffer.alloc(5000))
-  t.is(Buffer.poolSize < 5000 * 2, true, 'Sanity check (adapt test if fails)')
+  // as of Node v26.3.0 Buffer.poolSize = 65536 so should be bigger than half, hence 33k
+  const bufferSize = 33_000
+  await a.append(Buffer.alloc(bufferSize))
+  t.is(Buffer.poolSize < bufferSize * 2, true, 'Sanity check (adapt test if fails)')
 
   const b = await create(t, a.key)
 
@@ -2887,6 +2834,571 @@ test('backoff respected for NOT_AVAILABLE in case of incorrectly false remote bi
   t.ok(reader.replicator.stats.wireRequest.tx < 40, 'did not continue spamming (sanity check)')
 })
 
+test('delayed updateAll clears timer after reorg skip', async function (t) {
+  const core = await create(t)
+
+  const targetPeers = 40
+  const gotAllPeers = new Promise((resolve) => {
+    core.on('peer-add', () => {
+      if (core.replicator.peers.length === targetPeers) resolve()
+    })
+  })
+  for (let i = 0; i < targetPeers; i++) {
+    const peer = await create(t, core.key)
+    replicate(core, peer, t)
+  }
+
+  await gotAllPeers
+
+  const r = core.replicator
+
+  t.is(r.peers.length, targetPeers, 'has minimum peers to defer full scan')
+
+  // Simulate the delayed full scan firing while a reorg is active
+  // TODO create a more realistic simulation
+  r._applyingReorg = {}
+  r.queueUpdateAll()
+
+  // wait minimum amount to clear timeout for full scan (min is 100)
+  await new Promise((resolve) => setTimeout(resolve, 120))
+
+  t.is(r._updateAllBump, null, 'timer handle should be cleared after firing')
+})
+
+test('small wants - range request stall', async function (t) {
+  t.plan(3)
+  Hypercore.enable(Hypercore.SMALL_WANTS)
+  t.teardown(() => Hypercore.enable(0))
+
+  const core = await create(t)
+  const blockLength = 20_000
+  await core.append(Array(blockLength).fill('a'))
+  t.is(core.length, blockLength, 'length is set')
+
+  let i = 0
+  while (i < blockLength) {
+    await core.clear(i, i + 1)
+    i += 2
+  }
+
+  const peer = await create(t, core.key)
+  const uploaded = once(core, 'upload')
+  replicate(core, peer, t)
+
+  peer.download({ start: 0, end: blockLength }).done()
+  await uploaded
+
+  let tries = 100 // Usually < ~10-20 tries but padding for slow CI machines
+
+  const targetBlock = blockLength - 1
+  while (tries-- > 0) {
+    const h = await peer.has(blockLength - 1)
+
+    if (h) {
+      t.pass('got block near end')
+      break
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+
+  t.comment('tries', tries)
+
+  const value = await peer.get(targetBlock)
+  t.alike(value, b4a.from('a'), 'got nth - 1 block')
+})
+
+test('delayed updateAll timer doesnt keep event loop alive', async function (t) {
+  const core = await create(t)
+
+  const targetPeers = 40
+  const gotAllPeers = new Promise((resolve) => {
+    core.on('peer-add', () => {
+      if (core.replicator.peers.length === targetPeers) resolve()
+    })
+  })
+  for (let i = 0; i < targetPeers; i++) {
+    create(t, core.key).then((peer) => replicate(core, peer, t))
+  }
+
+  await gotAllPeers
+
+  const r = core.replicator
+
+  t.is(r.peers.length, targetPeers, 'has minimum peers to defer full scan')
+
+  // Simulate the delayed full scan firing while a reorg is active
+  // TODO create a more realistic simulation
+  r._applyingReorg = {}
+  r.queueUpdateAll()
+  t.not(r._updateAllBump, null, 'timer set')
+
+  r.destroy()
+  t.ok(r.destroyed, 'replicator destroyed')
+  t.is(r._updateAllBump, null, 'timer reset to null')
+})
+
+test('crossing max range boundary reschedules existing peers', async function (t) {
+  const writer = await create(t)
+  const totalLength = 65
+
+  await writer.append(new Array(totalLength).fill('a'))
+
+  const firstPeer = await create(t, writer.key)
+  let streams = replicate(writer, firstPeer, t)
+  await firstPeer.get(0)
+  await unreplicate(streams)
+
+  const cappedPeer = await create(t, writer.key)
+  streams = replicate(writer, cappedPeer, t)
+  await cappedPeer.get(totalLength - 1)
+  await unreplicate(streams)
+
+  const downloader = await create(t, writer.key)
+
+  t.absent(await firstPeer.has(totalLength - 1), 'first peer does not have capped block')
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  const cappedDone = downloader
+    .download({ start: totalLength - 1, end: totalLength })
+    .done()
+    .then(() => true, noop)
+  const firstDone = downloader.download({ start: 0, end: 1 }).done()
+
+  for (let i = 1; i < totalLength - 1; i++) {
+    downloader.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = downloader.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'one range is outside the scan window')
+
+  // Model unrelated inflight work so the idle fallback cannot trigger the peer update.
+  replicator._inflight._active++
+  t.teardown(() => {
+    replicator._inflight._active--
+  })
+
+  const cappedPeerAdded = new Promise((resolve) => downloader.once('peer-add', resolve))
+  replicate(cappedPeer, downloader, t)
+
+  const remoteCappedPeer = await cappedPeerAdded
+  while (!remoteCappedPeer.remoteBitfield.get(totalLength - 1)) await eventFlush()
+
+  t.absent(await downloader.has(totalLength - 1), 'capped range was skipped initially')
+
+  // Completing the block-0 range crosses the 65 -> 64 boundary and must rescan existing peers.
+  replicate(firstPeer, downloader, t)
+  await firstDone
+
+  let timer = null
+  const downloaded = await Promise.race([
+    cappedDone,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
+  ])
+  clearTimeout(timer)
+
+  t.ok(downloaded, 'existing peer is revisited for the newly exposed range')
+})
+
+test('processing ranges does not block seeks', async function (t) {
+  const core = await create(t)
+  const totalLength = 129
+
+  await core.append(new Array(totalLength).fill('a'))
+
+  const clone = await create(t, core.key, { eagerUpgrade: false })
+  const peerAdded = new Promise((resolve) => clone.once('peer-add', resolve))
+  replicate(core, clone, t)
+
+  const peer = await peerAdded
+  peer.paused = true
+  while (!peer.remoteSynced) await eventFlush()
+
+  for (let i = 0; i < totalLength; i++) {
+    clone
+      .download({ start: i, end: i + 1 })
+      .done()
+      .catch(noop)
+  }
+
+  const replicator = clone.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  const updateRanges = replicator._updateRanges
+  const requestSeek = peer._requestSeek
+  let checked = 0
+  let checkedAtRequest = totalLength
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+    checked += result.checked
+    return result
+  }
+
+  peer._requestSeek = function (s) {
+    const sent = requestSeek.call(this, s)
+    if (sent && checkedAtRequest === totalLength) checkedAtRequest = checked
+    return sent
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    peer._requestSeek = requestSeek
+  })
+
+  peer.paused = false
+  const seek = clone.seek(Math.floor(core.byteLength / 2))
+
+  await replicator._updateNonPrimary(true)
+  await seek
+
+  t.ok(checkedAtRequest < totalLength, 'seek was requested before the range scan completed')
+})
+
+test('range drain checks unresolved seeks once', async function (t) {
+  const core = await create(t)
+  const totalRanges = 129
+
+  for (let i = 0; i < totalRanges; i++) {
+    core.download({ start: i, end: i + 1 })
+  }
+
+  const replicator = core.core.replicator
+  let seekUpdates = 0
+  const seek = replicator.addSeek([], {
+    update() {
+      seekUpdates++
+      return null
+    }
+  })
+  seek.promise.catch(noop)
+
+  const queueUpdateAll = replicator.queueUpdateAll
+  let peerUpdates = 0
+  replicator.queueUpdateAll = function () {
+    peerUpdates++
+  }
+
+  t.teardown(() => {
+    replicator.queueUpdateAll = queueUpdateAll
+    if (seek.context) replicator.cancel(seek)
+  })
+
+  await replicator._updateNonPrimary(true)
+
+  t.is(seekUpdates, 1, 'seek was checked once across all range chunks')
+  t.is(peerUpdates, 2, 'peers were updated before and after the range drain')
+})
+
+test('cancelling seek during local update preserves other seeks', async function (t) {
+  const core = await create(t)
+  const replicator = core.core.replicator
+
+  let release = null
+  let startedResolve = null
+  const started = new Promise((resolve) => {
+    startedResolve = resolve
+  })
+
+  const first = replicator.addSeek([], {
+    update() {
+      startedResolve()
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    }
+  })
+  first.promise.catch(noop)
+
+  const second = replicator.addSeek([], {
+    update() {
+      return [1, 0]
+    }
+  })
+
+  t.teardown(() => {
+    if (first.context) replicator.cancel(first)
+    if (second.context) replicator.cancel(second)
+  })
+
+  const updating = replicator._updateNonPrimary(true)
+  await started
+
+  replicator.cancel(first)
+  release([0, 0])
+  await updating
+
+  const result = await Promise.race([second.promise, eventFlush()])
+  t.alike(result, [1, 0], 'remaining seek resolved')
+})
+
+test('idle range completion drains past max range window', async function (t) {
+  const core = await create(t)
+  const clone = await create(t, core.key)
+
+  const complete = []
+  const totalLength = 150
+  const availableStart = 100
+
+  await core.append(new Array(totalLength).fill('a'))
+  await core.clear(0, availableStart)
+
+  const random = Math.random
+  Math.random = () => 0.999
+  t.teardown(() => {
+    Math.random = random
+  })
+
+  replicate(core, clone, t)
+
+  for (let i = 0; i < totalLength; i++) {
+    const done = clone.download({ start: i, end: i + 1 }).done()
+    if (i >= availableStart) complete.push(done)
+    else done.catch(noop)
+  }
+
+  t.is(clone.core.replicator._ranges.length, totalLength, 'all ranges are pending')
+
+  let timer = null
+  const resolved = await Promise.race([
+    Promise.all(complete).then(() => true),
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, 1000, false)
+    })
+  ])
+  clearTimeout(timer)
+
+  t.ok(resolved, 'all locally complete ranges resolved')
+})
+
+test('idle range completion keeps draining if update queues during yield', async function (t) {
+  const core = await create(t)
+
+  const totalLength = 150
+  const availableStart = 100
+  const replicator = core.core.replicator
+  let completed = 0
+
+  for (let i = 0; i < totalLength; i++) {
+    const done = core.download({ start: i, end: i + 1 }).done()
+    if (i >= availableStart) done.then(() => completed++, noop)
+    else done.catch(noop)
+  }
+
+  t.is(replicator._ranges.length, totalLength, 'all ranges are pending')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        // Simulate an update arriving with new inflight work. The nested call only sets
+        // _updatesQueued; the original idle drain must still reach the complete tail ranges.
+        this._inflight._active++
+        this._updateNonPrimary(false)
+      })
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+    replicator._inflight._active = 0
+  })
+
+  await replicator._updateNonPrimary(false)
+  replicator._inflight._active = 0
+  await eventFlush()
+
+  t.is(completed, totalLength - availableStart, 'all locally complete ranges resolved')
+
+  const singlePass = Math.ceil(totalLength / 64)
+  const repassBecauseOfResolving = Math.ceil(availableStart / 64)
+  const firstPassBatches = singlePass + repassBecauseOfResolving
+  t.is(
+    updates,
+    firstPassBatches + 1,
+    'does a second pass because _updateNonPrimary called mid update'
+  )
+})
+
+test('idle range completion restarts if ranges cancel during yield', async function (t) {
+  const core = await create(t)
+  const downloads = []
+
+  const totalLength = 100
+  const availableStart = 80
+  const cancelLength = totalLength - availableStart
+  let completed = 0
+
+  for (let i = 0; i < totalLength; i++) {
+    const download = core.download({ start: i, end: i + 1 })
+    const done = download.done()
+
+    if (i >= availableStart) done.then(() => completed++, noop)
+    else done.catch(noop)
+
+    if (i < cancelLength) downloads.push(download)
+  }
+
+  const replicator = core.core.replicator
+  t.is(replicator._ranges.length, totalLength, 'range backlog spans multiple chunks')
+
+  core.core._setBitfieldRanges(availableStart, totalLength, true)
+
+  const updateRanges = replicator._updateRanges
+  let updates = 0
+
+  replicator._updateRanges = function (index, limit) {
+    const result = updateRanges.call(this, index, limit)
+
+    if (++updates === 1) {
+      setImmediate(() => {
+        // Swap complete ranges behind the saved cursor while the drain is suspended.
+        for (const download of downloads) download.destroy()
+      })
+    }
+
+    return result
+  }
+
+  t.teardown(() => {
+    replicator._updateRanges = updateRanges
+  })
+
+  await replicator._updateNonPrimary(false)
+  await eventFlush()
+
+  t.is(completed, cancelLength, 'all complete ranges resolved')
+})
+
+test('wire messages arriving after a core closes do not destroy the stream', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 200; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+  const warnings = []
+
+  // closing a downloader while ranges are still streaming is a race, so we
+  // give it a few rounds
+  for (let round = 0; round < 6; round++) {
+    const db = await createStorage(t)
+    t.teardown(() => db.close())
+    const b = new Hypercore(db, a.key)
+    await b.ready()
+
+    let destroyed = false
+
+    const [n1, n2] = makeStreamPair(t, { latency: [0, 0] })
+    const streams = [n1, n2]
+
+    a.replicate(n1)
+    b.replicate(n2)
+
+    for (const s of streams) {
+      s.on('error', (err) => errors.push(err.message))
+      s.on('warning', (err) => warnings.push(err.message))
+      s.on('destroy', () => {
+        destroyed = true
+      })
+    }
+
+    let appending = true
+    const appends = (async function () {
+      while (appending) await a.append(Buffer.from('more ' + round))
+    })()
+
+    b.download({ start: 0, end: 200 })
+    await b.get(0)
+
+    await b.close()
+
+    appending = false
+    await appends
+
+    t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
+    for (const s of streams) s.destroy()
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 200))
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /session is closed/i.test(e)),
+    'no replication stream emitted errors by a post-close message'
+  )
+  t.absent(
+    warnings.some((e) => /session is closed/i.test(e)),
+    'no replication stream emitted warnings by a post-close message'
+  )
+})
+
+test('throwing after channel closes processing msgs emits warning not error', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 10; i++) await a.append(Buffer.from('block ' + i))
+
+  const errors = []
+  const warnings = []
+  const db = await createStorage(t)
+  t.teardown(() => db.close())
+  const b = new Hypercore(db, a.key)
+  await b.ready()
+
+  b.on('download', () => {
+    const peerA = b.replicator.peers[0]
+    peerA.channel.close()
+
+    // Throw during ondata due to developer error
+    throw Error('beep')
+  })
+
+  let destroyed = false
+
+  const streams = makeStreamPair(t, { latency: [0, 0] })
+  const [n1, n2] = streams
+
+  a.replicate(n1)
+  b.replicate(n2)
+
+  for (const s of streams) {
+    s.on('error', (err) => errors.push(err.message))
+    s.on('warning', (err) => warnings.push(err.message))
+    s.on('destroy', () => {
+      destroyed = true
+    })
+  }
+
+  await b.get(0) // trigger error on b
+
+  t.absent(destroyed, 'no replication stream was destroyed by a post-close message')
+  for (const s of streams) s.destroy()
+
+  t.comment('errors: ' + (errors.join(' | ') || 'none'))
+  t.comment('warnings: ' + (warnings.join(' | ') || 'none'))
+  t.absent(
+    errors.some((e) => /beep/i.test(e)),
+    'no replication stream emitted errors by a post-close message'
+  )
+  t.ok(
+    warnings.some((e) => /beep/i.test(e)),
+    'replication stream emitted warnings by a post-close message'
+  )
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
@@ -2902,5 +3414,39 @@ async function waitForRequestBlock(core) {
     await new Promise((resolve) => setImmediate(resolve))
   }
 }
+
+test('a timed out get does not swallow the next block request', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  // leaves a stale entry in the block queue
+  await b.get(12, { timeout: 300 }).catch(() => {})
+
+  const block = await b.get(7, { timeout: 3000 }).catch((err) => err.code)
+  t.alike(block, b4a.from('h'))
+})
+
+test('stream that closes while the core opens is not attached', async function (t) {
+  const db = await createStorage(t)
+  t.teardown(() => db.close())
+
+  const core = new Hypercore(db)
+
+  const stream = core.replicate(true, { keepAlive: false })
+  const noise = stream.noiseStream
+
+  noise.destroy()
+  await once(noise, 'close')
+
+  await core.ready()
+
+  t.absent(core.core.replicator.attached(noise.userData), 'closed stream is not attached')
+
+  await core.close()
+})
 
 function noop() {}

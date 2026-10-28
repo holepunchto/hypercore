@@ -42,6 +42,59 @@ test('clear + replication', async function (t) {
   await b.close()
 })
 
+test('clear + replication, remaining blocks can still be served', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+
+  await a.clear(1)
+  await a.clear(7)
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  t.alike(await b.get(0, { timeout: 5000 }), b4a.from('a'), 'block before a cleared one')
+  t.alike(await b.get(6, { timeout: 5000 }), b4a.from('g'), 'block before the cleared tail')
+  t.alike(
+    await b.get(3, { timeout: 5000 }),
+    b4a.from('d'),
+    'block in a subtree left of a cleared one'
+  )
+})
+
+test('clear + replication, re-downloaded block in a cleared subtree can be served', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 8 }).done()
+
+  await b.clear(0, 8)
+  t.alike(await b.get(4, { timeout: 5000 }), b4a.from('e'), 'b downloaded a cleared block again')
+
+  const c = await create(t, a.key)
+  replicate(b, c, t)
+
+  t.alike(await c.get(4, { timeout: 5000 }), b4a.from('e'), 'c got the block from b')
+})
+
+test('clear + replication, re-downloaded block in a cleared sibling subtree can be served', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 16; i++) await a.append(String.fromCharCode(97 + i))
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 16 }).done()
+
+  await b.clear(4, 8)
+  t.alike(await b.get(6, { timeout: 5000 }), b4a.from('g'), 'b downloaded a cleared block again')
+
+  const c = await create(t, a.key)
+  replicate(b, c, t)
+
+  t.alike(await c.get(6, { timeout: 5000 }), b4a.from('g'), 'c got the block from b')
+})
+
 test('clear + replication, gossip', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -69,6 +122,24 @@ test('clear + replication, gossip', async function (t) {
 
   t.alike(await b.get(1), b4a.from('b'), 'b downloaded from a')
   t.alike(await req, b4a.from('b'), 'c downloaded from b')
+})
+
+test('clear + replication, peer still requests blocks after the cleared range', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  // a want sent before the clear: a block a doesn't have yet
+  await b.get(12, { timeout: 300 }).catch(() => {})
+
+  await a.clear(5)
+  while (b.peers[0].remoteContiguousLength !== 5) await eventFlush()
+
+  const block = await b.get(7, { timeout: 5000 }).catch((err) => err.code)
+  t.alike(block, b4a.from('h'), 'block after the cleared one')
 })
 
 test('incorrect clear', async function (t) {

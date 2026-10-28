@@ -481,3 +481,24 @@ test('atomic - flush to wrong parent', async function (t) {
   await a.close()
   await b.close()
 })
+
+test('atomic - snapshot while atomic session closes during flush', async function (t) {
+  const core = await create(t)
+  await core.append('hello')
+
+  const atom = core.state.storage.createAtom()
+  const atomic = core.session({ atom })
+  await atomic.append('world')
+
+  const flushing = atom.flush().catch(() => {})
+  const snap = core.snapshot()
+  const ready = snap.ready()
+
+  await new Promise((resolve) => setImmediate(resolve))
+  await atomic.close()
+
+  await t.execution(ready)
+  await flushing
+
+  await snap.close()
+})

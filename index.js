@@ -23,7 +23,8 @@ const Download = require('./lib/download')
 const DefaultEncryption = require('./lib/default-encryption')
 const caps = require('./lib/caps')
 const Replicator = require('./lib/replicator')
-const { manifestHash, createManifest } = require('./lib/verifier')
+const Verifier = require('./lib/verifier')
+const { manifestHash, createManifest, encodeManifest } = Verifier
 const { ReadStream, WriteStream, ByteStream } = require('./lib/streams')
 const { MerkleTree } = require('./lib/merkle-tree')
 const { proof, verify } = require('./lib/fully-remote-proof')
@@ -35,7 +36,8 @@ const {
   SESSION_NOT_WRITABLE,
   SNAPSHOT_NOT_AVAILABLE,
   DECODING_ERROR,
-  REQUEST_CANCELLED
+  REQUEST_CANCELLED,
+  INVALID_CHECKSUM
 } = require('hypercore-errors')
 
 // Hypercore actually does not have any notion of max/min block sizes
@@ -130,9 +132,27 @@ class Hypercore extends EventEmitter {
 
   static key(manifest, { compat, version, namespace } = {}) {
     if (b4a.isBuffer(manifest)) {
-      manifest = { version, signers: [{ publicKey: manifest, namespace }] }
+      manifest =
+        manifest.byteLength === 32
+          ? { version, signers: [{ publicKey: manifest, namespace }] }
+          : this.parseManifest(manifest)
     }
     return compat ? manifest.signers[0].publicKey : manifestHash(createManifest(manifest))
+  }
+
+  static parseManifest(manifest, key) {
+    const parsed = createManifest(manifest)
+    if (parsed === null) return null
+
+    if (parsed.quorum > parsed.signers.length) {
+      throw BAD_ARGUMENT('Quorum should not be higher than the number of signers')
+    }
+
+    if (key && !Verifier.isValidManifest(key, parsed)) {
+      throw INVALID_CHECKSUM('Manifest does not hash to provided key')
+    }
+
+    return parsed
   }
 
   static discoveryKey(key) {
@@ -197,6 +217,7 @@ class Hypercore extends EventEmitter {
   }
 
   static destroyRequests(session, err) {
+    if (isRequestsDestroyed(session)) return
     Replicator.clearRequests(session, err)
     session.push(null) // mark as dead
   }
@@ -270,6 +291,11 @@ class Hypercore extends EventEmitter {
     this.encryption = encryption
   }
 
+  async setGroup(topic) {
+    if (!this.opened) await this.opening
+    return this.core.setGroup(topic)
+  }
+
   setKeyPair(keyPair) {
     this.keyPair = keyPair
   }
@@ -280,6 +306,19 @@ class Hypercore extends EventEmitter {
     this._active = active
     if (!this.opened) return
     this.core.replicator.updateActivity(this._active ? 1 : -1)
+  }
+
+  async setAlwaysLatestBlock(bool) {
+    if (!this.opened) await this.opening
+
+    const enabled = !!bool
+    if (enabled === this.core.replicator._alwaysLatestBlockEnabled) return
+    this.core.replicator._alwaysLatestBlockEnabled = enabled
+    this.core.replicator._alwaysLatestBlock += enabled
+      ? 1
+      : this.core.replicator._alwaysLatestBlock === 0
+        ? 0
+        : -1
   }
 
   async _open(storage, key, opts) {
@@ -349,6 +388,10 @@ class Hypercore extends EventEmitter {
 
   async _openSession(opts) {
     if (this.core.opened === false) await this.core.ready()
+
+    if (opts.group && !this.core.header.group) {
+      await this.core.setGroup(opts.group)
+    }
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
@@ -447,7 +490,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (opts.manifest && !this.core.header.manifest) {
-      await this.core.setManifest(createManifest(opts.manifest))
+      await this.core.setManifest(opts.manifest)
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
@@ -600,6 +643,11 @@ class Hypercore extends EventEmitter {
     return this.core === null ? null : this.core.manifest
   }
 
+  getManifest({ raw = false } = {}) {
+    if (this.manifest === null) return null
+    return raw ? encodeManifest(this.manifest) : this.manifest
+  }
+
   get length() {
     if (this._snapshot) return this._snapshot.length
     return this.opened === false ? 0 : this.state.length
@@ -661,9 +709,9 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  async recover() {
+  async recover(opts) {
     if (this.opened === false) await this.opening
-    return this.state.waitForRecovery()
+    return this.state.waitForRecovery(this, false, opts)
   }
 
   async setUserData(key, value) {
@@ -714,7 +762,7 @@ class Hypercore extends EventEmitter {
       once = false
       this._findingPeers--
       if (this.core !== null && --this.core.replicator.findingPeers === 0) {
-        this.core.replicator.updateAll()
+        this.core.replicator.queueUpdateAll()
       }
     }
   }
@@ -832,6 +880,24 @@ class Hypercore extends EventEmitter {
     return count === end - start
   }
 
+  async count(start, end) {
+    if (this.opened === false) await this.opening
+    if (!isValidIndex(start) || !isValidIndex(end)) {
+      throw ASSERTION('count range is invalid', this.discoveryKey)
+    }
+
+    if (this.state.isDefault()) return this.core.bitfield.countSet(start, end - start)
+
+    let count = 0
+
+    const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
+    for await (const block of stream) {
+      if (block !== null) count++
+    }
+
+    return count
+  }
+
   async get(index, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
@@ -889,12 +955,12 @@ class Hypercore extends EventEmitter {
   }
 
   async purge() {
-    await this._closeAllSessions(null)
+    if (this.opened === false) await this.opening
     await this.core.purge()
   }
 
   async _get(index, opts) {
-    const block = await readBlock(this.state.storage.read(), index)
+    const block = await this.state.readBlock(index)
 
     if (block !== null) return block
 
@@ -905,7 +971,7 @@ class Hypercore extends EventEmitter {
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this, index)
-      const coreBlock = await readBlock(this.core.state.storage.read(), index)
+      const coreBlock = await this.core.state.readBlock(index)
 
       checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
@@ -914,7 +980,7 @@ class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      const coreBlock = await readBlock(this.state.storage.read(), index)
+      const coreBlock = await this.state.readBlock(index)
       // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
       if (coreBlock !== null) return coreBlock
     }
@@ -1335,12 +1401,6 @@ function checkSnapshot(snapshot, index) {
   }
 }
 
-function readBlock(rx, index) {
-  const promise = rx.getBlock(index)
-  rx.tryFlush()
-  return promise
-}
-
 function initOnce(session, storage, key, opts) {
   if (storage === null) storage = opts.storage || null
   if (key === null) key = opts.key || null
@@ -1363,6 +1423,7 @@ function initOnce(session, storage, key, opts) {
     keyPair: opts.keyPair,
     legacy: opts.legacy,
     manifest: opts.manifest,
+    group: opts.group,
     globalCache: opts.globalCache || null // session is a temp option, not to be relied on unless you know what you are doing (no semver guarantees)
   })
 }

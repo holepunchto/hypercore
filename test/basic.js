@@ -4,7 +4,7 @@ const HypercoreStorage = require('hypercore-storage')
 const crypto = require('hypercore-crypto')
 
 const Hypercore = require('../')
-const { create, createStorage, eventFlush } = require('./helpers')
+const { create, createStorage, replicate, eventFlush } = require('./helpers')
 
 test('basic', async function (t) {
   const core = await create(t)
@@ -452,6 +452,74 @@ test('has range', async function (t) {
   await core.close()
 })
 
+test('count', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  t.is(await core.count(0, 6), 6)
+
+  await core.clear(2, 4)
+  t.comment('2 to 3 cleared')
+
+  t.is(await core.count(0, 6), 4)
+  t.is(await core.count(0, 2), 2)
+  t.is(await core.count(2, 4), 0)
+
+  await core.close()
+})
+
+test('count past length', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  t.is(await core.count(0, 10), 3)
+  t.is(await core.count(5, 10), 0)
+
+  await core.close()
+})
+
+test('count invalid range', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  await t.exception(core.count(-1, 2), /count range is invalid/)
+  t.is(await core.count(1, 1), 0)
+
+  await core.close()
+})
+
+test('count sparse replica', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.download({ start: 1, end: 4 }).done()
+
+  t.is(await b.count(0, 6), 3)
+  t.is(await b.count(1, 4), 3)
+  t.is(await b.count(4, 6), 0)
+
+  await a.close()
+  await b.close()
+})
+
+test('count named session', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c', 'd'])
+
+  const named = core.session({ name: 'named' })
+  await named.ready()
+  await named.append(['e', 'f'])
+
+  t.is(await named.count(0, 6), 6)
+  t.is(await core.count(0, 6), 4)
+
+  await named.close()
+  await core.close()
+})
+
 test.skip('storage info', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
@@ -854,6 +922,56 @@ test('setKeyPair', async function (t) {
   await t.exception(core.append('world'), /Public key is not a declared signer/)
 })
 
+test('setAlwaysLatestBlock()', async (t) => {
+  const core = await create(t)
+
+  t.is(core.replicator._alwaysLatestBlock, 0, 'default is disabled')
+
+  await core.setAlwaysLatestBlock(true)
+
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true enables')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing true while enabled noop')
+
+  await core.setAlwaysLatestBlock(1)
+  t.is(core.replicator._alwaysLatestBlock, 1, 'passing 1 doesnt circumvent noop test')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false can disable')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false while disabled noop')
+
+  // With end = -1 range request
+  const range = core.download({ start: 0, end: -1 })
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range req (end = -1) incremented')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true increments when 1 from range')
+
+  await core.setAlwaysLatestBlock(true)
+  t.is(core.replicator._alwaysLatestBlock, 2, 'passing true doesnt over increment')
+
+  range.destroy()
+  t.is(core.replicator._alwaysLatestBlock, 1, 'range done/cancelled dec')
+
+  await core.setAlwaysLatestBlock(false)
+  t.is(core.replicator._alwaysLatestBlock, 0, 'passing false disables again')
+
+  const db = await createStorage(t)
+  // Create core w/ microtask in opening so `.core` isn't set
+  const notReady = new Hypercore(db, { preload: () => Promise.resolve({}) })
+  t.teardown(() => notReady.close())
+
+  await t.execution(
+    () => notReady.setAlwaysLatestBlock(true),
+    'calling on not ready core doesnt throw'
+  )
+  await notReady.ready()
+  t.is(notReady.replicator._alwaysLatestBlock, 1, 'call still took affect')
+})
+
 function getBitfields(hypercore, start = 0, end = null) {
   if (!end) end = hypercore.length
 
@@ -870,3 +988,32 @@ async function getContiguousLengthInStorage(hypercore) {
   const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
   return res === null ? null : res.contiguousLength
 }
+
+test('concurrent gets of a local block share one storage read', async function (t) {
+  const core = await create(t)
+  await core.append(['a', 'b', 'c'])
+
+  const reads = []
+  for (let i = 0; i < 10; i++) reads.push(core.get(1))
+
+  // get() yields once before it reads, so the reads are in flight after a tick
+  await new Promise((resolve) => setImmediate(resolve))
+  t.is(core.state.reads.size, 1, 'one read in flight for the block')
+
+  const blocks = await Promise.all(reads)
+  for (const b of blocks) t.alike(b, b4a.from('b'))
+
+  t.is(core.state.reads.size, 0, 'nothing in flight once settled')
+})
+
+test('a read of a missing block is not cached beyond its settle', async function (t) {
+  const core = await create(t)
+  await core.append('a')
+
+  const missing = await core.get(5, { wait: false })
+  t.is(missing, null)
+  t.is(core.state.reads.size, 0)
+
+  await core.append(['b', 'c', 'd', 'e', 'f'])
+  t.alike(await core.get(5), b4a.from('f'))
+})

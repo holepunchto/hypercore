@@ -175,4 +175,23 @@ test('sessions - checkout breaks prologue', async function (t) {
   uncaughts.off(noop)
 })
 
+test('core.activeSessions', async (t) => {
+  const core = await create(t)
+
+  t.is(core.core.activeSessions, 1, 'includes itself')
+
+  const s = core.session()
+  t.teardown(() => s.close())
+  t.is(core.core.activeSessions, 2, 'increments w/ new sessions')
+
+  const weakSession = core.session({ weak: true })
+  t.is(core.core.activeSessions, 2, 'weak doesnt change activeSessions')
+
+  t.alike(
+    core.core.allSessions(),
+    [core, s, weakSession],
+    'core.allSessions() includes weak as well'
+  )
+})
+
 function noop() {}
