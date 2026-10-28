@@ -3430,4 +3430,23 @@ test('a timed out get does not swallow the next block request', async function (
   t.alike(block, b4a.from('h'))
 })
 
+test('stream that closes while the core opens is not attached', async function (t) {
+  const db = await createStorage(t)
+  t.teardown(() => db.close())
+
+  const core = new Hypercore(db)
+
+  const stream = core.replicate(true, { keepAlive: false })
+  const noise = stream.noiseStream
+
+  noise.destroy()
+  await once(noise, 'close')
+
+  await core.ready()
+
+  t.absent(core.core.replicator.attached(noise.userData), 'closed stream is not attached')
+
+  await core.close()
+})
+
 function noop() {}
