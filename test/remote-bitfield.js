@@ -115,23 +115,26 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
   )
 })
 
-test('remote contiguous length caches verified bitfield extent', async function (t) {
+test('bitfield extends remote contiguous length', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
+  await a.append(new Array(35).fill('a'))
+
   replicate(a, b, t)
-  await eventFlush()
+  await b.download({ start: 0, end: 35 }).done()
 
   const peer = getPeer(b, a)
 
-  peer.remoteBitfield.setRange(0, 1024, true)
-  peer._remoteContiguousLength = 0
+  peer.onbitfield({ start: 32, bitfield: new Uint32Array([0b111]) })
+  t.is(peer._remoteContiguousLength, 35)
 
-  t.is(peer.remoteContiguousLength, 1024)
-  t.is(peer._remoteContiguousLength, 1024)
+  const tx = peer.stats.wireRange.tx
+  peer.broadcastRange(0, 35, false)
+  t.is(peer.stats.wireRange.tx, tx, 'range not sent')
 })
 
-test('range updates core remote contiguous length after getter advances peer cache', async function (t) {
+test('ranges extend remote contiguous length', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
 
@@ -140,14 +143,13 @@ test('range updates core remote contiguous length after getter advances peer cac
 
   const peer = getPeer(b, a)
 
-  peer.remoteFork = b.core.state.fork
-  peer.remoteBitfield.setRange(0, 1024, true)
-  peer._remoteContiguousLength = 0
+  await peer.onrange({ drop: false, start: 1, length: 1023 })
+  await peer.onrange({ drop: false, start: 0, length: 1 })
 
-  t.is(peer.remoteContiguousLength, 1024)
-  t.is(b.core.header.hints.remoteContiguousLength, 0)
+  t.is(peer._remoteContiguousLength, 1024)
+  t.is(b.core.header.hints.remoteContiguousLength, 1)
 
-  await peer.onrange({ start: 0, length: 1024, drop: false })
+  await peer.onrange({ drop: false, start: 0, length: 1024 })
 
   t.is(b.core.header.hints.remoteContiguousLength, 1024)
 })
