@@ -1088,6 +1088,33 @@ test('stateless batch proofs apply in any order', async function (t) {
   }
 })
 
+test('upgradeLength reports the length a proof actually conveys', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 22; i++) await a.append('block-' + i)
+
+  // each of these proofs upgrades an empty receiver all the way to 22, so
+  // upgradeLength (what the replicator records as the peer's pushedLength)
+  // has to agree with the length the receiver ends up at
+  for (let i = 18; i < 22; i++) {
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: 18 }
+    })
+    proof.manifest = a.manifest
+
+    const b = await create(t, a.key)
+    t.ok(await b.applyProof(proof), 'applied proof for block ' + i)
+
+    t.is(
+      MerkleTree.upgradeLength(proof.upgrade),
+      b.length,
+      'upgradeLength matches the length the proof upgraded to (block ' + i + ')'
+    )
+
+    await b.close()
+  }
+})
+
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
