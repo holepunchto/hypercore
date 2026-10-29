@@ -972,6 +972,23 @@ test('setAlwaysLatestBlock()', async (t) => {
   t.is(notReady.replicator._alwaysLatestBlock, 1, 'call still took affect')
 })
 
+function getBitfields(hypercore, start = 0, end = null) {
+  if (!end) end = hypercore.length
+
+  const res = []
+  for (let i = start; i < end; i++) {
+    res.push(hypercore.core.bitfield.get(i))
+  }
+
+  return res
+}
+
+async function getContiguousLengthInStorage(hypercore) {
+  const storageRx = hypercore.core.storage.read()
+  const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
+  return res === null ? null : res.contiguousLength
+}
+
 test('apply full proofs per block, no replication', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
@@ -1108,21 +1125,4 @@ function permutations(items) {
     for (const perm of permutations(rest)) result.push([items[i], ...perm])
   }
   return result
-}
-
-function getBitfields(hypercore, start = 0, end = null) {
-  if (!end) end = hypercore.length
-
-  const res = []
-  for (let i = start; i < end; i++) {
-    res.push(hypercore.core.bitfield.get(i))
-  }
-
-  return res
-}
-
-async function getContiguousLengthInStorage(hypercore) {
-  const storageRx = hypercore.core.storage.read()
-  const [res] = await Promise.all([storageRx.getHints(), storageRx.tryFlush()])
-  return res === null ? null : res.contiguousLength
 }
