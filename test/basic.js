@@ -1088,32 +1088,39 @@ test('stateless batch proofs apply in any order', async function (t) {
   }
 })
 
-test('upgradeLength reports the length a proof actually conveys', async function (t) {
-  const a = await create(t)
-  for (let i = 0; i < 22; i++) await a.append('block-' + i)
+test('proof reports the length it upgrades a receiver to', async function (t) {
+  // the replicator records coreLength as the peer's pushedLength
+  for (const [blocks, upgrade] of [
+    [22, 18],
+    [20, 16]
+  ]) {
+    const a = await create(t)
+    for (let i = 0; i < blocks; i++) await a.append('block-' + i)
 
-  // each of these proofs upgrades an empty receiver all the way to 22, so
-  // upgradeLength (what the replicator records as the peer's pushedLength)
-  // has to agree with the length the receiver ends up at
-  for (let i = 18; i < 22; i++) {
-    const proof = await a.proof({
-      block: { index: i, nodes: 0, value: true },
-      upgrade: { start: 0, length: 18 }
-    })
-    proof.manifest = a.manifest
+    for (let i = upgrade; i < blocks; i++) {
+      const proof = await a.proof({
+        block: { index: i, nodes: 0, value: true },
+        upgrade: { start: 0, length: upgrade }
+      })
+      proof.manifest = a.manifest
 
-    const b = await create(t, a.key)
-    t.ok(await b.applyProof(proof), 'applied proof for block ' + i)
+      const b = await create(t, a.key)
+      console.log('proof.block', proof.block, 'upgrade', proof.upgrade)
+      t.ok(await b.applyProof(proof), 'applied proof for block ' + i + ' of ' + blocks)
 
-    t.is(
-      MerkleTree.upgradeLength(proof.upgrade),
-      b.length,
-      'upgradeLength matches the length the proof upgraded to (block ' + i + ')'
-    )
+      t.is(
+        proof.coreLength,
+        b.length,
+        'coreLength matches the length the proof upgraded to (block ' + i + ' of ' + blocks + ')'
+      )
 
-    await b.close()
+      await b.close()
+    }
+
+    await a.close()
   }
 })
+
 
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
