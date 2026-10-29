@@ -3300,15 +3300,10 @@ test('send nodata with bad tree node', async (t) => {
 
   t.is(core2.length, core.length, 'got metadata')
 
-  // Test that original error triggers repair but still errors
-  const errorPath = t.test('error path')
-  errorPath.plan(4)
-
-  // Corrupt storage: remove tree node 1 (the root of the length-2 tree)
-  const storage = core.state.storage
-  const tx = storage.write()
-  tx.deleteTreeNode(1) // root
-  tx.deleteTreeNode(2) // sibling node
+  // Corrupt storage: remove block 1's leaf, which block 0's proof needs.
+  // Block 3's proof (nodes 4 and 1) stays intact.
+  const tx = core.state.storage.write()
+  tx.deleteTreeNode(2)
   await tx.flush()
 
   // Force tree cache to be clear (would otherwise return cached node)
@@ -3316,30 +3311,28 @@ test('send nodata with bad tree node', async (t) => {
 
   // Verify
   {
-    const storage = core.state.storage
-    const rx = storage.read()
-    const treeP = rx.getTreeNode(1)
+    const rx = core.state.storage.read()
+    const treeP = rx.getTreeNode(2)
     rx.tryFlush()
     t.is(await treeP, null, 'corrupted correctly')
   }
 
-  errorPath.is(core2.replicator.peers[0].stats.notAvailableBackoffs, 0, 'zero nodatas to start')
+  const peer = core2.replicator.peers[0]
+
+  t.is(peer.stats.notAvailableBackoffs, 0, 'zero nodatas to start')
+
   const req = core2.get(0, { timeout: 500 })
+  await t.exception(() => req, 'original request fails')
 
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  // The remote backs off rather than answering each re-request immediately,
+  // so the peer never burns through MAX_BACKOFFS and stays usable
+  t.ok(peer.stats.notAvailableBackoffs > 0, 'got a nodata')
+  t.ok(peer.stats.notAvailableBackoffs < 5, 'remote backed off instead of storming')
+  t.absent(peer.paused, 'peer is not paused')
 
-  errorPath.is(
-    core2.replicator.peers[0].stats.notAvailableBackoffs,
-    32,
-    'got nodata MAX_BACKOFFS times'
-  )
-  errorPath.ok(core2.replicator.peers[0].paused, 'peer is paused')
-
-  req.catch(() => t.pass('req failed!'))
-  await errorPath.exception(() => req, 'original request fails')
+  t.alike(await core2.get(3, { timeout: 2000 }), Buffer.from('3'), 'provable block still served')
 
   await unreplicate(streams)
-  await errorPath
 })
 
 async function createAndDownload(t, core) {
