@@ -207,8 +207,8 @@ test('invalidRequest stat', async function (t) {
   b.replicator._inflight.add(invalidReq)
   peerForB.wireRequest.send(invalidReq)
 
-  // let request go through
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  // a backs off before answering, so wait for the answer
+  await waitForBackoffs(peerForB, 1)
 
   t.is(a.core.replicator.stats.invalidRequests, 1)
   t.is(peerForA.stats.invalidRequests, 1)
@@ -252,8 +252,8 @@ test('invalidRequests backoff (slow)', async function (t) {
     peerForB.wireRequest.send(invalidReq)
   }
 
-  // let request go through
-  await new Promise((resolve) => setTimeout(resolve, 7000))
+  // a backs off before answering, so wait for the answers
+  await waitForBackoffs(peerForB, 50)
 
   t.is(a.core.replicator.stats.invalidRequests, 50)
   t.is(peerForA.stats.invalidRequests, 50)
@@ -3412,6 +3412,12 @@ async function waitForRequestBlock(core) {
     if (reqBlock) break
 
     await new Promise((resolve) => setImmediate(resolve))
+  }
+}
+
+async function waitForBackoffs(peer, backoffs) {
+  while (peer.stats.backoffs < backoffs) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
   }
 }
 
