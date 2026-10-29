@@ -551,15 +551,15 @@ class Hypercore extends EventEmitter {
     this.state.removeSession(this)
     this._removeSession()
 
-    this.readable = false
-    this.writable = false
-    this.opened = false
-
     const gc = []
     for (const ext of this.extensions.values()) {
       if (ext.session === this) gc.push(ext)
     }
     for (const ext of gc) ext.destroy()
+
+    this.readable = false
+    this.writable = false
+    this.opened = false
 
     this.core.replicator.findingPeers -= this._findingPeers
     this.core.replicator.clearRequests(this.activeRequests, error)
