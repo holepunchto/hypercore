@@ -3335,6 +3335,83 @@ test('send nodata with bad tree node', async (t) => {
   await unreplicate(streams)
 })
 
+test('nodata backoff does not hold the tx lock', async (t) => {
+  const core = await create(t)
+
+  await core.append('0')
+  await core.append('1')
+  await core.append('2')
+  await core.append('3')
+
+  // allowPush on the downloader is what makes remoteAllowPush true on the
+  // uploader, which is what makes _handleRequest take the tx lock
+  const core2 = await create(t, core.key, { allowPush: true })
+
+  const core2Updated = once(core2, 'append')
+  const first = replicate(core, core2, t, { teardown: false })
+  await core2Updated
+  await unreplicate(first)
+
+  // Append while disconnected, then break block 5's proof (it needs leaf 8).
+  // The 4 -> 8 upgrade proof stays intact, so the request only fails once the
+  // block proof settles, ie inside _fulfillRequest while the lock is held.
+  await core.append('4')
+  await core.append('5')
+  await core.append('6')
+  await core.append('7')
+
+  const tx = core.state.storage.write()
+  tx.deleteTreeNode(8)
+  await tx.flush()
+
+  core.core.storage.treeCache.clear()
+
+  // Count the failures that actually took the lock, so this cannot pass
+  // vacuously if the shape of the request ever changes
+  let lockedFailures = 0
+
+  core.on('invalid-request', (err, msg, peer) => {
+    if (core.replicator._txLock.locked) lockedFailures++
+  })
+
+  // Queue the block want before reconnecting so the upgrade and the block
+  // travel in the same request
+  const req = core2.get(5, { timeout: 2000 })
+  req.catch(noop)
+
+  const streams = replicate(core, core2, t)
+
+  // Tracks the longest run of consecutive held samples to verify not blocked by backoff.
+  let heldSince = 0
+  let maxHeld = 0
+  let watching = true
+
+  const watch = (async function () {
+    while (watching) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      if (core.replicator._txLock.locked === false) {
+        heldSince = 0
+        continue
+      }
+
+      if (heldSince === 0) heldSince = Date.now()
+      else maxHeld = Math.max(maxHeld, Date.now() - heldSince)
+    }
+  })()
+
+  await t.exception(() => req, 'request fails')
+
+  watching = false
+  await watch
+
+  t.comment('lockedFailures', lockedFailures, 'maxHeld', maxHeld)
+  t.ok(lockedFailures > 0, 'the failing requests took the tx lock')
+  t.ok(maxHeld < 150, 'tx lock is not held across the backoff, held ' + maxHeld + 'ms')
+
+  await unreplicate(streams)
+})
+
 async function createAndDownload(t, core) {
   const b = await create(t, core.key)
   replicate(core, b, t, { teardown: false })
