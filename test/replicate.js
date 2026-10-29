@@ -1898,6 +1898,46 @@ test('uses hotswaps to avoid long download tail', async (t) => {
   t.ok(slowPeer.stats.wireData.rx > 0, 'sanity check: still received data from slow peer')
 })
 
+test('idle peer takes over a block request stalled on another peer', async (t) => {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd'])
+
+  const b = await create(t, a.key)
+  const c = await create(t, a.key)
+  replicate(a, b, t)
+  replicate(a, c, t)
+  await b.download({ start: 0, end: 3 }).done()
+  await c.download({ start: 1, end: 4 }).done()
+
+  const reader = await create(t, a.key)
+  const [sb] = replicate(b, reader, t)
+  const [sc] = replicate(c, reader, t)
+
+  await reader.get(0)
+  await reader.get(3)
+
+  sb.pause()
+  sc.pause()
+
+  const get = reader.get(1)
+  const idle = await Promise.race([
+    once(b, 'upload').then(() => sc),
+    once(c, 'upload').then(() => sb)
+  ])
+  const idlePeer = reader.replicator.peers.find((p) =>
+    b4a.equals(p.remotePublicKey, idle.publicKey)
+  )
+
+  reader.replicator.checkStalledRequests?.()
+  reader.replicator.checkStalledRequests?.()
+
+  t.is(idlePeer.inflight, 1, 'stalled request was sent to the idle peer')
+
+  sb.resume()
+  sc.resume()
+  t.alike(await get, b4a.from('b'))
+})
+
 test('multiple peers with the same remotePublicKey', async (t) => {
   const core = await create(t)
   const peer1 = await create(t, core.key)
