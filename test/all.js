@@ -28,8 +28,9 @@ async function runTests() {
   await import('./move-to.js')
   await import('./mutex.js')
   await import('./preload.js')
-  // await import('./purge.js') // todo: implement purge
+  await import('./purge.js')
   await import('./push.js')
+  await import('./recovery.js')
   await import('./remote-bitfield.js')
   await import('./remote-length.js')
   await import('./replicate.js')

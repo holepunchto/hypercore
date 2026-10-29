@@ -308,6 +308,19 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
+  async setAlwaysLatestBlock(bool) {
+    if (!this.opened) await this.opening
+
+    const enabled = !!bool
+    if (enabled === this.core.replicator._alwaysLatestBlockEnabled) return
+    this.core.replicator._alwaysLatestBlockEnabled = enabled
+    this.core.replicator._alwaysLatestBlock += enabled
+      ? 1
+      : this.core.replicator._alwaysLatestBlock === 0
+        ? 0
+        : -1
+  }
+
   async _open(storage, key, opts) {
     const preload = opts.preload || (opts.parent && opts.parent.preload)
 
@@ -377,6 +390,10 @@ class Hypercore extends EventEmitter {
 
   async _openSession(opts) {
     if (this.core.opened === false) await this.core.ready()
+
+    if (opts.group && !this.core.header.group) {
+      await this.core.setGroup(opts.group)
+    }
 
     if (this.keyPair === null) this.keyPair = opts.keyPair || this.core.header.keyPair
 
@@ -694,9 +711,9 @@ class Hypercore extends EventEmitter {
     return this.opening
   }
 
-  async recover() {
+  async recover(opts) {
     if (this.opened === false) await this.opening
-    return this.state.waitForRecovery()
+    return this.state.waitForRecovery(this, false, opts)
   }
 
   async setUserData(key, value) {
@@ -865,6 +882,24 @@ class Hypercore extends EventEmitter {
     return count === end - start
   }
 
+  async count(start, end) {
+    if (this.opened === false) await this.opening
+    if (!isValidIndex(start) || !isValidIndex(end)) {
+      throw ASSERTION('count range is invalid', this.discoveryKey)
+    }
+
+    if (this.state.isDefault()) return this.core.bitfield.countSet(start, end - start)
+
+    let count = 0
+
+    const stream = this.state.storage.createBlockStream({ gte: start, lt: end })
+    for await (const block of stream) {
+      if (block !== null) count++
+    }
+
+    return count
+  }
+
   async get(index, opts) {
     if (this.opened === false) await this.opening
     if (!isValidIndex(index)) throw ASSERTION('block index is invalid', this.discoveryKey)
@@ -922,12 +957,12 @@ class Hypercore extends EventEmitter {
   }
 
   async purge() {
-    await this._closeAllSessions(null)
+    if (this.opened === false) await this.opening
     await this.core.purge()
   }
 
   async _get(index, opts) {
-    const block = await readBlock(this.state.storage.read(), index)
+    const block = await this.state.readBlock(index)
 
     if (block !== null) return block
 
@@ -938,7 +973,7 @@ class Hypercore extends EventEmitter {
     // snapshot should check if core has block
     if (this._snapshot !== null) {
       checkSnapshot(this, index)
-      const coreBlock = await readBlock(this.core.state.storage.read(), index)
+      const coreBlock = await this.core.state.readBlock(index)
 
       checkSnapshot(this, index)
       if (coreBlock !== null) return coreBlock
@@ -947,7 +982,7 @@ class Hypercore extends EventEmitter {
     // lets check the bitfield to see if we got it during the above async calls
     // this is the last resort before replication, so always safe.
     if (this.core.bitfield.get(index)) {
-      const coreBlock = await readBlock(this.state.storage.read(), index)
+      const coreBlock = await this.state.readBlock(index)
       // TODO: this should not be needed, only needed atm in case we are doing a moveTo during this (we should fix)
       if (coreBlock !== null) return coreBlock
     }
@@ -1366,12 +1401,6 @@ function checkSnapshot(snapshot, index) {
       snapshot.discoveryKey
     )
   }
-}
-
-function readBlock(rx, index) {
-  const promise = rx.getBlock(index)
-  rx.tryFlush()
-  return promise
 }
 
 function initOnce(session, storage, key, opts) {

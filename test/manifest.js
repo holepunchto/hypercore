@@ -1416,6 +1416,16 @@ test('manifest encoding', (t) => {
   manifest.userData = b4a.from([200])
   t.alike(reencode(manifest), manifest)
 
+  // version 3 is wire compatible with version 2
+  manifest.version = 3
+  t.alike(reencode(manifest), manifest)
+
+  manifest.linked = null
+  manifest.userData = null
+  t.alike(reencode(manifest), manifest)
+
+  t.exception(() => reencode({ ...manifest, version: 4 }), /Unknown version/)
+
   function reencode(m) {
     return c.decode(enc.manifest, c.encode(enc.manifest, m))
   }
