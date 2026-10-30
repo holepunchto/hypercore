@@ -1153,6 +1153,76 @@ test('a proof that refit cannot bridge is rejected, not treated as invalid', asy
   t.absent(await b.has(1), 'block was not stored')
 })
 
+test('refit declines unbridgeable proofs but still rejects malformed ones', async function (t) {
+  const a = await create(t)
+
+  const bases = [null]
+  for (let i = 0; i < 12; i++) {
+    await a.append('block-' + i)
+    const base = await a.proof({ upgrade: { start: 0, length: i + 1 } })
+    base.manifest = a.manifest
+    bases.push(base)
+  }
+
+  // a proof for block 4 as a peer at length 1 would request it. the nodes it
+  // carries can be refit from length 4, but not from length 3
+  async function proof() {
+    const p = await a.proof({
+      block: { index: 4, nodes: 0, value: true },
+      upgrade: { start: 1, length: 11 }
+    })
+    p.manifest = a.manifest
+    return p
+  }
+
+  async function receiver(length) {
+    const b = await create(t, a.key)
+    await b.applyProof(bases[length])
+    t.is(b.length, length, 'receiver is at ' + length)
+    return b
+  }
+
+  // valid, but it raced us past a length its nodes can bridge. declined, not punished
+  {
+    const b = await receiver(3)
+    t.is(await b.applyProof(await proof()), false, 'unbridgeable proof declined')
+    t.is(b.length, 3, 'length is untouched')
+    await b.close()
+  }
+
+  // unbridgeable too, but the node list does not line up.
+  {
+    const b = await receiver(3)
+    const p = await proof()
+    p.block.nodes[0] = { ...p.block.nodes[0], index: p.block.nodes[0].index + 2 }
+
+    await t.exception(b.applyProof(p), /INVALID_OPERATION/, 'malformed proof throws')
+    t.is(b.length, 3, 'length is untouched')
+    await b.close()
+  }
+
+  // from a length it can bridge, the same proof applies
+  {
+    const b = await receiver(4)
+    t.is(await b.applyProof(await proof()), true, 'bridgeable proof applied')
+    t.is(b.length, 12, 'upgraded to the senders length')
+    t.alike(await b.get(4, { wait: false }), b4a.from('block-4'))
+    await b.close()
+  }
+
+  // ... and refit cannot launder a corrupted node into a valid tree
+  {
+    const b = await receiver(4)
+    const p = await proof()
+    const node = p.block.nodes[0]
+    p.block.nodes[0] = { index: node.index, size: node.size, hash: b4a.alloc(32) }
+
+    await t.exception(b.applyProof(p), /INVALID_SIGNATURE/, 'corrupted proof throws')
+    t.is(b.length, 4, 'length is untouched')
+    await b.close()
+  }
+})
+
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
