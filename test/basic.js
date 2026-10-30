@@ -1121,6 +1121,37 @@ test('proof reports the length it upgrades a receiver to', async function (t) {
   }
 })
 
+test('a proof that refit cannot bridge is rejected, not treated as invalid', async function (t) {
+  const a = await create(t)
+
+  // a base proof per length, captured while a is at that length so it conveys
+  // exactly that many blocks
+  const bases = [null]
+  for (let i = 0; i < 12; i++) {
+    await a.append('block-' + i)
+    const base = await a.proof({ upgrade: { start: 0, length: i + 1 } })
+    base.manifest = a.manifest
+    bases.push(base)
+  }
+
+  // a proof for block 1 as a peer at length 1 would request it. it deliberately
+  // omits everything below length 1, so once our length moves on there is
+  // nothing left for refit() to rebuild it from
+  const proof = await a.proof({
+    block: { index: 1, nodes: 0, value: true },
+    upgrade: { start: 1, length: 11 }
+  })
+  proof.manifest = a.manifest
+
+  // the length grew from 1 to 2 while the proof was in flight
+  const b = await create(t, a.key)
+  await b.applyProof(bases[2])
+  t.is(b.length, 2)
+
+  t.is(await b.applyProof(proof), false, 'proof did not apply')
+  t.is(b.length, 2, 'length is untouched')
+  t.absent(await b.has(1), 'block was not stored')
+})
 
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
