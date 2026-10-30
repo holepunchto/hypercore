@@ -1,7 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const RemoteBitfield = require('../lib/remote-bitfield')
-const { create, replicate } = require('./helpers')
+const { create, replicate, eventFlush } = require('./helpers')
 
 test('remote bitfield - findFirst', function (t) {
   const b = new RemoteBitfield()
@@ -113,6 +113,45 @@ test('remote congituous length consistency (remote-bitfield findFirst edge case)
     true,
     'invariant holds: remoteContiguousLength at least _remoteContiguousLength'
   )
+})
+
+test('bitfield extends remote contiguous length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(new Array(35).fill('a'))
+
+  replicate(a, b, t)
+  await b.download({ start: 0, end: 35 }).done()
+
+  const peer = getPeer(b, a)
+
+  peer.onbitfield({ start: 32, bitfield: new Uint32Array([0b111]) })
+  t.is(peer._remoteContiguousLength, 35)
+
+  const tx = peer.stats.wireRange.tx
+  peer.broadcastRange(0, 35, false)
+  t.is(peer.stats.wireRange.tx, tx, 'range not sent')
+})
+
+test('ranges extend remote contiguous length', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await eventFlush()
+
+  const peer = getPeer(b, a)
+
+  await peer.onrange({ drop: false, start: 1, length: 1023 })
+  await peer.onrange({ drop: false, start: 0, length: 1 })
+
+  t.is(peer._remoteContiguousLength, 1024)
+  t.is(b.core.header.hints.remoteContiguousLength, 1)
+
+  await peer.onrange({ drop: false, start: 0, length: 1024 })
+
+  t.is(b.core.header.hints.remoteContiguousLength, 1024)
 })
 
 test('bitfield messages sent on cache miss', async function (t) {
