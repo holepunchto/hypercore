@@ -559,6 +559,7 @@ class Hypercore extends EventEmitter {
 
     this.readable = false
     this.writable = false
+    // needs to be below extension gc as `.peers` gates on `.opened`
     this.opened = false
 
     this.core.replicator.findingPeers -= this._findingPeers
