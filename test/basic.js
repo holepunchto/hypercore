@@ -1222,6 +1222,49 @@ test('refit declines unbridgeable proofs but still rejects malformed ones', asyn
   }
 })
 
+test('a fork landing while a proof refits does not rewind the fork', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 8; i++) await a.append('block-' + i)
+
+  // captured while a is at length 8, so it conveys exactly 8 blocks
+  const base = await a.proof({ upgrade: { start: 0, length: 8 } })
+  base.manifest = a.manifest
+
+  for (let i = 8; i < 12; i++) await a.append('block-' + i)
+
+  // a fork 0 proof that needs a refit at length 8. block 2 sits inside the length 8
+  // tree, so the refit has to read from storage and yields while it does
+  const stale = await a.proof({
+    block: { index: 2, nodes: 0, value: true },
+    upgrade: { start: 0, length: 12 }
+  })
+  stale.manifest = a.manifest
+
+  // a signature for (hash at 8, length 8, fork 1). same key and same blocks, truncated
+  // to the length it is already at, so the fork moves but the tree does not
+  const a2 = await create(t, { keyPair: a.keyPair })
+  for (let i = 0; i < 8; i++) await a2.append('block-' + i)
+  await a2.truncate(8, { fork: 1 })
+
+  const b = await create(t, a.key)
+  await b.applyProof(base)
+  t.is(b.fork, 0)
+  t.is(b.length, 8)
+
+  // the fork commits while the proof is refitting, so the refit describes a tree we no
+  // longer have. commitable() cannot catch that, it samples the fork afterwards, and the
+  // signature cannot either since the tree is unchanged, so verify has to recheck itself
+  const forking = b.truncate(8, { fork: 1, signature: a2.state.signature })
+  const applying = b.applyProof(stale)
+
+  await forking
+
+  t.is(await applying, false, 'stale proof did not apply')
+  t.is(b.fork, 1, 'fork was not rewound')
+  t.is(b.length, 8, 'length is untouched')
+  t.absent(await b.has(2), 'block was not stored')
+})
+
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
