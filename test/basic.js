@@ -989,6 +989,282 @@ async function getContiguousLengthInStorage(hypercore) {
   return res === null ? null : res.contiguousLength
 }
 
+test('apply full proofs per block, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+
+    t.ok(await b.applyProof(proof), 'applied proof for block ' + i)
+    t.is(b.length, i + 1)
+  }
+
+  t.is(b.length, a.length)
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
+
+test('apply full proofs per block in reverse order, no replication', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const proofs = []
+
+  for (let i = 0; i < 20; i++) {
+    await a.append('block-' + i)
+
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: i + 1 }
+    })
+    proof.manifest = a.manifest
+    proofs.push(proof)
+  }
+
+  for (let i = 19; i >= 0; i--) {
+    t.ok(await b.applyProof(proofs[i]), 'applied proof for block ' + i)
+    t.is(b.length, 20)
+  }
+
+  t.alike(await b.treeHash(), await a.treeHash())
+  t.is(b.contiguousLength, 20)
+
+  for (let i = 0; i < 20; i++) {
+    t.ok(await b.has(i), 'has block ' + i)
+    t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+  }
+})
+
+test('stateless batch proofs apply in any order', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 18; i++) await a.append('block-' + i)
+
+  const base = await a.proof({ upgrade: { start: 0, length: 18 } })
+  base.manifest = a.manifest
+
+  await a.append(['block-18', 'block-19', 'block-20', 'block-21'])
+
+  const proofs = []
+  for (let i = 18; i < 22; i++) {
+    const proof = await a.proof({
+      block: { index: i, nodes: 0, value: true },
+      upgrade: { start: 0, length: 18 }
+    })
+    proof.manifest = a.manifest
+    proofs.push(proof)
+  }
+
+  for (const order of permutations([0, 1, 2, 3])) {
+    const b = await create(t, a.key)
+    await b.applyProof(base)
+    t.is(b.length, 18)
+
+    for (const i of order) {
+      t.ok(await b.applyProof(proofs[i]), 'applied ' + (18 + i) + ' in ' + order)
+    }
+
+    t.is(b.length, 22)
+    for (let i = 18; i < 22; i++) t.alike(await b.get(i, { wait: false }), b4a.from('block-' + i))
+    await b.close()
+  }
+
+  for (let n = 0; n < 2; n++) {
+    const empty = await create(t, a.key)
+    t.ok(await empty.applyProof(proofs[2]), 'same proof applied to empty receiver ' + n)
+    t.is(empty.length, 22)
+    t.alike(await empty.get(20, { wait: false }), b4a.from('block-20'))
+  }
+})
+
+test('proof reports the length it upgrades a receiver to', async function (t) {
+  // the replicator records coreLength as the peer's pushedLength
+  for (const [blocks, upgrade] of [
+    [22, 18],
+    [20, 16]
+  ]) {
+    const a = await create(t)
+    for (let i = 0; i < blocks; i++) await a.append('block-' + i)
+
+    for (let i = upgrade; i < blocks; i++) {
+      const proof = await a.proof({
+        block: { index: i, nodes: 0, value: true },
+        upgrade: { start: 0, length: upgrade }
+      })
+      proof.manifest = a.manifest
+
+      const b = await create(t, a.key)
+      t.ok(await b.applyProof(proof), 'applied proof for block ' + i + ' of ' + blocks)
+
+      t.is(
+        proof.coreLength,
+        b.length,
+        'coreLength matches the length the proof upgraded to (block ' + i + ' of ' + blocks + ')'
+      )
+
+      await b.close()
+    }
+
+    await a.close()
+  }
+})
+
+test('a proof that refit cannot bridge is rejected, not treated as invalid', async function (t) {
+  const a = await create(t)
+
+  // a base proof per length, captured while a is at that length so it conveys
+  // exactly that many blocks
+  const bases = [null]
+  for (let i = 0; i < 12; i++) {
+    await a.append('block-' + i)
+    const base = await a.proof({ upgrade: { start: 0, length: i + 1 } })
+    base.manifest = a.manifest
+    bases.push(base)
+  }
+
+  // a proof for block 1 as a peer at length 1 would request it. it deliberately
+  // omits everything below length 1, so once our length moves on there is
+  // nothing left for refit() to rebuild it from
+  const proof = await a.proof({
+    block: { index: 1, nodes: 0, value: true },
+    upgrade: { start: 1, length: 11 }
+  })
+  proof.manifest = a.manifest
+
+  // the length grew from 1 to 2 while the proof was in flight
+  const b = await create(t, a.key)
+  await b.applyProof(bases[2])
+  t.is(b.length, 2)
+
+  t.is(await b.applyProof(proof), false, 'proof did not apply')
+  t.is(b.length, 2, 'length is untouched')
+  t.absent(await b.has(1), 'block was not stored')
+})
+
+test('refit declines unbridgeable proofs but still rejects malformed ones', async function (t) {
+  const a = await create(t)
+
+  const bases = [null]
+  for (let i = 0; i < 12; i++) {
+    await a.append('block-' + i)
+    const base = await a.proof({ upgrade: { start: 0, length: i + 1 } })
+    base.manifest = a.manifest
+    bases.push(base)
+  }
+
+  // a proof for block 4 as a peer at length 1 would request it. the nodes it
+  // carries can be refit from length 4, but not from length 3
+  async function proof() {
+    const p = await a.proof({
+      block: { index: 4, nodes: 0, value: true },
+      upgrade: { start: 1, length: 11 }
+    })
+    p.manifest = a.manifest
+    return p
+  }
+
+  async function receiver(length) {
+    const b = await create(t, a.key)
+    await b.applyProof(bases[length])
+    t.is(b.length, length, 'receiver is at ' + length)
+    return b
+  }
+
+  // valid, but it raced us past a length its nodes can bridge. declined, not punished
+  {
+    const b = await receiver(3)
+    t.is(await b.applyProof(await proof()), false, 'unbridgeable proof declined')
+    t.is(b.length, 3, 'length is untouched')
+    await b.close()
+  }
+
+  // unbridgeable too, but the node list does not line up.
+  {
+    const b = await receiver(3)
+    const p = await proof()
+    p.block.nodes[0] = { ...p.block.nodes[0], index: p.block.nodes[0].index + 2 }
+
+    await t.exception(b.applyProof(p), /INVALID_OPERATION/, 'malformed proof throws')
+    t.is(b.length, 3, 'length is untouched')
+    await b.close()
+  }
+
+  // from a length it can bridge, the same proof applies
+  {
+    const b = await receiver(4)
+    t.is(await b.applyProof(await proof()), true, 'bridgeable proof applied')
+    t.is(b.length, 12, 'upgraded to the senders length')
+    t.alike(await b.get(4, { wait: false }), b4a.from('block-4'))
+    await b.close()
+  }
+
+  // ... and refit cannot launder a corrupted node into a valid tree
+  {
+    const b = await receiver(4)
+    const p = await proof()
+    const node = p.block.nodes[0]
+    p.block.nodes[0] = { index: node.index, size: node.size, hash: b4a.alloc(32) }
+
+    await t.exception(b.applyProof(p), /INVALID_SIGNATURE/, 'corrupted proof throws')
+    t.is(b.length, 4, 'length is untouched')
+    await b.close()
+  }
+})
+
+test('a fork landing while a proof refits does not rewind the fork', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 8; i++) await a.append('block-' + i)
+
+  // captured while a is at length 8, so it conveys exactly 8 blocks
+  const base = await a.proof({ upgrade: { start: 0, length: 8 } })
+  base.manifest = a.manifest
+
+  for (let i = 8; i < 12; i++) await a.append('block-' + i)
+
+  // a fork 0 proof that needs a refit at length 8. block 2 sits inside the length 8
+  // tree, so the refit has to read from storage and yields while it does
+  const stale = await a.proof({
+    block: { index: 2, nodes: 0, value: true },
+    upgrade: { start: 0, length: 12 }
+  })
+  stale.manifest = a.manifest
+
+  // a signature for (hash at 8, length 8, fork 1). same key and same blocks, truncated
+  // to the length it is already at, so the fork moves but the tree does not
+  const a2 = await create(t, { keyPair: a.keyPair })
+  for (let i = 0; i < 8; i++) await a2.append('block-' + i)
+  await a2.truncate(8, { fork: 1 })
+
+  const b = await create(t, a.key)
+  await b.applyProof(base)
+  t.is(b.fork, 0)
+  t.is(b.length, 8)
+
+  // the fork commits while the proof is refitting, so the refit describes a tree we no
+  // longer have. commitable() cannot catch that, it samples the fork afterwards, and the
+  // signature cannot either since the tree is unchanged, so verify has to recheck itself
+  const forking = b.truncate(8, { fork: 1, signature: a2.state.signature })
+  const applying = b.applyProof(stale)
+
+  await forking
+
+  t.is(await applying, false, 'stale proof did not apply')
+  t.is(b.fork, 1, 'fork was not rewound')
+  t.is(b.length, 8, 'length is untouched')
+  t.absent(await b.has(2), 'block was not stored')
+})
+
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
@@ -1017,3 +1293,13 @@ test('a read of a missing block is not cached beyond its settle', async function
   await core.append(['b', 'c', 'd', 'e', 'f'])
   t.alike(await core.get(5), b4a.from('f'))
 })
+
+function permutations(items) {
+  if (items.length <= 1) return [items]
+  const result = []
+  for (let i = 0; i < items.length; i++) {
+    const rest = items.slice(0, i).concat(items.slice(i + 1))
+    for (const perm of permutations(rest)) result.push([items[i], ...perm])
+  }
+  return result
+}
