@@ -1105,7 +1105,6 @@ test('proof reports the length it upgrades a receiver to', async function (t) {
       proof.manifest = a.manifest
 
       const b = await create(t, a.key)
-      console.log('proof.block', proof.block, 'upgrade', proof.upgrade)
       t.ok(await b.applyProof(proof), 'applied proof for block ' + i + ' of ' + blocks)
 
       t.is(
