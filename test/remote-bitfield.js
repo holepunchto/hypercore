@@ -152,6 +152,11 @@ test('ranges extend remote contiguous length', async function (t) {
   await peer.onrange({ drop: false, start: 0, length: 1024 })
 
   t.is(b.core.header.hints.remoteContiguousLength, 1024)
+
+  await peer.onrange({ drop: false, start: 2048, length: 1024 })
+  await peer.onrange({ drop: false, start: 1024, length: 1024 })
+
+  t.is(peer._remoteContiguousLength, 3072)
 })
 
 test('bitfield messages sent on cache miss', async function (t) {
