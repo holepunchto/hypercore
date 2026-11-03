@@ -453,6 +453,51 @@ test('invalid signature fails', async function (t) {
   replicate(a, b, t)
 })
 
+test('full disk pauses the peer without blaming it', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b'])
+
+  const b = await create(t, a.key)
+  const [, s2] = replicate(a, b, t)
+  await b.update({ wait: true })
+
+  // fail b's writes the way rocksdb-native does when the disk is full
+  let full = true
+  let failed = 0
+  const storage = b.core.state.storage
+  const write = storage.write
+  storage.write = function () {
+    const tx = write.call(this)
+    if (full) {
+      tx.flush = () => {
+        failed++
+        return Promise.reject(new Error('Batch was not applied', { cause: { code: 'ENOSPC' } }))
+      }
+    }
+    return tx
+  }
+
+  let blamed = 0
+  let closed = false
+  b.on('verification-error', () => blamed++)
+  s2.on('close', () => {
+    closed = true
+  })
+
+  const block = b.get(0, { timeout: 10000 })
+  while (failed < 1) await eventFlush() // block write
+
+  await a.append('c')
+  while (failed < 2) await eventFlush() // hint write for the new remote length
+
+  full = false
+
+  await t.execution(block, 'resumes once writes work again')
+  t.is(blamed, 0, 'no verification-error')
+  t.is(b.replicator.stats.invalidData, 0)
+  t.absent(closed, 'connection stays open')
+})
+
 test('invalid capability fails', async function (t) {
   t.plan(2)
 
