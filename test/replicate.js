@@ -427,6 +427,37 @@ test('high latency reorg', async function (t) {
   t.is(same, 80)
 })
 
+test('remote truncation rejects every pending get on a removed block', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f'])
+
+  const s = replicate(a, b, t)
+  await b.get(0)
+  await unreplicate(s)
+
+  let rejected = 0
+  for (let i = 0; i < 3; i++) {
+    b.get(4).then(
+      () => t.fail('should not resolve'),
+      (err) => {
+        if (err.code === 'SNAPSHOT_NOT_AVAILABLE') rejected++
+      }
+    )
+  }
+
+  await a.truncate(2)
+
+  const truncated = new Promise((resolve) => b.once('truncate', resolve))
+  replicate(a, b, t)
+  await truncated
+  await eventFlush()
+
+  t.is(b.fork, 1)
+  t.is(rejected, 3, 'all pending gets rejected')
+})
+
 test('invalid signature fails', async function (t) {
   t.plan(3)
 
