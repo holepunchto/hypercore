@@ -227,7 +227,7 @@ test('paused peer requesting a cleared block', async function (t) {
   await b.get(0)
 
   a.replicator.peers[0].paused = true
-  await a.clear(2) // not broadcast to paused peers, so b still asks a for it
+  await a.clear(2)
 
   await t.exception(b.get(2, { timeout: 500 }), /REQUEST_TIMEOUT/)
   t.ok(b.replicator.peers[0].stats.notAvailableBackoffs > 0, 'answered with no data')
