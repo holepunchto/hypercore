@@ -447,6 +447,9 @@ test('remote truncation rejects every pending get on a removed block', async fun
     )
   }
 
+  // each get reads storage first, so wait until all three are attached as requests
+  while (b.activeRequests.length < 3) await eventFlush()
+
   await a.truncate(2)
 
   const truncated = new Promise((resolve) => b.once('truncate', resolve))
