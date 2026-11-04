@@ -1870,6 +1870,31 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
+test('seek requests stay inside the seek range', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(3)
+
+  const peer = b.replicator.peers[0]
+  const sent = []
+  const send = peer._send
+  const random = Math.random
+
+  peer._send = (req) => sent.push(req)
+  Math.random = () => 0.99 // start at block 3, which b has
+  try {
+    peer._requestSeek({ seeker: { start: 2, end: 4, bytes: 2, padding: 0 }, inflight: [] })
+  } finally {
+    peer._send = send
+    Math.random = random
+  }
+
+  t.is(sent[0].hash.index, 4, 'block 2')
+})
+
 test('uses hotswaps to avoid long download tail', async (t) => {
   const core = await create(t)
   const slowCore = await create(t, core.key)
