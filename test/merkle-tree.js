@@ -347,26 +347,28 @@ test('proof seek with upgrade', async function (t) {
   )
 })
 
-test('proof seek past the upgrade with additional', async function (t) {
-  const { session, storage } = await create(t, 10)
+test('proof seek past the upgrade on a sparse tree', async function (t) {
+  const { session, storage } = await create(t, 16)
+  const clone = await create(t)
 
   const b = storage.read()
-  const p = await MerkleTree.proof(session, b, {
-    seek: { bytes: 17, padding: 0 },
-    upgrade: { start: 0, length: 8 }
+  const p = await MerkleTree.proof(session, b, { upgrade: { start: 0, length: 12 } })
+  b.tryFlush()
+  await flushBatch(clone.session, await MerkleTree.verify(clone.session, await p.settle()))
+
+  const rx = clone.storage.read()
+  const q = await MerkleTree.proof(clone.session, rx, {
+    seek: { bytes: 27, padding: 0 },
+    upgrade: { start: 0, length: 12 }
   })
 
-  b.tryFlush()
-  const proof = await p.settle()
+  rx.tryFlush()
+  const proof = await q.settle()
 
   t.is(proof.seek, null)
   t.alike(
-    proof.upgrade.nodes.map((n) => n.index),
-    [7]
-  )
-  t.alike(
     proof.upgrade.additionalNodes.map((n) => n.index),
-    [17]
+    [27]
   )
 })
 
