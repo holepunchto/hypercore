@@ -1280,6 +1280,22 @@ test('a fork landing while a proof refits does not rewind the fork', async funct
   t.absent(await b.has(2), 'block was not stored')
 })
 
+test('refit rejects a block index past what a tree can address', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const proof = {
+    fork: 0,
+    block: { index: 2 ** 52, value: b4a.from('x'), nodes: [] },
+    hash: null,
+    seek: null,
+    upgrade: { start: 1, length: 1, nodes: [], additionalNodes: [], signature: b4a.alloc(64) },
+    manifest: null
+  }
+
+  await t.exception(b.applyProof(proof), /INVALID_OPERATION/)
+})
+
 test('concurrent gets of a local block share one storage read', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c'])
