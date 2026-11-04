@@ -1870,6 +1870,54 @@ test('seek against non sparse peer', async function (t) {
   t.is(offset, 0)
 })
 
+test('seek past the announced length against a sparse peer', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 12; i++) await a.append(b4a.alloc(10))
+
+  // b has the length but no blocks, like a mirror catching up
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  const c = await create(t, a.key, { eagerUpgrade: false })
+  const s1 = b.replicate(true, { keepAlive: false })
+  const s2 = c.replicate(false, { keepAlive: false })
+  s1.pipe(s2)
+
+  // hold back what c sends, so b only sees the seek after it grew
+  let held = null
+  s2.on('data', (data) => {
+    if (held) held.push(data)
+    else s1.write(data)
+  })
+  t.teardown(() => {
+    s1.destroy()
+    s2.destroy()
+  })
+
+  while (!c.replicator.peers.length || c.replicator.peers[0].remoteLength !== 12) {
+    await eventFlush()
+  }
+
+  // past the 120 bytes c knows of, so this is a seek with an upgrade to 12
+  held = []
+  c.seek(125).catch(noop)
+  await eventFlush()
+
+  // one append, so b upgrades in one step without the new leaf nodes
+  await a.append([b4a.alloc(10), b4a.alloc(10), b4a.alloc(10), b4a.alloc(10)])
+  await b.update({ wait: true })
+
+  const pending = held
+  held = null
+  for (const data of pending) s1.write(data)
+
+  const timeout = new Promise((resolve) => setTimeout(resolve, 2000, false))
+  t.ok(await Promise.race([c.update({ wait: true }), timeout]), 'sparse peer answered')
+  t.is(c.length, 16)
+  t.absent(s1.destroyed, 'connection is still open')
+})
+
 test('uses hotswaps to avoid long download tail', async (t) => {
   const core = await create(t)
   const slowCore = await create(t, core.key)

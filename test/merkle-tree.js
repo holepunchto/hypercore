@@ -347,6 +347,29 @@ test('proof seek with upgrade', async function (t) {
   )
 })
 
+test('proof seek past the upgrade with additional', async function (t) {
+  const { session, storage } = await create(t, 10)
+
+  const b = storage.read()
+  const p = await MerkleTree.proof(session, b, {
+    seek: { bytes: 17, padding: 0 },
+    upgrade: { start: 0, length: 8 }
+  })
+
+  b.tryFlush()
+  const proof = await p.settle()
+
+  t.is(proof.seek, null)
+  t.alike(
+    proof.upgrade.nodes.map((n) => n.index),
+    [7]
+  )
+  t.alike(
+    proof.upgrade.additionalNodes.map((n) => n.index),
+    [17]
+  )
+})
+
 test('verify proof #1', async function (t) {
   const { session, storage } = await create(t, 10)
   const clone = await create(t)
