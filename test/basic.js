@@ -1222,6 +1222,21 @@ test('refit declines unbridgeable proofs but still rejects malformed ones', asyn
   }
 })
 
+test('refit rejects a proof with more nodes than any tree has', async function (t) {
+  const a = await create(t)
+  for (let i = 0; i < 4; i++) await a.append('block-' + i)
+
+  const b = await create(t, a.key)
+
+  const proof = await a.proof({ upgrade: { start: 1, length: 3 } })
+  proof.manifest = a.manifest
+  while (proof.upgrade.additionalNodes.length <= 2 * 64) {
+    proof.upgrade.additionalNodes.push(proof.upgrade.nodes[0])
+  }
+
+  await t.exception(b.applyProof(proof), /INVALID_OPERATION/)
+})
+
 test('a fork landing while a proof refits does not rewind the fork', async function (t) {
   const a = await create(t)
   for (let i = 0; i < 8; i++) await a.append('block-' + i)
