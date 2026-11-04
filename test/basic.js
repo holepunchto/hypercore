@@ -1088,6 +1088,23 @@ test('stateless batch proofs apply in any order', async function (t) {
   }
 })
 
+test('zero length upgrade is rejected', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  const proof = {
+    fork: 0,
+    block: null,
+    hash: null,
+    seek: null,
+    upgrade: { start: 0, length: 0, nodes: [], additionalNodes: [], signature: b4a.alloc(64) },
+    manifest: null
+  }
+
+  await t.exception(b.applyProof(proof), /INVALID_OPERATION/)
+  await t.exception(b.verifyFullyRemote(proof), /INVALID_OPERATION/)
+})
+
 test('proof reports the length it upgrades a receiver to', async function (t) {
   // the replicator records coreLength as the peer's pushedLength
   for (const [blocks, upgrade] of [
