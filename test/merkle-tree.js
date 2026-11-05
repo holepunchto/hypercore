@@ -372,6 +372,22 @@ test('proof seek past the upgrade on a sparse tree', async function (t) {
   )
 })
 
+test('proof hash that spans the upgrade start and seek', async function (t) {
+  const { session, storage } = await create(t, 8)
+
+  // hash 3 covers blocks 0 to 3, so it is not below the upgrade
+  const b = storage.read()
+  await t.exception(
+    MerkleTree.proof(session, b, {
+      hash: { index: 3, nodes: 0 },
+      seek: { bytes: 7, padding: 0 },
+      upgrade: { start: 3, length: 1 }
+    }),
+    /INVALID_OPERATION/
+  )
+  b.destroy()
+})
+
 test('verify proof #1', async function (t) {
   const { session, storage } = await create(t, 10)
   const clone = await create(t)
