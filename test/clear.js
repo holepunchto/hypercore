@@ -142,6 +142,21 @@ test('clear + replication, peer still requests blocks after the cleared range', 
   t.alike(block, b4a.from('h'), 'block after the cleared one')
 })
 
+test('clear + replication, cleared range past the first bitfield page can be downloaded again', async function (t) {
+  const a = await create(t)
+  await a.append(new Array(40010).fill('a'))
+  await a.clear(0) // not contiguous, so b only learns what a has from bitfields
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+
+  await b.download({ start: 40000, end: 40010 }).done()
+  await b.clear(40000, 40010)
+  await b.download({ start: 40000, end: 40010 }).done()
+
+  t.ok(await b.has(40000, 40010))
+})
+
 test('incorrect clear', async function (t) {
   const core = await create(t)
 
