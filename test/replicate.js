@@ -427,6 +427,49 @@ test('high latency reorg', async function (t) {
   t.is(same, 80)
 })
 
+test('asking for the same any range again does not resend the want', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c'])
+
+  const peerAdded = new Promise((resolve) => b.once('peer-add', resolve))
+  replicate(a, b, t)
+  const peer = await peerAdded
+
+  let wants = 0
+  let unwants = 0
+  const { wireWant, wireUnwant } = peer
+  const sendWant = wireWant.send.bind(wireWant)
+  const sendUnwant = wireUnwant.send.bind(wireUnwant)
+  wireWant.send = (m) => {
+    wants++
+    return sendWant(m)
+  }
+  wireUnwant.send = (m) => {
+    unwants++
+    return sendUnwant(m)
+  }
+
+  // not aligned to a want batch, like a seek or fork range
+  const handle = {
+    wants: null,
+    addWant(w) {
+      if (this.wants === null) this.wants = new Set()
+      this.wants.add(w)
+    },
+    removeWant(w) {
+      if (this.wants !== null) this.wants.delete(w)
+    }
+  }
+
+  peer._maybeWantAnyRange(5, 3, handle)
+  peer._maybeWantAnyRange(5, 3, handle)
+
+  t.is(wants, 1, 'want sent once')
+  t.is(unwants, 0, 'nothing unwanted')
+})
+
 test('invalid signature fails', async function (t) {
   t.plan(3)
 
