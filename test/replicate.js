@@ -427,6 +427,28 @@ test('high latency reorg', async function (t) {
   t.is(same, 80)
 })
 
+test('reader re-downloads blocks replaced by a truncation it saw while connected', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  for (let i = 0; i < 10; i++) await a.append('old' + i)
+  await a.clear(0) // sparse writer, so b relies on its view of a's bitfield
+
+  replicate(a, b, t)
+
+  await b.download({ start: 1, end: 10 }).done()
+
+  const truncated = new Promise((resolve) => b.once('truncate', resolve))
+  await a.truncate(5)
+  for (let i = 5; i < 10; i++) await a.append('new' + i)
+  await truncated
+
+  await b.download({ start: 1, end: 10 }).done()
+
+  t.is(b.fork, 1)
+  for (let i = 5; i < 10; i++) t.alike(await b.get(i), b4a.from('new' + i))
+})
+
 test('invalid signature fails', async function (t) {
   t.plan(3)
 
