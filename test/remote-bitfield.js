@@ -168,6 +168,25 @@ test('ranges extend remote contiguous length', async function (t) {
   t.is(peer._remoteContiguousLength, 3072)
 })
 
+test('remote contiguous length past the last bitfield page', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await eventFlush()
+
+  const peer = getPeer(b, a)
+
+  await peer.onrange({ drop: false, start: 5, length: 1 })
+  await peer.onrange({ drop: false, start: 0, length: 100000 })
+
+  t.is(peer._remoteContiguousLength, 100000)
+
+  peer.onbitfield({ start: 2 ** 21, bitfield: new Uint32Array([1]) })
+
+  t.is(peer._remoteContiguousLength, 100000)
+})
+
 test('bitfield messages sent on cache miss', async function (t) {
   const original = await create(t)
   const sparse = await create(t, original.key)
