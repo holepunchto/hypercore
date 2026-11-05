@@ -19,6 +19,15 @@ test('remote bitfield - set range on page boundary', function (t) {
   t.is(b.findFirst(true, 2048), 2048)
 })
 
+test('remote bitfield - findFirst(false) past the last page never returns less than the position', function (t) {
+  const b = new RemoteBitfield()
+
+  b.set(10, true) // only the first page exists
+
+  t.is(b.findFirst(false, 100000), 100000)
+  t.is(b.firstUnset(40000), 40000)
+})
+
 test('remote bitfield - set range to false', function (t) {
   const b = new RemoteBitfield()
 

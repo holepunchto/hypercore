@@ -218,6 +218,21 @@ test('invalidRequest stat', async function (t) {
   await b.close()
 })
 
+test('paused peer requesting a cleared block', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(0)
+
+  a.replicator.peers[0].paused = true
+  await a.clear(2)
+
+  await t.exception(b.get(2, { timeout: 500 }), /REQUEST_TIMEOUT/)
+  t.ok(b.replicator.peers[0].stats.notAvailableBackoffs > 0, 'answered with no data')
+})
+
 test('invalidRequests backoff (slow)', async function (t) {
   // Note: warnings about replication stream errors are expected
   // for this test, since we force them

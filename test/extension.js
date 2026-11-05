@@ -65,3 +65,31 @@ test('two extensions', async function (t) {
   await eventFlush()
   t.is(messages.length, 1) // First message gets ignored
 })
+
+test('closing a session removes its extensions from connected peers', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  replicate(a, b, t)
+  await eventFlush()
+
+  const s = b.session()
+  await s.ready()
+
+  s.registerExtension('test-extension', {
+    encoding: 'utf-8',
+    onmessage: () => t.fail('closed session got a message')
+  })
+  const aExt = a.registerExtension('test-extension', {
+    encoding: 'utf-8'
+  })
+
+  await eventFlush()
+  t.ok(b.peers[0].extensions.has('test-extension'))
+
+  await s.close()
+  t.absent(b.peers[0].extensions.has('test-extension'))
+
+  aExt.send('hello', a.peers[0])
+  await eventFlush()
+})
