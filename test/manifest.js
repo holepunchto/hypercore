@@ -114,7 +114,7 @@ test('create verifier - single signer no sign', async function (t) {
     {
       signer: 0,
       signature: crypto.sign(batch.signable(verifier.manifestHash), keyPair.secretKey),
-      patch: null
+      patch: 0
     }
   ])
 
