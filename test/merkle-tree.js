@@ -318,6 +318,25 @@ test('proof block and seek, with upgrade', async function (t) {
   )
 })
 
+test('proof seek with upgrade, missing root', async function (t) {
+  const { session, storage } = await create(t, 16)
+  const clone = await create(t)
+
+  const b = storage.read()
+  const p = await MerkleTree.proof(session, b, { upgrade: { start: 0, length: 12 } })
+  b.tryFlush()
+  await flushBatch(clone.session, await MerkleTree.verify(clone.session, await p.settle()))
+
+  const rx = clone.storage.read()
+  const q = MerkleTree.proof(clone.session, rx, {
+    seek: { bytes: 18, padding: 0 },
+    upgrade: { start: 0, length: 10 }
+  })
+
+  rx.tryFlush()
+  await t.exception(q, /INVALID_OPERATION/)
+})
+
 test('proof seek with upgrade', async function (t) {
   const { session, storage } = await create(t, 10)
 
