@@ -2696,6 +2696,45 @@ test('non active disables push mode', async function (t) {
   t.ok(a.peers[0].remoteAllowPush)
 })
 
+test('setUploading(false) does not serve blocks', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+
+  t.is(await b.get(0), 'a')
+
+  b.setUploading(false)
+
+  // downloading from a still works while b is not uploading
+  t.is(await b.get(1), 'b')
+
+  const c = await create(t, a.key, { valueEncoding: 'utf-8' })
+  let uploads = 0
+  b.on('upload', () => uploads++)
+
+  replicate(b, c, t)
+  await eventFlush()
+
+  t.is(c.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    c.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+
+  t.is(stalled, 'stalled')
+  t.is(uploads, 0)
+
+  b.setUploading(true)
+  await eventFlush()
+
+  t.is(c.peers[0].remoteUploading, true)
+  t.is(await c.get(0), 'a')
+  t.ok(uploads > 0)
+})
+
 test('one missing block, big core (slow)', async function (t) {
   t.timeout(120_000)
 

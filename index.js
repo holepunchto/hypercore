@@ -94,6 +94,7 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.weak ? !!opts.active : opts.active !== false
+    this._uploading = true
 
     this.waits = 0
 
@@ -308,6 +309,14 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
+  setUploading(bool) {
+    const uploading = !!bool
+    if (this.closing) return
+    this._uploading = uploading
+    if (!this.opened || !this.core) return
+    this.core.replicator.setUploading(uploading)
+  }
+
   async setAlwaysLatestBlock(bool) {
     if (!this.opened) await this.opening
 
@@ -413,6 +422,10 @@ class Hypercore extends EventEmitter {
     // one session sets for pushOnly for all
     if (opts.pushOnly === true) {
       this.core.replicator.setPushOnly(true)
+    }
+
+    if (this._uploading === false) {
+      this.core.replicator.setUploading(false)
     }
 
     if (parent) {
