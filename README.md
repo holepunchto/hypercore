@@ -710,7 +710,7 @@ When calling `core.setActive(true)` make sure to later call `core.setActive(fals
 
 Set whether this core uploads block data to peers. Uploading is on by default.
 
-`core.setUploading(false)` keeps downloading and still syncs the core length, but peers are told this core is not uploading, so it does not answer their block requests. Call `core.setUploading(true)` to start serving blocks again. The flag is shared by every session on the core.
+`core.setUploading(false)` keeps downloading. Peers are told this core is not uploading, so they stop requesting blocks, while length proofs and availability replies still go out. Call `core.setUploading(true)` to start serving blocks again. The flag is shared by every session on the core.
 
 #### `core.setAlwaysLatestBlock(enabled)`
 

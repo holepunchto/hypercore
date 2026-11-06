@@ -95,6 +95,7 @@ class Hypercore extends EventEmitter {
     this._findingPeers = 0
     this._active = opts.weak ? !!opts.active : opts.active !== false
     this._uploading = true
+    this._uploadingSet = false
 
     this.waits = 0
 
@@ -313,6 +314,7 @@ class Hypercore extends EventEmitter {
     const uploading = !!bool
     if (this.closing) return
     this._uploading = uploading
+    this._uploadingSet = true
     if (!this.opened || !this.core) return
     this.core.replicator.setUploading(uploading)
   }
@@ -424,10 +426,6 @@ class Hypercore extends EventEmitter {
       this.core.replicator.setPushOnly(true)
     }
 
-    if (this._uploading === false) {
-      this.core.replicator.setUploading(false)
-    }
-
     if (parent) {
       if (parent._stateIndex === -1) await parent.ready()
       if (!this.keyPair) this.keyPair = parent.keyPair
@@ -507,6 +505,12 @@ class Hypercore extends EventEmitter {
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
+
+    // Apply after every await in open. A call during createSession only stores
+    // the flag until this point, and a default session must not turn uploads back on.
+    if (this._uploadingSet === true) {
+      this.core.replicator.setUploading(this._uploading)
+    }
 
     this.opened = true
   }
