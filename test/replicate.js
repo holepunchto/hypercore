@@ -2855,6 +2855,29 @@ test('setUploading during session open is applied', async function (t) {
   t.is(stalled, 'stalled')
 })
 
+test('opening session does not undo a later setUploading', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append('a')
+
+  const s = a.session({ name: 'draft' })
+  s.setUploading(true)
+  a.setUploading(false)
+  await s.ready()
+  t.teardown(() => s.close())
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+  await eventFlush()
+
+  t.is(b.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    b.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+  t.is(stalled, 'stalled')
+})
+
 test('one missing block, big core (slow)', async function (t) {
   t.timeout(120_000)
 
