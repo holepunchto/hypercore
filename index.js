@@ -44,6 +44,9 @@ const {
 // but we enforce 15mb to ensure smooth replication (each block is transmitted atomically)
 const MAX_SUGGESTED_BLOCK_SIZE = 15 * 1024 * 1024
 
+// Shared by every session. A call made while opening must not overwrite a later one.
+let nextUploadingEpoch = 0
+
 class Hypercore extends EventEmitter {
   constructor(storage, key, opts) {
     super()
@@ -94,6 +97,8 @@ class Hypercore extends EventEmitter {
     this._snapshot = null
     this._findingPeers = 0
     this._active = opts.weak ? !!opts.active : opts.active !== false
+    this._uploading = true
+    this._uploadingEpoch = 0
 
     this.waits = 0
 
@@ -308,6 +313,15 @@ class Hypercore extends EventEmitter {
     this.core.replicator.updateActivity(this._active ? 1 : -1)
   }
 
+  setUploading(bool) {
+    const uploading = !!bool
+    if (this.closing) return
+    this._uploading = uploading
+    this._uploadingEpoch = ++nextUploadingEpoch
+    if (!this.core) return
+    this.core.replicator.setUploading(uploading, this._uploadingEpoch)
+  }
+
   async setAlwaysLatestBlock(bool) {
     if (!this.opened) await this.opening
 
@@ -494,6 +508,12 @@ class Hypercore extends EventEmitter {
     }
 
     this.core.replicator.updateActivity(this._active ? 1 : 0)
+
+    // A call made before the replicator existed is applied here. A newer call from
+    // another session has a higher epoch and is left alone.
+    if (this._uploadingEpoch > 0) {
+      this.core.replicator.setUploading(this._uploading, this._uploadingEpoch)
+    }
 
     this.opened = true
   }
