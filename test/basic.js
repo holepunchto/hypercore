@@ -520,13 +520,20 @@ test('count named session', async function (t) {
   await core.close()
 })
 
-test.skip('storage info', async function (t) {
+test('storage info', async function (t) {
   const core = await create(t)
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   const info = await core.info({ storage: true })
 
-  t.snapshot(info.storage)
+  t.ok(info.storage !== null)
+  for (const section of ['oplog', 'tree', 'blocks', 'bitfield']) {
+    t.ok(
+      typeof info.storage[section] === 'number' && info.storage[section] >= 0,
+      section + ' reports a byte size'
+    )
+  }
+  t.ok(info.storage.blocks > 0, 'blocks section holds the appended data')
 
   await core.close()
 })
