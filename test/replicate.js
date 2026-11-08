@@ -3521,4 +3521,16 @@ test('stream that closes while the core opens is not attached', async function (
   await core.close()
 })
 
+test('timed-out block requests are removed from the replication queue', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  // b never connects to a peer, so its requests can only time out
+  for (let i = 0; i < 5; i++) {
+    await t.exception(b.get(i, { timeout: 50 }))
+  }
+
+  t.is(b.core.replicator._queued.length, 0, 'timed-out requests leave the queue')
+})
+
 function noop() {}
