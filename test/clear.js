@@ -288,3 +288,25 @@ async function consumeStream(rx) {
   for await (const b of rx) res.push(b)
   return res
 }
+
+test('clear on a session with dependencies keeps the blocks after the range', async function (t) {
+  const a = await create(t)
+  await a.append(['1', '2', '3', '4', '5'])
+
+  const s = a.session({ name: 'batch' })
+  await s.ready()
+
+  await s.clear(1, 2)
+
+  t.ok(await s.has(0), 'block before the range is kept')
+  t.is(await s.has(1), false, 'block in the range is cleared')
+  t.is(await s.has(2), false, 'block in the range is cleared')
+  t.ok(await s.has(3), 'block after the range is kept')
+  t.ok(await s.has(s.length - 1), 'last block is kept')
+  t.alike(await s.get(4), b4a.from('5'), 'last block still resolves')
+
+  t.ok(await a.has(3), 'default session is unaffected')
+  t.alike(await a.get(4), b4a.from('5'), 'default session block still resolves')
+
+  await s.close()
+})
