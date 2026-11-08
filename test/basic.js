@@ -2,6 +2,7 @@ const test = require('brittle')
 const b4a = require('b4a')
 const HypercoreStorage = require('hypercore-storage')
 const crypto = require('hypercore-crypto')
+const safetyCatch = require('safety-catch')
 
 const Hypercore = require('../')
 const { create, createStorage, replicate, eventFlush } = require('./helpers')
@@ -521,21 +522,41 @@ test('count named session', async function (t) {
 })
 
 test('storage info', async function (t) {
-  const core = await create(t)
+  const db = await createStorage(t)
+  const core = new Hypercore(db)
+  await core.ready()
+  t.teardown(() => core.close().catch(safetyCatch), { order: 1 })
+
   await core.append(['a', 'b', 'c', 'd', 'e', 'f'])
 
   const info = await core.info({ storage: true })
 
   t.ok(info.storage !== null)
+  // appending writes every section: oplog header entries, tree nodes, the
+  // blocks themselves and bitfield pages - none may report zero
   for (const section of ['oplog', 'tree', 'blocks', 'bitfield']) {
-    t.ok(
-      typeof info.storage[section] === 'number' && info.storage[section] >= 0,
-      section + ' reports a byte size'
-    )
+    t.ok(info.storage[section] > 0, section + ' measures its own keys')
   }
-  t.ok(info.storage.blocks > 0, 'blocks section holds the appended data')
 
+  // a large block lands in the blocks range
+  await core.append(b4a.alloc(64 * 1024, 1))
+  const grown = await core.info({ storage: true })
+  t.ok(grown.storage.blocks > info.storage.blocks, 'an appended block grows the blocks section')
+
+  // a second core on the same storage must not measure the first core's keys
+  const other = new Hypercore(db, crypto.keyPair().publicKey)
+  await other.ready()
+  t.teardown(() => other.close().catch(safetyCatch), { order: 1 })
+
+  const otherInfo = await other.info({ storage: true })
+  t.ok(otherInfo.storage !== null)
+  for (const section of ['oplog', 'tree', 'blocks', 'bitfield']) {
+    t.ok(otherInfo.storage[section] < grown.storage[section], section + " range excludes another core's keys")
+  }
+
+  await other.close()
   await core.close()
+  await db.close()
 })
 
 test('storage info, off by default', async function (t) {
