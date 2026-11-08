@@ -3530,10 +3530,16 @@ test('timed-out block requests are removed from the replication queue', async fu
     await t.exception(b.get(i, { timeout: 20 }), /REQUEST_TIMEOUT/)
   }
 
-  // Removal is amortized: _queueBlock compacts the queue once more than 16
-  // stale entries dominate it, so the queue never retains more than 17 of
-  // the 100 timed-out requests (previously it retained all of them).
-  t.ok(b.core.replicator._queued.length <= 17, 'timed-out requests leave the queue')
+  // A concurrent batch that all times out together must be cleaned up too,
+  // without any later read to trigger it
+  const batch = []
+  for (let i = 0; i < 40; i++) batch.push(t.exception(b.get(i, { timeout: 20 }), /REQUEST_TIMEOUT/))
+  await Promise.all(batch)
+
+  // Removal is amortized: the queue is compacted once more than 16 stale
+  // entries dominate it, so it never retains more than 16 timed-out
+  // requests (previously it retained all of them until the core closed).
+  t.ok(b.core.replicator._queued.length <= 16, 'timed-out requests leave the queue')
 })
 
 function noop() {}
