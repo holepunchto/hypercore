@@ -3521,4 +3521,48 @@ test('stream that closes while the core opens is not attached', async function (
   await core.close()
 })
 
+test('missing local tree node answers NOT_AVAILABLE instead of destroying the stream', async function (t) {
+  const dir = await t.tmp()
+  let storage = await createStorage(t, dir)
+  let a = new Hypercore(storage)
+  await a.ready()
+
+  for (let i = 0; i < 8; i++) await a.append('block ' + i)
+
+  // Healthy full copy of a on independent storage
+  const c = await create(t, a.key)
+  replicate(a, c, t)
+  for (let i = 0; i < 8; i++) await c.get(i)
+
+  // Damage a's tree: drop block 1's stored leaf hash (flat-tree index 2),
+  // which the proof for block 0 needs. Cores get into this state when
+  // tree nodes go missing from storage (see #879, #908).
+  const tx = a.core.storage.write()
+  tx.deleteTreeNode(2)
+  await tx.flush()
+
+  // Reopen so the damaged tree is read back from storage
+  await a.close()
+  await storage.close()
+  storage = await createStorage(t, dir)
+  a = new Hypercore(storage)
+  await a.ready()
+  t.teardown(() => a.close().catch(() => {}), { order: 1 })
+
+  const b = await create(t, a.key)
+  const [s1, s2] = replicate(a, b, t)
+
+  // a cannot build the proof for block 0, so this request cannot be
+  // fulfilled by a - but the failure must not destroy the stream.
+  await t.exception(b.get(0, { timeout: 2000 }))
+
+  t.ok(!s1.destroyed, 'initiator stream stays open')
+  t.ok(!s2.destroyed, 'responder stream stays open')
+
+  // The requester treats a like any other peer without the block and
+  // gets it from another peer instead.
+  replicate(b, c, t)
+  t.is(b4a.toString(await b.get(0)), 'block 0')
+})
+
 function noop() {}
