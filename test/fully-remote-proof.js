@@ -4,7 +4,7 @@ const c = require('compact-encoding')
 const remote = require('../lib/fully-remote-proof.js')
 const messages = require('../lib/messages.js')
 
-const { create } = require('./helpers')
+const { create, replicate } = require('./helpers')
 
 test('fully remote proof - proof and verify', async function (t) {
   const core = await create(t)
@@ -59,4 +59,53 @@ test('fully remote proof - block, hash or seek not covered by the upgrade', asyn
   const opts = { index: 3, block: b4a.from('d'), upgrade: { start: 0, length: 2 } }
   const p = await remote.verify(store, await remote.proof(core, opts))
   t.alike(p.block.value, b4a.from('d'), 'block past the upgrade still verifies')
+})
+
+// Simulates the race from #791: the first head read inside verify() returns a
+// stale head, as if a concurrent notification advanced storage right after it
+// was read.
+function wrapStoreWithStaleHead(store, staleLength) {
+  return new Proxy(store, {
+    get(target, prop, receiver) {
+      if (prop !== 'resumeCore') return Reflect.get(target, prop, receiver)
+      return async function (discoveryKey) {
+        const core = await target.resumeCore(discoveryKey)
+        if (core === null) return null
+        let first = true
+        const read = core.read.bind(core)
+        core.read = function (...args) {
+          const rx = read(...args)
+          if (first) {
+            first = false
+            const getHead = rx.getHead.bind(rx)
+            rx.getHead = async function (...headArgs) {
+              const head = await getHead(...headArgs)
+              if (head === null) return null
+              return { ...head, length: staleLength }
+            }
+          }
+          return rx
+        }
+        return core
+      }
+    }
+  })
+}
+
+test('fully remote proof - newer uses freshest head', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(2)
+
+  const proof = await remote.proof(a)
+
+  const store = wrapStoreWithStaleHead(b.state.storage.store, 2)
+  const p = await remote.verify(store, proof)
+
+  t.ok(p !== null, 'proof verifies')
+  t.is(p.length, 3, 'proof length reported')
+  t.is(p.newer, false, 'storage already has the proof length, so it is not newer')
 })
