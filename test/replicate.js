@@ -1148,6 +1148,63 @@ test('one inflight request to a peer per block', async function (t) {
   t.is(uploads, 1)
 })
 
+test('destroying a download does not cancel inflight block requests', async function (t) {
+  const a = await create(t)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+
+  // Latency keeps the block requests inflight long enough to observe them
+  replicateDebugStream(a, b, t, { latency: 100, jitter: 50 })
+
+  let downloaded = 0
+  b.on('download', () => downloaded++)
+
+  const r = b.download({ start: 0, end: 5 })
+
+  // Wait for the first block requests to go out (the peer's initial upgrade
+  // request also counts as inflight, so check the block tracker explicitly)
+  let peer = null
+  for (let i = 0; i < 500; i++) {
+    const p = b.core.replicator.peers[0] || null
+    if (p !== null) {
+      let inflightBlocks = 0
+      for (const blk of b.core.replicator._blocks) inflightBlocks += blk.inflight.length
+      if (inflightBlocks > 0) {
+        peer = p
+        break
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+
+  t.ok(peer !== null, 'block requests are inflight')
+
+  const inflight = peer.inflight
+  const cancels = peer.stats.wireCancel.tx
+
+  r.destroy()
+  await eventFlush()
+  await eventFlush()
+
+  t.is(
+    peer.stats.wireCancel.tx,
+    cancels,
+    'no requests were cancelled when the download was destroyed'
+  )
+  t.is(peer.inflight, inflight, 'inflight requests were not cleared')
+
+  // The inflight requests still resolve: every requested block arrives and is
+  // stored, so no block request is left behind in the tracker.
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  t.ok(
+    b.core.replicator._blocks.isEmpty(),
+    'no block requests are stuck after the download was destroyed'
+  )
+  t.ok(downloaded > 0, 'blocks were downloaded after the download was destroyed')
+})
+
 test.skip('non-sparse replication', async function (t) {
   const a = await create(t)
   const b = await create(t, a.key)
