@@ -3525,9 +3525,13 @@ test('timed-out block requests are removed from the replication queue', async fu
   const a = await create(t)
   const b = await create(t, a.key)
 
-  // b never connects to a peer, so its requests can only time out
+  // b never connects to a peer, so its requests can only time out. Track the
+  // largest the queue gets: the bound must hold between compaction passes,
+  // not just at the end.
+  let maxQueued = 0
   for (let i = 0; i < 100; i++) {
     await t.exception(b.get(i, { timeout: 20 }), /REQUEST_TIMEOUT/)
+    maxQueued = Math.max(maxQueued, b.core.replicator._queued.length)
   }
 
   // A concurrent batch that all times out together must be cleaned up too,
@@ -3535,11 +3539,12 @@ test('timed-out block requests are removed from the replication queue', async fu
   const batch = []
   for (let i = 0; i < 40; i++) batch.push(t.exception(b.get(i, { timeout: 20 }), /REQUEST_TIMEOUT/))
   await Promise.all(batch)
+  maxQueued = Math.max(maxQueued, b.core.replicator._queued.length)
 
   // Removal is amortized: the queue is compacted once more than 16 stale
   // entries dominate it, so it never retains more than 16 timed-out
   // requests (previously it retained all of them until the core closed).
-  t.ok(b.core.replicator._queued.length <= 16, 'timed-out requests leave the queue')
+  t.ok(maxQueued <= 16, 'timed-out requests leave the queue')
 })
 
 function noop() {}
