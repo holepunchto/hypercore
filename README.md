@@ -313,7 +313,7 @@ The core will also gossip to peers it is connected to, that is no longer has the
 
 ```js
 {
-  diff: false // Returned `cleared` bytes object is null unless you enable this
+  diff: false // Return a `cleared` object counting how many blocks were actually cleared, e.g. { blocks: 1 }. Null unless you enable this
 }
 ```
 
