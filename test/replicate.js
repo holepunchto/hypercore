@@ -3526,11 +3526,14 @@ test('timed-out block requests are removed from the replication queue', async fu
   const b = await create(t, a.key)
 
   // b never connects to a peer, so its requests can only time out
-  for (let i = 0; i < 5; i++) {
-    await t.exception(b.get(i, { timeout: 50 }))
+  for (let i = 0; i < 100; i++) {
+    await t.exception(b.get(i, { timeout: 20 }), /REQUEST_TIMEOUT/)
   }
 
-  t.is(b.core.replicator._queued.length, 0, 'timed-out requests leave the queue')
+  // Removal is amortized: _queueBlock compacts the queue once more than 16
+  // stale entries dominate it, so the queue never retains more than 17 of
+  // the 100 timed-out requests (previously it retained all of them).
+  t.ok(b.core.replicator._queued.length <= 17, 'timed-out requests leave the queue')
 })
 
 function noop() {}
