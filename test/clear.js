@@ -181,13 +181,11 @@ test('clear blocks with diff option', async function (t) {
   const cleared = await core.clear(1337)
   t.is(cleared, null)
 
-  // todo: reenable bytes use api
+  const cleared2 = await core.clear(0, { diff: true })
+  t.is(cleared2.blocks, 1, 'the stored block was cleared')
 
-  // const cleared2 = await core.clear(0, { diff: true })
-  // t.ok(cleared2.blocks > 0)
-
-  // const cleared3 = await core.clear(0, { diff: true })
-  // t.is(cleared3.blocks, 0)
+  const cleared3 = await core.clear(0, { diff: true })
+  t.is(cleared3.blocks, 0, 'the block was already cleared')
 
   await core.close()
 })
