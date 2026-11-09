@@ -1772,6 +1772,27 @@ test('can define default max-inflight blocks for replicator peers', async functi
   )
 })
 
+test('inflight range set while a channel opens applies to that peer', async function (t) {
+  const a = await create(t)
+  await a.append('some block')
+
+  const b = await create(t, a.key)
+
+  // b initiates, so its channel is created a hop before the remote open arrives
+  const [n1, n2] = makeStreamPair(t, { latency: [50, 50] })
+  b.replicate(n1)
+  a.replicate(n2)
+
+  await n1.opened
+  await eventFlush()
+  t.is(b.core.replicator.peers.length, 0, 'channel still opening')
+
+  b.core.replicator.setInflightRange(2, 2)
+  await b.get(0)
+
+  t.alike(b.core.replicator.peers[0].inflightRange, [2, 2], 'Uses the range set while opening')
+})
+
 test('session id reuse does not stall', async function (t) {
   t.plan(2)
   t.timeout(90_000)
