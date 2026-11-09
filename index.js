@@ -677,7 +677,7 @@ class Hypercore extends EventEmitter {
     return Math.min(this.core.state.length, this.core.header.hints.contiguousLength)
   }
 
-  get tailContigLength() {
+  get tailContiguousLength() {
     if (this.opened === false) return 0
     const coreLength = this.core.state.length
     if (coreLength === 0) return 0
