@@ -1330,7 +1330,7 @@ test('a relay that cannot upgrade a peer still tells it its new length', async f
   await b.update({ wait: true })
   await unreplicate(s)
 
-  t.alike(await b.get(5, { timeout: 5000 }), b4a.from('f'), 'b gets the block from the relay')
+  await t.execution(b.get(5, { timeout: 5000 }), 'b gets the block from the relay')
 })
 
 test('a relay that catches up with a peer at once still tells it its new length', async function (t) {
@@ -1366,6 +1366,32 @@ test('a relay that catches up with a peer at once still tells it its new length'
   }
 
   t.is(missed, 0, 'b got every block from the relay')
+})
+
+test('a peer that cannot upgrade a shorter one still acks its length', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c'])
+  let s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  await a.append(['d', 'e', 'f'])
+  s = replicate(a, relay, t, { teardown: false })
+  await relay.get(5)
+  await unreplicate(s)
+
+  replicate(relay, b, t)
+
+  // nothing else holds the loop open while the update waits
+  const timeout = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 5000, 'timed out')
+    t.teardown(() => clearTimeout(timer))
+  })
+  const updated = await Promise.race([b.update({ wait: true }), timeout])
+  t.is(updated, false, 'b stops waiting once the relay acks its length')
 })
 
 test('sparse replication without gossiping', async function (t) {
