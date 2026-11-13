@@ -660,6 +660,14 @@ How many blocks are contiguously available starting from the first block of this
 
 Populated after `ready` has been emitted. Will be `0` before the event.
 
+#### `core.tailContiguousLength`
+
+How many blocks are contiguously available locally, counting backward from the shared default core's current end until the first missing block. Will be `0` if the core is empty or its final block is missing.
+
+Like `core.contiguousLength`, this describes the shared default core, not the calling session's own end. Named sessions and snapshots can have a different `core.length` while still returning this shared count.
+
+Populated after `ready` has been emitted. Will be `0` before the event.
+
 #### `core.remoteContiguousLength`
 
 How many blocks are contiguously available starting from the first block of this core on any known remote. This is only updated when a remote thinks it is fully contiguous such that they have all known blocks.
