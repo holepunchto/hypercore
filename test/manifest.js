@@ -1802,3 +1802,51 @@ async function partialCoreSignature(core, s, len) {
   const proof = await partialSignature(s.core, index, len, s.core.state.length, sig)
   return proof
 }
+
+test('missing compat manifest is recovered from the stored signature', async function (t) {
+  const open = await createStored(t)
+
+  const core = await open({ compat: true })
+  await core.append(['a', 'b', 'c'])
+  await dropManifest(core)
+  const key = core.key
+  await core.close()
+
+  const reopened = await open(key)
+  await reopened.ready()
+
+  t.alike(reopened.manifest, Verifier.defaultSignerManifest(key))
+  t.alike(await reopened.get(2), b4a.from('c'))
+  await reopened.close()
+
+  const again = await open(key)
+  await again.ready()
+  t.ok(again.core.header.manifest, 'manifest persisted')
+  await again.close()
+})
+
+test('missing non-compat manifest is not recovered', async function (t) {
+  const open = await createStored(t)
+  const keyPair = crypto.keyPair()
+
+  const core = await open({
+    keyPair,
+    manifest: { version: 1, signers: [{ publicKey: keyPair.publicKey }] }
+  })
+  await core.append(['a', 'b', 'c'])
+  await dropManifest(core)
+  const key = core.key
+  await core.close()
+
+  const reopened = await open(key)
+  await reopened.ready()
+
+  t.is(reopened.manifest, null)
+  await reopened.close()
+})
+
+async function dropManifest(core) {
+  const tx = core.core.storage.write()
+  tx.setAuth({ key: core.key, discoveryKey: core.discoveryKey, manifest: null, keyPair: null })
+  await tx.flush()
+}
