@@ -679,10 +679,7 @@ class Hypercore extends EventEmitter {
 
   get tailContiguousLength() {
     if (this.opened === false) return 0
-    const coreLength = this.core.state.length
-    if (coreLength === 0) return 0
-    const lastMissingIndex = this.core.bitfield.lastUnset(coreLength - 1)
-    return coreLength - lastMissingIndex - 1
+    return this.core.tailContiguousLength
   }
 
   get contiguousByteLength() {

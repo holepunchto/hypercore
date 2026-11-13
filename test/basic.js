@@ -922,6 +922,7 @@ test('append alignment to bitfield boundary', async function (t) {
     t.alike(getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
+    t.is(core.tailContiguousLength, 32768, 'the tail run fills the first bitfield page exactly')
 
     await core.close()
   }
@@ -934,6 +935,11 @@ test('append alignment to bitfield boundary', async function (t) {
     t.alike(getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
+    t.is(
+      core.tailContiguousLength,
+      32768,
+      'the tail recalculates to the first bitfield page boundary on reopen'
+    )
 
     await core.close()
   }
