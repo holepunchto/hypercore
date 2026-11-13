@@ -38,6 +38,7 @@ async function runTests() {
   await import('./sessions.js')
   await import('./snapshots.js')
   await import('./streams.js')
+  await import('./tail-contiguous-length.js')
   await import('./timeouts.js')
   await import('./user-data.js')
   await import('./wants.js')

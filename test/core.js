@@ -243,6 +243,44 @@ test('core - verify parallel upgrades', async function (t) {
   t.alike(tree2.signature, tree1.signature)
 })
 
+test('core - audit bitfield repair invalidates the tail cache', async function (t) {
+  const { core } = await create(t)
+
+  await core.state.append([b4a.from('0'), b4a.from('1'), b4a.from('2'), b4a.from('3')])
+  t.is(core.tailContiguousLength, 4)
+
+  const tx = core.state.storage.write()
+  tx.deleteBlock(3)
+  await tx.flush()
+
+  const stats = await core.audit({ tree: false, blocks: false, bitfield: true })
+
+  t.is(stats.droppedBits, 1)
+  t.is(core.tailContiguousLength, 0)
+})
+
+test('core - prologue copy invalidates the tail cache', async function (t) {
+  const { core: src } = await create(t)
+
+  await src.state.append([b4a.from('a'), b4a.from('b')])
+
+  const manifest = { ...src.header.manifest }
+  manifest.prologue = { length: src.state.length, hash: await src.state.hash() }
+
+  const { core: dst } = await create(t, { manifest })
+
+  const batch = src.state.createTreeBatch()
+  const proof = await getProof(src, { upgrade: { start: 0, length: src.state.length } })
+  proof.upgrade.signature = dst.verifier.sign(batch, src.header.keyPair)
+
+  t.ok(await dst.verify(proof))
+  t.is(dst.state.length, 2)
+  t.is(dst.tailContiguousLength, 0, 'the upgraded head has no blocks yet')
+
+  await dst.copyPrologue(src.state)
+  t.is(dst.tailContiguousLength, 2, 'copied prologue bits invalidate the empty tail')
+})
+
 test('core - clone', async function (t) {
   const { core } = await create(t)
 
