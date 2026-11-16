@@ -706,6 +706,12 @@ Set the core to be active or not. A core is considered 'active' if it should lin
 
 When calling `core.setActive(true)` make sure to later call `core.setActive(false)` to mark it as inactive otherwise the core's activity tracking will be inaccurate and keep replication channels open.
 
+#### `core.setUploading(uploading)`
+
+Set whether this core uploads block data to peers. Uploading is on by default.
+
+`core.setUploading(false)` keeps downloading. Peers are told this core is not uploading, so they stop requesting blocks, while length proofs and availability replies still go out. Call `core.setUploading(true)` to start serving blocks again. The flag is shared by every session on the core.
+
 #### `core.setAlwaysLatestBlock(enabled)`
 
 Set whether the replicator should always include a request for the latest block in an upgrade request (aka the peer has a length update). A runtime method for updating the `allowLatestBlock` option.

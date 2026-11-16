@@ -2696,6 +2696,188 @@ test('non active disables push mode', async function (t) {
   t.ok(a.peers[0].remoteAllowPush)
 })
 
+test('setUploading(false) does not serve blocks', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append(['a', 'b', 'c'])
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+
+  t.is(await b.get(0), 'a')
+
+  b.setUploading(false)
+
+  // downloading from a still works while b is not uploading
+  t.is(await b.get(1), 'b')
+
+  const c = await create(t, a.key, { valueEncoding: 'utf-8' })
+  let uploads = 0
+  b.on('upload', () => uploads++)
+
+  replicate(b, c, t)
+  await eventFlush()
+
+  t.is(c.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    c.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+
+  t.is(stalled, 'stalled')
+  t.is(uploads, 0)
+
+  b.setUploading(true)
+  await eventFlush()
+
+  t.is(c.peers[0].remoteUploading, true)
+  t.is(await c.get(0), 'a')
+  t.ok(uploads > 0)
+})
+
+test('length syncs while setUploading(false)', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append(['a', 'b', 'c'])
+  a.setUploading(false)
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+
+  t.is(await b.update({ wait: true }), true)
+  t.is(b.length, 3)
+
+  const stalled = await Promise.race([
+    b.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+
+  t.is(stalled, 'stalled')
+
+  a.setUploading(true)
+  t.is(await b.get(0), 'a')
+})
+
+test('in-flight block request resumes after setUploading(true)', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append('a')
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+  await b.update({ wait: true })
+  await b.clear(0)
+
+  a.setUploading(false)
+  await eventFlush()
+  t.is(b.peers[0].remoteUploading, false)
+
+  // The request was sent before this peer learned that uploads were off.
+  const reader = b.peers[0]
+  const onnodata = reader.onnodata
+  let nodata = 0
+  reader.onnodata = function (msg) {
+    nodata++
+    reader.remoteUploading = false
+    return onnodata.call(reader, msg)
+  }
+  reader.remoteUploading = true
+
+  let resolved = false
+  const pending = b.get(0).then((value) => {
+    resolved = true
+    return value
+  })
+
+  const deadline = Date.now() + 2000
+  while (nodata === 0 && Date.now() < deadline) await eventFlush()
+  t.ok(nodata > 0)
+  t.is(resolved, false)
+
+  a.setUploading(true)
+  t.is(
+    await Promise.race([pending, new Promise((resolve) => setTimeout(resolve, 1000, null))]),
+    'a'
+  )
+})
+
+test('sparse block resumes after setUploading(true)', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append(['a', 'b', 'c'])
+  await a.clear(0)
+  await a.clear(1)
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+  await b.update({ wait: true })
+
+  const peer = a.peers[0]
+  const onwant = peer.onwant
+  peer.onwant = function (range) {
+    if (a.core.replicator.uploading) a.setUploading(false)
+    return onwant.call(peer, range)
+  }
+
+  const pending = b.get(2)
+  for (let i = 0; i < 20 && b.peers[0].remoteUploading; i++) await eventFlush()
+  t.is(b.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    pending.then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+  t.is(stalled, 'stalled')
+
+  a.setUploading(true)
+  t.is(
+    await Promise.race([pending, new Promise((resolve) => setTimeout(resolve, 1000, null))]),
+    'c'
+  )
+})
+
+test('setUploading during session open is applied', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append('a')
+
+  const s = a.session({ name: 'draft' })
+  s.setUploading(false)
+  await s.ready()
+  t.teardown(() => s.close())
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+  await eventFlush()
+
+  t.is(b.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    b.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+  t.is(stalled, 'stalled')
+})
+
+test('opening session does not undo a later setUploading', async function (t) {
+  const a = await create(t, { valueEncoding: 'utf-8' })
+  await a.append('a')
+
+  const s = a.session({ name: 'draft' })
+  s.setUploading(true)
+  a.setUploading(false)
+  await s.ready()
+  t.teardown(() => s.close())
+
+  const b = await create(t, a.key, { valueEncoding: 'utf-8' })
+  replicate(a, b, t)
+  await eventFlush()
+
+  t.is(b.peers[0].remoteUploading, false)
+
+  const stalled = await Promise.race([
+    b.get(0).then(() => 'downloaded'),
+    new Promise((resolve) => setTimeout(resolve, 300, 'stalled'))
+  ])
+  t.is(stalled, 'stalled')
+})
+
 test('one missing block, big core (slow)', async function (t) {
   t.timeout(120_000)
 
