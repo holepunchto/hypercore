@@ -698,6 +698,46 @@ test('get undefined block is not allowed', async function (t) {
   await core.close()
 })
 
+test('get of a flushed block waits for the length to include it', async function (t) {
+  const core = await create(t)
+
+  const waiting = Promise.withResolvers()
+
+  let get = null
+
+  core.core.onupdatewait = waiting.resolve
+  core.core.postflush = async () => {
+    core.core.postflush = null
+    get = core.get(0).then((block) => ({ block, length: core.length }))
+    await waiting.promise
+  }
+
+  await core.append('hello')
+
+  const { block, length } = await get
+
+  t.alike(block, b4a.from('hello'))
+  t.is(length, 1)
+})
+
+test('get of a flushed block on a snapshot taken before the length includes it', async function (t) {
+  const core = await create(t)
+
+  let snapshot = null
+
+  core.core.postflush = async () => {
+    core.core.postflush = null
+    snapshot = core.snapshot()
+    await snapshot.ready()
+  }
+
+  await core.append('hello')
+
+  t.alike(await snapshot.get(0), b4a.from('hello'))
+
+  await snapshot.close()
+})
+
 test('valid manifest passed to a session is stored', async function (t) {
   t.plan(1)
 

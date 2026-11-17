@@ -963,10 +963,16 @@ class Hypercore extends EventEmitter {
   async _get(index, opts) {
     const block = await this.state.readBlock(index)
 
-    if (block !== null) return block
+    if (block !== null && (index < this.state.length || this.state.isSnapshot())) return block
 
     if (this.closing !== null) {
       throw SESSION_CLOSED('cannot get on a closed session', this.discoveryKey)
+    }
+
+    if (block !== null) {
+      if (this.core.onupdatewait !== null) this.core.onupdatewait(index, this)
+      await this.state.waitForUpdate()
+      return this._get(index, opts)
     }
 
     // snapshot should check if core has block
