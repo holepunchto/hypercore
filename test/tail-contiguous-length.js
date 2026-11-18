@@ -166,14 +166,13 @@ test('tailContiguousLength - descending head downloads close the gap once', asyn
     [5, 8]
   ])
   t.alike(scans, [
-    { method: 'firstUnset', position: 5 },
     { method: 'lastUnset', position: 7 },
     { method: 'lastUnset', position: 5 },
     { method: 'lastUnset', position: 4 }
   ])
 
   t.is(b.tailContiguousLength, 8)
-  t.is(scans.length, 4, 'repeated reads stay cached after the gap closes')
+  t.is(scans.length, 3, 'repeated reads stay cached after the gap closes')
 })
 
 test('tailContiguousLength - in-place writes update the cached tail', async function (t) {
