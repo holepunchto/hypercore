@@ -1394,6 +1394,61 @@ test('a peer that cannot upgrade a shorter one still acks its length', async fun
   t.is(updated, false, 'b stops waiting once the relay acks its length')
 })
 
+test('a relay that cannot upgrade a peer that catches up keeps one check for it', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c'])
+  let s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  // b catches up from these, one length at a time
+  const sources = []
+  for (const block of ['d', 'e']) {
+    await a.append(block)
+    const source = await create(t, a.key)
+    s = replicate(a, source, t, { teardown: false })
+    await source.download({ start: 0, end: a.length }).done()
+    await unreplicate(s)
+    sources.push(source)
+  }
+
+  // the relay jumps to 10 with only the roots, so it cannot upgrade b
+  await a.append(['f', 'g', 'h', 'i', 'j'])
+  s = replicate(a, relay, t, { teardown: false })
+  await relay.update({ wait: true })
+  await unreplicate(s)
+
+  replicate(relay, b, t)
+  await until(() => relay.replicator.peers.length === 1)
+  const peer = relay.replicator.peers[0]
+  await until(() => peer.remoteLength === 3)
+  await new Promise((resolve) => setTimeout(resolve, 100))
+
+  // the relay's checks for b finish only after b's next length has been processed
+  const canUpgrade = peer._canUpgrade.bind(peer)
+  let held = []
+  peer._canUpgrade = async function (length, fork) {
+    const check = peer.syncsProcessing === 0
+    const result = await canUpgrade(length, fork)
+    if (check) await new Promise((resolve) => held.push(resolve))
+    return result
+  }
+
+  for (const source of sources) {
+    const previous = held
+    held = []
+    replicate(b, source, t)
+    await until(() => held.length > 0)
+    for (const release of previous) release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+
+  t.is(held.length, 1, 'one check in flight')
+})
+
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
@@ -3576,6 +3631,12 @@ async function waitForBackoffs(peer, backoffs) {
   while (peer.stats.backoffs < backoffs) {
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
+}
+
+async function until(fn, ms = 5000) {
+  const end = Date.now() + ms
+  while (!fn() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 10))
+  return !!fn()
 }
 
 test('a timed out get does not swallow the next block request', async function (t) {
