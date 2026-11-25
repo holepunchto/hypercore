@@ -1368,6 +1368,55 @@ test('a relay that catches up with a peer at once still tells it its new length'
   t.is(missed, 0, 'b got every block from the relay')
 })
 
+test('a relay that catches up with a peer mid sync still tells it its new length', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+  relay.download({ start: 0, end: -1 })
+  b.download({ start: 0, end: -1 })
+
+  await a.append(['a', 'b', 'c'])
+  let toRelay = replicate(a, relay, t, { teardown: false })
+  let toB = replicate(a, b, t, { teardown: false })
+  await until(() => relay.contiguousLength === 3 && b.contiguousLength === 3)
+  await unreplicate(toRelay)
+  await unreplicate(toB)
+
+  replicate(relay, b, t)
+  await until(() => relay.replicator.peers.length === 1)
+  const peer = relay.replicator.peers[0]
+  await until(() => peer.remoteLength === 3)
+
+  // the relay's check for b at 3 finishes while it processes b's sync at 4
+  const canUpgrade = peer._canUpgrade.bind(peer)
+  const held = {}
+  let checked = false
+  peer._canUpgrade = async function (length, fork) {
+    const name = length === 3 ? 'check' : length === 4 ? 'sync' : null
+    if (name && !held[name]) await new Promise((resolve) => (held[name] = resolve))
+    const result = await canUpgrade(length, fork)
+    if (name === 'check') checked = true
+    return result
+  }
+
+  toRelay = replicate(a, relay, t, { teardown: false })
+  await a.append('d')
+  await until(() => held.check)
+
+  toB = replicate(a, b, t, { teardown: false })
+  await until(() => held.sync)
+  held.check()
+  await until(() => checked)
+  held.sync()
+
+  await unreplicate(toRelay)
+  await a.append('e')
+  await until(() => b.length === 5)
+
+  t.ok(await until(() => relay.length === 5), 'relay upgrades from b')
+  await unreplicate(toB)
+})
+
 test('a peer that cannot upgrade a shorter one still acks its length', async function (t) {
   const a = await create(t)
   const relay = await create(t, a.key)
