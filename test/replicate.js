@@ -1303,6 +1303,152 @@ test('downloaded blocks are not unslabbed if bigger than half of slab size', asy
   )
 })
 
+test('a relay that cannot upgrade a peer still tells it its new length', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append('a')
+  let s = replicate(a, relay, t, { teardown: false })
+  await relay.get(0)
+  await unreplicate(s)
+
+  // b holds only the roots of length 3, so neither it nor the relay can upgrade the other
+  await a.append(['b', 'c'])
+  s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  replicate(relay, b, t)
+
+  await a.append(['d', 'e', 'f'])
+  s = replicate(a, relay, t, { teardown: false })
+  t.alike(await relay.get(5), b4a.from('f'))
+  await unreplicate(s)
+
+  s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  await t.execution(b.get(5, { timeout: 5000 }), 'b gets the block from the relay')
+})
+
+test('a relay that catches up with a peer at once still tells it its new length', async function (t) {
+  let missed = 0
+
+  // the two catch-ups race, so one setup only sometimes lands the remote's sync mid-check
+  for (let i = 0; i < 10; i++) {
+    const a = await create(t)
+    const relay = await create(t, a.key)
+    const b = await create(t, a.key)
+
+    await a.append('a')
+    let s = replicate(a, relay, t, { teardown: false })
+    await relay.get(0)
+    await unreplicate(s)
+
+    await a.append(['b', 'c'])
+    s = replicate(a, b, t, { teardown: false })
+    await b.update({ wait: true })
+    await unreplicate(s)
+
+    const link = replicate(relay, b, t, { teardown: false })
+
+    await a.append(['d', 'e', 'f'])
+    const toRelay = replicate(a, relay, t, { teardown: false })
+    const toB = replicate(a, b, t, { teardown: false })
+    await Promise.all([relay.get(5), b.update({ wait: true })])
+    await unreplicate(toRelay)
+    await unreplicate(toB)
+
+    await b.get(5, { timeout: 1000 }).catch(() => missed++)
+    await unreplicate(link)
+  }
+
+  t.is(missed, 0, 'b got every block from the relay')
+})
+
+test('a peer that cannot upgrade a shorter one still acks its length', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c'])
+  let s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  await a.append(['d', 'e', 'f'])
+  s = replicate(a, relay, t, { teardown: false })
+  await relay.get(5)
+  await unreplicate(s)
+
+  replicate(relay, b, t)
+
+  // nothing else holds the loop open while the update waits
+  const timeout = new Promise((resolve) => {
+    const timer = setTimeout(resolve, 5000, 'timed out')
+    t.teardown(() => clearTimeout(timer))
+  })
+  const updated = await Promise.race([b.update({ wait: true }), timeout])
+  t.is(updated, false, 'b stops waiting once the relay acks its length')
+})
+
+test('a relay that cannot upgrade a peer that catches up keeps one check for it', async function (t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c'])
+  let s = replicate(a, b, t, { teardown: false })
+  await b.update({ wait: true })
+  await unreplicate(s)
+
+  // b catches up from these, one length at a time
+  const sources = []
+  for (const block of ['d', 'e']) {
+    await a.append(block)
+    const source = await create(t, a.key)
+    s = replicate(a, source, t, { teardown: false })
+    await source.download({ start: 0, end: a.length }).done()
+    await unreplicate(s)
+    sources.push(source)
+  }
+
+  // the relay jumps to 10 with only the roots, so it cannot upgrade b
+  await a.append(['f', 'g', 'h', 'i', 'j'])
+  s = replicate(a, relay, t, { teardown: false })
+  await relay.update({ wait: true })
+  await unreplicate(s)
+
+  replicate(relay, b, t)
+  await until(() => relay.replicator.peers.length === 1)
+  const peer = relay.replicator.peers[0]
+  await until(() => peer.remoteLength === 3)
+  await new Promise((resolve) => setTimeout(resolve, 100))
+
+  // the relay's checks for b finish only after b's next length has been processed
+  const canUpgrade = peer._canUpgrade.bind(peer)
+  let held = []
+  peer._canUpgrade = async function (length, fork) {
+    const check = peer.syncsProcessing === 0
+    const result = await canUpgrade(length, fork)
+    if (check) await new Promise((resolve) => held.push(resolve))
+    return result
+  }
+
+  for (const source of sources) {
+    const previous = held
+    held = []
+    replicate(b, source, t)
+    await until(() => held.length > 0)
+    for (const release of previous) release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+
+  t.is(held.length, 1, 'one check in flight')
+})
+
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
@@ -3485,6 +3631,12 @@ async function waitForBackoffs(peer, backoffs) {
   while (peer.stats.backoffs < backoffs) {
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
+}
+
+async function until(fn, ms = 5000) {
+  const end = Date.now() + ms
+  while (!fn() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 10))
+  return !!fn()
 }
 
 test('a timed out get does not swallow the next block request', async function (t) {
