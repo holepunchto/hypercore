@@ -1,6 +1,7 @@
 const test = require('brittle')
 const b4a = require('b4a')
 const CoreStorage = require('hypercore-storage')
+const rrp = require('resolve-reject-promise')
 const { create, createStorage, replicate, eventFlush } = require('./helpers')
 
 const Hypercore = require('../')
@@ -157,6 +158,78 @@ test('clear + replication, cleared range past the first bitfield page can be dow
   t.ok(await b.has(40000, 40010))
 })
 
+test('clear + replication, blocks requested while clearing can still be served', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(0) // stores the nodes blocks 1 and 2 are requested against
+
+  const flush = hold(b.state, 'flush')
+  const clear = b.clear(0) // deletes those nodes
+  await flush.held
+
+  const gets = Promise.all([b.get(1), b.get(2)])
+
+  // both verified before the clear is flushed, committed after in one batch
+  while (b.core._verifies === null || b.core._verifies.length < 2) await eventFlush()
+  flush.release()
+  await clear
+  await gets
+
+  const c = await create(t, a.key)
+  replicate(b, c, t)
+
+  const blocks = await Promise.all([
+    c.get(1, { timeout: 5000 }),
+    c.get(2, { timeout: 5000 })
+  ]).catch((err) => err.code)
+  t.alike(blocks, [b4a.from('b'), b4a.from('c')], 'c got the blocks from b')
+})
+
+test('clear + replication, download of a block cleared while inflight completes', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(0) // stores the node block 1 is requested against
+
+  const data = hold(b.peers[0], 'ondata')
+  const range = b.download({ start: 1, end: 2 })
+  await data.held
+
+  await b.clear(0, 2) // deletes that node
+  data.release()
+
+  let timer = null
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(resolve, 5000, false)
+  })
+
+  t.ok(await Promise.race([range.done(), timeout]), 'block 1 downloaded')
+  clearTimeout(timer)
+})
+
+test('clear + replication, seek into a range cleared while inflight resolves', async function (t) {
+  const a = await create(t)
+  await a.append(['a', 'b', 'c', 'd'])
+
+  const b = await create(t, a.key)
+  replicate(a, b, t)
+  await b.get(2) // stores the node of blocks 0-1, the seek narrows down on it
+
+  const data = hold(b.peers[0], 'ondata')
+  const seek = b.seek(1, { timeout: 5000 }).catch((err) => err.code)
+  await data.held
+
+  await b.clear(0, 4) // deletes that node
+  data.release()
+
+  t.alike(await seek, [1, 0], 'seek resolved')
+})
+
 test('incorrect clear', async function (t) {
   const core = await create(t)
 
@@ -287,4 +360,19 @@ async function consumeStream(rx) {
   const res = []
   for await (const b of rx) res.push(b)
   return res
+}
+
+// holds calls to obj[name] until released
+function hold(obj, name) {
+  const fn = obj[name]
+  const held = rrp()
+  const released = rrp()
+
+  obj[name] = async function (...args) {
+    held.resolve()
+    await released.promise
+    return fn.apply(this, args)
+  }
+
+  return { held: held.promise, release: released.resolve }
 }
