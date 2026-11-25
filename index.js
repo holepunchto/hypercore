@@ -37,7 +37,7 @@ const {
   SNAPSHOT_NOT_AVAILABLE,
   DECODING_ERROR,
   REQUEST_CANCELLED,
-  INVALID_CHECKSUM
+  INVALID_MANIFEST
 } = require('hypercore-errors')
 
 // Hypercore actually does not have any notion of max/min block sizes
@@ -149,7 +149,7 @@ class Hypercore extends EventEmitter {
     }
 
     if (key && !Verifier.isValidManifest(key, parsed)) {
-      throw INVALID_CHECKSUM('Manifest does not hash to provided key')
+      throw INVALID_MANIFEST('Manifest does not hash to provided key')
     }
 
     return parsed

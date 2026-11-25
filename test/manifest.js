@@ -1640,6 +1640,38 @@ test('manifest - core.setManifest accepts a raw encoded buffer directly', async 
   t.alike(core.manifest, manifest)
 })
 
+test('manifest - core.setManifest rejects a manifest that does not match the key', async function (t) {
+  const manifest = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: crypto.keyPair().publicKey
+      }
+    ]
+  })
+
+  const key = Verifier.manifestHash(manifest)
+  const create = await createStored(t)
+
+  const core = await create(key, { compat: false })
+  t.teardown(() => core.close())
+  await core.ready()
+
+  const other = Verifier.createManifest({
+    quorum: 1,
+    signers: [
+      {
+        signature: 'ed25519',
+        publicKey: crypto.keyPair().publicKey
+      }
+    ]
+  })
+
+  await t.exception(core.core.setManifest(other), /INVALID_MANIFEST/)
+  t.is(core.core.header.manifest, null)
+})
+
 test('manifest - Hypercore.parseManifest decodes a raw buffer', async function (t) {
   const keyPair = crypto.keyPair()
 
@@ -1680,8 +1712,11 @@ test('manifest - Hypercore.parseManifest throws if manifest does not hash to key
 
   const wrongKey = b4a.alloc(32, 1)
 
-  t.exception(() => Hypercore.parseManifest(manifest, wrongKey))
-  t.exception(() => Hypercore.parseManifest(Verifier.encodeManifest(manifest), wrongKey))
+  t.exception(() => Hypercore.parseManifest(manifest, wrongKey), /INVALID_MANIFEST/)
+  t.exception(
+    () => Hypercore.parseManifest(Verifier.encodeManifest(manifest), wrongKey),
+    /INVALID_MANIFEST/
+  )
 })
 
 test('manifest - Hypercore.parseManifest throws on an invalid manifest', async function (t) {
@@ -1705,6 +1740,19 @@ test('manifest - Hypercore.parseManifest throws on an invalid manifest', async f
       signers: [{ signature: 'ed25519' }]
     })
   )
+})
+
+test('manifest - proof with a manifest that does not match the key is rejected', async function (t) {
+  const writer = await create(t, { compat: false })
+  const other = await create(t, { compat: false })
+  await writer.append(b4a.from('a'))
+
+  const reader = await create(t, writer.key)
+
+  const proof = await writer.proof({ upgrade: { start: 0, length: 1 } })
+  proof.manifest = other.manifest
+
+  await t.exception(reader.applyProof(proof), /INVALID_MANIFEST/)
 })
 
 test('manifest - Hypercore.key accepts a raw encoded manifest buffer', async function (t) {
