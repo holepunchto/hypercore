@@ -1449,6 +1449,27 @@ test('a relay that cannot upgrade a peer that catches up keeps one check for it'
   t.is(held.length, 1, 'one check in flight')
 })
 
+test('a relay tells a peer it can upgrade once the missing roots arrive', async function (t) {
+  const { relay, b, toA } = await createStuckRelay(t)
+
+  // block 7 comes from a, and its proof brings those nodes
+  await relay.get(7)
+  await unreplicate(toA)
+
+  t.ok(await until(() => b.length === 20), 'b upgrades from the relay')
+})
+
+test('a relay tells a peer it can upgrade once a seek brings the missing roots', async function (t) {
+  const { relay, b, toA } = await createStuckRelay(t)
+
+  // a's seek proof for byte 7 brings those nodes without the block
+  t.alike(await relay.seek(7), [7, 0])
+  t.absent(await relay.has(7))
+  await unreplicate(toA)
+
+  t.ok(await until(() => b.length === 20), 'b upgrades from the relay')
+})
+
 test('sparse replication without gossiping', async function (t) {
   t.plan(4)
 
@@ -3616,6 +3637,34 @@ async function createAndDownload(t, core) {
   replicate(core, b, t, { teardown: false })
   await b.download({ start: 0, end: core.length }).done()
   return b
+}
+
+// the relay upgrades from 5 to 20 without the nodes it needs to upgrade b from 7
+async function createStuckRelay(t) {
+  const a = await create(t)
+  const relay = await create(t, a.key)
+  const b = await create(t, a.key)
+
+  await a.append(['a', 'b', 'c', 'd', 'e'])
+  let s = replicate(a, relay, t, { teardown: false })
+  await relay.download({ start: 0, end: 5 }).done()
+  await unreplicate(s)
+
+  await a.append(['f', 'g'])
+  s = replicate(a, b, t, { teardown: false })
+  await b.download({ start: 0, end: 7 }).done()
+  await unreplicate(s)
+
+  await a.append(['h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'])
+  const toA = replicate(a, relay, t, { teardown: false })
+  await relay.update({ wait: true })
+
+  replicate(relay, b, t)
+  await until(() =>
+    relay.replicator.peers.some((p) => p.remoteLength === 7 && p.syncsProcessing === 0)
+  )
+
+  return { relay, b, toA }
 }
 
 async function waitForRequestBlock(core) {
