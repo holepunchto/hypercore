@@ -165,3 +165,36 @@ async function count(storage, gte, lt) {
   for await (const _ of storage.db.iterator({ gte, lt })) n++
   return n
 }
+
+test('purge compacts by default and can be opted out of', async function (t) {
+  for (const [opts, expected] of [
+    [undefined, { compact: true }],
+    [{ compact: false }, { compact: false }]
+  ]) {
+    const dir = await t.tmp()
+    const storage = await createStorage(t, dir)
+
+    const received = []
+    const deleteCore = storage.deleteCore.bind(storage)
+    storage.deleteCore = function (ptr, options) {
+      received.push(options)
+      return deleteCore(ptr, options)
+    }
+
+    const keyPair = crypto.keyPair()
+    const core = new Hypercore(storage, { keyPair })
+    await core.append(['a', 'b', 'c'])
+
+    await core.purge(opts)
+
+    t.alike(received, [expected], 'deleteCore got ' + JSON.stringify(expected))
+    t.is(core.closed, true)
+
+    const reopened = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey })
+    await reopened.ready()
+
+    t.is(reopened.length, 0, 'nothing remains')
+
+    await reopened.close()
+  }
+})

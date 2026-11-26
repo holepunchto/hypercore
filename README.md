@@ -313,9 +313,14 @@ The core will also gossip to peers it is connected to, that is no longer has the
 
 ```js
 {
-  diff: false // Returned `cleared` bytes object is null unless you enable this
+  diff: false, // Returned `cleared` bytes object is null unless you enable this
+  reclaim: false // Compact the cleared blocks away instead of leaving them on disk
 }
 ```
+
+Clearing a range only marks the blocks as deleted, so the disk space is given back whenever the storage engine next compacts those files. Pass `reclaim` to compact the cleared range right away. It is off by default as it is far more expensive than the clear itself, so it is only worth it for large clears.
+
+Blocks stored inline are always reclaimed. Blocks larger than the storage's `minBlobSize` live in blob files, which are reclaimed a whole file at a time, so how much comes back depends on the size of the clear relative to the storage's `blobFileSize`: clearing a range spanning many blob files gives back nearly all of it, while clearing a range smaller than a single blob file gives back none of it.
 
 #### `await core.truncate(newLength, [options])`
 

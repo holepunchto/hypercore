@@ -288,3 +288,38 @@ async function consumeStream(rx) {
   for await (const b of rx) res.push(b)
   return res
 }
+
+test('clear with reclaim', async function (t) {
+  // under minBlobSize, so the values are stored inline in the table files
+  const block = b4a.alloc(1024, 1)
+
+  for (const reclaim of [false, true]) {
+    const storage = await createStorage(t)
+    const core = new Hypercore(storage)
+
+    await core.append(new Array(400).fill(block))
+    await storage.db.flush()
+
+    const before = await diskUsage(storage)
+
+    await core.clear(0, 200, { reclaim })
+    await storage.db.flush()
+
+    const after = await diskUsage(storage)
+
+    if (reclaim) t.ok(after < before * 0.75, 'the cleared blocks are off disk')
+    else t.ok(after > before * 0.9, 'the cleared blocks are still on disk')
+
+    t.alike(await core.get(200), block, 'the blocks outside the range survive')
+    t.is(await core.get(0, { wait: false }), null, 'the cleared blocks are gone')
+
+    await core.close()
+  }
+})
+
+async function diskUsage(storage) {
+  const sst = await storage.db.getProperty('rocksdb.total-sst-files-size')
+  const blobs = await storage.db.getProperty('rocksdb.total-blob-file-size')
+
+  return Number(sst) + Number(blobs)
+}
