@@ -869,6 +869,37 @@ test('contiguousLength gets updated after an append (also on disk)', async funct
   }
 })
 
+test('tail contiguous length follows holes cleared from the end', async function (t) {
+  const core = await create(t)
+
+  t.is(core.tailContiguousLength, 0, 'empty core has no tail blocks')
+
+  await core.append(['a', 'b', 'c', 'd', 'e'])
+  t.is(core.tailContiguousLength, 5, 'every appended block is present')
+
+  await core.clear(0, 2)
+  t.is(core.length, 5, 'clearing a prefix keeps the logical length')
+  t.is(core.contiguousLength, 0, 'forward contiguous length begins at the first hole')
+  t.is(
+    core.tailContiguousLength,
+    3,
+    'tail counts present blocks from the end, not the last hole index'
+  )
+
+  await core.clear(3)
+  t.is(core.tailContiguousLength, 1, 'a hole at 3 leaves only the last block contiguous')
+
+  await core.clear(4)
+  t.is(
+    core.tailContiguousLength,
+    0,
+    'a missing last block gives zero even when an earlier block is present'
+  )
+
+  await core.append(['f'])
+  t.is(core.tailContiguousLength, 1, 'a new block after a tail hole restarts the run')
+})
+
 test('append alignment to bitfield boundary', async function (t) {
   const tmpDir = await t.tmp()
 
@@ -891,6 +922,7 @@ test('append alignment to bitfield boundary', async function (t) {
     t.alike(getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
+    t.is(core.tailContiguousLength, 32768, 'the tail run fills the first bitfield page exactly')
 
     await core.close()
   }
@@ -903,6 +935,11 @@ test('append alignment to bitfield boundary', async function (t) {
     t.alike(getBitfields(core, 0, 32769), expectedBitfields)
     t.is(core.contiguousLength, 32768)
     t.is(core.core.header.hints.contiguousLength, 32768)
+    t.is(
+      core.tailContiguousLength,
+      32768,
+      'the tail recalculates to the first bitfield page boundary on reopen'
+    )
 
     await core.close()
   }

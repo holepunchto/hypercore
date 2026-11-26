@@ -677,6 +677,11 @@ class Hypercore extends EventEmitter {
     return Math.min(this.core.state.length, this.core.header.hints.contiguousLength)
   }
 
+  get tailContiguousLength() {
+    if (this.opened === false) return 0
+    return this.core.tailContiguousLength
+  }
+
   get contiguousByteLength() {
     return 0
   }
