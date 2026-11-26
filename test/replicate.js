@@ -3673,4 +3673,107 @@ test('stream that closes while the core opens is not attached', async function (
   await core.close()
 })
 
+test('unreplicate stops one core and leaves the stream alone', async function (t) {
+  const a1 = await create(t)
+  const a2 = await create(t)
+
+  await a1.append('a')
+  await a2.append('a')
+
+  const b1 = await create(t, a1.key)
+  const b2 = await create(t, a2.key)
+
+  const [s1, s2] = replicate(a1, b1, t)
+
+  a2.replicate(s1)
+  b2.replicate(s2)
+
+  await b1.get(0)
+  await b2.get(0)
+
+  a1.unreplicate(s1)
+
+  await a1.append('b')
+  await a2.append('b')
+
+  t.alike(await b2.get(1), b4a.from('b'), 'other core still replicates')
+
+  await eventFlush()
+
+  t.is(a1.peers.length, 0, 'no local peer')
+  t.is(b1.peers.length, 0, 'no remote peer')
+  t.is(b1.length, 1, 'no update reached the remote')
+  t.absent(a1.core.replicator.attached(s1.noiseStream.userData), 'detached')
+  t.absent(s1.destroying, 'stream is alive')
+  t.absent(s2.destroying, 'remote stream is alive')
+})
+
+test('unreplicate and replicate again on the same stream', async function (t) {
+  const a = await create(t)
+  await a.append('a')
+
+  const b = await create(t, a.key)
+
+  const [s1] = replicate(a, b, t)
+
+  await b.get(0)
+
+  a.unreplicate(s1)
+  await a.append('b')
+  await eventFlush()
+
+  t.is(b.length, 1)
+
+  a.replicate(s1)
+
+  t.alike(await b.get(1), b4a.from('b'), 'replicates again')
+})
+
+test('unreplicate before the stream opened', async function (t) {
+  const a = await create(t)
+  await a.append('a')
+
+  const b = await create(t, a.key)
+
+  const [s1, s2] = replicate(a, b, t)
+
+  a.unreplicate(s1)
+
+  await s1.noiseStream.opened
+  await s2.noiseStream.opened
+  await eventFlush()
+
+  t.is(a.peers.length, 0, 'no local peer')
+  t.is(b.peers.length, 0, 'no remote peer')
+  t.absent(s1.destroying, 'stream is alive')
+})
+
+test('unreplicate hands a remote reopen to ondiscoverykey', async function (t) {
+  const a = await create(t)
+  await a.append('a')
+
+  const b = await create(t, a.key)
+
+  const asked = []
+
+  const [s1, s2] = replicate(a, b, t, {
+    ondiscoverykey(discoveryKey) {
+      asked.push(discoveryKey)
+    }
+  })
+
+  await b.get(0)
+
+  a.unreplicate(s1)
+  await eventFlush()
+
+  b.core.replicator._makePeer(s2.noiseStream.userData)
+  await eventFlush()
+
+  t.is(asked.length, 1, 'asked once')
+  t.alike(asked[0], a.discoveryKey)
+  t.is(a.peers.length, 0, 'still not replicating')
+  t.absent(s1.destroying, 'stream is alive')
+})
+
 function noop() {}
