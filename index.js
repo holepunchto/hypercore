@@ -952,6 +952,10 @@ class Hypercore extends EventEmitter {
 
     await this.state.clear(start, end, cleared)
 
+    // off by default, as compacting after every small clear costs more than
+    // the space it gives back
+    if (opts && opts.reclaim) await this.state.storage.compactBlockRange(start, end)
+
     return cleared
   }
 
