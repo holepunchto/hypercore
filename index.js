@@ -609,6 +609,22 @@ class Hypercore extends EventEmitter {
     return protocolStream
   }
 
+  unreplicate(stream) {
+    const mux = Protomux.isProtomux(stream)
+      ? stream
+      : isStream(stream) && stream.noiseStream
+        ? stream.noiseStream.userData
+        : null
+
+    if (!Protomux.isProtomux(mux)) return
+
+    if (this.opened) {
+      if (this.core !== null) this.core.replicator.unreplicate(mux)
+    } else {
+      this.opening.then(() => this.core.replicator.unreplicate(mux), noop)
+    }
+  }
+
   _isAttached(stream) {
     return (
       stream.userData &&
@@ -1370,6 +1386,8 @@ class Hypercore extends EventEmitter {
 }
 
 module.exports = Hypercore
+
+function noop() {}
 
 function isStream(s) {
   return typeof s === 'object' && s && typeof s.pipe === 'function'

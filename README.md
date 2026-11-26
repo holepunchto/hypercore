@@ -749,6 +749,14 @@ socket.pipe(localCore.replicate(true)).pipe(socket)
 
 `opts` are same as [`Hypercore.createProtocolStream()`](#const-stream--hypercorecreateprotocolstreamisinitiator-opts--).
 
+#### `core.unreplicate(replicationStream)`
+
+Stop replicating this core over a stream it was attached to with `core.replicate(replicationStream)`. Only this core's channel is closed. The stream stays open, and other cores and protocols on it keep running.
+
+If the remote asks for the core again on the same stream, the request goes to the stream's `ondiscoverykey` handler, if one was set. Call `core.replicate(replicationStream)` to resume.
+
+Replication state is shared by all sessions of a core, so this stops it for all of them on that stream.
+
 #### `const done = core.findingPeers()`
 
 Create a hook that tells Hypercore you are finding peers for this core in the background. Call `done` when your current discovery iteration is done.
