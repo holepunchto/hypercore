@@ -166,21 +166,35 @@ async function count(storage, gte, lt) {
   return n
 }
 
-test('purge with compaction disabled', async function (t) {
-  const dir = await t.tmp()
+test('purge compacts by default and can be opted out of', async function (t) {
+  for (const [opts, expected] of [
+    [undefined, { compact: true }],
+    [{ compact: false }, { compact: false }]
+  ]) {
+    const dir = await t.tmp()
+    const storage = await createStorage(t, dir)
 
-  const keyPair = crypto.keyPair()
-  const core = new Hypercore(await createStorage(t, dir), { keyPair })
-  await core.append(['a', 'b', 'c'])
+    const received = []
+    const deleteCore = storage.deleteCore.bind(storage)
+    storage.deleteCore = function (ptr, options) {
+      received.push(options)
+      return deleteCore(ptr, options)
+    }
 
-  await core.purge({ compact: false })
+    const keyPair = crypto.keyPair()
+    const core = new Hypercore(storage, { keyPair })
+    await core.append(['a', 'b', 'c'])
 
-  t.is(core.closed, true)
+    await core.purge(opts)
 
-  const reopened = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey })
-  await reopened.ready()
+    t.alike(received, [expected], 'deleteCore got ' + JSON.stringify(expected))
+    t.is(core.closed, true)
 
-  t.is(reopened.length, 0, 'nothing remains')
+    const reopened = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey })
+    await reopened.ready()
 
-  await reopened.close()
+    t.is(reopened.length, 0, 'nothing remains')
+
+    await reopened.close()
+  }
 })
