@@ -955,9 +955,9 @@ class Hypercore extends EventEmitter {
     return cleared
   }
 
-  async purge() {
+  async purge(opts) {
     if (this.opened === false) await this.opening
-    await this.core.purge()
+    await this.core.purge(opts)
   }
 
   async _get(index, opts) {

@@ -165,3 +165,22 @@ async function count(storage, gte, lt) {
   for await (const _ of storage.db.iterator({ gte, lt })) n++
   return n
 }
+
+test('purge with compaction disabled', async function (t) {
+  const dir = await t.tmp()
+
+  const keyPair = crypto.keyPair()
+  const core = new Hypercore(await createStorage(t, dir), { keyPair })
+  await core.append(['a', 'b', 'c'])
+
+  await core.purge({ compact: false })
+
+  t.is(core.closed, true)
+
+  const reopened = new Hypercore(await createStorage(t, dir), { key: keyPair.publicKey })
+  await reopened.ready()
+
+  t.is(reopened.length, 0, 'nothing remains')
+
+  await reopened.close()
+})
